@@ -32,8 +32,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.transport.TTransportException;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +52,7 @@ public class SessionExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException, TTransportException {
+      throws IoTDBConnectionException, StatementExecutionException {
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 

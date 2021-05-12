@@ -24,13 +24,12 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TNonblockingTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,12 +61,12 @@ public class AsyncDataClient extends AsyncClient {
       TAsyncClientManager clientManager,
       Node node,
       AsyncClientPool pool)
-      throws IOException, TTransportException {
+      throws IOException {
     // the difference of the two clients lies in the port
     super(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(
+        TNonblockingSocketWrapper.wrap(
             node.getInternalIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
@@ -107,7 +106,7 @@ public class AsyncDataClient extends AsyncClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException, TTransportException {
+        throws IOException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncDataClient(protocolFactory, manager, node, pool);
@@ -131,7 +130,7 @@ public class AsyncDataClient extends AsyncClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException, TTransportException {
+        throws IOException {
       return new AsyncDataClient(protocolFactory, manager, node, pool);
     }
   }

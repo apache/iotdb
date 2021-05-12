@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +95,7 @@ public class QueryCoordinatorTest {
                       .start();
                 }
               };
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               fail(e.getMessage());
               return null;
             }

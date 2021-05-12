@@ -30,8 +30,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.transport.TTransportException;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -58,7 +56,7 @@ public class DataMigrationExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, ExecutionException,
-          InterruptedException, TTransportException {
+          InterruptedException {
 
     ExecutorService executorService = Executors.newFixedThreadPool(2 * concurrency + 1);
 

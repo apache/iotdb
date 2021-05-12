@@ -37,7 +37,8 @@ import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
@@ -48,7 +49,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -135,11 +135,7 @@ public class SyncClient implements ISyncClient {
     init();
   }
 
-  private TConfiguration tConfiguration =
-      new TConfiguration(
-          TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
-          RpcUtils.THRIFT_FRAME_MAX_SIZE,
-          TConfiguration.DEFAULT_RECURSION_DEPTH);
+  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
@@ -297,22 +293,21 @@ public class SyncClient implements ISyncClient {
   }
 
   @Override
-  public void establishConnection(String serverIp, int serverPort)
-      throws SyncConnectionException, TTransportException {
+  public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(ioTDBConfig.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
-    TProtocol protocol;
-    if (ioTDBConfig.isRpcThriftCompressionEnable()) {
-      protocol = new TCompactProtocol(transport);
-    } else {
-      protocol = new TBinaryProtocol(transport);
-    }
-
-    serviceClient = new SyncService.Client(protocol);
     try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              TSocketWrapper.wrap(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
+      TProtocol protocol;
+      if (ioTDBConfig.isRpcThriftCompressionEnable()) {
+        protocol = new TCompactProtocol(transport);
+      } else {
+        protocol = new TBinaryProtocol(transport);
+      }
+      serviceClient = new SyncService.Client(protocol);
+
       if (!transport.isOpen()) {
         transport.open();
       }

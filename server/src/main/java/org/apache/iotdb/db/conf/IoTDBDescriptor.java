@@ -321,6 +321,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_unseq_compaction", Boolean.toString(conf.isEnableUnseqCompaction()))));
 
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
+
       conf.setSeqLevelNum(
           Integer.parseInt(
               properties.getProperty("seq_level_num", Integer.toString(conf.getSeqLevelNum()))));
@@ -1029,6 +1035,13 @@ public class IoTDBDescriptor {
       // update slow_query_threshold
       conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
 
+      // update enable_continuous_compaction
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
+
+      // update merge_write_throughput_mb_per_sec
+      conf.setMergeWriteThroughputMbPerSec(
+          Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }

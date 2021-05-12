@@ -39,7 +39,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -86,7 +85,7 @@ public class DeletionQueryTest {
   }
 
   @After
-  public void teardown() throws IOException, StorageEngineException, TTransportException {
+  public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }

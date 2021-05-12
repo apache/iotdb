@@ -68,6 +68,7 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
 
   @Override
   public TConfiguration getConfiguration() {
+    // should never call this method.
     return null;
   }
 

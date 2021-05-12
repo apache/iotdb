@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -76,7 +75,7 @@ public abstract class IoTDBTest {
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException, TTransportException {
+  public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);

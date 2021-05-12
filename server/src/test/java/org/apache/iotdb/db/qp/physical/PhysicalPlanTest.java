@@ -69,7 +69,6 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -126,7 +125,7 @@ public class PhysicalPlanTest {
   }
 
   @After
-  public void clean() throws IOException, StorageEngineException, TTransportException {
+  public void clean() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 

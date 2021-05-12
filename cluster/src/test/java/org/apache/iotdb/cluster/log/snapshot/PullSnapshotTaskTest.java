@@ -122,7 +122,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                       .start();
                 }
               };
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }

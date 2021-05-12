@@ -23,11 +23,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TNonblockingSocket;
-import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 
@@ -42,11 +41,11 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
       TAsyncClientManager clientManager,
       Node node,
       AsyncClientPool pool)
-      throws IOException, TTransportException {
+      throws IOException {
     super(
         protocolFactory,
         clientManager,
-        new TNonblockingSocket(
+        TNonblockingSocketWrapper.wrap(
             node.getInternalIp(),
             node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
             RaftServer.getConnectionTimeoutInMS()));
@@ -62,7 +61,7 @@ public class AsyncDataHeartbeatClient extends AsyncDataClient {
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
-        throws IOException, TTransportException {
+        throws IOException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncDataHeartbeatClient(protocolFactory, manager, node, pool);

@@ -69,7 +69,7 @@
             <properties>
                 <cmake.generator>Visual Studio 16 2019</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-win64-x64/</cmake.root.dir>
-                <boost.include.dir>C:\dev\boost_1_75_0</boost.include.dir>
+                <boost.include.dir/>
             </properties>
         </profile>
         <profile>

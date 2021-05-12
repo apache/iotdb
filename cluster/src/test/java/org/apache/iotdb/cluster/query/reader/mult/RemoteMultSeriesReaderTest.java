@@ -43,7 +43,6 @@ import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -186,8 +185,7 @@ public class RemoteMultSeriesReaderTest {
     metaGroupMember.setClientProvider(
         new DataClientProvider(new Factory()) {
           @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout)
-              throws IOException, TTransportException {
+          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void fetchMultSeries(

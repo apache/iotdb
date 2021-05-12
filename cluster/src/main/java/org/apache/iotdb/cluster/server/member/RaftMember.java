@@ -78,7 +78,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1375,7 +1374,7 @@ public abstract class RaftMember {
     }
     try {
       return pool.getClient(node, activatedOnly);
-    } catch (IOException | TTransportException e) {
+    } catch (IOException e) {
       logger.warn("{} cannot connect to node {}", name, node, e);
       return null;
     }

@@ -92,7 +92,6 @@ import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -107,6 +106,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -116,6 +116,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.cluster.common.TestUtils.getTestMeasurement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -273,7 +274,7 @@ public class DataGroupMemberTest extends BaseMember {
                       .start();
                 }
               };
-            } catch (IOException | TTransportException e) {
+            } catch (IOException e) {
               return null;
             }
           }
@@ -704,7 +705,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -729,6 +730,10 @@ public class DataGroupMemberTest extends BaseMember {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -766,7 +771,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -791,6 +796,10 @@ public class DataGroupMemberTest extends BaseMember {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -828,7 +837,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -854,6 +863,9 @@ public class DataGroupMemberTest extends BaseMember {
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
     request.setAscending(true);
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -891,7 +903,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -917,6 +929,9 @@ public class DataGroupMemberTest extends BaseMember {
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
     request.setAscending(true);
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -1115,7 +1130,9 @@ public class DataGroupMemberTest extends BaseMember {
       request.setQueryId(queryContext.getQueryId());
       request.setRequestor(TestUtils.getNode(0));
       request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
-      request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(getTestMeasurement(0));
+      request.setDeviceMeasurements(deviceMeasurements);
       request.setAscending(true);
 
       DataGroupMember dataGroupMember;

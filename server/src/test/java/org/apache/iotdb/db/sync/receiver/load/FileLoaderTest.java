@@ -34,7 +34,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,7 +84,7 @@ public class FileLoaderTest {
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException, TTransportException {
+  public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     HashVirtualPartitioner.getInstance()

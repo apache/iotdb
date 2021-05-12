@@ -33,7 +33,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.thrift.transport.TTransportException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -307,8 +306,6 @@ public class ImportCsv extends AbstractCsvTool {
     } catch (StatementExecutionException e) {
       System.out.println(
           "Encounter an error when executing the statement, because " + e.getMessage());
-    } catch (TTransportException e) {
-      System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
     } finally {
       if (session != null) {
         try {

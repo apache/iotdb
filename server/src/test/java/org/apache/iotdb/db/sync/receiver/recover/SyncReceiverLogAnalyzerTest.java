@@ -38,7 +38,6 @@ import org.apache.iotdb.db.sync.receiver.load.FileLoaderTest;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -90,7 +89,7 @@ public class SyncReceiverLogAnalyzerTest {
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException, TTransportException {
+  public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
   }

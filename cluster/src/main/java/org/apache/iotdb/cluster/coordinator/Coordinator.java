@@ -57,7 +57,6 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -645,7 +644,7 @@ public class Coordinator {
         } else {
           status = forwardDataPlanSync(plan, node, group.getHeader());
         }
-      } catch (IOException | TTransportException e) {
+      } catch (IOException e) {
         status = StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
       if (!StatusUtils.TIME_OUT.equals(status)) {
@@ -669,7 +668,7 @@ public class Coordinator {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
-      throws IOException, TTransportException {
+      throws IOException {
     RaftService.AsyncClient client =
         metaGroupMember
             .getClientProvider()
@@ -697,8 +696,7 @@ public class Coordinator {
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
    */
-  public AsyncDataClient getAsyncDataClient(Node node, int timeout)
-      throws IOException, TTransportException {
+  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
     return metaGroupMember.getClientProvider().getAsyncDataClient(node, timeout);
   }
 

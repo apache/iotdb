@@ -25,7 +25,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
 
@@ -38,7 +37,7 @@ public class TestAsyncMetaClient extends AsyncMetaClient {
       TAsyncClientManager clientManager,
       Node node,
       AsyncClientPool pool)
-      throws IOException, TTransportException {
+      throws IOException {
     super(protocolFactory, clientManager, node, pool);
     this.node = node;
   }

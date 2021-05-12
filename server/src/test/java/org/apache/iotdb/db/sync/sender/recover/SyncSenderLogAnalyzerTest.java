@@ -36,7 +36,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,8 +75,7 @@ public class SyncSenderLogAnalyzerTest {
   }
 
   @After
-  public void tearDown()
-      throws InterruptedException, IOException, StorageEngineException, TTransportException {
+  public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
   }
 

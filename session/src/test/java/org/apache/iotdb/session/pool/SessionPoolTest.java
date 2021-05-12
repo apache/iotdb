@@ -24,7 +24,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -72,9 +71,7 @@ public class SessionPoolTest {
                   Collections.singletonList("s" + no),
                   Collections.singletonList(TSDataType.INT64),
                   Collections.singletonList(3L));
-            } catch (IoTDBConnectionException
-                | StatementExecutionException
-                | TTransportException e) {
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
               fail();
             }
           });
@@ -102,7 +99,7 @@ public class SessionPoolTest {
           Collections.singletonList("s"),
           Collections.singletonList(TSDataType.INT64),
           Collections.singletonList(3L));
-    } catch (IoTDBConnectionException | StatementExecutionException | TTransportException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       // do nothing
     }
     assertEquals(1, pool.currentAvailableSize());
@@ -124,9 +121,7 @@ public class SessionPoolTest {
                   pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
               // this is incorrect becasue wrapper is not closed.
               // so all other 7 queries will be blocked
-            } catch (IoTDBConnectionException
-                | StatementExecutionException
-                | TTransportException e) {
+            } catch (IoTDBConnectionException | StatementExecutionException e) {
               fail();
             }
           });
@@ -230,8 +225,6 @@ public class SessionPoolTest {
       return;
     } catch (StatementExecutionException e) {
       fail("should be TTransportException but get an exception: " + e.getMessage());
-    } catch (TTransportException e) {
-      fail("should be TTransportException but get an exception: " + e.getMessage());
     }
     fail("should throw exception but not");
   }
@@ -253,7 +246,7 @@ public class SessionPoolTest {
       }
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
-    } catch (IoTDBConnectionException | StatementExecutionException | TTransportException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
       fail();
     }
@@ -283,7 +276,7 @@ public class SessionPoolTest {
             Collections.singletonList("s" + i),
             Collections.singletonList(TSDataType.INT64),
             Collections.singletonList((long) i));
-      } catch (IoTDBConnectionException | StatementExecutionException | TTransportException e) {
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
         // will fail this 10 times.
         if (failWhenThrowException) {
           fail();
@@ -308,8 +301,6 @@ public class SessionPoolTest {
       Assert.assertEquals("Session pool is closed", e.getMessage());
     } catch (StatementExecutionException e) {
       fail();
-    } catch (TTransportException e) {
-      e.printStackTrace();
     }
     // some other test cases are not covered:
     // e.g., thread A created a new session, but not returned; thread B close the pool; A get the

@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -48,7 +49,6 @@ import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -79,28 +79,25 @@ public class SessionConnection {
   public SessionConnection() {}
 
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
-      throws IoTDBConnectionException, TTransportException {
+      throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
   }
 
-  private void init(EndPoint endPoint) throws IoTDBConnectionException, TTransportException {
+  private void init(EndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(
-                new TConfiguration(
-                    TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
-                    RpcUtils.THRIFT_FRAME_MAX_SIZE,
-                    TConfiguration.DEFAULT_RECURSION_DEPTH),
-                endPoint.getIp(),
-                endPoint.getPort(),
-                session.connectionTimeoutInMs));
-
     try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              new TSocket(
+                  TConfigurationConst.defaultTConfiguration,
+                  endPoint.getIp(),
+                  endPoint.getPort(),
+                  session.connectionTimeoutInMs));
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
