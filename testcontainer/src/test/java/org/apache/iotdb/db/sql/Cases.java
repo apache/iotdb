@@ -121,4 +121,29 @@ public abstract class Cases {
       resultSet.close();
     }
   }
+
+  // test https://issues.apache.org/jira/browse/IOTDB-1266
+  @Test
+  public void showTimeseriesRowsTest() throws SQLException {
+
+    int n = 3000;
+    String timeSeriesPrefix = "root.ln.wf01.wt";
+    String timeSeriesSuffix = ".temperature WITH DATATYPE=DOUBLE, ENCODING=RLE";
+    String timeSeries;
+    for (int i = 0; i < n; i++) {
+      timeSeries = timeSeriesPrefix + String.valueOf(i) + timeSeriesSuffix;
+      writeStatement.execute(String.format("create timeseries %s ", timeSeries));
+    }
+
+    // try to read data on each node.
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(n, cnt);
+      resultSet.close();
+    }
+  }
 }
