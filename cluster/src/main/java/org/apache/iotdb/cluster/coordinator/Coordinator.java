@@ -111,13 +111,15 @@ public class Coordinator {
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     TSStatus result;
     long startTime = Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.getOperationStartTime();
-    if (PartitionUtils.isLocalNonQueryPlan(plan)) {
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) {  // 对于可以本地执行的 plan，协调者节点直接执行
       // run locally
       result = executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) {
+      // 对于 meta 组请求，如果协调者节点是 meta 组的 leader，则直接执行返回结果
       // forward the plan to all meta group nodes
       result = metaGroupMember.processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) {
+      // data 组请求，协调者节点直接执行
       // forward the plan to all data group nodes
       result = processNonPartitionedDataPlan(plan);
     } else {

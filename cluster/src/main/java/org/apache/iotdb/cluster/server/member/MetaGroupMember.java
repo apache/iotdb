@@ -1381,14 +1381,16 @@ public class MetaGroupMember extends RaftMember {
    * nodes.
    */
   public TSStatus processNonPartitionedMetaPlan(PhysicalPlan plan) {
-    if (character == NodeCharacter.LEADER) {
+    if (character == NodeCharacter.LEADER) { // 如果协调者节点是 meta 组的 leader，则直接执行返回结果
       TSStatus status = processPlanLocally(plan);
       if (status != null) {
         return status;
       }
     } else if (!ClusterConstant.EMPTY_NODE.equals(leader.get())) {
+      // 协调者节点是 meta 组的 follower
       TSStatus result = forwardPlan(plan, leader.get(), null);
       if (!StatusUtils.NO_LEADER.equals(result)) {
+        // 则将此请求发送给 leader 执行后再将 response 的 TSStatus 中的 redirectNode 字段设置为 meta 组的 leader
         result.setRedirectNode(
             new EndPoint(leader.get().getClientIp(), leader.get().getClientPort()));
         return result;
