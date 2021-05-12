@@ -2859,9 +2859,13 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       boolean isSequence = false;
-      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-        if (!isAlive(plan.getTime())) {
+      InsertRowPlan[] rowPlans = insertRowsOfOneDevicePlan.getRowPlans();
+      for (int i = 0, rowPlansLength = rowPlans.length; i < rowPlansLength; i++) {
+
+        InsertRowPlan plan = rowPlans[i];
+        if (!isAlive(plan.getTime()) || insertRowsOfOneDevicePlan.isExecuted(i)) {
           // we do not need to write these part of data, as they can not be queried
+          // or the sub-plan has already been executed, we are retrying other sub-plans
           continue;
         }
         // init map
