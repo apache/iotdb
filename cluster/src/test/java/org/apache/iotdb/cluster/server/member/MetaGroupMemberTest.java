@@ -119,8 +119,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -133,7 +135,6 @@ import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -188,7 +189,6 @@ public class MetaGroupMemberTest extends BaseMember {
     mockDataClusterServer = false;
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
-    System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
@@ -888,11 +888,14 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         times[i] = i;
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 context,
                 true);
@@ -946,11 +949,14 @@ public class MetaGroupMemberTest extends BaseMember {
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader =
             readerFactory.getSeriesReader(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0),
@@ -1002,7 +1008,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
       request.setRegenerateIdentifier(true);
       testMetaMember.processValidHeartbeatReq(request, response);
-      assertNotEquals(10, response.getFollowerIdentifier());
+      assertTrue(response.getFollowerIdentifier() != 10);
       assertTrue(response.isRequirePartitionTable());
 
       request.setPartitionTableBytes(partitionTable.serialize());
@@ -1371,5 +1377,9 @@ public class MetaGroupMemberTest extends BaseMember {
               }
             });
     while (resultRef.get() == null) {}
+  }
+
+  public MetaGroupMember getTestMetaGroupMember() {
+    return testMetaMember;
   }
 }

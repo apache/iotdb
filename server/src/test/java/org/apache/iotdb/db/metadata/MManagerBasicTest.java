@@ -1317,4 +1317,21 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
 }

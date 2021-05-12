@@ -95,6 +95,15 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |默认值|40010|
 |改后生效方式|重启服务生效，集群建立后不可再修改|
 
+* cluster\_info\_public\_port
+
+|名字|cluster\_info\_public\_port|
+|:---:|:---|
+|描述|用于查看集群信息（如数据分区）的RPC服务的接口|
+|类型|Int32|
+|默认值|6567|
+|改后生效方式| 重启服务生效|
+
 * open\_server\_rpc\_port
 
 |名字|open\_server\_rpc\_port|

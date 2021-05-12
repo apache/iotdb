@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FileLoaderUtils {
 
@@ -89,14 +92,27 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    * @param filter any filter, only used to check time range
    */
-  public static TimeseriesMetadata loadTimeSeriesMetadata(
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public static ITimeSeriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
       Filter filter,
       Set<String> allSensors)
       throws IOException {
-    TimeseriesMetadata timeSeriesMetadata;
+    // deal with vector
+    if (seriesPath instanceof VectorPartialPath) {
+      return loadVectorTimeSeriesMetadata(
+          resource,
+          seriesPath,
+          ((VectorPartialPath) seriesPath).getSubSensorsPathList(),
+          context,
+          filter,
+          allSensors);
+    }
+
+    // common path
+    ITimeSeriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
@@ -138,6 +154,80 @@ public class FileLoaderUtils {
       }
     }
     return timeSeriesMetadata;
+  }
+
+  private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      List<PartialPath> subSensorList,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
+    VectorTimeSeriesMetadata vectorTimeSeriesMetadata = null;
+    if (resource.isClosed()) {
+      if (!resource.getTsFile().exists()) {
+        return null;
+      }
+      List<TimeseriesMetadata> timeSeriesMetadata =
+          TimeSeriesMetadataCache.getInstance()
+              .get(
+                  new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
+                      resource.getTsFilePath(),
+                      seriesPath.getDevice(),
+                      seriesPath.getMeasurement()),
+                  subSensorList.stream()
+                      .map(PartialPath::getMeasurement)
+                      .collect(Collectors.toList()),
+                  allSensors,
+                  context.isDebug());
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata
+            .get(0)
+            .setChunkMetadataLoader(
+                new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
+        for (int i = 1; i < timeSeriesMetadata.size(); i++) {
+          timeSeriesMetadata
+              .get(i)
+              .setChunkMetadataLoader(
+                  new DiskChunkMetadataLoader(resource, subSensorList.get(i - 1), context, filter));
+        }
+        vectorTimeSeriesMetadata =
+            new VectorTimeSeriesMetadata(
+                timeSeriesMetadata.get(0),
+                timeSeriesMetadata.subList(1, timeSeriesMetadata.size()));
+      }
+    } else {
+      vectorTimeSeriesMetadata = (VectorTimeSeriesMetadata) resource.getTimeSeriesMetadata();
+      if (vectorTimeSeriesMetadata != null) {
+        vectorTimeSeriesMetadata.setChunkMetadataLoader(
+            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
+      }
+    }
+
+    if (vectorTimeSeriesMetadata != null) {
+      List<Modification> pathModifications =
+          context.getPathModifications(resource.getModFile(), seriesPath);
+      vectorTimeSeriesMetadata.getTimeseriesMetadata().setModified(!pathModifications.isEmpty());
+      if (vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
+          > vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+        return null;
+      }
+      if (filter != null
+          && !filter.satisfyStartEndTime(
+              vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime(),
+              vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime())) {
+        return null;
+      }
+      List<TimeseriesMetadata> valueTimeSeriesMetadataList =
+          vectorTimeSeriesMetadata.getValueTimeseriesMetadataList();
+      for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+        pathModifications =
+            context.getPathModifications(resource.getModFile(), subSensorList.get(i));
+        valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
+      }
+    }
+    return vectorTimeSeriesMetadata;
   }
 
   /**
