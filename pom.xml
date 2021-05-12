@@ -149,13 +149,13 @@
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <!-- By default, the argLine is empty-->
+        <argLine/>
         <gson.version>2.8.6</gson.version>
         <!-- whether enable compiling the cpp client-->
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
-        <argLine>--illegal-access=permit --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -945,12 +945,11 @@
         </plugins>
     </build>
     <profiles>
-        <!-- spotless is too slow, so we put it into a profile to skip it if needed -->
+        <!-- currently spotless cannot run on jdk16 -->
         <profile>
             <id>spotless</id>
             <activation>
-                <jdk>[8,16)</jdk>
-                <!-- activeByDefault does not take effect-->
+                <jdk>[1.8,16)</jdk>
                 <file>
                     <exists>.</exists>
                 </file>
@@ -1066,6 +1065,17 @@
                     <artifactId>jaxb-runtime</artifactId>
                 </dependency>
             </dependencies>
+        </profile>
+        <profile>
+            <id>java-16-and-above</id>
+            <activation>
+                <!-- This needs to be updated as soon as Java 20 is shipped -->
+                <jdk>[16,20)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+                <argLine>--illegal-access=permit --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
+            </properties>
         </profile>
         <!--
           Self activating profile, that activates itself as soon as a "src/main/thrift" directory is found.
