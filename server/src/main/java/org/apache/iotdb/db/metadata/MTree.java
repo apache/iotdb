@@ -1495,7 +1495,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void unlockMNode(MNode mNode){
+  public void unlockMNode(MNode mNode) throws MetadataException{
 
   }
 

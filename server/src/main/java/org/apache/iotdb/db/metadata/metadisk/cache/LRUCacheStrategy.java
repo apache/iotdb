@@ -59,8 +59,9 @@ public class LRUCacheStrategy implements CacheStrategy {
     try {
       lock.lock();
       decreaseLock(mNode);
-      if(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
-        decreaseLock(mNode.getParent());
+      while(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
+        mNode=mNode.getParent();
+        decreaseLock(mNode);
       }
     } finally {
       lock.unlock();

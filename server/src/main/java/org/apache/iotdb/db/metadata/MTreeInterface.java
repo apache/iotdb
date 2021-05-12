@@ -291,7 +291,7 @@ public interface MTreeInterface extends Serializable {
 
   MNode lockMNode(MNode mNode) throws MetadataException;
 
-  void unlockMNode(MNode mNode);
+  void unlockMNode(MNode mNode) throws MetadataException;
 
   void serializeTo(String snapshotPath) throws IOException;
 

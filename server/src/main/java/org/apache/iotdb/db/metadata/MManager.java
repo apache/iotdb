@@ -441,6 +441,7 @@ public class MManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
+      mtree.updateMNode(leafMNode);
       mtree.unlockMNode(leafMNode);
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -1250,7 +1251,7 @@ public class MManager {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
+    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
     if (!(mNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1289,6 +1290,7 @@ public class MManager {
               .add(leafMNode);
         }
       }
+      mtree.unlockMNode(leafMNode);
       return;
     }
 
@@ -1350,6 +1352,8 @@ public class MManager {
 
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+
+    mtree.unlockMNode(leafMNode);
   }
 
   /**
@@ -1829,6 +1833,15 @@ public class MManager {
     return null;
   }
 
+  public void resetLastCache(MeasurementMNode node){
+    try {
+      node.resetCache();
+      mtree.updateMNode(node);
+    } catch (MetadataException e) {
+      logger.warn("failed to rest last cache for the {}, err:{}", node.getFullPath(), e.getMessage());
+    }
+  }
+
   @TestOnly
   public void flushAllMlogForTest() throws IOException {
     logWriter.close();
@@ -2005,7 +2018,11 @@ public class MManager {
 
 
   public void unlockNode(MNode mNode){
-    mtree.unlockMNode(mNode);
+    try {
+      mtree.unlockMNode(mNode);
+    }catch (MetadataException e){
+      logger.warn("Exception occurred after unlock mNode {}. ",mNode.getFullPath(),e);
+    }
   }
 
   private MNode getMNodeFromCache(PartialPath path) throws CacheException{

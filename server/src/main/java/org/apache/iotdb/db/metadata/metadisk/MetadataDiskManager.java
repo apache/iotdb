@@ -13,6 +13,7 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -149,6 +150,12 @@ public class MetadataDiskManager implements MetadataAccess {
     } else {
       result = getMNodeFromDisk(result.getPersistenceInfo());
       parent.addChild(name, result);
+      if(result.isMeasurement()){
+        MeasurementMNode measurementMNode=(MeasurementMNode) result;
+        if(measurementMNode.getAlias()!=null){
+          parent.addAlias(measurementMNode.getAlias(),measurementMNode);
+        }
+      }
       if (isCacheable(result)) {
         cacheStrategy.applyChange(result);
         cacheStrategy.setModified(result, false);
@@ -210,6 +217,22 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
+  public void addChild(MNode parent, String childName, MNode child, boolean lockChild) throws MetadataException {
+    if(!lockChild){
+      addChild(parent,childName,child);
+      return;
+    }
+    if(!parent.isLockedInMemory()){
+      throw new MetadataException("Parent MNode has not been locked before lock child");
+    }
+    child.setParent(parent);
+    cacheStrategy.lockMNode(child);
+    parent.addChild(childName, child);
+    cacheStrategy.setModified(parent, true);
+    cacheStrategy.setModified(child, true);
+  }
+
+  @Override
   public void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
     child.setParent(parent);
     if (child.isCached()) {
@@ -248,6 +271,22 @@ public class MetadataDiskManager implements MetadataAccess {
         }
       }
     }
+  }
+
+  @Override
+  public void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException {
+    if(!lockChild){
+      replaceChild(parent,measurement,newChild);
+      return;
+    }
+    if(!parent.isLockedInMemory()){
+      throw new MetadataException("Parent MNode has not been locked before lock child");
+    }
+    newChild.setParent(parent);
+    cacheStrategy.lockMNode(newChild);
+    getChild(parent, measurement);
+    parent.replaceChild(measurement, newChild);
+    cacheStrategy.setModified(newChild,true);
   }
 
   @Override
@@ -327,7 +366,7 @@ public class MetadataDiskManager implements MetadataAccess {
       last=temp;
       temp=stack.pop();
       if(!temp.isCached()){
-        releaseMNodeMemoryLock(last);
+        cacheStrategy.unlockMNode(last);
         throw new MetadataException("Cannot lock a MNode not in cache");
       }
       cacheStrategy.lockMNode(temp);
@@ -336,7 +375,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void releaseMNodeMemoryLock(MNode mNode) {
+  public void releaseMNodeMemoryLock(MNode mNode) throws MetadataException {
     if(!mNode.isCached()||!mNode.isLockedInMemory()){
       return;
     }
@@ -344,10 +383,7 @@ public class MetadataDiskManager implements MetadataAccess {
       return;
     }
     cacheStrategy.unlockMNode(mNode);
-    while(mNode.getParent()!=root&&!mNode.isLockedInMemory()){
-      mNode=mNode.getParent();
-      cacheStrategy.unlockMNode(mNode);
-    }
+    checkSizeAndEviction();
   }
 
   @Override

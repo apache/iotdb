@@ -123,15 +123,23 @@ public class MTreeDiskBased implements MTreeInterface {
       }
       if (!cur.hasChild(nodeName)) {
         if (!hasSetStorageGroup) {
+          unlockMNodePath(cur);
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        metadataDiskManager.addChild(cur, nodeName, new InternalMNode(cur, nodeName));
+        metadataDiskManager.addChild(cur, nodeName, new InternalMNode(cur, nodeName),true);
+        cur=metadataDiskManager.getChild(cur,nodeName);
+      }else {
+        cur = metadataDiskManager.getChild(cur, nodeName, true);
       }
-      cur = metadataDiskManager.getChild(cur, nodeName, true);
     }
 
     if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
-      checkSDTFormat(path.getFullPath(), props);
+      try {
+        checkSDTFormat(path.getFullPath(), props);
+      }catch (IllegalParameterOfPathException e){
+        unlockMNodePath(cur);
+        throw e;
+      }
     }
 
     String leafName = nodeNames[nodeNames.length - 1];
@@ -141,12 +149,14 @@ public class MTreeDiskBased implements MTreeInterface {
     synchronized (this) {
       MNode child = metadataDiskManager.getChild(cur, leafName, true);
       if (child != null && (child.isMeasurement() || child.isStorageGroup())) {
+        unlockMNodePath(child);
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
       if (alias != null) {
-        MNode childByAlias = metadataDiskManager.getChild(cur, alias,true);
+        MNode childByAlias = metadataDiskManager.getChild(cur, alias);
         if (childByAlias != null && childByAlias.isMeasurement()) {
+          unlockMNodePath(cur);
           throw new AliasAlreadyExistException(path.getFullPath(), alias);
         }
       }
@@ -155,9 +165,9 @@ public class MTreeDiskBased implements MTreeInterface {
       MeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       if (child != null) {
-        metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode);
+        metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode,true);
       } else {
-        metadataDiskManager.addChild(cur, leafName, measurementMNode);
+        metadataDiskManager.addChild(cur, leafName, measurementMNode,true);
       }
 
       // link alias to LeafMNode
@@ -165,7 +175,6 @@ public class MTreeDiskBased implements MTreeInterface {
         metadataDiskManager.addAlias(cur, alias, measurementMNode);
       }
 
-      measurementMNode=(MeasurementMNode) metadataDiskManager.getChild(cur,leafName,true);
       unlockMNodePath(measurementMNode.getParent());
       return measurementMNode;
     }
@@ -289,20 +298,25 @@ public class MTreeDiskBased implements MTreeInterface {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      MNode temp = metadataDiskManager.getChild(cur, nodeNames[i]);
+      MNode temp = metadataDiskManager.getChild(cur, nodeNames[i],true);
       if (temp == null) {
-        metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
+        cur=metadataDiskManager.getChild(cur, nodeNames[i]);
       } else if (temp.isStorageGroup()) {
+        unlockMNodePath(temp);
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
+      }else {
+        cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
       }
-      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
       i++;
     }
 
     if (cur.hasChild(nodeNames[i])) {
       // node b has child sg
-      if (metadataDiskManager.getChild(cur, nodeNames[i]).isStorageGroup()) {
+      cur=metadataDiskManager.getChild(cur, nodeNames[i],true);
+      unlockMNodePath(cur);
+      if (cur.isStorageGroup()) {
         throw new StorageGroupAlreadySetException(path.getFullPath());
       } else {
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -311,7 +325,8 @@ public class MTreeDiskBased implements MTreeInterface {
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(
               cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      metadataDiskManager.addChild(cur, nodeNames[i], storageGroupMNode);
+      metadataDiskManager.addChild(cur, nodeNames[i], storageGroupMNode,true);
+      unlockMNodePath(storageGroupMNode);
     }
   }
 
@@ -1521,11 +1536,11 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public void unlockMNode(MNode mNode){
+  public void unlockMNode(MNode mNode) throws MetadataException{
     metadataDiskManager.releaseMNodeMemoryLock(mNode);
   }
 
-  public void unlockMNodePath(MNode mNode) {
+  public void unlockMNodePath(MNode mNode) throws MetadataException{
     while (mNode!=null){
       metadataDiskManager.releaseMNodeMemoryLock(mNode);
       mNode=mNode.getParent();
