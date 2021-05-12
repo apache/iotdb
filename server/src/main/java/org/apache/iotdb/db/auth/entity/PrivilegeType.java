@@ -22,7 +22,6 @@ package org.apache.iotdb.db.auth.entity;
 public enum PrivilegeType {
   SET_STORAGE_GROUP,
   INSERT_TIMESERIES,
-  UPDATE_TIMESERIES,
   READ_TIMESERIES,
   CREATE_TIMESERIES,
   DELETE_TIMESERIES,
