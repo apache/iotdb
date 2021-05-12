@@ -76,6 +76,8 @@ public abstract class TsFileManagement {
   protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+  private final int maxOpenFileNumInEachUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -228,6 +230,16 @@ public abstract class TsFileManagement {
       logger.info("{} no unseq files to be merged", storageGroupName);
       isUnseqMerging = false;
       return;
+    }
+
+    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
+      logger.info(
+          "{} too much unseq files to be merged, reduce it to {}",
+          storageGroupName,
+          maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList =
+          unSeqMergeList.subList(
+              unSeqMergeList.size() - maxOpenFileNumInEachUnseqCompaction, unSeqMergeList.size());
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
