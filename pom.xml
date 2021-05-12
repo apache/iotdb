@@ -155,17 +155,7 @@
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
         <spotless.version>2.4.2</spotless.version>
-        <argLine>
-            --illegal-access=permit
-            --add-opens=java.base/java.lang=ALL-UNNAMED
-            --add-opens=java.base/java.util=ALL-UNNAMED
-            --add-opens=java.base/java.nio=ALL-UNNAMED
-            --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-            --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
-            --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
-            --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
-            --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
-        </argLine>
+        <argLine>--illegal-access=permit --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -959,6 +949,7 @@
         <profile>
             <id>spotless</id>
             <activation>
+                <jdk>[8,16)</jdk>
                 <!-- activeByDefault does not take effect-->
                 <file>
                     <exists>.</exists>
