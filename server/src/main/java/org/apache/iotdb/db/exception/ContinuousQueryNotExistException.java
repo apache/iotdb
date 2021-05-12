@@ -17,13 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.metadata;
+package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ContinuousQueryNotExistException extends MetadataException {
-
-  private static final long serialVersionUID = -6713847897890531438L;
+public class ContinuousQueryNotExistException extends StorageEngineException {
 
   public ContinuousQueryNotExistException(String continuousQueryName) {
     super(

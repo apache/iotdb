@@ -105,7 +105,7 @@ public class SessionExample {
     session.executeNonQueryStatement(
         "CREATE CONTINUOUS QUERY cq2 "
             + "BEGIN SELECT count(s2) INTO temperature_cnt FROM root.sg1.* "
-            + "WHERE s2 > 80 GROUP BY time(10s), level=1 END");
+            + "GROUP BY time(10s), level=1 END");
     session.executeNonQueryStatement(
         "CREATE CONTINUOUS QUERY cq3 "
             + "RESAMPLE EVERY 20s FOR 20s "

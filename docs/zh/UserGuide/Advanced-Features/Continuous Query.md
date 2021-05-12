@@ -40,9 +40,9 @@ END
 其中：
 
 * `<cq_id>` 指定 CQ 全局唯一的 id。
-* `<every_interval>` 指定查询执行时间间隔。
-* `<for_interval>` 指定每次查询的时间范围为`[now() - <for_interval>, now())`。 
-* `<function>` 指定聚合函数。
+* `<every_interval>` 指定查询执行时间间隔，可选择指定。
+* `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。可选择指定。 
+* `<function>` 指定聚合函数，目前支持 `count`, `sum`, `avg`, `last_value`, `first_value`, `min_time`, `max_time`, `min_value`, `max_value` 等。
 * `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
 * `<new_path>` 或 `<new_path_suffix>` 指定将查询出的数据写入的结果序列路径。
 * `<group_by_interval>` 指定时间分组长度。
@@ -50,27 +50,20 @@ END
 
 
 注：
-* `<for_interval>`,`<every_interval>` 可选择指定。
-    * 如果用户没有指定其中的某一项，则该项的值按照另一项的值处理。
-        例如，如果用户指定了`<for_interval> = 10m` 但是没有指定 `<every_interval>` 的值，
-        则 `<every_interval>` 按照 `10m` 处理。
-    * 如果用户两项都没有指定，则`<for_interval>`,`<every_interval>`
-        都按照`<group_by_interval>`的值处理。
-        例如如果用户指定了`<group_by_interval> = 10m` 
-        但是没有指定 `<every_interval>` 和 `<for_interval>` 的值，
-        则系统将 `<every_interval>` 和 `<for_interval>` 都按照 `10m` 处理。
 
+* `<for_interval>`,`<every_interval>` 可选择指定。如果用户没有指定其中的某一项，则未指定项的值按照`<group_by_interval>` 处理。
     * `<every_interval>`，`<for_interval>`，`<group_by_interval>` 的值均应大于 0。
-    * `<group_by_interval>` 的值应小于`<for_interval>`的值，否则系统会按照等于`<for_interval>`的值处理。
-*  对于结果序列路径，
-    * 用户可以选择指定`<new_path>`，即完整的时间序列路径，用户可以在路径中使用 `${x}` 变量来表示 `<path_prefix>` 中 level = x 的节点名称。
-        例如若`<path_prefix> = root.ln.wf02.wt02`，用户指定`<new_path> = root.ln.${2}.temperature_avg`，则
-        最终系统写入查询结果的序列为`root.ln.wf02.temperature_avg`。
-    * 用户也可以仅指定`<new_path_suffix>`，系统会生成默认的完整的时间序列路径`${0}.${1}. ... .${<level>}.<new_path_suffix>`。
-        例如若`<path_prefix> = root.ln.wf02.wt02`，用户指定`<new_path_suffix> = temperature_avg`，`<level> = 2`，则
-        最终系统写入查询结果的序列为`root.ln.wf02.temperature_avg`，若用户没有指定 `<level>`，
-        最终系统写入查询结果的序列为`root.ln.wf02.wt02.temperature_avg`。
-* `<level>`可选择指定。
+    * `<group_by_interval>` 的值应小于`<for_interval>`的值，否则系统会按照等于`<for_interval>`的值处理。 
+    * 用户应当结合实际需求指定合适的 `<for_interval>` 与 `<every_interval>`。
+      * 若 `<for_interval>` 大于 `<every_interval>`，每次的查询窗口会有部分数据重叠，从查询性能角度这种配置不被建议。
+      * 若 `<for_interval>` 小于 `<every_interval>`，每次的查询窗口之间可能会有未覆盖到的数据。
+*  对于结果序列路径
+     * 用户可以选择指定`<new_path>`，即完整的时间序列路径，用户可以在路径中使用 `${x}` 变量来表示原始时间序列中 `level = x` 的节点名称。
+        
+    * 用户也可以仅指定`<new_path_suffix>`
+      * 若用户指定  `<level> = l`，则系统生成的结果时间序列路径为 `${0}.${1}. ... .${l}.<new_path_suffix>`
+      * 若用户未指定 `<level>`，令原始时间序列最大层数为 `L`， 
+      则系统生成的结果时间序列路径为 `${0}.${1}. ... .${L - 1}.<new_path_suffix>`。
 
 ### 例子
 

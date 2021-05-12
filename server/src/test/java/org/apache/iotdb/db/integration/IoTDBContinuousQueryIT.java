@@ -196,7 +196,7 @@ public class IoTDBContinuousQueryIT {
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(40000 / 1000);
+    checkResultSize(40000 / 20000);
   }
 
   @Test

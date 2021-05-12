@@ -1280,7 +1280,7 @@ public class PhysicalPlanTest {
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
     Assert.assertEquals(20000, plan.getEveryInterval());
-    Assert.assertEquals(20000, plan.getForInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
     Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
@@ -1313,7 +1313,7 @@ public class PhysicalPlanTest {
         (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
-    Assert.assertEquals(20000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getEveryInterval());
     Assert.assertEquals(20000, plan.getForInterval());
     Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(

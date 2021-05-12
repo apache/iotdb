@@ -30,7 +30,6 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -100,21 +99,21 @@ public class DataLogApplier extends BaseApplier {
   }
 
   private void applyInsert(InsertMultiTabletPlan plan)
-      throws MetadataException, QueryProcessException, StorageEngineException {
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       applyInsert(insertTabletPlan);
     }
   }
 
   private void applyInsert(InsertRowsPlan plan)
-      throws MetadataException, QueryProcessException, StorageEngineException {
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
       applyInsert(insertRowPlan);
     }
   }
 
   private void applyInsert(InsertPlan plan)
-      throws MetadataException, QueryProcessException, StorageEngineException {
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     // check if the corresponding slot is being pulled
     PartialPath sg;
     long time = plan.getMinTime();

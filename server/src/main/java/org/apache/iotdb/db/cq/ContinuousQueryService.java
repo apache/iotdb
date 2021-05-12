@@ -21,8 +21,8 @@ package org.apache.iotdb.db.cq;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.ContinuousQueryAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.ContinuousQueryNotExistException;
+import org.apache.iotdb.db.exception.ContinuousQueryAlreadyExistException;
+import org.apache.iotdb.db.exception.ContinuousQueryNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;

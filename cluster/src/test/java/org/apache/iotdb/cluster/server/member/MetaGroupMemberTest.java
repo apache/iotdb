@@ -79,6 +79,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -202,7 +203,9 @@ public class MetaGroupMemberTest extends BaseMember {
             try {
               planExecutor.processNonQuery(plan);
               return StatusUtils.OK;
-            } catch (QueryProcessException | MetadataException | StorageEngineException e) {
+            } catch (QueryProcessException
+                | StorageGroupNotSetException
+                | StorageEngineException e) {
               return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
             }
           }
@@ -450,8 +453,9 @@ public class MetaGroupMemberTest extends BaseMember {
                               resultHandler.onComplete(StatusUtils.OK);
                             } catch (IOException
                                 | QueryProcessException
-                                | MetadataException
-                                | StorageEngineException e) {
+                                | StorageGroupNotSetException
+                                | StorageEngineException
+                                | IllegalPathException e) {
                               resultHandler.onError(e);
                             }
                           })
@@ -528,7 +532,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testClosePartition()
-      throws QueryProcessException, StorageEngineException, MetadataException {
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
+          IllegalPathException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
@@ -841,7 +846,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, StorageEngineException, IOException,
+          StorageGroupNotSetException, IllegalPathException {
     System.out.println("Start testGetReaderByTimestamp()");
     RaftServer.setReadOperationTimeoutMS(10000);
     mockDataClusterServer = true;
@@ -904,8 +910,8 @@ public class MetaGroupMemberTest extends BaseMember {
 
   @Test
   public void testGetReader()
-      throws QueryProcessException, StorageEngineException, IOException, MetadataException,
-          EmptyIntervalException {
+      throws QueryProcessException, StorageEngineException, IOException,
+          StorageGroupNotSetException, IllegalPathException, EmptyIntervalException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertRowPlan insertPlan = new InsertRowPlan();

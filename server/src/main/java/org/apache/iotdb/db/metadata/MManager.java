@@ -342,8 +342,9 @@ public class MManager {
       plan.setQueryOperator(queryOperator);
       try {
         ContinuousQueryService.getInstance().register(plan, false);
-      } catch (MetadataException e) {
-        e.printStackTrace();
+      } catch (StorageEngineException e) {
+        logger.error(
+            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
     return idx;

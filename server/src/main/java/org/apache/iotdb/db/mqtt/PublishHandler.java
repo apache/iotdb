@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mqtt;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -118,7 +118,7 @@ public class PublishHandler extends AbstractInterceptHandler {
   }
 
   private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, MetadataException, StorageEngineException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
