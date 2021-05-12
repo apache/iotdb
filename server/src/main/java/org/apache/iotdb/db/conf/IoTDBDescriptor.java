@@ -342,7 +342,7 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "unseq_level_num", Integer.toString(conf.getUnseqLevelNum()))));
 
-      conf.setUnseqLevelNum(
+      conf.setMaxOpenFileNumInEachUnseqCompaction(
           Integer.parseInt(
               properties.getProperty(
                   "max_open_file_num_in_each_unseq_compaction",

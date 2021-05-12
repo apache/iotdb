@@ -237,7 +237,9 @@ public abstract class TsFileManagement {
           "{} too much unseq files to be merged, reduce it to {}",
           storageGroupName,
           maxOpenFileNumInEachUnseqCompaction);
-      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList =
+          unSeqMergeList.subList(
+              unSeqMergeList.size() - maxOpenFileNumInEachUnseqCompaction, unSeqMergeList.size());
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
