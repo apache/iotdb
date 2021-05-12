@@ -1,20 +1,30 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
+import com.google.gson.Gson;
+import com.google.gson.internal.LinkedTreeMap;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DataSizeEstimator {
+  private static final Logger logger = LoggerFactory.getLogger(DataSizeEstimator.class);
   private static final DataSizeEstimator INSTANCE = new DataSizeEstimator();
   // storage group -> List<Pair<dataPoint, dataSize>>
   private Map<String, List<Pair<Long, Long>>> dataPointToMemSize = new HashMap<>();
-
-  private DataSizeEstimator() {}
+  private File dataSizeFile = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir() + File.separator + "dataSizeEsitmate.info");
+  private DataSizeEstimator() {
+    recoverFromFile();
+  }
 
   public static DataSizeEstimator getInstance() {
     return INSTANCE;
@@ -32,7 +42,7 @@ public class DataSizeEstimator {
       throws DataSizeInfoNotExistsException {
     long chunkSizeInMem = getChunkSizeInMemory(storageGroup, pointNum);
     double compressionRatio = CompressionRatio.getInstance().getRatio();
-    return (long) (chunkSizeInMem * compressionRatio);
+    return (long) (chunkSizeInMem / compressionRatio);
   }
 
   /**
@@ -102,7 +112,7 @@ public class DataSizeEstimator {
     }
     if (chunkSize == -1L) {
       Pair<Long, Long> lastData = dataPointList.get(dataPointList.size() - 1);
-      chunkSize = (long) (((double) (pointNum / lastData.left)) * lastData.right);
+      chunkSize = (long) ((((double)pointNum / (double)lastData.left)) * lastData.right);
     }
     return chunkSize;
   }
@@ -154,5 +164,52 @@ public class DataSizeEstimator {
       }
     }
     dataList.add(insertPos, new Pair<>(dataPointNum, dataSizeInMem));
+    persistDataInfo();
+  }
+
+  public boolean persistDataInfo() {
+    Gson gson = new Gson();
+    String json = gson.toJson(dataPointToMemSize);
+    try {
+      File layoutDir = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir());
+      if (!layoutDir.exists()) {
+        layoutDir.mkdirs();
+      }
+      if (!dataSizeFile.exists()) {
+        dataSizeFile.createNewFile();
+      }
+      BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(dataSizeFile));
+      outputStream.write(json.getBytes(StandardCharsets.UTF_8));
+      outputStream.flush();
+      outputStream.close();
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  public boolean recoverFromFile() {
+    logger.info("recovering from file");
+    try {
+      if (!dataSizeFile.exists()) {
+        logger.info("cannot find {}", dataSizeFile);
+        return false;
+      }
+      BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(dataSizeFile));
+      byte[] buffer = new byte[(int)dataSizeFile.length()];
+      inputStream.read(buffer);
+      String json = new String(buffer);
+      Map<String, List<LinkedTreeMap<String, Double>>> tmpMap = new Gson().fromJson(json, dataPointToMemSize.getClass());
+      for (Map.Entry<String, List<LinkedTreeMap<String, Double>>> entry : tmpMap.entrySet()) {
+        dataPointToMemSize.put(entry.getKey(), new ArrayList<>());
+        List<Pair<Long, Long>> list = dataPointToMemSize.get(entry.getKey());
+        for(LinkedTreeMap<String, Double> item : entry.getValue()) {
+          list.add(new Pair<>(item.get("left").longValue(), item.get("right").longValue()));
+        }
+      }
+      return true;
+    } catch (IOException e) {
+      return false;
+    }
   }
 }

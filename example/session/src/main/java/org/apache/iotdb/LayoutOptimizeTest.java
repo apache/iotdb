@@ -24,14 +24,14 @@ public class LayoutOptimizeTest {
   private static final String QUERY_FILE = "C:\\Users\\liuxu\\Desktop\\query.json";
   private static List<String> queries = new ArrayList<>();
   private static final int TIMESERIES_NUM = 3000;
-  private static final long TIME_NUM = 10000L;
+  private static final long TIME_NUM = 1000L;
 
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
     loadQueries();
-    executeQuery();
-    session.myTest();
+    performQueries();
+    performOptimize();
     session.close();
   }
 

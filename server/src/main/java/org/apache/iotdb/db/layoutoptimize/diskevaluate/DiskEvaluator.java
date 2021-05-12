@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DiskEvaluator {
-  private static final DiskEvaluator INSTANCE = new DiskEvaluator();
   private static final Logger logger = LoggerFactory.getLogger(DiskEvaluator.class);
+  private static final DiskEvaluator INSTANCE = new DiskEvaluator();
   private final String sudoPassword = "601tif";
   public int GENERATE_FILE_NUM = 20;
   public long GENERATE_FILE_SIZE = 8l * 1024l * 1024l * 1024l; // 8 GB

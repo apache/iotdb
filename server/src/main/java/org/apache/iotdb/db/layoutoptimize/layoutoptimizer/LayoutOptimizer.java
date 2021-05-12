@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.layoutoptimize.layoutoptimizer;
 
+import org.apache.iotdb.db.exception.layoutoptimize.LayoutNotExistException;
 import org.apache.iotdb.db.layoutoptimize.layoutholder.LayoutHolder;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.WorkloadManager;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
@@ -19,6 +20,16 @@ public abstract class LayoutOptimizer {
   public LayoutOptimizer(PartialPath device) {
     this.device = device;
     this.config = new OptimizeConfig();
+    LayoutHolder holder = LayoutHolder.getInstance();
+    if (!holder.hasLayoutForDevice(device.getFullPath())) {
+      holder.updateMetadata();
+    }
+    try{
+      measurementOrder = holder.getMeasurementForDevice(device.getFullPath());
+      averageChunkSize = holder.getChunkSize(device.getFullPath());
+    } catch (LayoutNotExistException e) {
+      e.printStackTrace();
+    }
   }
 
   public LayoutOptimizer(PartialPath device, OptimizeConfig config) {
@@ -27,6 +38,9 @@ public abstract class LayoutOptimizer {
   }
 
   public final void invoke() {
+    if (measurementOrder == null) {
+      return;
+    }
     WorkloadManager manager = WorkloadManager.getInstance();
     if (manager.isWorkloadChanged(device.getFullPath())) {
       this.records =

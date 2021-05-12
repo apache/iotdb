@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +101,7 @@ public class MemTableFlushTask {
         memTable.getSeriesNumber());
 
     DataSizeEstimator.getInstance()
-        .addDataInfo(storageGroup, memTable.getTotalPointsNum(), memTable.memSize());
+        .addDataInfo(storageGroup.substring(0, storageGroup.lastIndexOf(File.separatorChar)), memTable.getTotalPointsNum(), memTable.memSize());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {

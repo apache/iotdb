@@ -1,9 +1,12 @@
 package org.apache.iotdb.db.layoutoptimize.layoutholder;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.db.exception.layoutoptimize.LayoutNotExistException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.layoutoptimize.estimator.DataSizeEstimator;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -65,8 +68,21 @@ public class LayoutHolder {
     }
 
     // the measurement is in lexicographical order by default
+    // the default chunk size is set according to default avg series threshold
+    long defaultAvgSeriesPointNum = IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    MManager mmanager = MManager.getInstance();
+    DataSizeEstimator estimator = DataSizeEstimator.getInstance();
     for (String device : deviceUpdated) {
-      Collections.sort(layoutMap.get(device).measurements);
+      Layout curLayout = layoutMap.get(device);
+      Collections.sort(curLayout.measurements);
+      if (curLayout.averageChunkSize == 0) {
+        try {
+          PartialPath devicePath = new PartialPath(device);
+          PartialPath storageGroupPath = mmanager.getStorageGroupPath(devicePath);
+          curLayout.averageChunkSize = estimator.getChunkSizeInDisk(storageGroupPath.getFullPath(), defaultAvgSeriesPointNum);
+        } catch (IllegalPathException | StorageGroupNotSetException | DataSizeInfoNotExistsException e) {
+        }
+      }
     }
   }
 

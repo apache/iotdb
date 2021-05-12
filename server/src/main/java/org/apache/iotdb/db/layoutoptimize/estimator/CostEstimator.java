@@ -1,12 +1,19 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.db.exception.layoutoptimize.SampleRateNoExistsException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.layoutoptimize.diskevaluate.DiskEvaluator;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.thrift.TException;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,12 +42,20 @@ public class CostEstimator {
       String storageGroup = metadataManager.getStorageGroupPath(query.getDevice()).getFullPath();
       long dataPoint = DataSizeEstimator.getInstance().getPointNumInDisk(storageGroup, chunkSize);
       double maxSampleRate = -1;
+      SampleRateKeeper sampleRateKeeper = SampleRateKeeper.getInstance();
+      if (!sampleRateKeeper.hasSampleRateForDevice(query.getDevice().getFullPath())) {
+        try {
+          sampleRateKeeper.updateSampleRate(query.getDevice().getFullPath());
+        } catch (QueryProcessException | TException | StorageEngineException | SQLException | IOException | InterruptedException | QueryFilterOptimizationException | MetadataException e) {
+          e.printStackTrace();
+          return -1;
+        }
+      }
       for (String measurement : query.getMeasurements()) {
         maxSampleRate =
             Math.max(
                 maxSampleRate,
-                SampleRateKeeper.getInstance()
-                    .getSampleRate(query.getDevice().getDevice(), measurement));
+                sampleRateKeeper.getSampleRate(query.getDevice().getFullPath(), measurement));
       }
       long visitPointNum = (long) (query.getSpan() * maxSampleRate);
       int chunkGroupNum = (int) (visitPointNum / dataPoint + 1);

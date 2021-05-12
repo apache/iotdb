@@ -1,5 +1,7 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.layoutoptimize.SampleRateNoExistsException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -112,6 +114,10 @@ public class SampleRateKeeper {
     updateSampleRate(deviceId, defaultQueryRange);
   }
 
+  public boolean hasSampleRateForDevice(String device) {
+    return sampleRateMap.containsKey(device);
+  }
+
   private class QueryExecutor {
     Planner processor = new Planner();
     IPlanExecutor executor;
@@ -128,6 +134,8 @@ public class SampleRateKeeper {
     public QueryDataSet executeQuery(String sql)
         throws QueryProcessException, TException, StorageEngineException, SQLException, IOException,
             InterruptedException, QueryFilterOptimizationException, MetadataException {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      config.setMaxQueryDeduplicatedPathNum(10000);
       QueryPlan physicalPlan = null;
       try {
         physicalPlan = (QueryPlan) processor.parseSQLToPhysicalPlan(sql);
