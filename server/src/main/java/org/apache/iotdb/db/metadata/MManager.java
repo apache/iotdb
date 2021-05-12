@@ -2221,7 +2221,8 @@ public class MManager {
 
         // check type is match
         boolean mismatch = false;
-        TSDataType insertDataType = null;
+        TSDataType insertDataType;
+        DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
             for (int j = 0; j < measurementList[i].split(",").length; j++) {
@@ -2233,26 +2234,37 @@ public class MManager {
               }
               if (dataTypeInNode != insertDataType) {
                 mismatch = true;
-                insertDataType = dataTypeInNode;
+                logger.warn(
+                    "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
+                    measurementMNode.getSchema().getValueMeasurementIdList().get(j),
+                    measurementList[i],
+                    insertDataType,
+                    dataTypeInNode);
+                mismatchException =
+                    new DataTypeMismatchException(
+                        measurementList[i], insertDataType, dataTypeInNode);
                 break;
               }
               loc++;
             }
           } else {
-            insertDataType = measurementMNode.getSchema().getType();
+            insertDataType = plan.getDataTypes()[loc];
             mismatch = measurementMNode.getSchema().getType() != insertDataType;
+            loc++;
+            if (mismatch) {
+              logger.warn(
+                  "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                  measurementList[i],
+                  insertDataType,
+                  measurementMNode.getSchema().getType());
+              mismatchException =
+                  new DataTypeMismatchException(
+                      measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+            }
           }
         }
 
         if (mismatch) {
-          logger.warn(
-              "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i],
-              insertDataType,
-              measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException =
-              new DataTypeMismatchException(
-                  measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {

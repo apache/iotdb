@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1375,8 +1376,184 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertEquals(4, mNode.getMeasurementMNodeCount());
+      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeseriesAndInsertWithMismatchDataType() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+
+      // construct an insertRowPlan with mismatched data type
+      long time = 1L;
+      TSDataType[] dataTypes = new TSDataType[] {TSDataType.FLOAT};
+
+      String[] columns = new String[1];
+      columns[0] = 2.0 + "";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"), time, new String[] {"s0"}, dataTypes, columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(1, mNode.getMeasurementMNodeCount());
+      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateMixedTimeseriesAndInsertWithMismatchDataType() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s0"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT64"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+
+      // construct an insertRowPlan with correct data type
+      long time = 1L;
+      TSDataType[] dataTypes =
+          new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
+
+      String[] columns = new String[4];
+      columns[0] = 100 + "";
+      columns[1] = 2.0 + "";
+      columns[2] = 10000 + "";
+      columns[3] = 200 + "";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"),
+              time,
+              new String[] {"s0", "(s1,s2,s3)"},
+              dataTypes,
+              columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(5, mNode.getMeasurementMNodeCount());
+      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertNotNull(insertRowPlan.getMeasurementMNodes()[1]);
+      assertEquals(0, insertRowPlan.getFailedMeasurementNumber());
+
+      // construct an insertRowPlan with mismatched data type in non-aligned timeseries
+      time = 2L;
+      dataTypes =
+          new TSDataType[] {TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
+
+      columns[0] = 2.0 + "";
+      columns[1] = 2.0 + "";
+      columns[2] = 10000 + "";
+      columns[3] = 200 + "";
+
+      insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"),
+              time,
+              new String[] {"s0", "(s1,s2,s3)"},
+              dataTypes,
+              columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(5, mNode.getMeasurementMNodeCount());
+      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertNotNull(insertRowPlan.getMeasurementMNodes()[1]);
+      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
+
+      // construct an insertRowPlan with mismatched data type in aligned timeseries
+      time = 3L;
+      dataTypes =
+          new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT32};
+
+      columns[0] = 100 + "";
+      columns[1] = 2.0 + "";
+      columns[2] = 200 + "";
+      columns[3] = 300 + "";
+
+      insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"),
+              time,
+              new String[] {"s0", "(s1,s2,s3)"},
+              dataTypes,
+              columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(5, mNode.getMeasurementMNodeCount());
+      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
+      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
+
+      // construct an insertRowPlan with mismatched data type in both timeseries
+      time = 4L;
+      dataTypes =
+          new TSDataType[] {TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT32};
+
+      columns[0] = 1.0 + "";
+      columns[1] = 2.0 + "";
+      columns[2] = 200 + "";
+      columns[3] = 300 + "";
+
+      insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1"),
+              time,
+              new String[] {"s0", "(s1,s2,s3)"},
+              dataTypes,
+              columns);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(5, mNode.getMeasurementMNodeCount());
+      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
+      assertEquals(2, insertRowPlan.getFailedMeasurementNumber());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
