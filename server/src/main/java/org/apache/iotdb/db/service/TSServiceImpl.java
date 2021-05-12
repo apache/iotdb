@@ -57,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -111,8 +112,10 @@ import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertSinglePointReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringSinglePointReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
@@ -1226,6 +1229,67 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return queryDataSet;
   }
 
+  @Override
+  public TSStatus insertSinglePoint(TSInsertSinglePointReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertSingPoint, first device {}, first time {}",
+          currSessionId.get(),
+          req.deviceId,
+          req.getTimestamp());
+    }
+
+    InsertSinglePointPlan insertSinglePointPlan = null;
+    try {
+      insertSinglePointPlan =
+          new InsertSinglePointPlan(
+              new PartialPath(req.getDeviceId()),
+              req.getTimestamp(),
+              req.getMeasurement(),
+              ByteBuffer.wrap(req.getValue()));
+      TSStatus status = checkAuthority(insertSinglePointPlan, req.getSessionId());
+
+      return status != null ? status : executeNonQueryPlan(insertSinglePointPlan);
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, "inserting a record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+  }
+
+  @Override
+  public TSStatus insertStringSinglePoint(TSInsertStringSinglePointReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertSingPoint, first device {}, first time {}",
+          currSessionId.get(),
+          req.deviceId,
+          req.getTimestamp());
+    }
+    InsertSinglePointPlan insertStringSinglePointPlan = null;
+    try {
+      insertStringSinglePointPlan =
+          new InsertSinglePointPlan(
+              new PartialPath(req.getDeviceId()),
+              req.getTimestamp(),
+              req.getMeasurement(),
+              req.getValue());
+      TSStatus status = checkAuthority(insertStringSinglePointPlan, req.getSessionId());
+
+      return status != null ? status : executeNonQueryPlan(insertStringSinglePointPlan);
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, "inserting a record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
+  }
+
   protected QueryContext genQueryContext(long queryId, boolean debug) {
     return new QueryContext(queryId, debug);
   }
@@ -1341,6 +1405,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     properties.setTimestampPrecision(
         IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
     return properties;
+  }
+
+  @Override
+  public TSStatus testInsertSinglePoint(TSInsertSinglePointReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus testInsertStringSinglePoint(TSInsertStringSinglePointReq req) throws TException {
+    return null;
   }
 
   @Override

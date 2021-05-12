@@ -79,6 +79,7 @@ public abstract class Operator {
     SELECT,
     NULL,
     INSERT,
+    INSERTSINGLEPOINT,
     BATCHINSERT,
     DELETE,
     BASIC_FUNC,

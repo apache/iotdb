@@ -41,7 +41,9 @@ import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
@@ -217,6 +219,53 @@ public class TsFileProcessor {
   }
 
   /**
+   * insert data in an InsertRowPlan into the workingMemtable.
+   *
+   * @param insertSinglePointPlan physical plan of insertion
+   */
+  public void InsertSinglePoint(InsertSinglePointPlan insertSinglePointPlan)
+      throws WriteProcessException {
+
+    if (workMemTable == null) {
+      if (enableMemControl) {
+        workMemTable = new PrimitiveMemTable(enableMemControl);
+        MemTableManager.getInstance().addMemtableNumber();
+      } else {
+        workMemTable =
+            MemTableManager.getInstance().getAvailableMemTable(storageGroupName.replace("/0", ""));
+      }
+    }
+
+    if (enableMemControl) {
+      checkMemCostAndAddToTspInfo(insertSinglePointPlan);
+    }
+
+    workMemTable.InsertSinglePoint(insertSinglePointPlan);
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+      try {
+        getLogNode().write(insertSinglePointPlan);
+      } catch (Exception e) {
+        throw new WriteProcessException(
+            String.format(
+                "%s: %s write WAL failed",
+                storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
+            e);
+      }
+    }
+
+    // update start time of this memtable
+    tsFileResource.updateStartTime(
+        insertSinglePointPlan.getDeviceId().getFullPath(), insertSinglePointPlan.getTime());
+    // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
+    // for unsequence tsfile, we have to update the endTime for each insertion.
+    if (!sequence) {
+      tsFileResource.updateEndTime(
+          insertSinglePointPlan.getDeviceId().getFullPath(), insertSinglePointPlan.getTime());
+    }
+  }
+
+  /**
    * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
    * the range [start, end)
    *
@@ -328,6 +377,87 @@ public class TsFileProcessor {
 
   private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
+    if (start >= end) {
+      return;
+    }
+    long[] memIncrements = new long[3]; // memTable, text, chunk metadata
+
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+
+    int columnIndex = 0;
+    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
+      // for aligned timeseries
+      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+        VectorMeasurementSchema vectorSchema =
+            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
+        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
+          columns[j] = insertTabletPlan.getColumns()[columnIndex++];
+        }
+        updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
+      }
+      // for non aligned
+      else {
+        // skip failed Measurements
+        TSDataType dataType = insertTabletPlan.getDataTypes()[columnIndex];
+        String measurement = insertTabletPlan.getMeasurements()[i];
+        Object column = insertTabletPlan.getColumns()[columnIndex];
+        columnIndex++;
+        if (dataType == null || column == null || measurement == null) {
+          continue;
+        }
+        updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
+      }
+    }
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+  }
+
+  private void checkMemCostAndAddToTspInfo(InsertSinglePointPlan insertSinglePointPlan)
+      throws WriteProcessException {
+    // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    long memTableIncrement = 0L;
+    long textDataIncrement = 0L;
+    long chunkMetadataIncrement = 0L;
+    String deviceId = insertSinglePointPlan.getDeviceId().getFullPath();
+
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertSinglePointPlan.getMeasurement())) {
+      // ChunkMetadataIncrement
+      MeasurementMNode mnode = insertSinglePointPlan.getMeasurementMNode();
+      IMeasurementSchema schema = insertSinglePointPlan.getMeasurementMNode().getSchema();
+      if (schema.getType() == TSDataType.VECTOR) {
+        chunkMetadataIncrement +=
+            schema.getValueTSDataTypeList().size()
+                * ChunkMetadata.calculateRamSize(
+                    schema.getValueMeasurementIdList().get(0),
+                    schema.getValueTSDataTypeList().get(0));
+        memTableIncrement += TVList.vectorTvListArrayMemSize(schema.getValueTSDataTypeList());
+      } else {
+        chunkMetadataIncrement +=
+            ChunkMetadata.calculateRamSize(
+                insertSinglePointPlan.getMeasurement(), insertSinglePointPlan.getDataType());
+        memTableIncrement += TVList.tvListArrayMemSize(insertSinglePointPlan.getDataType());
+      }
+    } else {
+      // here currentChunkPointNum >= 1
+      int currentChunkPointNum =
+          workMemTable.getCurrentChunkPointNum(deviceId, insertSinglePointPlan.getMeasurement());
+      memTableIncrement +=
+          (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
+              ? TVList.tvListArrayMemSize(insertSinglePointPlan.getDataType())
+              : 0;
+    }
+    // TEXT data mem size
+    if (insertSinglePointPlan.getDataType() == TSDataType.TEXT) {
+      textDataIncrement += MemUtils.getBinarySize((Binary) insertSinglePointPlan.getValue());
+    }
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+  }
+
+  private void checkMemcheckMemCostAndAddToTspInfoCostAndAddToTspInfo(
+      InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException {
     if (start >= end) {
       return;
     }
