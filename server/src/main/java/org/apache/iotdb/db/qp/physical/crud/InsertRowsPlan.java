@@ -265,7 +265,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
       isExecuted = new boolean[getBatchSize()];
     }
     isExecuted[i] = false;
-    if (insertRowPlanIndexList != null) {
+    if (insertRowPlanIndexList != null && !insertRowPlanIndexList.isEmpty()) {
       results.remove(insertRowPlanIndexList.get(i));
     } else {
       results.remove(i);
