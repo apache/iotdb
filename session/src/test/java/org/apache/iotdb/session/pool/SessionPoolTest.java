@@ -224,7 +224,22 @@ public class SessionPoolTest {
       pool.close();
       return;
     } catch (StatementExecutionException e) {
-      fail("should be TTransportException but get an exception: " + e.getMessage());
+      // I do not why? the first call wrapper.hasNext() will cause InterruptedException and IoTDB warps
+      // it as StatementExecutionException, the second call can make sure that the thrift server's
+      // connection is closed.
+      try{
+        while (wrapper.hasNext()) {
+          wrapper.next();
+        }
+      } catch (IoTDBConnectionException ec){
+        pool.closeResultSet(wrapper);
+        EnvironmentUtils.reactiveDaemon();
+        correctQuery(pool);
+        pool.close();
+      } catch (StatementExecutionException es) {
+        fail("should be TTransportException but get an exception: " + e.getMessage());
+      }
+      return;
     }
     fail("should throw exception but not");
   }

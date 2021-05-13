@@ -34,6 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class ClusterInfoServerTest {
+
   ClusterInfoServiceImplTest test;
   ClusterInfoServer service;
 
@@ -54,10 +55,16 @@ public class ClusterInfoServerTest {
   @Test
   public void testConnect() {
     TTransport transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(
-                IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                ClusterDescriptor.getInstance().getConfig().getClusterInfoRpcPort()));
+        null;
+    try {
+      transport = RpcTransportFactory.INSTANCE.getTransport(
+          new TSocket(
+              IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+              ClusterDescriptor.getInstance().getConfig().getClusterInfoRpcPort()));
+    } catch (TTransportException e) {
+      Assert.fail(e.getMessage());
+    }
+
     try {
       transport.open();
     } catch (TTransportException e) {
@@ -70,7 +77,7 @@ public class ClusterInfoServerTest {
     // client's methods have been tested on ClusterInfoServiceImplTest
     transport.close();
     try {
-      TTransport transport =
+      transport =
           RpcTransportFactory.INSTANCE.getTransport(
               new TSocket(
                   IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
@@ -78,7 +85,7 @@ public class ClusterInfoServerTest {
       transport.open();
 
       // connection success means OK.
-      ClusterInfoService.Client client =
+      client =
           new ClusterInfoService.Client(new TBinaryProtocol(transport));
       Assert.assertNotNull(client);
       // client's methods have been tested on ClusterInfoServiceImplTest

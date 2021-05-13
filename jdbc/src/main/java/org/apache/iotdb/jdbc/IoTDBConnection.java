@@ -75,7 +75,6 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
-  // https://github.com/apache/thrift/blob/master/doc/specs/thrift-tconfiguration.md
   private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
