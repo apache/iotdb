@@ -20,9 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -278,18 +276,14 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void deleteChild(MNode parent, String childName) throws MetadataException {
-    MNode child = parent.getChild(childName);
+  public MNode deleteChild(MNode parent, String childName) throws MetadataException {
+    MNode child = getChild(parent,childName);
     parent.deleteChild(childName);
 
     if (child.isCached()) {
-      if(child.isLockedInMemory()){
-        cacheStrategy.unlockMNode(child);
-      }
+      // todo case isLockedInMemory
       cacheStrategy.remove(child);
     }
-    PersistenceInfo persistenceInfo=child.getPersistenceInfo();
-    child.setPersistenceInfo(null);
 
     try {
       if (parent.isCached()) {
@@ -297,11 +291,29 @@ public class MetadataDiskManager implements MetadataAccess {
       } else {
         metaFile.write(parent);
       }
-      if (persistenceInfo!=null) {
-        metaFile.remove(persistenceInfo);
-      }
+      deleteChildRecursively(child);
+      return child;
     }catch (IOException e) {
       throw new MetadataException(e.getMessage());
+    }
+  }
+
+  private void deleteChildRecursively(MNode mNode) throws MetadataException{
+    MNode child;
+    for(String childName:mNode.getChildren().keySet()){
+      child=mNode.getChild(childName);
+      if(!child.isLoaded()){
+        child=getMNodeFromDisk(child.getPersistenceInfo());
+        mNode.addChild(child);
+      }
+      deleteChildRecursively(child);
+    }
+    if(mNode.isPersisted()){
+      try {
+        metaFile.remove(mNode.getPersistenceInfo());
+      }catch (IOException e){
+        throw new MetadataException(e.getMessage());
+      }
     }
   }
 
@@ -416,7 +428,7 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void clear() throws IOException {
-    root=null;
+    root=new InternalMNode(null,IoTDBConstant.PATH_ROOT);
     cacheStrategy.clear();
     cacheStrategy = null;
     metaFile.close();

@@ -31,8 +31,9 @@ public interface MetadataAccess {
   void replaceChild(MNode parent, String measurement, MNode newChild) throws MetadataException;
   void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException;
 
-  /** delete a child of the parent */
-  void deleteChild(MNode parent, String childName) throws MetadataException;
+  /** delete a child of the parent. Collect all the MNode in subtree of this child into memory
+   * Attention!!!! must unlock child Node before delete */
+  MNode deleteChild(MNode parent, String childName) throws MetadataException;
 
   /** delete a alias child of the parent */
   void deleteAliasChild(MNode parent, String alias) throws MetadataException;

@@ -76,7 +76,7 @@ public class MTreeDiskBasedTest {
   public void testAddLeftNodePathWithAlias() throws Exception {
     root.setStorageGroup(new PartialPath("root.laptop"));
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -88,7 +88,7 @@ public class MTreeDiskBasedTest {
       fail(e.getMessage());
     }
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -107,7 +107,7 @@ public class MTreeDiskBasedTest {
     assertTrue(root.isPathExist(new PartialPath(path1)));
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1")));
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -121,7 +121,7 @@ public class MTreeDiskBasedTest {
     assertTrue(root.isPathExist(new PartialPath("root.laptop")));
     assertFalse(root.isPathExist(new PartialPath("root.laptop.d1.s2")));
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("aa.bb.cc"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -139,14 +139,14 @@ public class MTreeDiskBasedTest {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
       root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -157,14 +157,14 @@ public class MTreeDiskBasedTest {
       assertFalse(root.isPathExist(new PartialPath("root.a.d1")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d1")));
       root.setStorageGroup(new PartialPath("root.a.d1"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d1.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -173,7 +173,7 @@ public class MTreeDiskBasedTest {
           null);
 
       root.setStorageGroup(new PartialPath("root.a.b.d0"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.b.d0.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -205,14 +205,14 @@ public class MTreeDiskBasedTest {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
       root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           "temperature");
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -223,14 +223,14 @@ public class MTreeDiskBasedTest {
       assertFalse(root.isPathExist(new PartialPath("root.a.d1")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d1")));
       root.setStorageGroup(new PartialPath("root.a.d1"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d1.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           "temperature");
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -239,7 +239,7 @@ public class MTreeDiskBasedTest {
           null);
 
       root.setStorageGroup(new PartialPath("root.a.b.d0"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.b.d0.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -285,21 +285,21 @@ public class MTreeDiskBasedTest {
   public void testGetAllChildNodeNamesByPath() throws Exception {
     try {
       root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d0.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.a.d5"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -364,7 +364,7 @@ public class MTreeDiskBasedTest {
       assertEquals(
           "root.laptop.d1",
           root.getStorageGroupPath(new PartialPath("root.laptop.d1.s0")).getFullPath());
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -374,7 +374,7 @@ public class MTreeDiskBasedTest {
       assertEquals(
           "root.laptop.d1",
           root.getStorageGroupPath(new PartialPath("root.laptop.d1.s1")).getFullPath());
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -384,7 +384,7 @@ public class MTreeDiskBasedTest {
       assertEquals(
           "root.laptop.d2",
           root.getStorageGroupPath(new PartialPath("root.laptop.d2.s0")).getFullPath());
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d2.s0"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -394,7 +394,7 @@ public class MTreeDiskBasedTest {
       assertEquals(
           "root.laptop.d2",
           root.getStorageGroupPath(new PartialPath("root.laptop.d2.s1")).getFullPath());
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -457,14 +457,14 @@ public class MTreeDiskBasedTest {
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null,
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -521,28 +521,28 @@ public class MTreeDiskBasedTest {
     // set storage group first
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null,
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d1.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null,
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null,
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.laptop.d2.s2"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
@@ -575,14 +575,14 @@ public class MTreeDiskBasedTest {
   @Test
   public void testAddSubDevice() throws Exception {
     root.setStorageGroup(new PartialPath("root.laptop"));
-    root.createTimeseries(
+    createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
         TSDataType.INT32,
         TSEncoding.RLE,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap(),
         null);
-    root.createTimeseries(
+    createTimeseries(
         new PartialPath("root.laptop.d1.s1.b"),
         TSDataType.INT32,
         TSEncoding.RLE,
@@ -614,14 +614,14 @@ public class MTreeDiskBasedTest {
     root.setStorageGroup(new PartialPath(sgPath1));
     assertTrue(root.isPathExist(new PartialPath(path1)));
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.vehicle.d1.s1"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.vehicle.d1.s2"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -642,14 +642,14 @@ public class MTreeDiskBasedTest {
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.sg1.a.b"),
           TSDataType.INT32,
           TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.sg1.a.b.c"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -674,7 +674,7 @@ public class MTreeDiskBasedTest {
     PartialPath sgPath = new PartialPath("root.sg1");
     root.setStorageGroup(sgPath);
     try {
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.sg1.a.b"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -684,7 +684,7 @@ public class MTreeDiskBasedTest {
       MNode sgNode = root.getNodeByPath(sgPath);
       assertEquals(1, root.getMeasurementMNodeCount(sgPath)); // b
 
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.sg1.a.b.c"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -695,7 +695,7 @@ public class MTreeDiskBasedTest {
       PartialPath cNodePath = new PartialPath(sgPath + ".a.b.c");
       assertEquals(1, root.getMeasurementMNodeCount(cNodePath)); // c
 
-      root.createTimeseries(
+      createTimeseries(
           new PartialPath("root.sg1.a.b.c.d"),
           TSDataType.INT32,
           TSEncoding.RLE,
@@ -717,7 +717,7 @@ public class MTreeDiskBasedTest {
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
 
-    root.createTimeseries(
+    createTimeseries(
         new PartialPath("root.sg1.a.b.c"),
         TSDataType.INT32,
         TSEncoding.RLE,
@@ -725,7 +725,7 @@ public class MTreeDiskBasedTest {
         Collections.emptyMap(),
         null);
 
-    root.createTimeseries(
+    createTimeseries(
         new PartialPath("root.sg1.a.b"),
         TSDataType.INT32,
         TSEncoding.RLE,
@@ -736,4 +736,18 @@ public class MTreeDiskBasedTest {
     MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertTrue(node instanceof MeasurementMNode);
   }
+  
+  private MeasurementMNode createTimeseries(
+          PartialPath path,
+          TSDataType dataType,
+          TSEncoding encoding,
+          CompressionType compressor,
+          Map<String, String> props,
+          String alias)
+          throws MetadataException{
+    MeasurementMNode measurementMNode=root.createTimeseries(path,dataType,encoding,compressor,props,alias);
+    root.unlockMNode(measurementMNode);
+    return measurementMNode;
+  }
+  
 }
