@@ -54,6 +54,8 @@ public interface IChunkMetadata {
 
   IChunkLoader getChunkLoader();
 
+  boolean needSetChunkLoader();
+
   void setChunkLoader(IChunkLoader chunkLoader);
 
   void setFilePath(String filePath);

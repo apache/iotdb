@@ -1004,8 +1004,20 @@ public class ClusterReaderFactory {
               context,
               dataGroupMember.getHeader(),
               ascending);
-      partialPathBatchReaderMap.put(
-          partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+      if (partialPath instanceof VectorPartialPath) {
+        VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
+        if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
+          partialPathBatchReaderMap.put(
+              vectorPartialPath.getSubSensorsPathList().get(0).getFullPath(),
+              new SeriesRawDataBatchReader(seriesReader));
+        } else {
+          partialPathBatchReaderMap.put(
+              partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+        }
+      } else { // common path
+        partialPathBatchReaderMap.put(
+            partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+      }
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }
