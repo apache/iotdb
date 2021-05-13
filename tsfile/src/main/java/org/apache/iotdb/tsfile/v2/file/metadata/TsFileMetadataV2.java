@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class TsFileMetadataV2 {
@@ -40,6 +41,7 @@ public class TsFileMetadataV2 {
       ByteBuffer buffer, List<Pair<Long, Long>> versionInfo) {
     TsFileMetadata fileMetaData = new TsFileMetadata();
 
+    List<Pair<Long, Long>> tmpVersionInfo = new ArrayList<>();
     // metadataIndex
     fileMetaData.setMetadataIndex(MetadataIndexNodeV2.deserializeFrom(buffer));
     // totalChunkNum
@@ -52,9 +54,10 @@ public class TsFileMetadataV2 {
     for (int i = 0; i < versionSize; i++) {
       long versionPos = ReadWriteIOUtils.readLong(buffer);
       long version = ReadWriteIOUtils.readLong(buffer);
-      versionInfo.add(new Pair<>(versionPos, version));
+      tmpVersionInfo.add(new Pair<>(versionPos, version));
     }
 
+    versionInfo = tmpVersionInfo;
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
     fileMetaData.setMetaOffset(metaOffset);
