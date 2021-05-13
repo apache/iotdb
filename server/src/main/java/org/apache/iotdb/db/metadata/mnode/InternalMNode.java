@@ -200,7 +200,7 @@ public class InternalMNode implements MNode {
         }
       }
     }
-    return child==children.merge(alias,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
+    return child==aliasChildren.merge(alias,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
 //    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
