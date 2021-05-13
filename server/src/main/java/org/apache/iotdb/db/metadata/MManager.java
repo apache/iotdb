@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -83,8 +84,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-import org.apache.iotdb.db.qp.physical.crud.InsertSinglePointPlan;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -805,7 +804,7 @@ public class MManager {
 
     if (num > 0
         && currentDataTypeTotalNum - reportedDataTypeTotalNum
-        >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
+            >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
       PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
       reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
@@ -1020,7 +1019,7 @@ public class MManager {
               allMatchedNodes.stream()
                   .sorted(
                       Comparator.comparingLong(
-                          (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
                           .reversed()
                           .thenComparing(MNode::getFullPath))
                   .collect(toList());
