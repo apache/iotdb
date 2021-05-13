@@ -374,7 +374,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
       isExecuted = new boolean[getBatchSize()];
     }
     isExecuted[i] = false;
-    if (indexes != null) {
+    if (indexes != null && !indexes.isEmpty()) {
       results.remove(indexes.get(i));
     } else {
       results.remove(i);

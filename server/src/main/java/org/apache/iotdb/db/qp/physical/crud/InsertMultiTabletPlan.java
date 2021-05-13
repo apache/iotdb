@@ -358,7 +358,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       isExecuted = new boolean[getBatchSize()];
     }
     isExecuted[i] = false;
-    if (parentInsertTabletPlanIndexList != null) {
+    if (parentInsertTabletPlanIndexList != null && !parentInsertTabletPlanIndexList.isEmpty()) {
       results.remove(getParentIndex(i));
     } else {
       results.remove(i);
