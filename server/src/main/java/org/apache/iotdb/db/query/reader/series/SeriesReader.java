@@ -208,7 +208,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -269,7 +269,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -430,7 +430,7 @@ public class SeriesReader {
       return true;
     }
 
-    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page
+    // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
     // readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
