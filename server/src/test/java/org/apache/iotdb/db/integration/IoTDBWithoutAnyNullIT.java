@@ -178,7 +178,7 @@ public class IoTDBWithoutAnyNullIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select * from root.testWithoutAnyNull.d1 limit 5 offset 1 WITHOUT NULL ANY");
+              "select * from root.testWithoutAnyNull.d1 WITHOUT NULL ANY limit 5 offset 1");
 
       assertTrue(hasResultSet);
       int cnt;

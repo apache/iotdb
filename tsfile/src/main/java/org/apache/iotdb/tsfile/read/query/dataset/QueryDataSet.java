@@ -104,12 +104,9 @@ public abstract class QueryDataSet {
     while (rowOffset > 0) {
       if (hasNextWithoutConstraint()) {
         RowRecord rowRecord = nextWithoutConstraint(); // DO NOT use next()
-        // filter the row that all columns are null
-        if (withoutAllNull && rowRecord.isAllNull()) {
-          continue;
-        }
-        // filter the row that any column is null
-        if (withoutAnyNull && rowRecord.hasNullField()) {
+        // filter rows whose columns are null according to the rule
+        if ((withoutAllNull && rowRecord.isAllNull())
+            || (withoutAnyNull && rowRecord.hasNullField())) {
           continue;
         }
         rowOffset--;

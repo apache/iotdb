@@ -46,10 +46,10 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private boolean enableRedirect = false;
 
-  // if true, we don't need the row that any column of which is null
+  // if true, we don't need the row whose any column is null
   private boolean withoutAnyNull;
 
-  // if true, we don't need the row that all columns of which are null
+  // if true, we don't need the row whose all columns are null
   private boolean withoutAllNull;
 
   public QueryPlan() {

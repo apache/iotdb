@@ -130,7 +130,7 @@ public class IoTDBWithoutAllNullIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) limit 1 offset 1 WITHOUT NULL ALL");
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ALL limit 1 offset 1");
 
       assertTrue(hasResultSet);
       int cnt;

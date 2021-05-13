@@ -67,13 +67,9 @@ public class QueryDataSetUtils {
     for (int i = 0; i < fetchSize; i++) {
       if (queryDataSet.hasNext()) {
         RowRecord rowRecord = queryDataSet.next();
-        // filter the row that all columns are null
-        if (queryDataSet.isWithoutAllNull() && rowRecord.isAllNull()) {
-          i--;
-          continue;
-        }
-        // filter the row that any column is null
-        if (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField()) {
+        // filter rows whose columns are null according to the rule
+        if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
+            || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
           i--;
           continue;
         }
