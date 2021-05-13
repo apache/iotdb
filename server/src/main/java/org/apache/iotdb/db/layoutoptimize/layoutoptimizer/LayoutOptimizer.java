@@ -24,7 +24,7 @@ public abstract class LayoutOptimizer {
     if (!holder.hasLayoutForDevice(device.getFullPath())) {
       holder.updateMetadata();
     }
-    try{
+    try {
       measurementOrder = holder.getMeasurementForDevice(device.getFullPath());
       averageChunkSize = holder.getChunkSize(device.getFullPath());
     } catch (LayoutNotExistException e) {

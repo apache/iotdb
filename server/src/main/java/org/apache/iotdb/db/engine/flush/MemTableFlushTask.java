@@ -101,7 +101,10 @@ public class MemTableFlushTask {
         memTable.getSeriesNumber());
 
     DataSizeEstimator.getInstance()
-        .addDataInfo(storageGroup.substring(0, storageGroup.lastIndexOf(File.separatorChar)), memTable.getTotalPointsNum(), memTable.memSize());
+        .addDataInfo(
+            storageGroup.substring(0, storageGroup.lastIndexOf(File.separatorChar)),
+            memTable.getTotalPointsNum(),
+            memTable.memSize());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {

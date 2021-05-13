@@ -25,7 +25,6 @@ public class LayoutHolder {
   private Map<String, Layout> layoutMap = new HashMap<>();
   private static final LayoutHolder INSTANCE = new LayoutHolder();
 
-
   public static LayoutHolder getInstance() {
     return INSTANCE;
   }
@@ -69,7 +68,8 @@ public class LayoutHolder {
 
     // the measurement is in lexicographical order by default
     // the default chunk size is set according to default avg series threshold
-    long defaultAvgSeriesPointNum = IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+    long defaultAvgSeriesPointNum =
+        IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
     MManager mmanager = MManager.getInstance();
     DataSizeEstimator estimator = DataSizeEstimator.getInstance();
     for (String device : deviceUpdated) {
@@ -79,8 +79,12 @@ public class LayoutHolder {
         try {
           PartialPath devicePath = new PartialPath(device);
           PartialPath storageGroupPath = mmanager.getStorageGroupPath(devicePath);
-          curLayout.averageChunkSize = estimator.getChunkSizeInDisk(storageGroupPath.getFullPath(), defaultAvgSeriesPointNum);
-        } catch (IllegalPathException | StorageGroupNotSetException | DataSizeInfoNotExistsException e) {
+          curLayout.averageChunkSize =
+              estimator.getChunkSizeInDisk(
+                  storageGroupPath.getFullPath(), defaultAvgSeriesPointNum);
+        } catch (IllegalPathException
+            | StorageGroupNotSetException
+            | DataSizeInfoNotExistsException e) {
         }
       }
     }

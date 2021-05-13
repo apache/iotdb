@@ -18,23 +18,37 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 public class SampleRateKeeper {
+  private static final Logger logger = LoggerFactory.getLogger(SampleRateKeeper.class);
   // deviceId -> measurement -> sampleRate
   Map<String, Map<String, Double>> sampleRateMap = new HashMap<>();
   QueryExecutor executor = new QueryExecutor();
   long defaultQueryRange = 7L * 24L * 60L * 60L * 1000L;
   int queryFetchSize = 20;
+  private final File sampleRateFile =
+      new File(
+          IoTDBDescriptor.getInstance().getConfig().getLayoutDir()
+              + File.separator
+              + "sampleRate.info");
   private static final SampleRateKeeper INSTANCE = new SampleRateKeeper();
 
-  private SampleRateKeeper() {}
+  private SampleRateKeeper() {
+    loadFromFile();
+  }
 
   public static SampleRateKeeper getInstance() {
     return INSTANCE;
@@ -112,6 +126,47 @@ public class SampleRateKeeper {
       throws QueryProcessException, TException, StorageEngineException, SQLException, IOException,
           InterruptedException, QueryFilterOptimizationException, MetadataException {
     updateSampleRate(deviceId, defaultQueryRange);
+    persist();
+  }
+
+  public boolean persist() {
+    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    String json = gson.toJson(sampleRateMap);
+    try {
+      if (!sampleRateFile.exists()) {
+        sampleRateFile.createNewFile();
+      }
+      BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(sampleRateFile));
+      os.write(json.getBytes(StandardCharsets.UTF_8));
+      os.flush();
+      os.close();
+      return true;
+    } catch (IOException e) {
+      logger.info("fail to persist to file");
+      return false;
+    }
+  }
+
+  public boolean loadFromFile() {
+    Gson gson = new Gson();
+    try {
+      if (!sampleRateFile.exists()) {
+        logger.info("fail to load from file, because {} does not exist", sampleRateFile);
+        return false;
+      }
+      Scanner scanner = new Scanner(new FileInputStream(sampleRateFile));
+      StringBuilder sb = new StringBuilder();
+      while (scanner.hasNextLine()) {
+        sb.append(scanner.nextLine());
+      }
+      String json = sb.toString();
+      Map<String, Map<String, Double>> tmpMap = gson.fromJson(json, sampleRateMap.getClass());
+      sampleRateMap = gson.fromJson(json, sampleRateMap.getClass());
+      return true;
+    } catch (IOException e) {
+      logger.info("fail to load from file");
+      return false;
+    }
   }
 
   public boolean hasSampleRateForDevice(String device) {

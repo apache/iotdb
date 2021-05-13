@@ -42,16 +42,21 @@ public class SCOAOptimizer extends LayoutOptimizer {
         right = random.nextInt(measurementOrder.size());
       } while (left == right);
       swapMeasurementPos(left, right);
-      // average chunk size is chunk size in memory
-      // when estimating cost, we should use chunk size in disk
-      newCost =
-          estimator.estimate(
-              records, measurementOrder, (long) (averageChunkSize / compressionRatio));
+      // average chunk size is chunk size in disk
+      newCost = estimator.estimate(records, measurementOrder, averageChunkSize);
       double probability = Math.abs(random.nextDouble()) % 1.0;
       if (newCost < curCost || Math.exp((curCost - newCost) / temperature) > probability) {
         curCost = newCost;
       } else {
         swapMeasurementPos(left, right);
+      }
+      if (config.isVerbose() && i % config.getLogEpoch() == 0) {
+        logger.info(
+            "{} rounds have been optimized, {} rounds in total. Current cost: {}, origin cost: {}",
+            i,
+            config.getSAMaxIteration(),
+            curCost,
+            oriCost);
       }
     }
     logger.info(

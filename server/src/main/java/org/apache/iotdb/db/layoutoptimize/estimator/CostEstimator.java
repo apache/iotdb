@@ -10,6 +10,7 @@ import org.apache.iotdb.db.layoutoptimize.diskevaluate.DiskEvaluator;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+
 import org.apache.thrift.TException;
 
 import java.io.IOException;
@@ -46,7 +47,14 @@ public class CostEstimator {
       if (!sampleRateKeeper.hasSampleRateForDevice(query.getDevice().getFullPath())) {
         try {
           sampleRateKeeper.updateSampleRate(query.getDevice().getFullPath());
-        } catch (QueryProcessException | TException | StorageEngineException | SQLException | IOException | InterruptedException | QueryFilterOptimizationException | MetadataException e) {
+        } catch (QueryProcessException
+            | TException
+            | StorageEngineException
+            | SQLException
+            | IOException
+            | InterruptedException
+            | QueryFilterOptimizationException
+            | MetadataException e) {
           e.printStackTrace();
           return -1;
         }
@@ -99,6 +107,9 @@ public class CostEstimator {
   }
 
   private double getSeekCost(long seekDistance) {
+    if (seekDistance == 0) {
+      return 0;
+    }
     for (int i = 0; i < diskInfo.seekDistance.size() - 1; i++) {
       if (seekDistance >= diskInfo.seekDistance.get(i)
           && seekDistance < diskInfo.seekDistance.get(i + 1)) {
@@ -129,5 +140,4 @@ public class CostEstimator {
     }
     return totalCost;
   }
-
 }

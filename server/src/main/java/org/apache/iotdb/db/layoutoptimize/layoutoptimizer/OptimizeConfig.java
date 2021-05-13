@@ -6,6 +6,8 @@ public class OptimizeConfig {
   private int SAMaxIteration = 20000;
   private long SAMaxTime = 30L * 60L * 1000L;
   private int recordSampleNum = 100;
+  private int logEpoch = 100;
+  private boolean verbose = true;
 
   public OptimizeConfig() {}
 
@@ -60,6 +62,22 @@ public class OptimizeConfig {
 
   public void setRecordSampleNum(int recordSampleNum) {
     this.recordSampleNum = recordSampleNum;
+  }
+
+  public int getLogEpoch() {
+    return logEpoch;
+  }
+
+  public void setLogEpoch(int logEpoch) {
+    this.logEpoch = logEpoch;
+  }
+
+  public boolean isVerbose() {
+    return verbose;
+  }
+
+  public void setVerbose(boolean verbose) {
+    this.verbose = verbose;
   }
 
   @Override

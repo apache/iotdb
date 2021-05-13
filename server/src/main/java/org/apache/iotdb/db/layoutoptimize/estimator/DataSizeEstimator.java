@@ -1,11 +1,12 @@
 package org.apache.iotdb.db.layoutoptimize.estimator;
 
-import com.google.gson.Gson;
-import com.google.gson.internal.LinkedTreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.exception.layoutoptimize.DataSizeInfoNotExistsException;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import com.google.gson.Gson;
+import com.google.gson.internal.LinkedTreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,12 @@ public class DataSizeEstimator {
   private static final DataSizeEstimator INSTANCE = new DataSizeEstimator();
   // storage group -> List<Pair<dataPoint, dataSize>>
   private Map<String, List<Pair<Long, Long>>> dataPointToMemSize = new HashMap<>();
-  private File dataSizeFile = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir() + File.separator + "dataSizeEsitmate.info");
+  private File dataSizeFile =
+      new File(
+          IoTDBDescriptor.getInstance().getConfig().getLayoutDir()
+              + File.separator
+              + "dataSizeEsitmate.info");
+
   private DataSizeEstimator() {
     recoverFromFile();
   }
@@ -112,7 +118,7 @@ public class DataSizeEstimator {
     }
     if (chunkSize == -1L) {
       Pair<Long, Long> lastData = dataPointList.get(dataPointList.size() - 1);
-      chunkSize = (long) ((((double)pointNum / (double)lastData.left)) * lastData.right);
+      chunkSize = (long) ((((double) pointNum / (double) lastData.left)) * lastData.right);
     }
     return chunkSize;
   }
@@ -178,7 +184,8 @@ public class DataSizeEstimator {
       if (!dataSizeFile.exists()) {
         dataSizeFile.createNewFile();
       }
-      BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(dataSizeFile));
+      BufferedOutputStream outputStream =
+          new BufferedOutputStream(new FileOutputStream(dataSizeFile));
       outputStream.write(json.getBytes(StandardCharsets.UTF_8));
       outputStream.flush();
       outputStream.close();
@@ -196,14 +203,15 @@ public class DataSizeEstimator {
         return false;
       }
       BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(dataSizeFile));
-      byte[] buffer = new byte[(int)dataSizeFile.length()];
+      byte[] buffer = new byte[(int) dataSizeFile.length()];
       inputStream.read(buffer);
       String json = new String(buffer);
-      Map<String, List<LinkedTreeMap<String, Double>>> tmpMap = new Gson().fromJson(json, dataPointToMemSize.getClass());
+      Map<String, List<LinkedTreeMap<String, Double>>> tmpMap =
+          new Gson().fromJson(json, dataPointToMemSize.getClass());
       for (Map.Entry<String, List<LinkedTreeMap<String, Double>>> entry : tmpMap.entrySet()) {
         dataPointToMemSize.put(entry.getKey(), new ArrayList<>());
         List<Pair<Long, Long>> list = dataPointToMemSize.get(entry.getKey());
-        for(LinkedTreeMap<String, Double> item : entry.getValue()) {
+        for (LinkedTreeMap<String, Double> item : entry.getValue()) {
           list.add(new Pair<>(item.get("left").longValue(), item.get("right").longValue()));
         }
       }

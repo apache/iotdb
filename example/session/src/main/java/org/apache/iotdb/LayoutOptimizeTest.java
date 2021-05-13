@@ -21,7 +21,7 @@ public class LayoutOptimizeTest {
   private static final String STORAGE_GROUP = "root.sgtest";
   private static final String DEVICE = "root.sgtest.d1";
   private static final String OBJECT_FILE = "test.obj";
-  private static final String QUERY_FILE = "C:\\Users\\liuxu\\Desktop\\query.json";
+  private static final String QUERY_FILE = "/home/lau/桌面/query.json";
   private static List<String> queries = new ArrayList<>();
   private static final int TIMESERIES_NUM = 3000;
   private static final long TIME_NUM = 1000L;
