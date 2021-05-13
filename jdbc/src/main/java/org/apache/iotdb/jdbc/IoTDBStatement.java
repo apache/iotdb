@@ -19,6 +19,18 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.nio.ByteBuffer;
+import java.sql.BatchUpdateException;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.Statement;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -32,21 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.apache.thrift.TException;
-
-import java.nio.ByteBuffer;
-import java.sql.BatchUpdateException;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.Statement;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class IoTDBStatement implements Statement {
 
@@ -54,6 +52,7 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
+  private int maxRows = 0;
 
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
@@ -65,20 +64,28 @@ public class IoTDBStatement implements Statement {
   private List<String> batchSQLList;
   private static final String NOT_SUPPORT_EXECUTE = "Not support execute";
   private static final String NOT_SUPPORT_EXECUTE_UPDATE = "Not support executeUpdate";
-  /** Keep state so we can fail certain calls made after close(). */
+  /**
+   * Keep state so we can fail certain calls made after close().
+   */
   private boolean isClosed = false;
 
-  /** Keep state so we can fail certain calls made after cancel(). */
+  /**
+   * Keep state so we can fail certain calls made after cancel().
+   */
   private boolean isCancelled = false;
 
-  /** Add SQLWarnings to the warningChain if needed. */
+  /**
+   * Add SQLWarnings to the warningChain if needed.
+   */
   private SQLWarning warningChain = null;
 
   private long sessionId;
   private long stmtId = -1;
   private long queryId = -1;
 
-  /** Constructor of IoTDBStatement. */
+  /**
+   * Constructor of IoTDBStatement.
+   */
   IoTDBStatement(
       IoTDBConnection connection,
       TSIService.Iface client,
@@ -249,7 +256,11 @@ public class IoTDBStatement implements Statement {
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
@@ -340,7 +351,7 @@ public class IoTDBStatement implements Statement {
         allSuccess =
             allSuccess
                 && (execResp.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
+                || execResp.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode());
         result[i] = execResp.getCode();
         message.setLength(0);
         message.append(execResp.getMessage());
@@ -386,7 +397,11 @@ public class IoTDBStatement implements Statement {
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
@@ -581,13 +596,16 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
-    throw new SQLException("Not support getMaxRows");
+    return this.maxRows;
   }
 
   @Override
   public void setMaxRows(int num) throws SQLException {
-    throw new SQLException(
-        "Not support getMaxRows" + ". Please use the LIMIT clause in a query instead.");
+    checkConnection("setMaxRows");
+    if (num <= 0) {
+      throw new SQLException(String.format("maxRows %d must be > 0!", num));
+    }
+    this.maxRows = num;
   }
 
   @Override
