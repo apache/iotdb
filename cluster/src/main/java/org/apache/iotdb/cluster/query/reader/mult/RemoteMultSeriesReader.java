@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -75,22 +74,14 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-
-      PartialPath partialPath = sourceInfo.getPartialPaths().get(i);
-      String fullPath = partialPath.getFullPath();
-      if (partialPath instanceof VectorPartialPath) {
-        VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
-        if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
-          fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
-        }
-      }
+      String fullPath = PartialPath.getExactFullPath(sourceInfo.getPartialPaths().get(i));
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }
   }
 
   @Override
-  public boolean hasNextTimeValuePair(String fullPath) throws IOException {
+  public synchronized boolean hasNextTimeValuePair(String fullPath) throws IOException {
     BatchData batchData = currentBatchDatas.get(fullPath);
     if (batchData != null && batchData.hasCurrent()) {
       return true;
@@ -108,7 +99,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
   }
 
   @Override
-  public TimeValuePair nextTimeValuePair(String fullPath) throws IOException {
+  public synchronized TimeValuePair nextTimeValuePair(String fullPath) throws IOException {
     BatchData batchData = currentBatchDatas.get(fullPath);
     if ((batchData == null || !batchData.hasCurrent()) && checkPathBatchData(fullPath)) {
       batchData = cachedBatchs.get(fullPath).poll();
