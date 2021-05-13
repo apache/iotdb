@@ -560,7 +560,7 @@ public class MTreeFile {
     dataBuffer.put((byte) 0);
   }
 
-  public long getFreePos() throws IOException {
+  public synchronized long getFreePos() throws IOException {
     if (freePosition.size() != 0) {
       return freePosition.remove(0);
     }

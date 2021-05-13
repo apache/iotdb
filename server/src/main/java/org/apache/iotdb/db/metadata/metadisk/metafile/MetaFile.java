@@ -26,7 +26,9 @@ public class MetaFile implements MetaFileAccess {
 
   @Override
   public void write(MNode mNode) throws IOException {
-    mTreeFile.write(mNode);
+    synchronized (mNode){
+      mTreeFile.write(mNode);
+    }
   }
 
   @Override

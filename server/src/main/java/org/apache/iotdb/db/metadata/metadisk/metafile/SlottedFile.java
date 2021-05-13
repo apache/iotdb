@@ -48,7 +48,7 @@ public class SlottedFile implements SlottedFileAccess {
   }
 
   @Override
-  public ByteBuffer readHeader() throws IOException {
+  public synchronized ByteBuffer readHeader() throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(headerLength);
     channel.position(0);
     channel.read(buffer);
@@ -74,67 +74,71 @@ public class SlottedFile implements SlottedFileAccess {
 
   @Override
   public void readBytes(long position, ByteBuffer byteBuffer) throws IOException {
-    long endPosition = position + (byteBuffer.limit() - byteBuffer.position());
+    synchronized(blockBuffer){
+      long endPosition = position + (byteBuffer.limit() - byteBuffer.position());
 
-    // if the blockBuffer is empty or the target position is not in current block, read the
-    // according block
-    if (currentBlockPosition == -1
-        || position < currentBlockPosition
-        || position >= currentBlockPosition + blockSize) {
-      // get target block position
-      currentBlockPosition = ((position - headerLength) & blockMask) + headerLength;
-      channel.position(currentBlockPosition);
-      // prepare blockBuffer for file read, set the position to 0 and limit to bufferSize
-      blockBuffer.position(0);
-      blockBuffer.limit(blockSize);
-      // read data from file
-      channel.read(blockBuffer);
-    }
+      // if the blockBuffer is empty or the target position is not in current block, read the
+      // according block
+      if (currentBlockPosition == -1
+              || position < currentBlockPosition
+              || position >= currentBlockPosition + blockSize) {
+        // get target block position
+        currentBlockPosition = ((position - headerLength) & blockMask) + headerLength;
+        channel.position(currentBlockPosition);
+        // prepare blockBuffer for file read, set the position to 0 and limit to bufferSize
+        blockBuffer.position(0);
+        blockBuffer.limit(blockSize);
+        // read data from file
+        channel.read(blockBuffer);
+      }
 
-    // read data from blockBuffer to buffer
-    blockBuffer.position((int) (position - currentBlockPosition));
-    blockBuffer.limit(
-        Math.min(byteBuffer.limit() - byteBuffer.position(), blockSize - blockBuffer.position()));
-    byteBuffer.put(blockBuffer);
-
-    // case the target data exist in several block
-    while (endPosition >= currentBlockPosition + blockSize) {
-      // read next block from file
-      currentBlockPosition += blockSize;
-      channel.position(currentBlockPosition);
-      blockBuffer.position(0);
-      blockBuffer.limit(blockSize);
-      channel.read(blockBuffer);
-
-      // read the rest target data to buffer
-      blockBuffer.position(0);
-      blockBuffer.limit(Math.min(byteBuffer.limit() - byteBuffer.position(), blockSize));
+      // read data from blockBuffer to buffer
+      blockBuffer.position((int) (position - currentBlockPosition));
+      blockBuffer.limit(
+              Math.min(byteBuffer.limit() - byteBuffer.position(), blockSize - blockBuffer.position()));
       byteBuffer.put(blockBuffer);
+
+      // case the target data exist in several block
+      while (endPosition >= currentBlockPosition + blockSize) {
+        // read next block from file
+        currentBlockPosition += blockSize;
+        channel.position(currentBlockPosition);
+        blockBuffer.position(0);
+        blockBuffer.limit(blockSize);
+        channel.read(blockBuffer);
+
+        // read the rest target data to buffer
+        blockBuffer.position(0);
+        blockBuffer.limit(Math.min(byteBuffer.limit() - byteBuffer.position(), blockSize));
+        byteBuffer.put(blockBuffer);
+      }
+      blockBuffer.position(0);
+      blockBuffer.limit(blockSize);
+      byteBuffer.flip();
     }
-    blockBuffer.position(0);
-    blockBuffer.limit(blockSize);
-    byteBuffer.flip();
   }
 
   @Override
   public void writeBytes(long position, ByteBuffer byteBuffer) throws IOException {
-    if (currentBlockPosition != -1 // initial state, empty blockBuffer
-        && position >= currentBlockPosition
-        && position < currentBlockPosition + blockSize) {
-      // update the blockBuffer to the updated data
-      blockBuffer.position((int) (position - currentBlockPosition));
+    synchronized(blockBuffer){
+      if (currentBlockPosition != -1 // initial state, empty blockBuffer
+              && position >= currentBlockPosition
+              && position < currentBlockPosition + blockSize) {
+        // update the blockBuffer to the updated data
+        blockBuffer.position((int) (position - currentBlockPosition));
 
-      // record the origin state of byteBuffer
-      int limit = byteBuffer.limit();
-      byteBuffer.mark();
+        // record the origin state of byteBuffer
+        int limit = byteBuffer.limit();
+        byteBuffer.mark();
 
-      // write data
-      byteBuffer.limit(Math.min(byteBuffer.limit(), blockSize - blockBuffer.position()));
-      blockBuffer.put(byteBuffer);
+        // write data
+        byteBuffer.limit(Math.min(byteBuffer.limit(), blockSize - blockBuffer.position()));
+        blockBuffer.put(byteBuffer);
 
-      // recover the byteBuffer attribute for file write
-      byteBuffer.reset();
-      byteBuffer.limit(limit);
+        // recover the byteBuffer attribute for file write
+        byteBuffer.reset();
+        byteBuffer.limit(limit);
+      }
     }
     channel.position(position);
     while (byteBuffer.hasRemaining()) {
