@@ -24,6 +24,10 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class LogicalChecker {
 
+  /**
+   * TODO: make check() an abstract method and call check() in this method or outside the
+   * LogicalChecker.
+   */
   public static void check(Operator operator) throws LogicalOperatorException {}
 
   private LogicalChecker() {}
