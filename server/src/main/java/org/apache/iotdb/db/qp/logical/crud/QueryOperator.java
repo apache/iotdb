@@ -62,8 +62,10 @@ public class QueryOperator extends SFWOperator {
 
   private IndexType indexType;
 
+  // if true, we don't need the row that any column of which is null
   private boolean withoutAnyNull;
 
+  // if true, we don't need the row that all columns of which are null
   private boolean withoutAllNull;
 
   public QueryOperator(int tokenIntType) {

@@ -454,7 +454,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     return tsQueryDataSet;
   }
 
-  /** if any column in the row record, we filter it. */
+  /** if any column in the row record is null, we filter it. */
   private boolean filterRowRecord(int seriesNum, long minTime)
       throws IOException, InterruptedException {
     boolean hasNull = false;
