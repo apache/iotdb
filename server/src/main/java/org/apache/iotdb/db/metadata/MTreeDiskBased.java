@@ -298,18 +298,20 @@ public class MTreeDiskBased implements MTreeInterface {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      if (cur.isStorageGroup()) {
-        unlockMNodePath(cur);
-        // before set storage group, check whether the exists or not
-        throw new StorageGroupAlreadySetException(cur.getFullPath());
-      }
-
+//      System.out.println(nodeNames[i]+" "+cur.isStorageGroup());
       if (!cur.hasChild(nodeNames[i])) {
         metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
         cur=metadataDiskManager.getChild(cur, nodeNames[i]);
       } else {
         cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
       }
+
+      if (cur.isStorageGroup()) {
+        unlockMNodePath(cur);
+        // before set storage group, check whether the exists or not
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
+
       i++;
     }
 

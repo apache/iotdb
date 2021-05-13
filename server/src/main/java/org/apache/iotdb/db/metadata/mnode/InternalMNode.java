@@ -108,11 +108,8 @@ public class InternalMNode implements MNode {
       }
     }
 
-    MNode oldChild = children.get(name);
-    if (oldChild == null || !oldChild.isLoaded()) {
-      child.setParent(this);
-      children.put(name, child);
-    }
+    child.setParent(this);
+    children.merge(name,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
     //    children.putIfAbsent(name, child);
   }
 
@@ -142,12 +139,8 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    MNode oldChild = children.get(child.getName());
-    if (oldChild == null || !oldChild.isLoaded()) {
-      children.put(child.getName(), child);
-    }
-    //    children.putIfAbsent(child.getName(), child);
-    return child;
+    return children.merge(child.getName(),child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
+//    return children.putIfAbsent(child.getName(), child);
   }
 
   /** delete a child */
@@ -207,13 +200,7 @@ public class InternalMNode implements MNode {
         }
       }
     }
-
-    MNode oldChild = aliasChildren.get(alias);
-    if (oldChild == null || !oldChild.isLoaded()) {
-      aliasChildren.put(alias, child);
-      return true;
-    }
-    return false;
+    return child==children.merge(alias,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
 //    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 

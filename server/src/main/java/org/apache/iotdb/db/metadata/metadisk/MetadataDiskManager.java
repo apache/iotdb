@@ -416,7 +416,7 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void clear() throws IOException {
-    root=root.getEvictionHolder();
+    root=null;
     cacheStrategy.clear();
     cacheStrategy = null;
     metaFile.close();
