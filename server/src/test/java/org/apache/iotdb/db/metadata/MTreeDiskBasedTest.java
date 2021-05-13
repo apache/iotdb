@@ -736,18 +736,18 @@ public class MTreeDiskBasedTest {
     MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertTrue(node instanceof MeasurementMNode);
   }
-  
+
   private MeasurementMNode createTimeseries(
-          PartialPath path,
-          TSDataType dataType,
-          TSEncoding encoding,
-          CompressionType compressor,
-          Map<String, String> props,
-          String alias)
-          throws MetadataException{
-    MeasurementMNode measurementMNode=root.createTimeseries(path,dataType,encoding,compressor,props,alias);
+      PartialPath path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      String alias)
+      throws MetadataException {
+    MeasurementMNode measurementMNode =
+        root.createTimeseries(path, dataType, encoding, compressor, props, alias);
     root.unlockMNode(measurementMNode);
     return measurementMNode;
   }
-  
 }

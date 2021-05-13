@@ -139,7 +139,8 @@ public class MManagerImproveTest {
     MNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId));
     for (String s : measurementList) {
       assertTrue(node.hasChild(s));
-      MeasurementMNode measurementNode = (MeasurementMNode) mManager.getNodeByPath(new PartialPath(deviceId+"."+s));
+      MeasurementMNode measurementNode =
+          (MeasurementMNode) mManager.getNodeByPath(new PartialPath(deviceId + "." + s));
       TSDataType dataType = measurementNode.getSchema().getType();
       assertEquals(TSDataType.TEXT, dataType);
     }

@@ -23,16 +23,16 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   @Override
   public void lockMNode(MNode mNode) {
-    if(mNode==null){
+    if (mNode == null) {
       return;
     }
     try {
       lock.lock();
-      CacheEntry entry=mNode.getCacheEntry();
-      if(entry==null){
-        entry=new CacheEntry(mNode);
+      CacheEntry entry = mNode.getCacheEntry();
+      if (entry == null) {
+        entry = new CacheEntry(mNode);
       }
-      if(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
+      if (mNode.getParent() != null && !mNode.isLockedInMemory()) {
         increaseLock(mNode.getParent().getCacheEntry());
       }
       increaseLock(entry);
@@ -41,31 +41,31 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
   }
 
-  private void increaseLock(CacheEntry entry){
-    if(!entry.isLocked() && isInCacheList(entry)){
+  private void increaseLock(CacheEntry entry) {
+    if (!entry.isLocked() && isInCacheList(entry)) {
       removeOne(entry);
     }
     entry.increaseLock();
   }
 
-  private boolean isInCacheList(CacheEntry entry){
-    return entry.pre!=null||entry.next!=null||first==entry||last==entry;
+  private boolean isInCacheList(CacheEntry entry) {
+    return entry.pre != null || entry.next != null || first == entry || last == entry;
   }
 
   @Override
   public void unlockMNode(MNode mNode) {
-    if(mNode==null){
+    if (mNode == null) {
       return;
     }
     try {
       lock.lock();
-      CacheEntry entry=mNode.getCacheEntry();
-      if(entry==null||!entry.isLocked()){
+      CacheEntry entry = mNode.getCacheEntry();
+      if (entry == null || !entry.isLocked()) {
         return;
       }
       decreaseLock(entry);
-      while(mNode.getParent()!=null&&!mNode.isLockedInMemory()){
-        mNode=mNode.getParent();
+      while (mNode.getParent() != null && !mNode.isLockedInMemory()) {
+        mNode = mNode.getParent();
         decreaseLock(mNode.getCacheEntry());
       }
     } finally {
@@ -73,12 +73,12 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
   }
 
-  private void decreaseLock(CacheEntry entry){
+  private void decreaseLock(CacheEntry entry) {
     if (entry == null) {
       return;
     }
     entry.decreaseLock();
-    if(!entry.isLocked()){
+    if (!entry.isLocked()) {
       moveToFirst(entry);
     }
   }
@@ -97,7 +97,7 @@ public class LRUCacheStrategy implements CacheStrategy {
       if (entry == null) {
         entry = new CacheEntry(mNode);
       }
-      if(!entry.isLocked()){
+      if (!entry.isLocked()) {
         moveToFirst(entry);
       }
     } finally {
@@ -115,7 +115,7 @@ public class LRUCacheStrategy implements CacheStrategy {
 
   private void moveToFirst(CacheEntry entry) {
 
-    if(!isInCacheList(entry)){
+    if (!isInCacheList(entry)) {
       size++;
     }
 
@@ -142,7 +142,6 @@ public class LRUCacheStrategy implements CacheStrategy {
     first.pre = entry;
     first = entry;
     first.pre = null;
-
   }
 
   @Override
@@ -172,8 +171,8 @@ public class LRUCacheStrategy implements CacheStrategy {
       last = entry.pre;
     }
     size--;
-    entry.pre=null;
-    entry.next=null;
+    entry.pre = null;
+    entry.next = null;
   }
 
   private void removeRecursively(MNode mNode) {

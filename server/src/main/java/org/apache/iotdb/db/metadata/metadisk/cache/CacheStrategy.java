@@ -10,8 +10,9 @@ public interface CacheStrategy {
   /** get the size of the current cache */
   int getSize();
 
-  /** used for mnode object occupation statistic to decide whether this mnode could be evict*/
+  /** used for mnode object occupation statistic to decide whether this mnode could be evict */
   void lockMNode(MNode mNode);
+
   void unlockMNode(MNode mNode);
 
   /** change the mnode's position in cache */

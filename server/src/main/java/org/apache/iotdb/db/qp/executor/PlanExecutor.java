@@ -1107,12 +1107,12 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 
-  private void releaseMNode(MeasurementMNode[] measurementMNodes){
-    if(measurementMNodes==null){
+  private void releaseMNode(MeasurementMNode[] measurementMNodes) {
+    if (measurementMNodes == null) {
       return;
     }
-    for(MeasurementMNode measurementMNode:measurementMNodes){
-      if(measurementMNode!=null){
+    for (MeasurementMNode measurementMNode : measurementMNodes) {
+      if (measurementMNode != null) {
         IoTDB.metaManager.unlockNode(measurementMNode);
       }
     }
@@ -1201,7 +1201,7 @@ public class PlanExecutor implements IPlanExecutor {
 
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    }finally {
+    } finally {
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
         releaseMNode(plan.getMeasurementMNodes());
       }
@@ -1247,7 +1247,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
       }
-    }finally {
+    } finally {
       releaseMNode(insertRowPlan.getMeasurementMNodes());
     }
   }
@@ -1283,7 +1283,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableStatMonitor()) {
         StatMonitor.getInstance().updateFailedStatValue();
       }
-    }finally {
+    } finally {
       releaseMNode(insertTabletPlan.getMeasurementMNodes());
     }
   }

@@ -33,7 +33,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -374,7 +373,7 @@ public class MManagerBasicTest {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
-      manager.clear();// current manager will release the metafile occupation
+      manager.clear(); // current manager will release the metafile occupation
       MManager recoverManager = new MManager();
       recoverManager.init();
 
@@ -390,7 +389,7 @@ public class MManagerBasicTest {
               .collect(Collectors.toSet()));
 
       recoverManager.clear();
-      manager.init();// manager need be init for env clean
+      manager.init(); // manager need be init for env clean
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -398,7 +397,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testRecoverFromFile(){
+  public void testRecoverFromFile() {
     MManager manager = IoTDB.metaManager;
 
     try {
@@ -406,34 +405,34 @@ public class MManagerBasicTest {
       manager.setStorageGroup(new PartialPath("root.laptop.d1"));
       manager.setStorageGroup(new PartialPath("root.laptop.d2"));
       manager.createTimeseries(
-              new PartialPath("root.laptop.d1.s1"),
-              TSDataType.INT32,
-              TSEncoding.PLAIN,
-              CompressionType.GZIP,
-              null);
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
       manager.createTimeseries(
-              new PartialPath("root.laptop.d2.s1"),
-              TSDataType.INT32,
-              TSEncoding.PLAIN,
-              CompressionType.GZIP,
-              null);
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
       assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d2")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop.d3")));
       assertFalse(manager.isStorageGroup(new PartialPath("root.laptop")));
       Set<String> devices =
-              new TreeSet<String>() {
-                {
-                  add("root.laptop.d1");
-                  add("root.laptop.d2");
-                }
-              };
+          new TreeSet<String>() {
+            {
+              add("root.laptop.d1");
+              add("root.laptop.d2");
+            }
+          };
       // prefix with *
       assertEquals(
-              devices,
-              manager.getDevices(new PartialPath("root.*")).stream()
-                      .map(PartialPath::getFullPath)
-                      .collect(Collectors.toSet()));
+          devices,
+          manager.getDevices(new PartialPath("root.*")).stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet()));
 
       manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop.d2")));
       assertTrue(manager.isStorageGroup(new PartialPath("root.laptop.d1")));
@@ -443,10 +442,10 @@ public class MManagerBasicTest {
       devices.remove("root.laptop.d2");
       // prefix with *
       assertEquals(
-              devices,
-              manager.getDevices(new PartialPath("root.*")).stream()
-                      .map(PartialPath::getFullPath)
-                      .collect(Collectors.toSet()));
+          devices,
+          manager.getDevices(new PartialPath("root.*")).stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet()));
 
       manager.createMTreeSnapshot();
       manager.clear(); // current manager will release the metafile occupation
@@ -459,10 +458,10 @@ public class MManagerBasicTest {
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop")));
       // prefix with *
       assertEquals(
-              devices,
-              recoverManager.getDevices(new PartialPath("root.*")).stream()
-                      .map(PartialPath::getFullPath)
-                      .collect(Collectors.toSet()));
+          devices,
+          recoverManager.getDevices(new PartialPath("root.*")).stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toSet()));
 
       recoverManager.clear();
       manager.init(); // manager need be init for env clean

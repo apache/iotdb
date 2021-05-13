@@ -18,22 +18,23 @@ public class MetadataDiskManagerTest {
 
   private static final int CACHE_SIZE = 10;
   private static final String BASE_PATH = MetadataDiskManagerTest.class.getResource("").getPath();
-  private static final String METAFILE_FILEPATH = BASE_PATH + "MetadataDiskManagerTest_metafile.bin";
-  private String SNAPSHOT_PATH=METAFILE_FILEPATH+".snapshot.bin";
-  private String SNAPSHOT_TEMP_PATH=SNAPSHOT_PATH+".tmp";
+  private static final String METAFILE_FILEPATH =
+      BASE_PATH + "MetadataDiskManagerTest_metafile.bin";
+  private String SNAPSHOT_PATH = METAFILE_FILEPATH + ".snapshot.bin";
+  private String SNAPSHOT_TEMP_PATH = SNAPSHOT_PATH + ".tmp";
 
   @Before
   public void setUp() {
     EnvironmentUtils.envSetUp();
-    File file=new File(METAFILE_FILEPATH);
+    File file = new File(METAFILE_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
-    file=new File(SNAPSHOT_PATH);
+    file = new File(SNAPSHOT_PATH);
     if (file.exists()) {
       file.delete();
     }
-    file=new File(SNAPSHOT_TEMP_PATH);
+    file = new File(SNAPSHOT_TEMP_PATH);
     if (file.exists()) {
       file.delete();
     }
@@ -41,15 +42,15 @@ public class MetadataDiskManagerTest {
 
   @After
   public void tearDown() throws Exception {
-    File file=new File(METAFILE_FILEPATH);
+    File file = new File(METAFILE_FILEPATH);
     if (file.exists()) {
       file.delete();
     }
-    file=new File(SNAPSHOT_PATH);
+    file = new File(SNAPSHOT_PATH);
     if (file.exists()) {
       file.delete();
     }
-    file=new File(SNAPSHOT_TEMP_PATH);
+    file = new File(SNAPSHOT_TEMP_PATH);
     if (file.exists()) {
       file.delete();
     }

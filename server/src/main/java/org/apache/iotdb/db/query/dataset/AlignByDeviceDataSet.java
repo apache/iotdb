@@ -219,7 +219,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
-//      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      //      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       MNode deviceNode = IoTDB.metaManager.getDeviceNode(device);
       return deviceNode.getChildren().keySet();
     } catch (MetadataException e) {

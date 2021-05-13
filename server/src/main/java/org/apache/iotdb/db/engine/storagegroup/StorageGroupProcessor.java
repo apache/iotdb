@@ -1824,7 +1824,8 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      Map<String,MeasurementMNode> measurementMNodes=IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
+      Map<String, MeasurementMNode> measurementMNodes =
+          IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
 
       for (MeasurementMNode measurementNode : measurementMNodes.values()) {
         if (measurementNode != null
@@ -2163,7 +2164,8 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      Map<String,MeasurementMNode> measurementMNodes=IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
+      Map<String, MeasurementMNode> measurementMNodes =
+          IoTDB.metaManager.getMeasurementNodesInDeviceWithMemoryLock(deviceId);
 
       for (MeasurementMNode measurementNode : measurementMNodes.values()) {
         if (measurementNode != null) {

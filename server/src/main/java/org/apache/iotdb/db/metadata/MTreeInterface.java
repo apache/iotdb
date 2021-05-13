@@ -128,7 +128,8 @@ public interface MTreeInterface extends Serializable {
 
   Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException;
 
-  MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException;
+  MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName)
+      throws MetadataException;
 
   MNode getNodeDeepClone(MNode mNode) throws MetadataException;
 

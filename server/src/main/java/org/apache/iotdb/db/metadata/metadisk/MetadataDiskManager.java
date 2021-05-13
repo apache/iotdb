@@ -12,8 +12,8 @@ import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,20 +41,20 @@ public class MetadataDiskManager implements MetadataAccess {
 
   private MNode root;
 
-  public MetadataDiskManager(int cacheSize) throws IOException{
+  public MetadataDiskManager(int cacheSize) throws IOException {
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-    this.metaFilePath=schemaDir+ File.separator + MetadataConstant.METAFILE_PATH;
-    mtreeSnapshotPath =schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+    this.metaFilePath = schemaDir + File.separator + MetadataConstant.METAFILE_PATH;
+    mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
     mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
     capacity = cacheSize;
     cacheStrategy = new LRUCacheStrategy();
     init();
   }
 
-  public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException{
-    this.metaFilePath=metaFilePath;
-    mtreeSnapshotPath =metaFilePath+".snapshot.bin";
-    mtreeSnapshotTmpPath = mtreeSnapshotPath+".tmp";
+  public MetadataDiskManager(int cacheSize, String metaFilePath) throws IOException {
+    this.metaFilePath = metaFilePath;
+    mtreeSnapshotPath = metaFilePath + ".snapshot.bin";
+    mtreeSnapshotTmpPath = mtreeSnapshotPath + ".tmp";
     capacity = cacheSize;
     cacheStrategy = new LRUCacheStrategy();
     init();
@@ -63,11 +63,11 @@ public class MetadataDiskManager implements MetadataAccess {
   private void init() throws IOException {
     MNode root = recoverFromFile();
     cacheStrategy.lockMNode(root);
-    cacheStrategy.setModified(root,false);
-    this.root=root;
+    cacheStrategy.setModified(root, false);
+    this.root = root;
   }
 
-  private MNode recoverFromFile() throws IOException{
+  private MNode recoverFromFile() throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
@@ -75,32 +75,35 @@ public class MetadataDiskManager implements MetadataAccess {
     }
     File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     File metaFile = SystemFileFactory.INSTANCE.getFile(metaFilePath);
-    if(metaFile.exists()){
+    if (metaFile.exists()) {
       Files.delete(metaFile.toPath());
     }
 
-    MNode root=null;
+    MNode root = null;
     long time = System.currentTimeMillis();
-    if (snapshotFile.exists()&&snapshotFile.renameTo(metaFile)) {
-      try  {
+    if (snapshotFile.exists() && snapshotFile.renameTo(metaFile)) {
+      try {
         this.metaFile = new MetaFile(metaFilePath);
-        root=this.metaFile.readRoot();
+        root = this.metaFile.readRoot();
         logger.debug(
-                "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+            "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       } catch (IOException e) {
         // the metaFile got problem, corrupted. delete it and create new one.
-        logger.warn("Failed to deserialize from {} because {}. Use a new MTree.", snapshotFile.getPath(),e);
+        logger.warn(
+            "Failed to deserialize from {} because {}. Use a new MTree.",
+            snapshotFile.getPath(),
+            e);
         this.metaFile.close();
         this.metaFile = null;
         Files.delete(metaFile.toPath());
       }
     }
 
-    if(this.metaFile==null){
+    if (this.metaFile == null) {
       this.metaFile = new MetaFile(metaFilePath);
     }
-    if(root==null) {
-      root=new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    if (root == null) {
+      root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       this.metaFile.write(root);
     }
 
@@ -130,10 +133,10 @@ public class MetadataDiskManager implements MetadataAccess {
     } else {
       result = getMNodeFromDisk(result.getPersistenceInfo());
       parent.addChild(result.getName(), result);
-      if(result.isMeasurement()){
-        MeasurementMNode measurementMNode=(MeasurementMNode) result;
-        if(measurementMNode.getAlias()!=null){
-          parent.addAlias(measurementMNode.getAlias(),measurementMNode);
+      if (result.isMeasurement()) {
+        MeasurementMNode measurementMNode = (MeasurementMNode) result;
+        if (measurementMNode.getAlias() != null) {
+          parent.addAlias(measurementMNode.getAlias(), measurementMNode);
         }
       }
       if (isCacheable(result)) {
@@ -146,23 +149,23 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public MNode getChild(MNode parent, String name, boolean lockChild) throws MetadataException {
-    if(!lockChild){
-      return getChild(parent,name);
+    if (!lockChild) {
+      return getChild(parent, name);
     }
-    if(!parent.isLockedInMemory()){
+    if (!parent.isLockedInMemory()) {
       throw new MetadataException("Parent MNode has not been locked before lock child");
     }
     MNode result = parent.getChild(name);
     if (result == null) {
       return null;
     }
-    if(!result.isLoaded()){
+    if (!result.isLoaded()) {
       result = getMNodeFromDisk(result.getPersistenceInfo());
       parent.addChild(result.getName(), result);
-      if(result.isMeasurement()){
-        MeasurementMNode measurementMNode=(MeasurementMNode) result;
-        if(measurementMNode.getAlias()!=null){
-          parent.addAlias(measurementMNode.getAlias(),measurementMNode);
+      if (result.isMeasurement()) {
+        MeasurementMNode measurementMNode = (MeasurementMNode) result;
+        if (measurementMNode.getAlias() != null) {
+          parent.addAlias(measurementMNode.getAlias(), measurementMNode);
         }
       }
     }
@@ -174,7 +177,7 @@ public class MetadataDiskManager implements MetadataAccess {
   public Map<String, MNode> getChildren(MNode parent) throws MetadataException {
     Map<String, MNode> result = new ConcurrentHashMap<>();
     for (String childName : parent.getChildren().keySet()) {
-      MNode child = getChild(parent,childName);
+      MNode child = getChild(parent, childName);
       result.put(childName, child);
     }
     return result;
@@ -203,12 +206,13 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void addChild(MNode parent, String childName, MNode child, boolean lockChild) throws MetadataException {
-    if(!lockChild){
-      addChild(parent,childName,child);
+  public void addChild(MNode parent, String childName, MNode child, boolean lockChild)
+      throws MetadataException {
+    if (!lockChild) {
+      addChild(parent, childName, child);
       return;
     }
-    if(!parent.isLockedInMemory()){
+    if (!parent.isLockedInMemory()) {
       throw new MetadataException("Parent MNode has not been locked before lock child");
     }
     child.setParent(parent);
@@ -260,24 +264,25 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException {
-    if(!lockChild){
-      replaceChild(parent,measurement,newChild);
+  public void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild)
+      throws MetadataException {
+    if (!lockChild) {
+      replaceChild(parent, measurement, newChild);
       return;
     }
-    if(!parent.isLockedInMemory()){
+    if (!parent.isLockedInMemory()) {
       throw new MetadataException("Parent MNode has not been locked before lock child");
     }
     newChild.setParent(parent);
     cacheStrategy.lockMNode(newChild);
     getChild(parent, measurement);
     parent.replaceChild(measurement, newChild);
-    cacheStrategy.setModified(newChild,true);
+    cacheStrategy.setModified(newChild, true);
   }
 
   @Override
   public MNode deleteChild(MNode parent, String childName) throws MetadataException {
-    MNode child = getChild(parent,childName);
+    MNode child = getChild(parent, childName);
     parent.deleteChild(childName);
 
     if (child.isCached()) {
@@ -293,25 +298,25 @@ public class MetadataDiskManager implements MetadataAccess {
       }
       deleteChildRecursively(child);
       return child;
-    }catch (IOException e) {
+    } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
   }
 
-  private void deleteChildRecursively(MNode mNode) throws MetadataException{
+  private void deleteChildRecursively(MNode mNode) throws MetadataException {
     MNode child;
-    for(String childName:mNode.getChildren().keySet()){
-      child=mNode.getChild(childName);
-      if(!child.isLoaded()){
-        child=getMNodeFromDisk(child.getPersistenceInfo());
+    for (String childName : mNode.getChildren().keySet()) {
+      child = mNode.getChild(childName);
+      if (!child.isLoaded()) {
+        child = getMNodeFromDisk(child.getPersistenceInfo());
         mNode.addChild(child);
       }
       deleteChildRecursively(child);
     }
-    if(mNode.isPersisted()){
+    if (mNode.isPersisted()) {
       try {
         metaFile.remove(mNode.getPersistenceInfo());
-      }catch (IOException e){
+      } catch (IOException e) {
         throw new MetadataException(e.getMessage());
       }
     }
@@ -333,13 +338,13 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void updateMNode(MNode mNode) throws MetadataException {
-    if(mNode.isDeleted()){
+    if (mNode.isDeleted()) {
       return;
     }
-    if(mNode.isCached()){
+    if (mNode.isCached()) {
       cacheStrategy.applyChange(mNode);
-      cacheStrategy.setModified(mNode,true);
-    }else if(mNode.isPersisted()){
+      cacheStrategy.setModified(mNode, true);
+    } else if (mNode.isPersisted()) {
       try {
         metaFile.write(mNode);
       } catch (IOException e) {
@@ -349,23 +354,23 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void lockMNodeInMemory(MNode mNode) throws MetadataException{
-    MNode temp=mNode;
-    Stack<MNode> stack=new Stack<>();
-    while(temp!=root){
-      if(!temp.isCached()){
+  public void lockMNodeInMemory(MNode mNode) throws MetadataException {
+    MNode temp = mNode;
+    Stack<MNode> stack = new Stack<>();
+    while (temp != root) {
+      if (!temp.isCached()) {
         throw new MetadataException("Cannot lock a MNode not in cache");
       }
       stack.push(temp);
-      temp=temp.getParent();
+      temp = temp.getParent();
     }
-    temp=stack.pop();
+    temp = stack.pop();
     cacheStrategy.lockMNode(temp);
     MNode last;
-    while (!stack.empty()){
-      last=temp;
-      temp=stack.pop();
-      if(!temp.isCached()){
+    while (!stack.empty()) {
+      last = temp;
+      temp = stack.pop();
+      if (!temp.isCached()) {
         cacheStrategy.unlockMNode(last);
         throw new MetadataException("Cannot lock a MNode not in cache");
       }
@@ -376,10 +381,10 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void releaseMNodeMemoryLock(MNode mNode) throws MetadataException {
-    if(!mNode.isCached()||!mNode.isLockedInMemory()){
+    if (!mNode.isCached() || !mNode.isLockedInMemory()) {
       return;
     }
-    if(mNode==root){
+    if (mNode == root) {
       return;
     }
     cacheStrategy.unlockMNode(mNode);
@@ -401,18 +406,18 @@ public class MetadataDiskManager implements MetadataAccess {
     logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
     try {
       sync();
-      File metaFile= SystemFileFactory.INSTANCE.getFile(metaFilePath);
-      File tempFile=SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      Files.copy(metaFile.toPath(),tempFile.toPath());
-      File snapshotFile=SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      File metaFile = SystemFileFactory.INSTANCE.getFile(metaFilePath);
+      File tempFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      Files.copy(metaFile.toPath(), tempFile.toPath());
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
       if (snapshotFile.exists()) {
         Files.delete(snapshotFile.toPath());
       }
       if (tempFile.renameTo(snapshotFile)) {
         logger.info(
-                "Finish creating MTree snapshot to {}, spend {} ms.",
-                mtreeSnapshotPath,
-                System.currentTimeMillis() - time);
+            "Finish creating MTree snapshot to {}, spend {} ms.",
+            mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
       }
     } catch (IOException e) {
       logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
@@ -428,7 +433,7 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public void clear() throws IOException {
-    root=new InternalMNode(null,IoTDBConstant.PATH_ROOT);
+    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     cacheStrategy.clear();
     cacheStrategy = null;
     metaFile.close();
@@ -465,13 +470,13 @@ public class MetadataDiskManager implements MetadataAccess {
       return false;
     }
     checkEviction();
-    return cacheStrategy.getSize()<capacity;
+    return cacheStrategy.getSize() < capacity;
   }
 
-  private void checkEviction() throws MetadataException{
+  private void checkEviction() throws MetadataException {
     while (cacheStrategy.getSize() >= capacity) {
       List<MNode> modifiedMNodes = cacheStrategy.evict();
-      if(modifiedMNodes.size()==0){
+      if (modifiedMNodes.size() == 0) {
         break;
       }
       MNode evictedMNode = modifiedMNodes.remove(0);
@@ -488,5 +493,4 @@ public class MetadataDiskManager implements MetadataAccess {
       }
     }
   }
-
 }

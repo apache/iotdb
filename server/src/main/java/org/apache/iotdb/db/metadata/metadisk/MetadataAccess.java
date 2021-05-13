@@ -2,7 +2,6 @@ package org.apache.iotdb.db.metadata.metadisk;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 
 import java.io.IOException;
 import java.util.Map;
@@ -15,6 +14,7 @@ public interface MetadataAccess {
 
   /** get child of the parent */
   MNode getChild(MNode parent, String name) throws MetadataException;
+
   MNode getChild(MNode parent, String name, boolean lockChild) throws MetadataException;
 
   /** get a cloned children map instance from the parent */
@@ -22,17 +22,23 @@ public interface MetadataAccess {
 
   /** add a child to the parent */
   void addChild(MNode parent, String childName, MNode child) throws MetadataException;
-  void addChild(MNode parent, String childName, MNode child, boolean lockChild) throws MetadataException;
+
+  void addChild(MNode parent, String childName, MNode child, boolean lockChild)
+      throws MetadataException;
 
   /** add a alias child to the parent */
   void addAlias(MNode parent, String alias, MNode child) throws MetadataException;
 
   /** replace a child of the parent with the newChild */
   void replaceChild(MNode parent, String measurement, MNode newChild) throws MetadataException;
-  void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild) throws MetadataException;
 
-  /** delete a child of the parent. Collect all the MNode in subtree of this child into memory
-   * Attention!!!! must unlock child Node before delete */
+  void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild)
+      throws MetadataException;
+
+  /**
+   * delete a child of the parent. Collect all the MNode in subtree of this child into memory
+   * Attention!!!! must unlock child Node before delete
+   */
   MNode deleteChild(MNode parent, String childName) throws MetadataException;
 
   /** delete a alias child of the parent */

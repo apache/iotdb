@@ -61,9 +61,9 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
-    if(persistenceInfo==null){
-      position=-1;
-    }else {
+    if (persistenceInfo == null) {
+      position = -1;
+    } else {
       position = persistenceInfo.getPosition();
     }
   }
@@ -178,7 +178,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
 
   @Override
   public boolean isDeleted() {
-    return position==-1;
+    return position == -1;
   }
 
   @Override

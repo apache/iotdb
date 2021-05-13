@@ -96,9 +96,9 @@ public class MTreeFile {
     fileAccess.writeHeader(buffer);
   }
 
-  private void fileCheck() throws IOException{
-    PersistenceInfo persistenceInfo=PersistenceInfo.createPersistenceInfo(rootPosition);
-    MNode mNode=read(persistenceInfo);
+  private void fileCheck() throws IOException {
+    PersistenceInfo persistenceInfo = PersistenceInfo.createPersistenceInfo(rootPosition);
+    MNode mNode = read(persistenceInfo);
   }
 
   public MNode read(String path) throws IOException {
@@ -240,36 +240,36 @@ public class MTreeFile {
             props.size() == 0 ? null : props);
     mNode.setSchema(schema);
 
-    long timestamp=dataBuffer.getLong();
-    if(timestamp!=-1){
-      TSDataType dataType=schema.getType();
+    long timestamp = dataBuffer.getLong();
+    if (timestamp != -1) {
+      TSDataType dataType = schema.getType();
       TsPrimitiveType value;
       switch (dataType) {
         case BOOLEAN:
-          value=TsPrimitiveType.getByType(dataType,dataBuffer.get()==1);
+          value = TsPrimitiveType.getByType(dataType, dataBuffer.get() == 1);
           break;
         case INT32:
-          value=TsPrimitiveType.getByType(dataType,dataBuffer.getInt());
+          value = TsPrimitiveType.getByType(dataType, dataBuffer.getInt());
           break;
         case INT64:
-          value=TsPrimitiveType.getByType(dataType,dataBuffer.getLong());
+          value = TsPrimitiveType.getByType(dataType, dataBuffer.getLong());
           break;
         case FLOAT:
-          value=TsPrimitiveType.getByType(dataType,dataBuffer.getFloat());
+          value = TsPrimitiveType.getByType(dataType, dataBuffer.getFloat());
           break;
         case DOUBLE:
-          value=TsPrimitiveType.getByType(dataType,dataBuffer.getDouble());
+          value = TsPrimitiveType.getByType(dataType, dataBuffer.getDouble());
           break;
         case TEXT:
-          byte[] content=new byte[dataBuffer.getInt()];
+          byte[] content = new byte[dataBuffer.getInt()];
           dataBuffer.get(content);
-          value=TsPrimitiveType.getByType(dataType,new Binary(content));
+          value = TsPrimitiveType.getByType(dataType, new Binary(content));
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
       }
-      TimeValuePair lastCache=new TimeValuePair(timestamp,value);
-      mNode.updateCachedLast(lastCache,false,0L);
+      TimeValuePair lastCache = new TimeValuePair(timestamp, value);
+      mNode.updateCachedLast(lastCache, false, 0L);
     }
 
     readChildren(mNode, dataBuffer);
@@ -347,20 +347,20 @@ public class MTreeFile {
     return length;
   }
 
-  private int evaluateChildrenLength(Map<String,MNode> children){
-    int length=0;
+  private int evaluateChildrenLength(Map<String, MNode> children) {
+    int length = 0;
     for (String childName : children.keySet()) {
       length +=
-              ReadWriteForEncodingUtils.varIntSize(childName.length())
-                      + childName.length()
-                      + 8; // child name and child position
+          ReadWriteForEncodingUtils.varIntSize(childName.length())
+              + childName.length()
+              + 8; // child name and child position
     }
     length += 1; // children end tag
     return length;
   }
 
-  private int evaluateMeasurementDataLength(MeasurementMNode measurementMNode){
-    int length=0;
+  private int evaluateMeasurementDataLength(MeasurementMNode measurementMNode) {
+    int length = 0;
     String alias = measurementMNode.getAlias(); // alias
     if (alias == null) {
       length += ReadWriteForEncodingUtils.varIntSize(0);
@@ -372,19 +372,18 @@ public class MTreeFile {
     if (measurementMNode.getSchema().getProps() != null) {
       for (Map.Entry<String, String> entry : measurementMNode.getSchema().getProps().entrySet()) {
         length +=
-                ReadWriteForEncodingUtils.varIntSize(entry.getKey().length())
-                        + entry.getKey().length();
+            ReadWriteForEncodingUtils.varIntSize(entry.getKey().length()) + entry.getKey().length();
         length +=
-                ReadWriteForEncodingUtils.varIntSize(entry.getValue().length())
-                        + entry.getValue().length();
+            ReadWriteForEncodingUtils.varIntSize(entry.getValue().length())
+                + entry.getValue().length();
       }
     }
     length += 1; // end tag of props
 
     // lastCache
     length += 8; // timestamp, -1 means lastCache is null
-    if(measurementMNode.getCachedLast()!=null){
-      TSDataType dataType=measurementMNode.getSchema().getType();
+    if (measurementMNode.getCachedLast() != null) {
+      TSDataType dataType = measurementMNode.getSchema().getType();
       switch (dataType) { // value
         case BOOLEAN:
           length += 1;
@@ -402,7 +401,13 @@ public class MTreeFile {
           length += 8;
           break;
         case TEXT:
-          length += 4+measurementMNode.getCachedLast().getValue().getBinary().getLength(); // length + data
+          length +=
+              4
+                  + measurementMNode
+                      .getCachedLast()
+                      .getValue()
+                      .getBinary()
+                      .getLength(); // length + data
           break;
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
@@ -424,7 +429,13 @@ public class MTreeFile {
     int bufferNum =
         (mNodeLength / (nodeLength - 17)) + ((mNodeLength % (nodeLength - 17)) == 0 ? 0 : 1);
     if (bufferNum > 15) {
-      throw new IOException("Too large Node, "+mNode.getFullPath()+", to persist. Node data size "+(mNodeLength+bufferNum*17)+", Node children num "+mNode.getChildren().size());
+      throw new IOException(
+          "Too large Node, "
+              + mNode.getFullPath()
+              + ", to persist. Node data size "
+              + (mNodeLength + bufferNum * 17)
+              + ", Node children num "
+              + mNode.getChildren().size());
     }
     byte bitmap = (byte) bufferNum;
     ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength);
@@ -442,22 +453,24 @@ public class MTreeFile {
         bitmap = (byte) (0x80 | bitmap);
       }
     }
-    return splitBytes(dataBuffer,bufferNum,bitmap,mNode);
+    return splitBytes(dataBuffer, bufferNum, bitmap, mNode);
   }
 
-  private Map<Long, ByteBuffer> splitBytes(ByteBuffer dataBuffer, int bufferNum,byte bitmap, MNode mNode) throws IOException{
+  private Map<Long, ByteBuffer> splitBytes(
+      ByteBuffer dataBuffer, int bufferNum, byte bitmap, MNode mNode) throws IOException {
     Map<Long, ByteBuffer> result = new HashMap<>(bufferNum);
     ByteBuffer buffer;
     MNode parent = mNode.getParent();
-    long currentPos = (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
+    long currentPos =
+        (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
     long prePos;
-    long extensionPos=mNode.getPersistenceInfo().getPosition();
+    long extensionPos = mNode.getPersistenceInfo().getPosition();
     for (int i = 0; i < bufferNum; i++) {
       prePos = currentPos;
       currentPos = extensionPos;
       buffer = ByteBuffer.allocate(nodeLength);
       result.put(currentPos, buffer);
-      if(i>0){
+      if (i > 0) {
         bitmap = (byte) (0xC0 | (bufferNum - i));
       }
       buffer.put(bitmap);
@@ -502,14 +515,14 @@ public class MTreeFile {
     }
     dataBuffer.put((byte) 0);
 
-    TimeValuePair lastCache=mNode.getCachedLast();
-    if(lastCache!=null){
+    TimeValuePair lastCache = mNode.getCachedLast();
+    if (lastCache != null) {
       dataBuffer.putLong(lastCache.getTimestamp());
-      TSDataType dataType=schema.getType();
-      TsPrimitiveType value=lastCache.getValue();
+      TSDataType dataType = schema.getType();
+      TsPrimitiveType value = lastCache.getValue();
       switch (dataType) {
         case BOOLEAN:
-          dataBuffer.put((byte)(value.getBoolean()?1:0));
+          dataBuffer.put((byte) (value.getBoolean() ? 1 : 0));
           break;
         case INT32:
           dataBuffer.putInt(value.getInt());
@@ -530,7 +543,7 @@ public class MTreeFile {
         default:
           throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
       }
-    }else {
+    } else {
       dataBuffer.putLong(-1);
     }
 

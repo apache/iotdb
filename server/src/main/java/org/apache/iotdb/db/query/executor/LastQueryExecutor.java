@@ -197,7 +197,7 @@ public class LastQueryExecutor {
         }
       }
     }
-    for(LastCacheAccessor cacheAccessor:cacheAccessors){
+    for (LastCacheAccessor cacheAccessor : cacheAccessors) {
       cacheAccessor.clear();
     }
     return resultContainer;
@@ -273,10 +273,10 @@ public class LastQueryExecutor {
       IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
     }
 
-    public void clear(){
-      path=null;
+    public void clear() {
+      path = null;
       IoTDB.metaManager.unlockNode(node);
-      node=null;
+      node = null;
     }
   }
 

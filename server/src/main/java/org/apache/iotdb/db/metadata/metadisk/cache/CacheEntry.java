@@ -6,14 +6,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CacheEntry {
 
-  CacheEntry pre=null;
-  CacheEntry next=null;
+  CacheEntry pre = null;
+  CacheEntry next = null;
   MNode value;
 
   /** whether the node in memory cache has been modified. default value is true */
   boolean isModified = true;
 
-  AtomicInteger semaphore=new AtomicInteger(0);
+  AtomicInteger semaphore = new AtomicInteger(0);
 
   CacheEntry(MNode mNode) {
     value = mNode;
@@ -52,12 +52,16 @@ public class CacheEntry {
     isModified = modified;
   }
 
-  public boolean isLocked(){return semaphore.get()>0;}
+  public boolean isLocked() {
+    return semaphore.get() > 0;
+  }
 
-  public void increaseLock(){semaphore.getAndIncrement();}
+  public void increaseLock() {
+    semaphore.getAndIncrement();
+  }
 
-  public void decreaseLock(){
-    if(semaphore.get()>0){
+  public void decreaseLock() {
+    if (semaphore.get() > 0) {
       semaphore.getAndDecrement();
     }
   }

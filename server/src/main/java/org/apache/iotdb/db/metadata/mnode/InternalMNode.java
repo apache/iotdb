@@ -109,7 +109,7 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    children.merge(name,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
+    children.merge(name, child, (oldChild, newChild) -> oldChild.isLoaded() ? oldChild : newChild);
     //    children.putIfAbsent(name, child);
   }
 
@@ -139,8 +139,9 @@ public class InternalMNode implements MNode {
     }
 
     child.setParent(this);
-    return children.merge(child.getName(),child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
-//    return children.putIfAbsent(child.getName(), child);
+    return children.merge(
+        child.getName(), child, (oldChild, newChild) -> oldChild.isLoaded() ? oldChild : newChild);
+    //    return children.putIfAbsent(child.getName(), child);
   }
 
   /** delete a child */
@@ -200,8 +201,10 @@ public class InternalMNode implements MNode {
         }
       }
     }
-    return child==aliasChildren.merge(alias,child,(oldChild,newChild)-> oldChild.isLoaded()?oldChild:newChild);
-//    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
+    return child
+        == aliasChildren.merge(
+            alias, child, (oldChild, newChild) -> oldChild.isLoaded() ? oldChild : newChild);
+    //    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
   }
 
   /** get full path */
@@ -363,8 +366,8 @@ public class InternalMNode implements MNode {
   @Override
   public void setPersistenceInfo(PersistenceInfo persistenceInfo) {
     if (persistenceInfo == null) {
-      persistenceMNode=null;
-    }else if (persistenceMNode == null) {
+      persistenceMNode = null;
+    } else if (persistenceMNode == null) {
       persistenceMNode = new PersistenceMNode(persistenceInfo);
     } else {
       persistenceMNode.setPersistenceInfo(persistenceInfo);
@@ -410,13 +413,13 @@ public class InternalMNode implements MNode {
 
   @Override
   public boolean isLockedInMemory() {
-    return cacheEntry!=null&&cacheEntry.isLocked();
+    return cacheEntry != null && cacheEntry.isLocked();
   }
 
   @Override
   public boolean isDeleted() {
     // if a node neither in cache nor disk, the update has no need to write back.
-    return cacheEntry==null&&persistenceMNode==null;
+    return cacheEntry == null && persistenceMNode == null;
   }
 
   @Override

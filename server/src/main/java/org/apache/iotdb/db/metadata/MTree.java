@@ -590,7 +590,7 @@ public class MTree implements MTreeInterface {
 
   @Override
   public void setTTL(PartialPath storageGroup, long dataTTL) throws MetadataException {
-    StorageGroupMNode storageGroupMNode=getStorageGroupNodeByStorageGroupPath(storageGroup);
+    StorageGroupMNode storageGroupMNode = getStorageGroupNodeByStorageGroupPath(storageGroup);
     storageGroupMNode.setDataTTL(dataTTL);
   }
 
@@ -621,19 +621,20 @@ public class MTree implements MTreeInterface {
 
   @Override
   public Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
-    Map<String,MNode> result=new HashMap<>();
-    MNode node=getNodeByPath(path);
-    for(Entry<String,MNode> entry:node.getChildren().entrySet()){
-      result.put(entry.getKey(),entry.getValue());
+    Map<String, MNode> result = new HashMap<>();
+    MNode node = getNodeByPath(path);
+    for (Entry<String, MNode> entry : node.getChildren().entrySet()) {
+      result.put(entry.getKey(), entry.getValue());
     }
-    for(Entry<String,MNode> entry:node.getAliasChildren().entrySet()){
-      result.put(entry.getKey(),entry.getValue());
+    for (Entry<String, MNode> entry : node.getAliasChildren().entrySet()) {
+      result.put(entry.getKey(), entry.getValue());
     }
     return result;
   }
 
   @Override
-  public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName) throws MetadataException {
+  public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName)
+      throws MetadataException {
     return deviceNode.getChild(childName);
   }
 
@@ -1477,13 +1478,13 @@ public class MTree implements MTreeInterface {
 
   @Override
   public Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode) {
-    Collection<MeasurementMNode> measurementMNodes=new LinkedList<>();
+    Collection<MeasurementMNode> measurementMNodes = new LinkedList<>();
     Deque<MNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
-        measurementMNodes.add((MeasurementMNode)node);
+        measurementMNodes.add((MeasurementMNode) node);
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }
@@ -1492,9 +1493,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void updateMNode(MNode mNode) throws MetadataException {
-
-  }
+  public void updateMNode(MNode mNode) throws MetadataException {}
 
   @Override
   public MNode lockMNode(MNode mNode) throws MetadataException {
@@ -1502,9 +1501,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void unlockMNode(MNode mNode) throws MetadataException{
-
-  }
+  public void unlockMNode(MNode mNode) throws MetadataException {}
 
   @Override
   public void createSnapshot() throws IOException {
@@ -1519,9 +1516,9 @@ public class MTree implements MTreeInterface {
       }
       if (tmpFile.renameTo(snapshotFile)) {
         logger.info(
-                "Finish creating MTree snapshot to {}, spend {} ms.",
-                mtreeSnapshotPath,
-                System.currentTimeMillis() - time);
+            "Finish creating MTree snapshot to {}, spend {} ms.",
+            mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
       }
     } catch (IOException e) {
       logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
@@ -1548,7 +1545,7 @@ public class MTree implements MTreeInterface {
       try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
         root = deserializeFromReader(mLogReader);
         logger.debug(
-                "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+            "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
       } catch (IOException e) {
         logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       } finally {
