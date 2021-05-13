@@ -58,7 +58,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
-        SeriesReaderFactory.createSeriesReader(
+        new SeriesReader(
             seriesPath,
             allSensors,
             dataType,
@@ -84,7 +84,7 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
     Set<String> allSensors = new HashSet<>();
     allSensors.add(seriesPath.getMeasurement());
     this.seriesReader =
-        SeriesReaderFactory.createSeriesReader(
+        new SeriesReader(
             seriesPath,
             allSensors,
             dataType,
