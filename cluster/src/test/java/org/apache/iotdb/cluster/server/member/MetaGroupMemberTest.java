@@ -99,7 +99,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -118,8 +118,10 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -132,7 +134,6 @@ import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -187,7 +188,6 @@ public class MetaGroupMemberTest extends BaseMember {
     mockDataClusterServer = false;
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
-    System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
@@ -278,7 +278,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   private PullSchemaResp mockedPullTimeSeriesSchema(PullSchemaRequest request) {
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     List<String> prefixPaths = request.getPrefixPaths();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -287,12 +287,12 @@ public class MetaGroupMemberTest extends BaseMember {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
           IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
-          for (MeasurementSchema schema : schemas) {
-            schema.serializeTo(dataOutputStream);
+          for (IMeasurementSchema schema : schemas) {
+            schema.partialSerializeTo(dataOutputStream);
           }
         } else {
           dataOutputStream.writeInt(1);
-          TestUtils.getTestMeasurementSchema(0).serializeTo(dataOutputStream);
+          TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
     } catch (IOException | IllegalPathException e) {
@@ -857,7 +857,7 @@ public class MetaGroupMemberTest extends BaseMember {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
@@ -886,11 +886,14 @@ public class MetaGroupMemberTest extends BaseMember {
       for (int i = 0; i < 10; i++) {
         times[i] = i;
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         IReaderByTimestamp readerByTimestamp =
             readerFactory.getReaderByTimestamp(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 context,
                 true);
@@ -919,7 +922,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
@@ -944,11 +947,14 @@ public class MetaGroupMemberTest extends BaseMember {
 
     try {
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(TestUtils.getTestMeasurement(0));
+
       for (int i = 0; i < 10; i++) {
         ManagedSeriesReader reader =
             readerFactory.getSeriesReader(
                 new PartialPath(TestUtils.getTestSeries(i, 0)),
-                Collections.singleton(TestUtils.getTestMeasurement(0)),
+                deviceMeasurements,
                 TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
                 ValueFilter.ltEq(8.0),
@@ -1000,7 +1006,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
       request.setRegenerateIdentifier(true);
       testMetaMember.processValidHeartbeatReq(request, response);
-      assertNotEquals(10, response.getFollowerIdentifier());
+      assertTrue(response.getFollowerIdentifier() != 10);
       assertTrue(response.isRequirePartitionTable());
 
       request.setPartitionTableBytes(partitionTable.serialize());
@@ -1369,5 +1375,9 @@ public class MetaGroupMemberTest extends BaseMember {
               }
             });
     while (resultRef.get() == null) {}
+  }
+
+  public MetaGroupMember getTestMetaGroupMember() {
+    return testMetaMember;
   }
 }

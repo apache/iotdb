@@ -101,6 +101,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -117,6 +119,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
                       + (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -131,6 +135,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
                 unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + unseqFileNum
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
                     + ".tsfile"));
@@ -197,7 +203,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
         levelCompactionTsFileManagement
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionMergeTask.call();
     while (compactionMergeWorking) {
       // wait
     }
@@ -226,7 +232,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
   }
 
   /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack() {
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
     this.compactionMergeWorking = false;
   }
 }

@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- 
+
 #include <string>
 #include <vector>
-#include <exception> 
+#include <exception>
 #include <iostream>
 #include <algorithm>
 #include <map>
@@ -52,7 +52,7 @@ class IoTDBConnectionException : public std::exception
         IoTDBConnectionException() : message() {}
         IoTDBConnectionException(const char* m) : message(m) {}
         IoTDBConnectionException(std::string m) : message(m) {}
-        virtual const char* what() const throw () 
+        virtual const char* what() const throw ()
         {
             return message.c_str();
         }
@@ -76,7 +76,7 @@ public:
     std::vector<TSStatus> statusList;
 private:
     std::string message;
-    
+
 };
 
 class UnSupportedDataTypeException : public std::exception
@@ -368,7 +368,7 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
-    int64_t* timestamps;   //timestamps in this tablet
+    std::vector <int64_t> timestamps;   //timestamps in this tablet
     std::vector<std::vector<std::string>> values;
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
@@ -401,7 +401,7 @@ public:
         this->maxRowNumber = maxRowNumber;
 
         // create timestamp column
-        timestamps = new int64_t[maxRowNumber];
+        timestamps.resize(maxRowNumber);
         // create value columns
         values.resize(schemas.size());
         for (int i = 0; i < schemas.size(); i++) {
@@ -427,12 +427,12 @@ class RowRecord
 {
 public:
     int64_t timestamp;
-    std::vector<Field*> fields;
+    std::vector<Field> fields;
     RowRecord(int64_t timestamp)
     {
         this->timestamp = timestamp;
     }
-    RowRecord(int64_t timestamp, std::vector<Field*> fields) {
+    RowRecord(int64_t timestamp, std::vector<Field> &fields) {
         this->timestamp = timestamp;
         this->fields = fields;
     }
@@ -440,6 +440,11 @@ public:
     {
         this->timestamp = -1;
     }
+
+    void addField(Field &f) {
+        this->fields.push_back(f);
+    }
+
     std::string toString()
     {
         char buf[111];
@@ -448,40 +453,40 @@ public:
         for (int i = 0; i < fields.size(); i++)
         {
             ret.append("\t");
-            TSDataType::TSDataType dataType = fields[i]->dataType;
+            TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType)
             {
                 case TSDataType::BOOLEAN:{
-                    if (fields[i]->boolV) ret.append("true");
+                    if (fields[i].boolV) ret.append("true");
                     else ret.append("false");
                     break;
                 }
                 case TSDataType::INT32:{
                     char buf[111];
-                    sprintf(buf,"%d",fields[i]->intV);
+                    sprintf(buf,"%d",fields[i].intV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::INT64: {
                     char buf[111];
-                    sprintf(buf,"%lld",fields[i]->longV);
+                    sprintf(buf,"%lld",fields[i].longV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::FLOAT:{
                     char buf[111];
-                    sprintf(buf,"%f",fields[i]->floatV);
+                    sprintf(buf,"%f",fields[i].floatV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::DOUBLE:{
                     char buf[111];
-                    sprintf(buf,"%lf",fields[i]->doubleV);
+                    sprintf(buf,"%lf",fields[i].doubleV);
                     ret.append(buf);
                     break;
                 }
                 case TSDataType::TEXT: {
-                    ret.append(fields[i]->stringV);
+                    ret.append(fields[i].stringV);
                     break;
                 }
                 case TSDataType::NULLTYPE:{
@@ -518,9 +523,9 @@ private:
     std::vector<std::unique_ptr<MyStringBuffer>> valueBuffers;
     std::vector<std::unique_ptr<MyStringBuffer>> bitmapBuffers;
     RowRecord rowRecord;
-    char* currentBitmap; // used to cache the current bitmap for every column
+    char* currentBitmap = NULL; // used to cache the current bitmap for every column
     static const int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
-    
+
 public:
     SessionDataSet(){}
     SessionDataSet(std::string sql, std::vector<std::string>& columnNameList, std::vector<std::string>& columnTypeList, int64_t queryId,
@@ -547,6 +552,13 @@ public:
             this->bitmapBuffers.push_back(std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
         }
         this->tsQueryDataSet = queryDataSet;
+    }
+
+    ~SessionDataSet() {
+        if (currentBitmap != NULL) {
+            delete[] currentBitmap;
+            currentBitmap = NULL;
+        }
     }
 
     int getBatchSize();
@@ -589,7 +601,7 @@ class Session
         bool checkSorted(Tablet& tablet);
         bool checkSorted(std::vector<int64_t>& times);
         void sortTablet(Tablet& tablet);
-        void sortIndexByTimestamp(int* index, int64_t* timestamps, int length);
+        void sortIndexByTimestamp(int *index, std::vector<int64_t>& timestamps, int length);
         std::string getTimeZone();
         void setTimeZone(std::string zoneId);
         void appendValues(std::string &buffer, char* value, int size);
@@ -659,6 +671,6 @@ class Session
         void createMultiTimeseries(std::vector<std::string> paths, std::vector<TSDataType::TSDataType> dataTypes, std::vector<TSEncoding::TSEncoding> encodings, std::vector<CompressionType::CompressionType> compressors,
             std::vector<std::map<std::string, std::string>>* propsList, std::vector<std::map<std::string, std::string>>* tagsList, std::vector<std::map<std::string, std::string>>* attributesList, std::vector<std::string>* measurementAliasList);
         bool checkTimeseriesExists(std::string path);
-        SessionDataSet* executeQueryStatement(std::string sql);
+        std::unique_ptr<SessionDataSet> executeQueryStatement(std::string sql);
         void executeNonQueryStatement(std::string sql);
 };

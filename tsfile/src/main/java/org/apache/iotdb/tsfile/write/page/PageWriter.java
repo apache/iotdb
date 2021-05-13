@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class PageWriter {
     this(null, null);
   }
 
-  public PageWriter(MeasurementSchema measurementSchema) {
+  public PageWriter(IMeasurementSchema measurementSchema) {
     this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
@@ -263,7 +263,7 @@ public class PageWriter {
   }
 
   /** reset this page */
-  public void reset(MeasurementSchema measurementSchema) {
+  public void reset(IMeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
     statistics = Statistics.getStatsByType(measurementSchema.getType());

@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -34,7 +35,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Metadata of one chunk. */
-public class ChunkMetadata implements Accountable {
+public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   private String measurementUid;
 
@@ -71,6 +72,7 @@ public class ChunkMetadata implements Accountable {
   private boolean isSeq = true;
   private boolean isClosed;
   private String filePath;
+  private byte mask;
 
   private ChunkMetadata() {}
 
@@ -93,8 +95,8 @@ public class ChunkMetadata implements Accountable {
   @Override
   public String toString() {
     return String.format(
-        "measurementId: %s, datatype: %s, version: %d, " + "Statistics: %s, deleteIntervalList: %s",
-        measurementUid, tsDataType, version, statistics, deleteIntervalList);
+        "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
+        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
   }
 
   public long getNumOfPoints() {
@@ -106,6 +108,7 @@ public class ChunkMetadata implements Accountable {
    *
    * @return Byte offset of header of this chunk (includes the marker)
    */
+  @Override
   public long getOffsetOfChunkHeader() {
     return offsetOfChunkHeader;
   }
@@ -114,6 +117,7 @@ public class ChunkMetadata implements Accountable {
     return measurementUid;
   }
 
+  @Override
   public Statistics getStatistics() {
     return statistics;
   }
@@ -161,7 +165,7 @@ public class ChunkMetadata implements Accountable {
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
     // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
     // and each chunk's metadata has its own statistics
-    if (timeseriesMetadata.getTimeSeriesMetadataType() != 0) {
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
       chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
     } else {
       // if the TimeSeriesMetadataType is 0, it means it has only one chunk
@@ -171,10 +175,12 @@ public class ChunkMetadata implements Accountable {
     return chunkMetaData;
   }
 
+  @Override
   public long getVersion() {
     return version;
   }
 
+  @Override
   public void setVersion(long version) {
     this.version = version;
   }
@@ -212,6 +218,11 @@ public class ChunkMetadata implements Accountable {
     return chunkLoader;
   }
 
+  @Override
+  public boolean needSetChunkLoader() {
+    return chunkLoader == null;
+  }
+
   public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
   }
@@ -239,10 +250,12 @@ public class ChunkMetadata implements Accountable {
         measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
   }
 
+  @Override
   public boolean isModified() {
     return modified;
   }
 
+  @Override
   public void setModified(boolean modified) {
     this.modified = modified;
   }
@@ -283,10 +296,12 @@ public class ChunkMetadata implements Accountable {
     this.ramSize = calculateRamSize();
   }
 
+  @Override
   public void setSeq(boolean seq) {
     isSeq = seq;
   }
 
+  @Override
   public boolean isSeq() {
     return isSeq;
   }
@@ -305,5 +320,24 @@ public class ChunkMetadata implements Accountable {
 
   public void setFilePath(String filePath) {
     this.filePath = filePath;
+  }
+
+  @Override
+  public byte getMask() {
+    return mask;
+  }
+
+  @Override
+  public boolean isTimeColumn() {
+    return mask == TsFileConstant.TIME_COLUMN_MASK;
+  }
+
+  @Override
+  public boolean isValueColumn() {
+    return mask == TsFileConstant.VALUE_COLUMN_MASK;
+  }
+
+  public void setMask(byte mask) {
+    this.mask = mask;
   }
 }

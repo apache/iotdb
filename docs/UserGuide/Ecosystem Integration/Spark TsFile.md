@@ -19,32 +19,34 @@
 
 -->
 
-# TsFile-Spark-Connector User Guide
+## Spark-TsFile
 
-## 1. About TsFile-Spark-Connector
+### About Spark-TsFile-Connector
 
-TsFile-Spark-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.
+Spark-TsFile-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.
 
 With this connector, you can
+
 * load a single TsFile, from either the local file system or hdfs, into Spark
 * load all files in a specific directory, from either the local file system or hdfs, into Spark
 * write data from Spark into TsFile
 
-## 2. System Requirements
+### System Requirements
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |:-------------: | :-------------: | :------------: |:------------: |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
+> Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
 
-## 3. Quick Start
-### Local Mode
+### Quick Start
+#### Local Mode
 
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar
 ```
 
 Note:
@@ -54,12 +56,12 @@ Note:
 * See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 
-### Distributed Mode
+#### Distributed Mode
 
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
@@ -68,7 +70,7 @@ Note:
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
-## 4. Data Type Correspondence
+### Data Type Correspondence
 
 | TsFile data type | SparkSQL data type|
 | --------------| -------------- |
@@ -79,7 +81,7 @@ Note:
 | DOUBLE      		   | DoubleType     |
 | TEXT      				| StringType     |
 
-## 5. Schema Inference
+### Schema Inference
 
 The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is listed:
 
@@ -120,11 +122,11 @@ You can also use narrow table form which as follows: (You can see part 6 about h
 
 
 
-## 6. Scala API
+### Scala API
 
 NOTE: Remember to assign necessary read and write permissions in advance.
 
-### Example 1: read from the local file system
+* Example 1: read from the local file system
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -135,7 +137,7 @@ val narrow_df = spark.read.tsfile("test.tsfile", true)
 narrow_df.show
 ```
 
-### Example 2: read from the hadoop file system
+* Example 2: read from the hadoop file system
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -146,7 +148,7 @@ val narrow_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)
 narrow_df.show
 ```
 
-### Example 3: read from a specific directory
+* Example 3: read from a specific directory
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -158,7 +160,7 @@ Note 1: Global time ordering of all TsFiles in a directory is not supported now.
 
 Note 2: Measurements of the same name should have the same schema.
 
-### Example 4: query in wide form
+* Example 4: query in wide form
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -176,7 +178,8 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 5: query in narrow form
+* Example 5: query in narrow form
+
 ```scala
 import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
@@ -193,7 +196,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 6: write in wide form
+* Example 6: write in wide form
 
 ```scala
 // we only support wide_form table to write
@@ -207,7 +210,7 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
 newDf.show
 ```
 
-## Example 6: write in narrow form
+* Example 7: write in narrow form
 
 ```scala
 // we only support wide_form table to write
@@ -222,7 +225,7 @@ newDf.show
 ```
 
 
-## Appendix A: Old Design of Schema Inference
+Appendix A: Old Design of Schema Inference
 
 The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is:
 
@@ -242,7 +245,7 @@ A set of time-series data
 
 There are two ways to show a set of time-series data:
 
-#### the default way
+* the default way
 
 Two columns are created to store the full path of the device: time(LongType) and delta_object(StringType).
 
@@ -275,7 +278,7 @@ Next, a column is created for each Measurement to store the specific data. The S
 
 
 
-#### unfold delta_object column
+* unfold delta_object column
 
 Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. To use this display way, the parameter "delta\_object\_name" is set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column is created for each Measurement to store the specific data.
 
@@ -308,5 +311,5 @@ TsFile-Spark-Connector displays one or more TsFiles as a table in SparkSQL By Sp
 
 The writing process is to write a DataFrame as one or more TsFiles. By default, two columns need to be included: time and delta_object. The rest of the columns are used as Measurement. If user wants to write the second table structure back to TsFile, user can set the "delta\_object\_name" parameter(refer to Section 5.1 of Section 5.1 of this manual).
 
-## Appendix B: Old Note
+Appendix B: Old Note
 NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.

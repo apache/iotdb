@@ -69,7 +69,6 @@ public class TsFileWriteWithTSRecord {
           tsRecord.addTuple(dPoint1);
           tsRecord.addTuple(dPoint2);
           tsRecord.addTuple(dPoint3);
-
           // write TSRecord
           tsFileWriter.write(tsRecord);
         }

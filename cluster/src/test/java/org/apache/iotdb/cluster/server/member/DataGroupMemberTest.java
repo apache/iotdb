@@ -48,6 +48,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -85,7 +87,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import com.google.common.collect.Lists;
@@ -105,6 +107,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,6 +117,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.iotdb.cluster.common.TestUtils.getTestMeasurement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -245,11 +249,11 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void requestCommitIndex(
-                    Node header, AsyncMethodCallback<Long> resultHandler) {
+                    Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
                   new Thread(
                           () -> {
                             if (enableSyncLeader) {
-                              resultHandler.onComplete(-1L);
+                              resultHandler.onComplete(new RequestCommitIndexResponse());
                             } else {
                               resultHandler.onError(new TestException());
                             }
@@ -458,7 +462,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testApplySnapshot()
       throws IOException, WriteProcessException, SnapshotInstallationException,
-          QueryProcessException, IllegalPathException {
+          QueryProcessException, IllegalPathException, TriggerExecutionException {
     System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -671,7 +675,7 @@ public class DataGroupMemberTest extends BaseMember {
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
       request.setHeader(TestUtils.getNode(0));
-      AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
+      AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);
@@ -702,7 +706,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -727,6 +731,10 @@ public class DataGroupMemberTest extends BaseMember {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -764,7 +772,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -789,6 +797,10 @@ public class DataGroupMemberTest extends BaseMember {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
+
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -826,7 +838,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -852,6 +864,9 @@ public class DataGroupMemberTest extends BaseMember {
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
     request.setAscending(true);
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -889,7 +904,7 @@ public class DataGroupMemberTest extends BaseMember {
     InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -915,6 +930,9 @@ public class DataGroupMemberTest extends BaseMember {
     filter.serialize(dataOutputStream);
     request.setTimeFilterBytes(byteArrayOutputStream.toByteArray());
     request.setAscending(true);
+    Set<String> deviceMeasurements = new HashSet<>();
+    deviceMeasurements.add(getTestMeasurement(0));
+    request.setDeviceMeasurements(deviceMeasurements);
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
@@ -1117,7 +1135,9 @@ public class DataGroupMemberTest extends BaseMember {
       request.setQueryId(queryContext.getQueryId());
       request.setRequestor(TestUtils.getNode(0));
       request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
-      request.setDeviceMeasurements(Collections.singleton(TestUtils.getTestMeasurement(0)));
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(getTestMeasurement(0));
+      request.setDeviceMeasurements(deviceMeasurements);
       request.setAscending(true);
 
       DataGroupMember dataGroupMember;

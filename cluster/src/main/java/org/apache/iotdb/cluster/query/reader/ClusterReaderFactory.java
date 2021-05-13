@@ -51,6 +51,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -315,7 +316,7 @@ public class ClusterReaderFactory {
                 context,
                 dataGroupMember,
                 ascending);
-        partialPathPointReaderMap.put(partialPath.getFullPath(), seriesPointReader);
+        partialPathPointReaderMap.put(PartialPath.getExactFullPath(partialPath), seriesPointReader);
       }
 
       if (logger.isDebugEnabled()) {
@@ -577,10 +578,7 @@ public class ClusterReaderFactory {
       Set<String> fullPaths = Sets.newHashSet();
       dataSourceInfo
           .getPartialPaths()
-          .forEach(
-              partialPath -> {
-                fullPaths.add(partialPath.getFullPath());
-              });
+          .forEach(partialPath -> fullPaths.add(partialPath.getFullPath()));
       return new MultEmptyReader(fullPaths);
     }
     throw new StorageEngineException(
@@ -662,7 +660,17 @@ public class ClusterReaderFactory {
     List<String> fullPaths = Lists.newArrayList();
     paths.forEach(
         path -> {
-          fullPaths.add(path.getFullPath());
+          if (path instanceof VectorPartialPath) {
+            StringBuilder builder = new StringBuilder(path.getFullPath());
+            List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsPathList();
+            for (int i = 0; i < pathList.size(); i++) {
+              builder.append(":");
+              builder.append(pathList.get(i).getFullPath());
+            }
+            fullPaths.add(builder.toString());
+          } else {
+            fullPaths.add(path.getFullPath());
+          }
         });
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
@@ -994,7 +1002,7 @@ public class ClusterReaderFactory {
               dataGroupMember.getHeader(),
               ascending);
       partialPathBatchReaderMap.put(
-          partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+          PartialPath.getExactFullPath(partialPath), new SeriesRawDataBatchReader(seriesReader));
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

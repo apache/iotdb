@@ -21,15 +21,33 @@ package org.apache.iotdb.cluster.client.async;
 
 import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient.FactoryAsync;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 
 public class AsyncMetaHeartbeatClientTest {
+
+  private final ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+  private boolean isAsyncServer;
+
+  @Before
+  public void setUp() {
+    isAsyncServer = config.isUseAsyncServer();
+    config.setUseAsyncServer(true);
+  }
+
+  @After
+  public void tearDown() {
+    config.setUseAsyncServer(isAsyncServer);
+  }
 
   @Test
   public void test() throws IOException {

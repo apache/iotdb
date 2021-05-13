@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -44,6 +46,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
+import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
@@ -88,8 +91,16 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
+      try {
+        queryPlan.transformPaths(IoTDB.metaManager);
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
       return rawDataQueryExecutor.executeWithValueFilter(context);
     }
+
+    // Currently, we only group the vector partial paths for raw query without value filter
+    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
@@ -154,16 +165,9 @@ public class QueryRouter implements IQueryRouter {
     }
 
     GroupByEngineDataSet dataSet = null;
-    long unit = groupByTimePlan.getInterval();
-    long slidingStep = groupByTimePlan.getSlidingStep();
-    long startTime = groupByTimePlan.getStartTime();
-    long endTime = groupByTimePlan.getEndTime();
-
     IExpression expression = groupByTimePlan.getExpression();
     List<PartialPath> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
-
-    GlobalTimeExpression timeExpression =
-        new GlobalTimeExpression(new GroupByFilter(unit, slidingStep, startTime, endTime));
+    GlobalTimeExpression timeExpression = getTimeExpression(groupByTimePlan);
 
     if (expression == null) {
       expression = timeExpression;
@@ -189,6 +193,27 @@ public class QueryRouter implements IQueryRouter {
       return groupByLevelWithoutTimeIntervalDataSet(context, groupByTimePlan, dataSet);
     }
     return dataSet;
+  }
+
+  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan)
+      throws QueryProcessException {
+    if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
+      if (!plan.isAscending()) {
+        throw new QueryProcessException("Group by month doesn't support order by time desc now.");
+      }
+      return new GlobalTimeExpression(
+          (new GroupByMonthFilter(
+              plan.getInterval(),
+              plan.getSlidingStep(),
+              plan.getStartTime(),
+              plan.getEndTime(),
+              plan.isSlidingStepByMonth(),
+              plan.isIntervalByMonth())));
+    } else {
+      return new GlobalTimeExpression(
+          new GroupByFilter(
+              plan.getInterval(), plan.getSlidingStep(), plan.getStartTime(), plan.getEndTime()));
+    }
   }
 
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(

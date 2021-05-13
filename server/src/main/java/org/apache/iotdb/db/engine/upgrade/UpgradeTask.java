@@ -88,7 +88,7 @@ public class UpgradeTask extends WrappedRunnable {
     UpgradeLog.writeUpgradeLogFile(
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
-      TsFileOnlineUpgradeTool.upgradeOneTsfile(upgradeResource, upgradedResources);
+      TsFileOnlineUpgradeTool.upgradeOneTsFile(upgradeResource, upgradedResources);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } finally {
