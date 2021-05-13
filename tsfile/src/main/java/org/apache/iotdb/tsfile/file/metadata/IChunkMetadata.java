@@ -71,4 +71,8 @@ public interface IChunkMetadata {
   int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException;
 
   byte getMask();
+
+  boolean isTimeColumn();
+
+  boolean isValueColumn();
 }

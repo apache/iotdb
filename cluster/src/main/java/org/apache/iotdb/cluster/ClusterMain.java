@@ -29,12 +29,14 @@ import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
@@ -106,6 +108,9 @@ public class ClusterMain {
         preStartCustomize();
         metaServer.start();
         metaServer.buildCluster();
+        // Currently, we do not register ClusterInfoService as a JMX Bean,
+        // so we use startService() rather than start()
+        ClusterInfoServer.getInstance().startService();
       } catch (TTransportException
           | StartupException
           | QueryProcessException
@@ -120,6 +125,9 @@ public class ClusterMain {
         preStartCustomize();
         metaServer.start();
         metaServer.joinCluster();
+        // Currently, we do not register ClusterInfoService as a JMX Bean,
+        // so we use startService() rather than start()
+        ClusterInfoServer.getInstance().startService();
       } catch (TTransportException
           | StartupException
           | QueryProcessException
@@ -299,5 +307,10 @@ public class ClusterMain {
             }
           }
         });
+  }
+
+  @TestOnly
+  public static void setMetaClusterServer(MetaClusterServer metaClusterServer) {
+    metaServer = metaClusterServer;
   }
 }
