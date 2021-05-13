@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -53,8 +54,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       "failed to concat series paths because the given query operator didn't have prefix paths";
 
   @Override
-  public Operator transform(Operator operator, int maxDeduplicatedPathNum)
+  public Operator transform(Operator operator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
+    int maxDeduplicatedPathNum =
+        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
+    if (operator instanceof QueryOperator && ((QueryOperator) operator).isLastQuery()) {
+      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
+      // while constructing logical plan
+      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
+      // set it to Integer.MAX_VALUE - 1
+      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    }
+
     QueryOperator queryOperator = (QueryOperator) operator;
     FromOperator from = queryOperator.getFromOperator();
     List<PartialPath> prefixPaths;

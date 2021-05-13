@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -53,6 +54,8 @@ public class Planner {
       throws QueryProcessException {
     // from SQL to logical operator
     Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator, fetchSize);
     // from logical operator to physical plan
@@ -64,6 +67,8 @@ public class Planner {
       throws IllegalPathException, QueryProcessException {
     // from TSRawDataQueryReq to logical operator
     Operator operator = LogicalGenerator.generate(rawDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator, rawDataQueryReq.fetchSize);
     // from logical operator to physical plan
