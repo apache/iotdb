@@ -610,7 +610,7 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new SQLException("Not support getMoreResults");
+    return false;
   }
 
   @Override
