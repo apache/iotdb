@@ -25,23 +25,29 @@ public interface BatchPlan {
   /**
    * Mark the sub-plan at position i as executed.
    *
-   * @param i
+   * @param i the position of the sub-plan
    */
   void setIsExecuted(int i);
 
   /**
    * Mark the sub-plan at position i as not executed.
    *
-   * @param i
+   * @param i the position of the sub-plan
    */
   void unsetIsExecuted(int i);
 
   /**
+   * Whether the sub-plan at position i has been executed.
+   *
+   * @param i the position of the sub-plan
    * @return whether the sub-plan at position i has been executed.
-   * @param i
    */
   boolean isExecuted(int i);
 
-  /** @return how many sub-plans are in the plan. */
+  /**
+   * Return how many sub-plans are in the plan
+   *
+   * @return how many sub-plans are in the plan.
+   */
   int getBatchSize();
 }
