@@ -58,10 +58,13 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -72,11 +75,14 @@ import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -87,12 +93,19 @@ import static org.junit.Assert.assertTrue;
 
 public class DataLogApplierTest extends IoTDBTest {
 
+  private static final Logger logger = LoggerFactory.getLogger(DataLogApplierTest.class);
   private boolean partialWriteEnabled;
 
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
         @Override
         public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
+          try {
+            // for testApplyCreateMultiTimeseiresWithPulling()
+            IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg2"));
+          } catch (MetadataException e) {
+            logger.error("Cannot set sg for test", e);
+          }
           return true;
         }
 
@@ -337,5 +350,27 @@ public class DataLogApplierTest extends IoTDBTest {
     assertEquals(
         "Storage group is not set for current seriesPath: [root.test20]",
         log.getException().getMessage());
+  }
+
+  @Test
+  public void testApplyCreateMultiTimeseiresWithPulling() throws MetadataException {
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg1"));
+    CreateMultiTimeSeriesPlan multiTimeSeriesPlan = new CreateMultiTimeSeriesPlan();
+    multiTimeSeriesPlan.setIndexes(Collections.emptyList());
+    multiTimeSeriesPlan.setPaths(
+        Arrays.asList(
+            new PartialPath("root.sg1.s1"),
+            // root.sg2 should be pulled
+            new PartialPath("root.sg2.s1")));
+    multiTimeSeriesPlan.setCompressors(
+        Arrays.asList(CompressionType.UNCOMPRESSED, CompressionType.UNCOMPRESSED));
+    multiTimeSeriesPlan.setDataTypes(Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE));
+    multiTimeSeriesPlan.setEncodings(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
+
+    PhysicalPlanLog log = new PhysicalPlanLog(multiTimeSeriesPlan);
+    // the applier should sync meta leader to get root.sg2 and report no error
+    applier.apply(log);
+    assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
+    assertNull(log.getException());
   }
 }

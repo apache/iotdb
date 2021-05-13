@@ -1237,7 +1237,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowsPlan plan) throws QueryProcessException {
     for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
-      if (plan.getResults().containsKey(i)) {
+      if (plan.getResults().containsKey(i) || plan.isExecuted(i)) {
         continue;
       }
       try {
@@ -1290,7 +1290,8 @@ public class PlanExecutor implements IPlanExecutor {
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
     for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
-      if (insertMultiTabletPlan.getResults().containsKey(i)) {
+      if (insertMultiTabletPlan.getResults().containsKey(i)
+          || insertMultiTabletPlan.isExecuted(i)) {
         continue;
       }
       insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
@@ -1418,7 +1419,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws BatchProcessException {
     int dataTypeIdx = 0;
     for (int i = 0; i < multiPlan.getPaths().size(); i++) {
-      if (multiPlan.getResults().containsKey(i)) {
+      if (multiPlan.getResults().containsKey(i) || multiPlan.isExecuted(i)) {
         continue;
       }
       PartialPath path = multiPlan.getPaths().get(i);
