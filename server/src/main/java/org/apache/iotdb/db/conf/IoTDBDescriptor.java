@@ -279,9 +279,17 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
-      conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
-          .getProperty("avg_series_point_number_threshold",
-              Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+      conf.setAvgSeriesPointNumberThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "avg_series_point_number_threshold",
+                  Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
 
       conf.setCheckPeriodWhenInsertBlocked(Integer.parseInt(properties
           .getProperty("check_period_when_insert_blocked",
@@ -760,6 +768,13 @@ public class IoTDBDescriptor {
       // update debug_state
       conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
 
+      // update enable_continuous_compaction
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
+
+      // update merge_write_throughput_mb_per_sec
+      conf.setMergeWriteThroughputMbPerSec(
+          Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));

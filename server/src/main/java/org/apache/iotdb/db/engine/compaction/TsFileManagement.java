@@ -68,6 +68,9 @@ public abstract class TsFileManagement {
 
   private long mergeStartTime;
 
+  /** whether execute merge chunk in this task */
+  protected boolean isMergeExecutedInCurrentTask = false;
+
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
@@ -161,7 +164,7 @@ public abstract class TsFileManagement {
     @Override
     public void run() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
     }
   }
 
@@ -176,7 +179,9 @@ public abstract class TsFileManagement {
     @Override
     public void run() {
       recover();
-      closeCompactionMergeCallBack.call();
+      // in recover logic, we do not have to start next compaction task, and in this case the param
+      // time partition is useless, we can just pass 0L
+      closeCompactionMergeCallBack.call(false, 0L);
     }
   }
 
