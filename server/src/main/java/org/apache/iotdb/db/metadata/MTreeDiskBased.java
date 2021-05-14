@@ -183,6 +183,7 @@ public class MTreeDiskBased implements MTreeInterface {
       MeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       if (child != null) {
+        unlockMNode(child);
         metadataDiskManager.replaceChild(cur, measurementMNode.getName(), measurementMNode, true);
       } else {
         metadataDiskManager.addChild(cur, leafName, measurementMNode, true);
