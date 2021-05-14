@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.List;
 
 public class NumberLiteralOperand extends Expression {
 
@@ -33,6 +36,11 @@ public class NumberLiteralOperand extends Expression {
   @Override
   public TSDataType dataType() {
     return TSDataType.DOUBLE;
+  }
+
+  @Override
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    throw new UnsupportedOperationException();
   }
 
   @Override

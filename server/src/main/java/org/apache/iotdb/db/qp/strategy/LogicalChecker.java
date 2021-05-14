@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 
 public class LogicalChecker {
 
@@ -28,7 +31,54 @@ public class LogicalChecker {
    * TODO: make check() an abstract method and call check() in this method or outside the
    * LogicalChecker.
    */
-  public static void check(Operator operator) throws LogicalOperatorException {}
+  public static void check(Operator operator) throws LogicalOperatorException {
+    if (operator instanceof QueryOperator) {
+      checkQueryOperator((QueryOperator) operator);
+    }
+  }
+
+  private static void checkQueryOperator(QueryOperator queryOperator)
+      throws LogicalOperatorException {
+    checkSelectOperator(queryOperator);
+  }
+
+  private static void checkSelectOperator(QueryOperator queryOperator)
+      throws LogicalOperatorException {
+    checkAggregation(queryOperator);
+    checkAlignByDevice(queryOperator);
+  }
+
+  private static void checkAggregation(QueryOperator queryOperator)
+      throws LogicalOperatorException {
+    SelectOperator selectOperator = queryOperator.getSelectOperator();
+    if (!selectOperator.getResultColumns().isEmpty()
+        && selectOperator.getPaths().size() != selectOperator.getAggregationFunctions().size()) {
+      throw new LogicalOperatorException(
+          "Common queries and aggregated queries are not allowed to appear at the same time");
+    }
+  }
+
+  private static void checkAlignByDevice(QueryOperator queryOperator)
+      throws LogicalOperatorException {
+    if (!queryOperator.isAlignByDevice()) {
+      return;
+    }
+
+    SelectOperator selectOperator = queryOperator.getSelectOperator();
+    if (selectOperator.hasTimeSeriesGeneratingFunction()) {
+      throw new LogicalOperatorException("ALIGN BY DEVICE clause is not supported in UDF queries.");
+    }
+
+    for (PartialPath path : selectOperator.getPaths()) {
+      String device = path.getDevice();
+      if (!device.isEmpty()) {
+        throw new LogicalOperatorException(
+            "The paths of the SELECT clause can only be single level. In other words, "
+                + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                + " For more details please refer to the SQL document.");
+      }
+    }
+  }
 
   private LogicalChecker() {}
 }

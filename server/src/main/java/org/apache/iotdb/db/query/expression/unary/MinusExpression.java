@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MinusExpression extends Expression {
 
@@ -38,6 +42,15 @@ public class MinusExpression extends Expression {
   @Override
   public TSDataType dataType() throws MetadataException {
     return expression.dataType();
+  }
+
+  @Override
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
+    expression.concat(prefixPaths, resultExpressionsForRecursion);
+    for (Expression resultExpression : resultExpressionsForRecursion) {
+      resultExpressions.add(new MinusExpression(resultExpression));
+    }
   }
 
   @Override

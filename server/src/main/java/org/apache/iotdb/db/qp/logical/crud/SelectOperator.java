@@ -81,6 +81,9 @@ public final class SelectOperator extends Operator {
 
   public void setResultColumns(List<ResultColumn> resultColumns) {
     this.resultColumns = resultColumns;
+
+    pathsCache = null;
+    aggregationFunctionsCache = null;
   }
 
   public List<ResultColumn> getResultColumns() {

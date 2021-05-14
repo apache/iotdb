@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.query.expression;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class ResultColumn {
 
   private final Expression expression;
@@ -34,8 +39,20 @@ public class ResultColumn {
     alias = null;
   }
 
+  public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns) {
+    List<Expression> resultExpressions = new ArrayList<>();
+    expression.concat(prefixPaths, resultExpressions);
+    for (Expression resultExpression : resultExpressions) {
+      resultColumns.add(new ResultColumn(resultExpression, alias));
+    }
+  }
+
   public Expression getExpression() {
     return expression;
+  }
+
+  public String getAlias() {
+    return alias;
   }
 
   public String getResultColumnName() {

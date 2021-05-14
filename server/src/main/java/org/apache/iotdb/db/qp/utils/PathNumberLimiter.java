@@ -17,28 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression;
+package org.apache.iotdb.db.qp.utils;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.List;
-
-public abstract class Expression {
-
-  protected boolean isAggregationFunctionExpression = false;
-  protected boolean isTimeSeriesGeneratingFunctionExpression = false;
-
-  public boolean isAggregationFunctionExpression() {
-    return isAggregationFunctionExpression;
-  }
-
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return isTimeSeriesGeneratingFunctionExpression;
-  }
-
-  public abstract TSDataType dataType() throws MetadataException;
-
-  public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
-}
+public class PathNumberLimiter {}

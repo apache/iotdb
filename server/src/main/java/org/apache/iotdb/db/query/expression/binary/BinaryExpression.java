@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class BinaryExpression extends Expression {
 
@@ -38,8 +42,41 @@ public abstract class BinaryExpression extends Expression {
    * <p>TODO: This is just a simple implementation and should be optimized later.
    */
   @Override
-  public TSDataType dataType() {
+  public final TSDataType dataType() {
     return TSDataType.DOUBLE;
+  }
+
+  @Override
+  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    List<Expression> leftExpressions = new ArrayList<>();
+    leftExpression.concat(prefixPaths, leftExpressions);
+
+    List<Expression> rightExpressions = new ArrayList<>();
+    rightExpression.concat(prefixPaths, rightExpressions);
+
+    for (Expression le : leftExpressions) {
+      for (Expression re : resultExpressions) {
+        switch (operator()) {
+          case "+":
+            resultExpressions.add(new AdditionExpression(le, re));
+            break;
+          case "-":
+            resultExpressions.add(new SubtractionExpression(le, re));
+            break;
+          case "*":
+            resultExpressions.add(new MultiplicationExpression(le, re));
+            break;
+          case "/":
+            resultExpressions.add(new DivisionExpression(le, re));
+            break;
+          case "%":
+            resultExpressions.add(new ModuloExpression(le, re));
+            break;
+          default:
+            throw new UnsupportedOperationException();
+        }
+      }
+    }
   }
 
   @Override

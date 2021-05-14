@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,6 +97,25 @@ public class FunctionExpression extends Expression {
   public TSDataType dataType() {
     // TODO: the expression type is determined in runtime
     throw new NotImplementedException();
+  }
+
+  @Override
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
+
+    for (Expression suffixExpression : expressions) {
+      List<Expression> resultExpressionsForRecursion = new ArrayList<>();
+      suffixExpression.concat(prefixPaths, resultExpressionsForRecursion);
+      resultExpressionsForRecursionList.add(resultExpressionsForRecursion);
+    }
+
+    List<List<Expression>> functionExpressions = new ArrayList<>();
+    ConcatPathOptimizer.cartesianProduct(
+        resultExpressionsForRecursionList, functionExpressions, 0, new ArrayList<>());
+    for (List<Expression> functionExpression : functionExpressions) {
+      resultExpressions.add(
+          new FunctionExpression(functionName, functionAttributes, functionExpression));
+    }
   }
 
   public List<TSDataType> getDataTypes() throws MetadataException {

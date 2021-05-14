@@ -25,6 +25,8 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.List;
+
 public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
@@ -48,6 +50,17 @@ public class TimeSeriesOperand extends Expression {
       dataType = IoTDB.metaManager.getSeriesType(path);
     }
     return dataType;
+  }
+
+  @Override
+  public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    for (PartialPath prefixPath : prefixPaths) {
+      PartialPath fullPath = prefixPath.concatPath(path);
+      if (path.isTsAliasExists()) {
+        fullPath.setTsAlias(path.getTsAlias());
+      }
+      resultExpressions.add(new TimeSeriesOperand(fullPath));
+    }
   }
 
   @Override
