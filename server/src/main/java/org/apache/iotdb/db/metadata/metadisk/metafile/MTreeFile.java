@@ -35,7 +35,7 @@ public class MTreeFile {
   private long rootPosition;
   private long firstStorageGroupPosition;
   private long firstTimeseriesPosition;
-  private long firstFreePosition;
+  private volatile long firstFreePosition;
   private int mNodeCount;
   private int storageGroupCount;
   private int timeseriesCount;
