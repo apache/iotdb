@@ -329,7 +329,7 @@ public class IoTDBConfig {
    * much smaller than the permitted max open file num of each process controlled by operator
    * system(65535 in most system).
    */
-  private int maxOpenFileNumInEachUnseqCompaction = 2000;
+  private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -1473,12 +1473,13 @@ public class IoTDBConfig {
     this.unseqLevelNum = unseqLevelNum;
   }
 
-  public int getMaxOpenFileNumInEachUnseqCompaction() {
-    return maxOpenFileNumInEachUnseqCompaction;
+  public int getMaxSelectUnseqFileNumInEachUnseqCompaction() {
+    return maxSelectUnseqFileNumInEachUnseqCompaction;
   }
 
-  public void setMaxOpenFileNumInEachUnseqCompaction(int maxOpenFileNumInEachUnseqCompaction) {
-    this.maxOpenFileNumInEachUnseqCompaction = maxOpenFileNumInEachUnseqCompaction;
+  public void setMaxSelectUnseqFileNumInEachUnseqCompaction(
+      int maxSelectUnseqFileNumInEachUnseqCompaction) {
+    this.maxSelectUnseqFileNumInEachUnseqCompaction = maxSelectUnseqFileNumInEachUnseqCompaction;
   }
 
   public int getMergeChunkSubThreadNum() {
