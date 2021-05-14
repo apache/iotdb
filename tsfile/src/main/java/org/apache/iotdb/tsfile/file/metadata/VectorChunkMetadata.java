@@ -103,6 +103,20 @@ public class VectorChunkMetadata implements IChunkMetadata {
   }
 
   @Override
+  public boolean needSetChunkLoader() {
+    if (timeChunkMetadata.needSetChunkLoader()) {
+      return true;
+    } else {
+      for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+        if (chunkMetadata.needSetChunkLoader()) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  @Override
   public void setChunkLoader(IChunkLoader chunkLoader) {
     timeChunkMetadata.setChunkLoader(chunkLoader);
     for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
