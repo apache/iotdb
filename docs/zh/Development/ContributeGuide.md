@@ -144,13 +144,13 @@ import -> Maven -> Existing Maven Projects
 
 # 常见编译错误
 
-1. 无法下载 thrift-* 等文件, 例如 `Could not get content
-org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
+无法下载 thrift-* 等文件, 例如 `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
 这一般是网络问题，这时候需要手动下载上述文件：
 
   * 根据以下网址手动下载上述文件;
-      * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
-      * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-MacOS
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu
   
  * 将该文件拷贝到thrift/target/tools/目录下 
  * 重新执行maven的编译命令
