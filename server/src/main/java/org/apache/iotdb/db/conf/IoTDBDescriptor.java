@@ -285,87 +285,11 @@ public class IoTDBDescriptor {
                   "avg_series_point_number_threshold",
                   Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
-      conf.setCheckPeriodWhenInsertBlocked(
-          Integer.parseInt(
-              properties.getProperty(
-                  "check_period_when_insert_blocked",
-                  Integer.toString(conf.getCheckPeriodWhenInsertBlocked()))));
-
-      conf.setMaxWaitingTimeWhenInsertBlocked(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_waiting_time_when_insert_blocked",
-                  Integer.toString(conf.getMaxWaitingTimeWhenInsertBlocked()))));
-
-      conf.setEstimatedSeriesSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "estimated_series_size", Integer.toString(conf.getEstimatedSeriesSize()))));
-
-      conf.setIoTaskQueueSizeForFlushing(
-          Integer.parseInt(
-              properties.getProperty(
-                  "io_task_queue_size_for_flushing",
-                  Integer.toString(conf.getIoTaskQueueSizeForFlushing()))));
-
-      conf.setMergeChunkPointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_chunk_point_number",
-                  Integer.toString(conf.getMergeChunkPointNumberThreshold()))));
-
-      conf.setMergePagePointNumberThreshold(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_page_point_number",
-                  Integer.toString(conf.getMergePagePointNumberThreshold()))));
-
-      conf.setCompactionStrategy(
-          CompactionStrategy.valueOf(
-              properties.getProperty(
-                  "compaction_strategy", conf.getCompactionStrategy().toString())));
-
-      conf.setEnableUnseqCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_unseq_compaction", Boolean.toString(conf.isEnableUnseqCompaction()))));
-
       conf.setEnableContinuousCompaction(
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_continuous_compaction",
                   Boolean.toString(conf.isEnableContinuousCompaction()))));
-
-      conf.setSeqLevelNum(
-          Integer.parseInt(
-              properties.getProperty("seq_level_num", Integer.toString(conf.getSeqLevelNum()))));
-
-      conf.setSeqFileNumInEachLevel(
-          Integer.parseInt(
-              properties.getProperty(
-                  "seq_file_num_in_each_level",
-                  Integer.toString(conf.getSeqFileNumInEachLevel()))));
-
-      conf.setUnseqLevelNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "unseq_level_num", Integer.toString(conf.getUnseqLevelNum()))));
-
-      conf.setUnseqFileNumInEachLevel(
-          Integer.parseInt(
-              properties.getProperty(
-                  "unseq_file_num_in_each_level",
-                  Integer.toString(conf.getUnseqFileNumInEachLevel()))));
-
-      conf.setSyncEnable(
-          Boolean.parseBoolean(
-              properties.getProperty("is_sync_enable", Boolean.toString(conf.isSyncEnable()))));
-
-      conf.setSyncServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("sync_server_port", Integer.toString(conf.getSyncServerPort()))
-                  .trim()));
 
       conf.setCheckPeriodWhenInsertBlocked(Integer.parseInt(properties
           .getProperty("check_period_when_insert_blocked",
