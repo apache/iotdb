@@ -751,6 +751,14 @@ public class SessionConnection {
     client.myTest();
   }
 
+  public void optimize(String device, String method) throws TException {
+    client.optimize(device, method);
+  }
+
+  public void useLayout(String device) throws TException {
+    client.useLayout(device);
+  }
+
   public void performDiskEvaluation() throws TException {
     client.performDiskEvaluation();
   }

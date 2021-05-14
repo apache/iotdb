@@ -1705,6 +1705,14 @@ public class Session {
     defaultSessionConnection.myTest();
   }
 
+  public void optimize(String device, String method) throws TException {
+    defaultSessionConnection.optimize(device, method);
+  }
+
+  public void useLayout(String device) throws TException {
+    defaultSessionConnection.useLayout(device);
+  }
+
   public void evaluateDisk() throws TException {
     defaultSessionConnection.performDiskEvaluation();
   }
