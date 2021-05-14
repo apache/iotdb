@@ -118,7 +118,6 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.FromClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FullMergeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FullPathContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.FunctionAttributeContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.FunctionClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GrantRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.GrantUserContext;
@@ -222,7 +221,6 @@ import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.MinusExpression;
-import org.apache.iotdb.db.query.expression.unary.NumberLiteralOperand;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -1044,14 +1042,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(ExpressionContext context) {
     // unary
-    if (context.numberLiteral() != null) {
-      return new NumberLiteralOperand(Double.parseDouble(context.numberLiteral().getText()));
+    if (context.functionName != null) {
+      return parseFunctionExpression(context);
     }
     if (context.suffixPath() != null) {
       return new TimeSeriesOperand(parseSuffixPath(context.suffixPath()));
-    }
-    if (context.functionClause() != null) {
-      return parseFunctionExpression(context.functionClause());
     }
     if (context.unary != null) {
       return context.MINUS() != null
@@ -1081,7 +1076,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     throw new UnsupportedOperationException();
   }
 
-  private Expression parseFunctionExpression(FunctionClauseContext functionClause) {
+  private Expression parseFunctionExpression(ExpressionContext functionClause) {
     FunctionExpression functionExpression =
         new FunctionExpression(functionClause.functionName.getText());
 

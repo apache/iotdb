@@ -115,22 +115,12 @@ resultColumn
    ;
 
 expression
-   : numberLiteral
-   | suffixPath
-   | functionClause
-   | LR_BRACKET unary=expression RR_BRACKET
-   | (PLUS | MINUS) unary=expression
+   : (PLUS | MINUS) unary=expression
    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-   ;
-
-numberLiteral
-   : MINUS? realLiteral
-   | MINUS? INT
-   ;
-
-functionClause
-   : functionName=ID LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+   | suffixPath
+   | LR_BRACKET unary=expression RR_BRACKET
    ;
 
 functionAttribute

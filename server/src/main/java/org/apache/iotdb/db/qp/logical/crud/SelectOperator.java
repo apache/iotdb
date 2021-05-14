@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
@@ -94,7 +95,15 @@ public final class SelectOperator extends Operator {
     if (pathsCache == null) {
       pathsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {
-        pathsCache.add(((TimeSeriesOperand) resultColumn.getExpression()).getPath());
+        Expression expression = resultColumn.getExpression();
+        if (expression instanceof TimeSeriesOperand) {
+          pathsCache.add(((TimeSeriesOperand) resultColumn.getExpression()).getPath());
+        } else {
+          TimeSeriesOperand timeSeriesOperand =
+              (TimeSeriesOperand)
+                  ((FunctionExpression) resultColumn.getExpression()).getExpressions().get(0);
+          pathsCache.add(timeSeriesOperand.getPath());
+        }
       }
     }
     return pathsCache;
