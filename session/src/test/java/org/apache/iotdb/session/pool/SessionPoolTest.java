@@ -224,14 +224,15 @@ public class SessionPoolTest {
       pool.close();
       return;
     } catch (StatementExecutionException e) {
-      // I do not why? the first call wrapper.hasNext() will cause InterruptedException and IoTDB warps
+      // I do not why? the first call wrapper.hasNext() will cause InterruptedException and IoTDB
+      // warps
       // it as StatementExecutionException, the second call can make sure that the thrift server's
       // connection is closed.
-      try{
+      try {
         while (wrapper.hasNext()) {
           wrapper.next();
         }
-      } catch (IoTDBConnectionException ec){
+      } catch (IoTDBConnectionException ec) {
         pool.closeResultSet(wrapper);
         EnvironmentUtils.reactiveDaemon();
         correctQuery(pool);
