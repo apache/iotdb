@@ -19,17 +19,6 @@
 
 package org.apache.iotdb.jdbc;
 
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
-
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -40,7 +29,20 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.apache.thrift.TException;
+
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
 
 public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
