@@ -372,14 +372,6 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
-        && seqTsFileResources.size() > 0) {
-      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
-        executeCompaction(
-            timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-      }
-    }
   }
 
   private void recoverCompaction() {
