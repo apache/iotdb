@@ -107,8 +107,12 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_CLASS = "class name";
   public static final String COLUMN_TRIGGER_ATTRIBUTES = "attributes";
 
+  public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
+  public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
+
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
+  public static final String ALIGN_TIMESERIES_PREFIX = "$#$";
 
   // sdt parameters
   public static final String LOSS = "loss";
@@ -132,6 +136,7 @@ public class IoTDBConstant {
   public static final String TRACING_LOG = "tracing.txt";
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
+  public static final String TRIGGER_FOLDER_NAME = "trigger";
 
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
@@ -143,4 +148,12 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+
+  // change tsFile name
+  public static final int FILE_NAME_SUFFIX_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_TIME_INDEX = 0;
+  public static final int FILE_NAME_SUFFIX_VERSION_INDEX = 1;
+  public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
+  public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
+  public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 }

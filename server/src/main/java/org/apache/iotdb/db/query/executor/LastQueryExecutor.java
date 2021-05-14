@@ -46,6 +46,9 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,6 +66,7 @@ public class LastQueryExecutor {
   protected IExpression expression;
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -148,7 +152,13 @@ public class LastQueryExecutor {
     List<TSDataType> nonCachedDataTypes = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
         readLastPairsFromCache(
-            seriesPaths, dataTypes, filter, cacheAccessors, nonCachedPaths, nonCachedDataTypes);
+            seriesPaths,
+            dataTypes,
+            filter,
+            cacheAccessors,
+            nonCachedPaths,
+            nonCachedDataTypes,
+            context.isDebug());
     if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
@@ -185,6 +195,12 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
+            if (context.isDebug()) {
+              DEBUG_LOGGER.info(
+                  "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                  seriesPaths,
+                  resultContainer.get(i).right.getTimestamp());
+            }
           }
         }
       }
@@ -198,7 +214,8 @@ public class LastQueryExecutor {
       Filter filter,
       List<LastCacheAccessor> cacheAccessors,
       List<PartialPath> restPaths,
-      List<TSDataType> restDataType) {
+      List<TSDataType> restDataType,
+      boolean debugOn) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
@@ -219,8 +236,20 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       }
     }
     return resultContainer;

@@ -19,22 +19,10 @@
 
 -->
 
-# Zeppelin-IoTDB 解释器
-
-## 概要
-
-* Zeppelin简介
-* IoTDB Zeppelin 解释器
-  * 系统环境要求
-  * 编译解释器
-  * 安装解释器
-  * 启动Zeppelin和IoTDB
-* 使用Zeppelin-IoTDB解释器
-* 解释器配置项
+## Zeppelin-IoTDB
 
 
-
-## 2. Zeppelin简介
+### Zeppelin简介
 
 Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可以通过Zeppelin连接数据源并使用SQL、Scala等进行交互式操作。操作可以保存为文档（类似于Jupyter）。Zeppelin支持多种数据源，包括Spark、ElasticSearch、Cassandra和InfluxDB等等。现在，IoTDB已经支持使用Zeppelin进行操作。样例如下：
 
@@ -42,15 +30,15 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 
 
 
-## 3. Zeppelin-IoTDB解释器
+### Zeppelin-IoTDB解释器
 
-### 系统环境需求
+#### 系统环境需求
 
 | IoTDB 版本 |   Java 版本   | Zeppelin 版本 |
 | :--------: | :-----------: | :-----------: |
-| >=`0.12.0-SNAPSHOT` | >=`1.8.0_271` |   `>=0.9.0`   |
+| >=`0.12.0` | >=`1.8.0_271` |   `>=0.9.0`   |
 
-安装 IoTDB：参考 [IoTDB Quick Start](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
+安装 IoTDB：参考 [Quick Start](QuickStart/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
 
 安装 Zeppelin：
 > 方法1 直接下载：下载 [Zeppelin](https://zeppelin.apache.org/download.html#) 并解压二进制文件。推荐下载 [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) 二进制包，此包由于未编译不相关的interpreter，因此大小相对较小。
@@ -59,7 +47,7 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 
 假设 Zeppelin 安装在 `$Zeppelin_HOME`.
 
-### 3.2 编译解释器
+#### 编译解释器
 
 运行如下命令编译IoTDB Zeppelin解释器。
 
@@ -76,7 +64,7 @@ $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-dep
 
 
 
-### 3.3 安装解释器
+#### 安装解释器
 
 当你编译好了解释器，在Zeppelin的解释器目录下创建一个新的文件夹`iotdb`，并将IoTDB解释器放入其中。
 
@@ -88,7 +76,7 @@ cp $IoTDB_HOME/zeppelin-interpreter/target/zeppelin-{version}-SNAPSHOT-jar-with-
 
 
 
-### 3.4 启动 Zeppelin 和 IoTDB
+#### 启动 Zeppelin 和 IoTDB
 
 进入 `$Zeppelin_HOME` 并运行Zeppelin：
 
@@ -116,7 +104,7 @@ or
 
 
 
-## 4. 使用 Zeppelin-IoTDB解释器
+### 使用 Zeppelin-IoTDB解释器
 
 当Zeppelin启动后，访问 [http://127.0.0.1:8080/](http://127.0.0.1:8080/)
 
@@ -170,7 +158,7 @@ WHERE time >= 1
 
 
 
-## 5. 解释器配置项
+### 解释器配置项
 
 进入页面 [http://127.0.0.1:8080/#/interpreter](http://127.0.0.1:8080/#/interpreter) 并配置IoTDB的连接参数：
 

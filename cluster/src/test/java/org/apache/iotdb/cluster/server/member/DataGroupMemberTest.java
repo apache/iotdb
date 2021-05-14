@@ -44,9 +44,11 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -55,6 +57,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -62,6 +65,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -83,7 +87,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -206,6 +210,22 @@ public class DataGroupMemberTest extends BaseMember {
               return new TestAsyncDataClient(node, dataGroupMemberMap) {
 
                 @Override
+                public void pullMeasurementSchema(
+                    PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                      .pullMeasurementSchema(request, resultHandler);
+                }
+
+                @Override
+                public void pullTimeSeriesSchema(
+                    PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
+                      .pullTimeSeriesSchema(request, resultHandler);
+                }
+
+                @Override
                 public void pullSnapshot(
                     PullSnapshotRequest request,
                     AsyncMethodCallback<PullSnapshotResp> resultHandler) {
@@ -226,11 +246,11 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void requestCommitIndex(
-                    Node header, AsyncMethodCallback<Long> resultHandler) {
+                    Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
                   new Thread(
                           () -> {
                             if (enableSyncLeader) {
-                              resultHandler.onComplete(-1L);
+                              resultHandler.onComplete(new RequestCommitIndexResponse());
                             } else {
                               resultHandler.onError(new TestException());
                             }
@@ -439,7 +459,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testApplySnapshot()
       throws IOException, WriteProcessException, SnapshotInstallationException,
-          QueryProcessException, IllegalPathException {
+          QueryProcessException, IllegalPathException, TriggerExecutionException {
     System.out.println("Start testApplySnapshot()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -598,21 +618,61 @@ public class DataGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testPullTimeseries() {
-    System.out.println("Start testPullTimeseries()");
+  public void testPullTimeseriesSchema() {
+    System.out.println("Start testPullTimeseriesSchema()");
     int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
     int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
     RaftServer.setConnectionTimeoutInMS(20);
     RaftServer.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
-      dataGroupMember.setLeader(TestUtils.getNode(1));
+      dataGroupMember.setLeader(TestUtils.getNode(0));
       dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
       enableSyncLeader = false;
 
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
-      AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
+      request.setHeader(TestUtils.getNode(0));
+      AtomicReference<List<TimeseriesSchema>> result = new AtomicReference<>();
+      PullTimeseriesSchemaHandler handler =
+          new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      for (int i = 0; i < 10; i++) {
+        assertTrue(result.get().contains(TestUtils.getTestTimeSeriesSchema(0, i)));
+      }
+
+      // the member is a leader itself
+      dataGroupMember.setCharacter(NodeCharacter.LEADER);
+      result.set(null);
+      handler =
+          new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
+      for (int i = 0; i < 10; i++) {
+        assertTrue(result.get().contains(TestUtils.getTestTimeSeriesSchema(0, i)));
+      }
+    } finally {
+      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
+      RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);
+    }
+  }
+
+  @Test
+  public void testPullMeasurementSchema() {
+    System.out.println("Start testPullMeasurementSchema()");
+    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
+    int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
+    RaftServer.setConnectionTimeoutInMS(20);
+    RaftServer.setSyncLeaderMaxWaitMs(200);
+    try {
+      // sync with leader is temporarily disabled, the request should be forward to the leader
+      dataGroupMember.setLeader(TestUtils.getNode(0));
+      dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
+      enableSyncLeader = false;
+
+      PullSchemaRequest request = new PullSchemaRequest();
+      request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
+      request.setHeader(TestUtils.getNode(0));
+      AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
       new DataAsyncService(dataGroupMember).pullMeasurementSchema(request, handler);

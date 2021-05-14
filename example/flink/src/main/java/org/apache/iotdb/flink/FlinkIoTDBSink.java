@@ -17,6 +17,7 @@
  */
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -35,7 +36,7 @@ public class FlinkIoTDBSink {
     // run the flink job on local mini cluster
     StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-    IoTDBOptions options = new IoTDBOptions();
+    IoTDBSinkOptions options = new IoTDBSinkOptions();
     options.setHost("127.0.0.1");
     options.setPort(6667);
     options.setUser("root");
@@ -46,7 +47,7 @@ public class FlinkIoTDBSink {
     // here.
     options.setTimeseriesOptionList(
         Lists.newArrayList(
-            new IoTDBOptions.TimeseriesOption(
+            new IoTDBSinkOptions.TimeseriesOption(
                 "root.sg.d1.s1", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY)));
 
     IoTSerializationSchema serializationSchema = new DefaultIoTSerializationSchema();

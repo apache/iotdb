@@ -84,7 +84,7 @@ public class IoTDBCheckConfigIT {
     systemProperties.put("timestamp_precision", "ms");
     systemProperties.put("tsfile_storage_fs", "LOCAL");
     systemProperties.put("enable_partition", "false");
-    systemProperties.put("max_degree_of_index_node", "1024");
+    systemProperties.put("max_degree_of_index_node", "256");
     systemProperties.put("tag_attribute_total_size", "700");
     systemProperties.put("iotdb_version", "0.11.2");
     systemProperties.put("virtual_storage_group_num", "1");
@@ -95,6 +95,7 @@ public class IoTDBCheckConfigIT {
     EnvironmentUtils.cleanEnv();
     systemProperties.clear();
     properties.clear();
+    System.setOut(console);
   }
 
   @Test

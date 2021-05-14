@@ -21,10 +21,14 @@ package org.apache.iotdb.db.query.executor.fill;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -35,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -102,9 +107,24 @@ public class LastPointReader {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
-      TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, deviceMeasurements);
+      ITimeSeriesMetadata timeseriesMetadata;
+      if (seriesPath instanceof VectorPartialPath) {
+        timeseriesMetadata =
+            new VectorTimeSeriesMetadata(
+                FileLoaderUtils.loadTimeSeriesMetadata(
+                    resource, seriesPath, context, timeFilter, deviceMeasurements),
+                Collections.singletonList(
+                    FileLoaderUtils.loadTimeSeriesMetadata(
+                        resource,
+                        ((VectorPartialPath) seriesPath).getSubSensorsPathList().get(0),
+                        context,
+                        timeFilter,
+                        deviceMeasurements)));
+      } else {
+        timeseriesMetadata =
+            FileLoaderUtils.loadTimeSeriesMetadata(
+                resource, seriesPath, context, timeFilter, deviceMeasurements);
+      }
       if (timeseriesMetadata != null) {
         if (!timeseriesMetadata.isModified()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -113,9 +133,9 @@ public class LastPointReader {
               timeseriesMetadata.getStatistics().getLastValue(),
               dataType);
         } else {
-          List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+          List<IChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
-            lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
+            lastPoint = getChunkLastPoint((ChunkMetadata) seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop
             if (lastPoint.getValue() != null) {
               return lastPoint;
@@ -223,7 +243,9 @@ public class LastPointReader {
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
       if (timeseriesMetadata != null) {
-        chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+        for (IChunkMetadata chunkMetadata : timeseriesMetadata.loadChunkMetadataList()) {
+          chunkMetadataList.add((ChunkMetadata) chunkMetadata);
+        }
       }
     }
     return chunkMetadataList;

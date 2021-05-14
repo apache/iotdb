@@ -78,7 +78,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.COUNT,
             SQLConstant.SUM);
     plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
+    plan.setDeduplicatedPathsAndUpdate(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);
@@ -129,7 +129,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
             SQLConstant.COUNT,
             SQLConstant.SUM);
     plan.setPaths(paths);
-    plan.setDeduplicatedPaths(paths);
+    plan.setDeduplicatedPathsAndUpdate(paths);
     plan.setDataTypes(dataTypes);
     plan.setDeduplicatedDataTypes(dataTypes);
     plan.setAggregations(aggregations);

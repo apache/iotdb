@@ -217,7 +217,7 @@ Apache Software Foundation License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.3.1
 commons-codec:commons-codec:1.13
-org.apache.commons:commons-collections4:4.0
+org.apache.commons:commons-collections4:4.4
 commons-io:commons-io:2.5
 org.apache.commons:commons-lang3:3.8.1
 commons-lang:commons-lang:2.6
@@ -266,7 +266,7 @@ com.nimbusds:oauth2-oidc-sdk:8.3
 org.osgi:org.osgi.core:6.0.0
 org.osgi:osgi.cmpn:6.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
-org.xerial.snappy:snappy-java:1.1.7.2
+org.xerial.snappy:snappy-java:1.1.8.4
 io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
 
@@ -294,8 +294,8 @@ org.slf4j:jcl-over-slf4j:1.7.25
 EPL 1.0
 ------------
 com.h2database:h2-mvstore:1.4.199
-ch.qos.logback:logback-classic:1.1.11
-ch.qos.logback:logback-core:1.1.11
+ch.qos.logback:logback-classic:1.2.3
+ch.qos.logback:logback-core:1.2.3
 
 
 CDDL 1.1

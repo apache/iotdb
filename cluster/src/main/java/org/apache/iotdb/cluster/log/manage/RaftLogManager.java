@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.slf4j.Logger;
@@ -99,6 +100,9 @@ public abstract class RaftLogManager {
   /** maximum number of committed logs in memory */
   private int maxNumOfLogsInMem =
       ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
+
+  private long maxLogMemSize =
+      ClusterDescriptor.getInstance().getConfig().getMaxMemorySizeForRaftLog();
 
   /**
    * Each time new logs are appended, this condition will be notified so logs that have larger
@@ -582,14 +586,37 @@ public abstract class RaftLogManager {
           .clear();
     }
     try {
-      int currentSize = committedEntryManager.getTotalSize();
-      int deltaSize = entries.size();
-      if (currentSize + deltaSize > maxNumOfLogsInMem) {
-        int sizeToReserveForNew = maxNumOfLogsInMem - deltaSize;
+      boolean needToCompactLog = false;
+      int numToReserveForNew = minNumOfLogsInMem;
+      if (committedEntryManager.getTotalSize() + entries.size() > maxNumOfLogsInMem) {
+        needToCompactLog = true;
+        numToReserveForNew = maxNumOfLogsInMem - entries.size();
+      }
+
+      long newEntryMemSize = 0;
+      for (Log entry : entries) {
+        if (entry.getByteSize() == 0) {
+          logger.debug(
+              "{} should not go here, must be send to the follower, "
+                  + "so the log has been serialized exclude single node mode",
+              entry);
+          entry.setByteSize((int) RamUsageEstimator.sizeOf(entry));
+        }
+        newEntryMemSize += entry.getByteSize();
+      }
+      int sizeToReserveForNew = minNumOfLogsInMem;
+      if (newEntryMemSize + committedEntryManager.getEntryTotalMemSize() > maxLogMemSize) {
+        needToCompactLog = true;
+        sizeToReserveForNew =
+            committedEntryManager.maxLogNumShouldReserve(maxLogMemSize - newEntryMemSize);
+      }
+
+      if (needToCompactLog) {
+        int numForNew = Math.min(numToReserveForNew, sizeToReserveForNew);
         int sizeToReserveForConfig = minNumOfLogsInMem;
         startTime = Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.getOperationStartTime();
         synchronized (this) {
-          innerDeleteLog(Math.min(sizeToReserveForConfig, sizeToReserveForNew));
+          innerDeleteLog(Math.min(sizeToReserveForConfig, numForNew));
         }
         Statistic.RAFT_SENDER_COMMIT_DELETE_EXCEEDING_LOGS.calOperationCostTimeFromStart(startTime);
       }

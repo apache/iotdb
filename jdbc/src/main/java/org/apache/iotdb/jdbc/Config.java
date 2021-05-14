@@ -48,13 +48,9 @@ public class Config {
 
   public static boolean rpcThriftCompressionEnable = false;
 
-  /** thrift init buffer size, 1KB by default */
-  public static final int DEFAULT_INITIAL_BUFFER_CAPACITY = 1024;
+  /** key of thrift default buffer size */
+  public static final String DEFAULT_BUFFER_CAPACITY = "thrift_default_buffer_capacity";
 
-  public static final String INITIAL_BUFFER_CAPACITY = "initial_buffer_capacity";
-
-  /** thrift max frame size (16384000 bytes by default), we change it to 64MB */
-  public static final int DEFAULT_MAX_FRAME_SIZE = 67108864;
-
-  public static final String MAX_FRAME_SIZE = "max_frame_size";
+  /** key of thrift max frame size */
+  public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
 }

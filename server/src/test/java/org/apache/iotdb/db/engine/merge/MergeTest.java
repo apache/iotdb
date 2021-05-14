@@ -134,6 +134,8 @@ abstract class MergeTest {
                       + i
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -150,6 +152,8 @@ abstract class MergeTest {
                   (10000 + i)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + (10000 + i)
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + ".tsfile"));
@@ -170,6 +174,8 @@ abstract class MergeTest {
                     + unseqFileNum
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
                     + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
@@ -183,9 +189,11 @@ abstract class MergeTest {
   private void removeFiles() throws IOException {
     for (TsFileResource tsFileResource : seqResources) {
       tsFileResource.remove();
+      tsFileResource.getModFile().remove();
     }
     for (TsFileResource tsFileResource : unseqResources) {
       tsFileResource.remove();
+      tsFileResource.getModFile().remove();
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
