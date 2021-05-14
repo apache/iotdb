@@ -63,6 +63,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
+  private ClusterMonitor() {}
+
   @Override
   public void start() throws StartupException {
     try {
@@ -89,6 +91,14 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       }
     }
     return res;
+  }
+
+  public List<Node> getRing() {
+    MetaGroupMember metaMember = getMetaGroupMember();
+    if (metaMember.getPartitionTable() == null) {
+      return null;
+    }
+    return metaMember.getPartitionTable().getAllNodes();
   }
 
   @Override

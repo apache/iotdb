@@ -142,9 +142,14 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "internal_data_port", Integer.toString(config.getInternalDataPort()))));
 
-    config.setClusterRpcPort(
+    // rpc port and rpc address are defined in iotdb-engine.properties.
+    // To avoid inconsistency, we do not read "rpc_port" in iotdb-cluster.properties
+    // even users claim the property.
+
+    config.setClusterInfoRpcPort(
         Integer.parseInt(
-            properties.getProperty("rpc_port", Integer.toString(config.getClusterRpcPort()))));
+            properties.getProperty(
+                "cluster_info_public_port", Integer.toString(config.getClusterInfoRpcPort()))));
 
     config.setMaxConcurrentClientNum(
         Integer.parseInt(
