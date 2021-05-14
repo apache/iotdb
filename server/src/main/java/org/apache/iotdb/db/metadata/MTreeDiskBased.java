@@ -174,7 +174,7 @@ public class MTreeDiskBased implements MTreeInterface {
       if (alias != null) {
         MNode childByAlias = metadataDiskManager.getChild(cur, alias);
         if (childByAlias != null && childByAlias.isMeasurement()) {
-          unlockMNodePath(cur);
+          unlockMNodePath(child);
           throw new AliasAlreadyExistException(path.getFullPath(), alias);
         }
       }
@@ -269,13 +269,16 @@ public class MTreeDiskBased implements MTreeInterface {
               cur,
               nodeNames[i],
               new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
+                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()),true);
         } else {
-          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
         }
+        cur = metadataDiskManager.getChild(cur, nodeNames[i]);
+      }else {
+        cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
       }
-      cur = metadataDiskManager.getChild(cur, nodeNames[i]);
     }
+    unlockMNodePath(cur.getParent());
     return cur;
   }
 

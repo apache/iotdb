@@ -1088,6 +1088,7 @@ public class MManager {
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
     MNode node = getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel);
+    mtree.unlockMNode(node);
     node = processMNodeForExternChildrenCheck(node);
     return node;
   }
@@ -1097,7 +1098,7 @@ public class MManager {
     MNode node;
     boolean shouldSetStorageGroup;
     try {
-      node = getMNodeFromCache(path);
+      node = getMNodeFromCacheWithMemoryLock(path);
       return node;
     } catch (CacheException e) {
       if (!autoCreateSchema) {
@@ -1140,8 +1141,7 @@ public class MManager {
   public Map<String, MeasurementMNode> getMeasurementNodesInDeviceWithMemoryLock(PartialPath path)
       throws MetadataException {
     try {
-      MNode node = getMNodeFromCache(path);
-      node = mtree.lockMNode(node);
+      MNode node = getMNodeFromCacheWithMemoryLock(path);
       Map<String, MeasurementMNode> result = new HashMap<>();
       MNode child;
       for (String childName : node.getChildren().keySet()) {
@@ -1905,7 +1905,6 @@ public class MManager {
     MNode deviceMNode =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
-    deviceMNode = mtree.lockMNode(deviceMNode);
 
     // 2. get schema of each measurement
     // if do not has measurement
@@ -2039,6 +2038,15 @@ public class MManager {
     if (MTreeType == MTREE_DISK_BASED && !node.isCached()) {
       mNodeCache.removeObject(path);
       return mNodeCache.loadObjectByKey(path);
+    }
+    return node;
+  }
+
+  private MNode getMNodeFromCacheWithMemoryLock(PartialPath path) throws CacheException, MetadataException{
+    MNode node = mNodeCache.get(path);
+    if (MTreeType == MTREE_DISK_BASED && !node.isLockedInMemory()) {
+      mNodeCache.removeObject(path);
+      return mtree.getNodeByPathWithMemoryLock(path);
     }
     return node;
   }

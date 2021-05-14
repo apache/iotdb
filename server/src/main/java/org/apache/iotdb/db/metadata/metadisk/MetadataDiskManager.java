@@ -169,11 +169,11 @@ public class MetadataDiskManager implements MetadataAccess {
     if (!lockChild) {
       return getChild(parent, name);
     }
-    if (!parent.isLockedInMemory()) {
-      throw new MetadataException("Parent MNode has not been locked before lock child");
-    }
     readLock.lock();
     try {
+      if (!parent.isLockedInMemory()) {
+        throw new MetadataException("Parent MNode has not been locked before lock child");
+      }
       MNode result = parent.getChild(name);
       if (result == null) {
         return null;
@@ -242,11 +242,11 @@ public class MetadataDiskManager implements MetadataAccess {
       addChild(parent, childName, child);
       return;
     }
-    if (!parent.isLockedInMemory()) {
-      throw new MetadataException("Parent MNode has not been locked before lock child");
-    }
     readLock.lock();
     try {
+      if (!parent.isLockedInMemory()) {
+        throw new MetadataException("Parent MNode has not been locked before lock child");
+      }
       child.setParent(parent);
       cacheStrategy.lockMNode(child);
       parent.addChild(childName, child);
@@ -315,11 +315,11 @@ public class MetadataDiskManager implements MetadataAccess {
       replaceChild(parent, measurement, newChild);
       return;
     }
-    if (!parent.isLockedInMemory()) {
-      throw new MetadataException("Parent MNode has not been locked before lock child");
-    }
     readLock.lock();
     try {
+      if (!parent.isLockedInMemory()) {
+        throw new MetadataException("Parent MNode has not been locked before lock child");
+      }
       newChild.setParent(parent);
       cacheStrategy.lockMNode(newChild);
       getChild(parent, measurement);
