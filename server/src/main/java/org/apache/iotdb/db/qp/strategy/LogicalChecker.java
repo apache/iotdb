@@ -24,6 +24,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 public class LogicalChecker {
 
@@ -51,10 +54,15 @@ public class LogicalChecker {
   private static void checkAggregation(QueryOperator queryOperator)
       throws LogicalOperatorException {
     SelectOperator selectOperator = queryOperator.getSelectOperator();
-    if (!selectOperator.getResultColumns().isEmpty()
-        && selectOperator.getPaths().size() != selectOperator.getAggregationFunctions().size()) {
-      throw new LogicalOperatorException(
-          "Common queries and aggregated queries are not allowed to appear at the same time");
+    if (!selectOperator.hasAggregationFunction()) {
+      return;
+    }
+    for (ResultColumn resultColumn : selectOperator.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (expression instanceof TimeSeriesOperand) {
+        throw new LogicalOperatorException(
+            "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
     }
   }
 
