@@ -135,8 +135,10 @@ public class TsFileIOWriter {
   }
 
   protected void startFile() throws IOException {
-    out.write(magicStringBytes);
-    out.write(versionNumberBytes);
+    if (out != null) {
+      out.write(magicStringBytes);
+      out.write(versionNumberBytes);
+    }
   }
 
   public void startChunkGroup(String deviceId) throws IOException {

@@ -573,7 +573,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       isMergeExecutedInCurrentTask = true;
       merge(
           isForceFullMerge,
-          getTsFileList(true),
+          getTsFileListByTimePartition(true, timePartition),
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
@@ -620,7 +620,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
             isSeqMerging = false;
-            merge(isForceFullMerge, getTsFileList(true), mergeResources.get(i), Long.MAX_VALUE);
+            merge(isForceFullMerge, getTsFileListByTimePartition(true, timePartition), mergeResources.get(i), Long.MAX_VALUE);
           } else {
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
