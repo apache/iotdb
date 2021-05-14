@@ -39,7 +39,7 @@ public interface ClusterMonitorMBean {
    * Get data partition information of input path and time range.
    *
    * @param path input path
-   * @return data partition information
+   * @return data partition information: ((start time, end time), PartitionGroup)
    */
   MultiKeyMap<Long, PartitionGroup> getDataPartition(String path, long startTime, long endTime);
 

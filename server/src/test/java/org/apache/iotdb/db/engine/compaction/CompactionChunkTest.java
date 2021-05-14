@@ -120,7 +120,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
       }
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
-        CompactionUtils.writeByAppendMerge(
+        CompactionUtils.writeByAppendPageMerge(
             device, compactionWriteRateLimiter, entry, targetTsfileResource, writer);
       }
       reader.close();
@@ -199,7 +199,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
       }
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
-        CompactionUtils.writeByDeserializeMerge(
+        CompactionUtils.writeByDeserializePageMerge(
             device,
             compactionWriteRateLimiter,
             entry,
