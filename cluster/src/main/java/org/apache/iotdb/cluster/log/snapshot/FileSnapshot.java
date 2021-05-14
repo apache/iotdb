@@ -215,8 +215,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     private void installSnapshot(Map<Integer, FileSnapshot> snapshotMap)
         throws SnapshotInstallationException {
       // In data migration, meta group member other than new node does not need to synchronize the
-      // leader,
-      // because data migration must be carried out after meta group applied add/remove node log.
+      // leader, because data migration must be carried out after meta group applied add/remove node
+      // log.
+      dataGroupMember
+          .getMetaGroupMember()
+          .syncLocalApply(
+              dataGroupMember.getMetaGroupMember().getPartitionTable().getLastMetaLogIndex() - 1);
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
         FileSnapshot snapshot = integerSnapshotEntry.getValue();

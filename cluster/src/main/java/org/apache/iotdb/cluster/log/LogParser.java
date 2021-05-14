@@ -65,7 +65,7 @@ public class LogParser {
         AddNodeLog addNodeLog = new AddNodeLog();
         addNodeLog.deserialize(buffer);
         if (logger.isDebugEnabled()) {
-          logger.info(
+          logger.debug(
               "The last meta log index of log {} is {}", addNodeLog, addNodeLog.getMetaLogIndex());
         }
         log = addNodeLog;

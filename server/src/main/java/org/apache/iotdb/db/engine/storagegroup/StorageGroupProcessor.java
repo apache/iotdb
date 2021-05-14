@@ -2136,7 +2136,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
-    } catch (IllegalPathException | WriteProcessException e) {
+    } catch (IllegalPathException e) {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
@@ -2146,13 +2146,13 @@ public class StorageGroupProcessor {
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
-      throws IllegalPathException, WriteProcessException {
+      throws IllegalPathException {
     for (String device : newTsFileResource.getDevices()) {
       tryToDeleteLastCacheByDevice(new PartialPath(device));
     }
   }
 
-  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) throws WriteProcessException {
+  private void tryToDeleteLastCacheByDevice(PartialPath deviceId) {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
@@ -2168,7 +2168,7 @@ public class StorageGroupProcessor {
         }
       }
     } catch (MetadataException e) {
-      throw new WriteProcessException(e);
+      // the path doesn't cache in cluster mode now, ignore
     }
   }
 
@@ -2243,7 +2243,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
-    } catch (IllegalPathException | WriteProcessException e) {
+    } catch (IllegalPathException e) {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
