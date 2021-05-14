@@ -5,6 +5,7 @@ import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecor
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadInfo;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadList;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +21,11 @@ public class WorkloadManager {
   private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
   private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
   private WorkloadList workloadList = new WorkloadList();
-  private final File workloadFile = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir() + File.separator + "workload.bin");
+  private final File workloadFile =
+      new File(
+          IoTDBDescriptor.getInstance().getConfig().getLayoutDir()
+              + File.separator
+              + "workload.bin");
 
   public static WorkloadManager getInstance() {
     return INSTANCE;

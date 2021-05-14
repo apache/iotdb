@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.layoutoptimize.diskevaluate.DiskEvaluator;
 import org.apache.iotdb.db.layoutoptimize.layoutholder.LayoutHolder;
 import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.LayoutOptimizer;
+import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl.SCOAOptimizer;
 import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl.TCAOptimizer;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
@@ -147,15 +148,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
@@ -2170,6 +2164,38 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       e.printStackTrace();
     }
+  }
+
+  @Override
+  public void optimize(String device, String method) throws TException {
+    try {
+      PartialPath path = new PartialPath(device);
+      LayoutOptimizer optimizer = null;
+      switch (method.toLowerCase(Locale.ROOT)) {
+        case "scoa":
+          {
+            optimizer = new SCOAOptimizer(path);
+            break;
+          }
+        case "tca":
+          {
+            optimizer = new TCAOptimizer(path);
+            break;
+          }
+        default:
+          {
+          }
+      }
+      if (optimizer != null) {
+        optimizer.invoke();
+      }
+    } catch (IllegalPathException ignored) {
+    }
+  }
+
+  @Override
+  public void useLayout(String device) throws TException {
+    LayoutHolder.getInstance().useLayout(device);
   }
 
   @Override

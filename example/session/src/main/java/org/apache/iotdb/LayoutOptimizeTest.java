@@ -29,8 +29,8 @@ public class LayoutOptimizeTest {
   public static void main(String[] args) throws Exception {
     session = new Session(HOST, 6667, "root", "root");
     session.open(false);
-//    loadQueries();
-//    performQueries();
+    //    loadQueries();
+    //    performQueries();
     performOptimize();
     session.close();
   }

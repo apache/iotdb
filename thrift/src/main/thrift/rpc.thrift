@@ -399,6 +399,10 @@ service TSIService {
 
   void myTest();
 
+  void optimize(string device, string method);
+
+  void useLayout(string device);
+
   TSStatus performDiskEvaluation();
 
   TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);

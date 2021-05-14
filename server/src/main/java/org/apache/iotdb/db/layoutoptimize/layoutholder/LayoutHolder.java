@@ -245,7 +245,7 @@ public class LayoutHolder {
     try {
       Scanner scanner = new Scanner(new FileInputStream(layoutFile));
       StringBuilder sb = new StringBuilder();
-      while(scanner.hasNextLine()) {
+      while (scanner.hasNextLine()) {
         sb.append(scanner.nextLine());
       }
       String json = sb.toString();
