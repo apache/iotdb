@@ -568,6 +568,11 @@ public class MetadataDiskManager implements MetadataAccess {
     return cacheStrategy.getSize() < capacity;
   }
 
+  /**
+   * Attention!!!!!!!! This method is not synchronized. Some MNode will be evict after
+   * readLock.unlock(). Since the evicted MNode could be read back from disk, this won't cause any
+   * security or correctness problem.
+   */
   private void checkEviction() throws MetadataException {
     if (cacheStrategy.getSize() >= capacity) {
       readLock.unlock();
