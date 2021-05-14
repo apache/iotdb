@@ -189,6 +189,7 @@ public class TriggerRegistrationService implements IService {
   private void doDeregister(DropTriggerPlan plan) {
     TriggerExecutor executor = executors.remove(plan.getTriggerName());
     executor.getMeasurementMNode().setTriggerExecutor(null);
+    IoTDB.metaManager.unlockNode(executor.getMeasurementMNode());
 
     try {
       executor.onDrop();
