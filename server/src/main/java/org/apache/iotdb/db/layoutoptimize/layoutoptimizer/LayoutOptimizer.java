@@ -48,6 +48,7 @@ public abstract class LayoutOptimizer {
       Pair<List<String>, Long> optimizedLayout = optimize();
       LayoutHolder.getInstance()
           .setLayout(device.getFullPath(), optimizedLayout.left, optimizedLayout.right);
+      LayoutHolder.getInstance();
     }
   }
 

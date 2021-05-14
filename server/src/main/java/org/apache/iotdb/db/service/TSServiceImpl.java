@@ -40,8 +40,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.layoutoptimize.diskevaluate.DiskEvaluator;
+import org.apache.iotdb.db.layoutoptimize.layoutholder.LayoutHolder;
 import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.LayoutOptimizer;
-import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl.SCOAOptimizer;
+import org.apache.iotdb.db.layoutoptimize.layoutoptimizer.optimizerimpl.TCAOptimizer;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
@@ -2164,8 +2165,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public void myTest() throws TException {
     try {
       PartialPath path = new PartialPath("root.sgtest.d1");
-      LayoutOptimizer optimizer = new SCOAOptimizer(path);
-      optimizer.invoke();
+      LayoutHolder holder = LayoutHolder.getInstance();
+      holder.useLayout(path.getFullPath());
     } catch (Exception e) {
       e.printStackTrace();
     }

@@ -243,14 +243,12 @@ public class LayoutHolder {
       return false;
     }
     try {
-      InputStream inputStream = new FileInputStream(layoutFile);
-      int length = (int) layoutFile.length();
-      int readLength = 0;
-      byte[] content = new byte[(int) length];
-      while (readLength < length) {
-        readLength += inputStream.read(content, readLength, 1024);
+      Scanner scanner = new Scanner(new FileInputStream(layoutFile));
+      StringBuilder sb = new StringBuilder();
+      while(scanner.hasNextLine()) {
+        sb.append(scanner.nextLine());
       }
-      String json = new String(content);
+      String json = sb.toString();
       Gson gson = new Gson();
       Map<String, Map<String, Object>> jsonObject = gson.fromJson(json, layoutMap.getClass());
       for (String key : jsonObject.keySet()) {
@@ -266,6 +264,32 @@ public class LayoutHolder {
     }
     logger.info("load layout from local file successfully");
     return true;
+  }
+
+  public boolean useLayout(String device) {
+    if (!layoutMap.containsKey(device)) {
+      logger.info(
+          "fail to use layout of {}, because LayoutHolder does not contain the layout for it",
+          device);
+      return false;
+    }
+    long averageChunkSize = layoutMap.get(device).averageChunkSize;
+    DataSizeEstimator estimator = DataSizeEstimator.getInstance();
+    MManager manager = MManager.getInstance();
+    try {
+      PartialPath path = new PartialPath(device);
+      PartialPath storageGroup = manager.getStorageGroupPath(path);
+      long avgPointNum = estimator.getPointNumInDisk(storageGroup.getFullPath(), averageChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold((int) avgPointNum);
+      logger.info(
+          "successfully use the layout for {}, the avg point num is {}", device, avgPointNum);
+      return true;
+    } catch (IllegalPathException
+        | StorageGroupNotSetException
+        | DataSizeInfoNotExistsException e) {
+      logger.info("fail to use layout for {}", device);
+      return false;
+    }
   }
 
   public boolean hasLayoutForDevice(String deviceID) {

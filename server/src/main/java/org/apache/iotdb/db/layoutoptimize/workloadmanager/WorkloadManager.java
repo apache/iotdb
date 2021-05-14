@@ -1,20 +1,26 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.QueryRecord;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadInfo;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.WorkloadList;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class WorkloadManager {
+  private static final Logger logger = LoggerFactory.getLogger(WorkloadManager.class);
   private static final WorkloadManager INSTANCE = new WorkloadManager();
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
   private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
-  private final WorkloadList workloadList = new WorkloadList();
+  private WorkloadList workloadList = new WorkloadList();
+  private final File workloadFile = new File(IoTDBDescriptor.getInstance().getConfig().getLayoutDir() + File.separator + "workload.bin");
 
   public static WorkloadManager getInstance() {
     return INSTANCE;
@@ -75,6 +81,40 @@ public class WorkloadManager {
       return records;
     } finally {
       readLock.unlock();
+    }
+  }
+
+  public boolean loadFromFile() {
+    if (!workloadFile.exists()) {
+      logger.info("fail to load from {}, because it does not exist", workloadFile);
+      return false;
+    }
+    try {
+      ObjectInputStream is = new ObjectInputStream(new FileInputStream(workloadFile));
+      workloadList = (WorkloadList) is.readObject();
+      is.close();
+      logger.info("successfully load workload manager from file");
+      return true;
+    } catch (IOException | ClassNotFoundException e) {
+      logger.info("fail to load workload manager");
+      return false;
+    }
+  }
+
+  public boolean persist() {
+    try {
+      if (!workloadFile.exists()) {
+        workloadFile.createNewFile();
+      }
+      ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(workloadFile));
+      os.writeObject(workloadList);
+      os.flush();
+      os.close();
+      logger.info("successfully persist workload manager");
+      return true;
+    } catch (IOException e) {
+      logger.info("fail to persist workload manager");
+      return false;
     }
   }
 }

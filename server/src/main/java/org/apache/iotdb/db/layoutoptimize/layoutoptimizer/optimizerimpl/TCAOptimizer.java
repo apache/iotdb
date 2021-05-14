@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Random;
 
 public class TCAOptimizer extends LayoutOptimizer {
+  private static final Logger logger = LoggerFactory.getLogger(TCAOptimizer.class);
   private long chunkUpperBound = Long.MIN_VALUE;;
   private long chunkLowerBound = Long.MAX_VALUE;
   private double lowerBoundRatio = 0.5;
@@ -32,7 +33,6 @@ public class TCAOptimizer extends LayoutOptimizer {
   private int preSwapRight;
   private long preChunkSize;
   private int preOperation;
-  private static final Logger logger = LoggerFactory.getLogger(TCAOptimizer.class);
 
   public TCAOptimizer(PartialPath device) {
     super(device);
@@ -62,16 +62,21 @@ public class TCAOptimizer extends LayoutOptimizer {
       } else {
         changeChunkSize();
       }
-      // average chunk size is chunk size in memory
-      // when estimating cost, we should use chunk in disk
-      newCost =
-          estimator.estimate(
-              records, measurementOrder, (long) (averageChunkSize / compressionRatio));
+      // average chunk size is chunk size in disk
+      newCost = estimator.estimate(records, measurementOrder, averageChunkSize);
       double probability = Math.abs(random.nextDouble()) % 1.0;
       if (newCost < curCost || Math.exp((curCost - newCost) / temperature) > probability) {
         curCost = newCost;
       } else {
         undo();
+      }
+      if (config.isVerbose() && i % config.getLogEpoch() == 0) {
+        logger.info(
+            "{} rounds have been optimized, {} rounds in total. Current cost: {}, origin cost: {}",
+            i,
+            config.getSAMaxIteration(),
+            curCost,
+            oriCost);
       }
     }
     return new Pair<>(measurementOrder, averageChunkSize);

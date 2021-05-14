@@ -110,6 +110,11 @@ public class CostEstimator {
     if (seekDistance == 0) {
       return 0;
     }
+    if (seekDistance < diskInfo.seekDistance.get(0)) {
+      return (double) seekDistance
+          / (double) diskInfo.seekDistance.get(0)
+          * diskInfo.seekCost.get(0);
+    }
     for (int i = 0; i < diskInfo.seekDistance.size() - 1; i++) {
       if (seekDistance >= diskInfo.seekDistance.get(i)
           && seekDistance < diskInfo.seekDistance.get(i + 1)) {

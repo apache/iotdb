@@ -3,13 +3,14 @@ package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.VisitedMeasurements;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ListStatistic;
 
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class WorkloadList {
+public class WorkloadList implements Serializable {
   private final LinkedList<WorkloadItem> workloadItems = new LinkedList<>();
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   // the range of each item
