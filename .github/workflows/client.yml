@@ -95,6 +95,10 @@ jobs:
           cd D:\a\cpp\boost_1_72_0 ; `
           .\bootstrap.bat ; `
           .\b2.exe
+      - name: Install OpenSSL
+        run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp\openssl-1.1.1k.zip ; `
+              Expand-Archive D:\a\cpp\openssl-1.1.1k.zip -DestinationPath D:\a\cpp ; `
+              [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp\openssl-1.1\x64\bin", "User") ; `
       - name: Add Flex and Bison Path
         shell: bash
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
