@@ -600,9 +600,11 @@ public class IoTDBDescriptor {
       // String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
-      //      conf.setConcurrentWritingTimePartition(
-      //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
-      //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_writing_time_partition",
+                  String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
