@@ -520,9 +520,10 @@ public class MetadataDiskManager implements MetadataAccess {
   public void clear() throws IOException {
     writeLock.lock();
     try {
-      root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       cacheStrategy.clear();
-      cacheStrategy = null;
+      for(String childName:root.getChildren().keySet()){
+        root.evictChild(childName);
+      }
       metaFile.close();
       metaFile = null;
     } finally {
