@@ -84,7 +84,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private void concatSelect(QueryOperator queryOperator) {
-    if (queryOperator.isAlignByDevice()) {
+    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()) {
       return;
     }
 
@@ -120,14 +120,14 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return;
     }
 
-    if (queryOperator.isAlignByDevice()) {
+    Set<PartialPath> filterPaths = new HashSet<>();
+    if (!queryOperator.isAlignByDevice() || queryOperator.isLastQuery()) {
       // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without
       // prefix first
-      queryOperator.getFilterOperator().setPathSet(new HashSet<>());
-    } else {
       queryOperator.setFilterOperator(
-          concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, new HashSet<>()));
+          concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
     }
+    queryOperator.getFilterOperator().setPathSet(filterPaths);
   }
 
   private FilterOperator concatFilter(
