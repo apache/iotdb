@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,6 +62,14 @@ public class TimeSeriesOperand extends Expression {
         fullPath.setTsAlias(path.getTsAlias());
       }
       resultExpressions.add(new TimeSeriesOperand(fullPath));
+    }
+  }
+
+  @Override
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws LogicalOptimizeException {
+    for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
+      resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
   }
 

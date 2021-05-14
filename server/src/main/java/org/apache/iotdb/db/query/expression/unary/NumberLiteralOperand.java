@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -40,6 +41,12 @@ public class NumberLiteralOperand extends Expression {
 
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions) {
     throw new UnsupportedOperationException();
   }
 

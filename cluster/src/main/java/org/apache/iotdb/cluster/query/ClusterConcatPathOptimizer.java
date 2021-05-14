@@ -30,7 +30,7 @@ import java.util.List;
 public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
 
   @Override
-  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
+  public Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
       throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }

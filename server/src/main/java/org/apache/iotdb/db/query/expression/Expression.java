@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.query.expression;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
@@ -41,4 +43,8 @@ public abstract class Expression {
   public abstract TSDataType dataType() throws MetadataException;
 
   public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
+
+  public abstract void removeWildcards(
+      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws LogicalOptimizeException;
 }

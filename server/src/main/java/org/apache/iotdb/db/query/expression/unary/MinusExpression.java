@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -48,6 +50,16 @@ public class MinusExpression extends Expression {
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressionsForRecursion);
+    for (Expression resultExpression : resultExpressionsForRecursion) {
+      resultExpressions.add(new MinusExpression(resultExpression));
+    }
+  }
+
+  @Override
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws LogicalOptimizeException {
+    List<Expression> resultExpressionsForRecursion = new ArrayList<>();
+    expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
       resultExpressions.add(new MinusExpression(resultExpression));
     }

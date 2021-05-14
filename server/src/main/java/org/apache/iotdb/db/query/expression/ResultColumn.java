@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.query.expression;
 
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +44,15 @@ public class ResultColumn {
   public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns) {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
+    for (Expression resultExpression : resultExpressions) {
+      resultColumns.add(new ResultColumn(resultExpression, alias));
+    }
+  }
+
+  public void removeWildcards(WildcardsRemover wildcardsRemover, List<ResultColumn> resultColumns)
+      throws LogicalOptimizeException {
+    List<Expression> resultExpressions = new ArrayList<>();
+    expression.removeWildcards(wildcardsRemover, resultExpressions);
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }

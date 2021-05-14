@@ -28,11 +28,15 @@ import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
@@ -53,7 +57,11 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
 
     SelectOperator selectOperator =
         new SelectOperator(SQLConstant.TOK_SELECT, ZoneId.systemDefault());
-    selectOperator.setSuffixPathList(pathList);
+    List<ResultColumn> resultColumns = new ArrayList<>();
+    for (PartialPath partialPath : pathList) {
+      resultColumns.add(new ResultColumn(new TimeSeriesOperand(partialPath)));
+    }
+    selectOperator.setResultColumns(resultColumns);
     FromOperator fromOperator = new FromOperator(SQLConstant.TOK_FROM);
     fromOperator.addPrefixTablePath(new PartialPath(TestUtils.getTestSg(0)));
 

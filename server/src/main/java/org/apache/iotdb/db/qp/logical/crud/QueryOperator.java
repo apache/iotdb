@@ -20,12 +20,13 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
-public class QueryOperator extends Operator {
+public class QueryOperator extends RootOperator {
 
   private SelectOperator selectOperator;
   private FromOperator fromOperator;

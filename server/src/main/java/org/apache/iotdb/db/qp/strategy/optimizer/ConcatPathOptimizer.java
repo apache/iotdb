@@ -31,7 +31,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -62,7 +62,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return queryOperator;
     }
     concatSelect(queryOperator);
-    removeWildcardsInSelectPaths(queryOperator);
+    removeWildcardsInSelectPaths(queryOperator, fetchSize);
     concatFilter(queryOperator);
     return queryOperator;
   }
@@ -96,145 +96,22 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     queryOperator.getSelectOperator().setResultColumns(resultColumns);
   }
 
-  private void removeWildcardsInSelectPaths(
-      List<PartialPath> afterConcatPaths,
-      List<String> afterConcatAggregations,
-      List<UDFContext> afterConcatUdfList,
-      SelectOperator selectOperator,
-      int finalLimit,
-      int finalOffset,
-      int maxDeduplicatedPathNum)
+  private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
-
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    if (queryOperator.isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
-      // while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
-      // set it to Integer.MAX_VALUE - 1
-      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    }
-
-    int seriesLimit = queryOperator.getSeriesLimit();
-    int seriesOffset = queryOperator.getSeriesOffset();
-    boolean needRemoveStar = queryOperator.getIndexType() == null;
-
-    int offset = finalOffset;
-    int limit =
-        finalLimit == 0 || maxDeduplicatedPathNum < finalLimit
-            ? maxDeduplicatedPathNum + 1
-            : finalLimit;
-    int consumed = 0;
-
-    List<PartialPath> newSuffixPathList = new ArrayList<>();
-    List<String> newAggregations = new ArrayList<>();
-    List<UDFContext> newUdfList = new ArrayList<>();
-
-    for (int i = 0; i < afterConcatPaths.size(); i++) {
-      try {
-        PartialPath afterConcatPath = afterConcatPaths.get(i);
-
-        if (afterConcatPath == null) { // udf
-          UDFContext originUdf = afterConcatUdfList.get(i);
-          List<PartialPath> originPaths = originUdf.getPaths();
-          List<List<PartialPath>> extendedPaths = new ArrayList<>();
-
-          boolean atLeastOneSeriesNotExisted = false;
-          for (PartialPath originPath : originPaths) {
-            List<PartialPath> actualPaths = removeWildcard(originPath, 0, 0).left;
-            if (actualPaths.isEmpty()) {
-              atLeastOneSeriesNotExisted = true;
-              break;
-            }
-            checkAndSetTsAlias(actualPaths, originPath);
-            extendedPaths.add(actualPaths);
-          }
-          if (atLeastOneSeriesNotExisted) {
-            continue;
-          }
-
-          List<List<PartialPath>> actualPaths = new ArrayList<>();
-          cartesianProduct(extendedPaths, actualPaths, 0, new ArrayList<>());
-
-          for (List<PartialPath> actualPath : actualPaths) {
-            if (offset != 0) {
-              --offset;
-              continue;
-            } else if (limit != 0) {
-              --limit;
-            } else {
-              break;
-            }
-
-            newSuffixPathList.add(null);
-            extendListSafely(afterConcatAggregations, i, newAggregations);
-
-            newUdfList.add(
-                new UDFContext(originUdf.getName(), originUdf.getAttributes(), actualPath));
-          }
-        } else { // non-udf
-          Pair<List<PartialPath>, Integer> pair = removeWildcard(afterConcatPath, limit, offset);
-          List<PartialPath> actualPaths = pair.left;
-          checkAndSetTsAlias(actualPaths, afterConcatPath);
-
-          for (PartialPath actualPath : actualPaths) {
-            newSuffixPathList.add(actualPath);
-            extendListSafely(afterConcatAggregations, i, newAggregations);
-
-            newUdfList.add(null);
-          }
-
-          consumed += pair.right;
-          if (offset != 0) {
-            int delta = offset - pair.right;
-            offset = Math.max(delta, 0);
-            if (delta < 0) {
-              limit += delta;
-            }
-          } else {
-            limit -= pair.right;
-          }
-        }
-
-        if (limit == 0) {
-          if (maxDeduplicatedPathNum < newSuffixPathList.size()) {
-            throw new PathNumOverLimitException(maxDeduplicatedPathNum);
-          }
-          break;
-        }
-      } catch (MetadataException e) {
-        throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
-      }
-    }
-
-    if (consumed == 0 ? finalOffset != 0 : newSuffixPathList.isEmpty()) {
-      throw new LogicalOptimizeException(
-          String.format(
-              "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.",
-              finalOffset, consumed));
-    }
-    selectOperator.setSuffixPathList(newSuffixPathList);
-    selectOperator.setAggregations(newAggregations);
-    selectOperator.setUdfList(newUdfList);
-  }
-
-  private void checkAndSetTsAlias(List<PartialPath> actualPaths, PartialPath originPath)
-      throws LogicalOptimizeException {
-    if (originPath.isTsAliasExists()) {
-      if (actualPaths.size() == 1) {
-        actualPaths.get(0).setTsAlias(originPath.getTsAlias());
-      } else if (actualPaths.size() >= 2) {
-        throw new LogicalOptimizeException(
-            "alias '" + originPath.getTsAlias() + "' can only be matched with one time series");
-      }
-    }
-  }
-
-  private void removeWildcardsInSelectPaths(QueryOperator queryOperator) {
     if (queryOperator.getIndexType() != null) {
       return;
     }
+
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(this, queryOperator, fetchSize);
+    List<ResultColumn> resultColumns = new ArrayList<>();
+    for (ResultColumn resultColumn : queryOperator.getSelectOperator().getResultColumns()) {
+      resultColumn.removeWildcards(wildcardsRemover, resultColumns);
+      if (wildcardsRemover.checkIfPathNumberIsOverLimit(resultColumns)) {
+        break;
+      }
+    }
+    wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
+    queryOperator.getSelectOperator().setResultColumns(resultColumns);
   }
 
   private void concatFilter(QueryOperator queryOperator) throws LogicalOptimizeException {
@@ -338,7 +215,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return retPaths;
   }
 
-  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
+  public Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
       throws MetadataException {
     return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
