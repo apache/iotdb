@@ -66,7 +66,7 @@ public class MTreeDiskBased implements MTreeInterface {
 
   private final String rootName = PATH_ROOT;
   private MetadataAccess metadataDiskManager;
-  private static final int DEFAULT_MAX_CAPACITY = 0;
+  private static final int DEFAULT_MAX_CAPACITY = 3;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
