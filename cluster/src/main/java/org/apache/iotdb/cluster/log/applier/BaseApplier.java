@@ -106,8 +106,7 @@ abstract class BaseApplier implements LogApplier {
     for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
       TSStatus status = failingStatus[i];
       if (status != null
-          && (status.getCode() == TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()
-              || status.getCode() == TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode())
+          && (status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode())
           && plan instanceof BatchPlan) {
         ((BatchPlan) plan).unsetIsExecuted(i);
         needRetry = true;
