@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class WorkloadManager {
@@ -21,6 +23,9 @@ public class WorkloadManager {
   private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
   private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
   private WorkloadList workloadList = new WorkloadList();
+  private final Timer persistTimer = new Timer();
+  private boolean timerSet = false;
+  private static long PERSIST_PERIOD = 60L * 1000L;
   private final File workloadFile =
       new File(
           IoTDBDescriptor.getInstance().getConfig().getLayoutDir()
@@ -31,7 +36,9 @@ public class WorkloadManager {
     return INSTANCE;
   }
 
-  private WorkloadManager() {}
+  private WorkloadManager() {
+    loadFromFile();
+  }
 
   /**
    * Add query record to the manager
@@ -120,6 +127,28 @@ public class WorkloadManager {
     } catch (IOException e) {
       logger.info("fail to persist workload manager");
       return false;
+    }
+  }
+
+  private boolean isTimerSet() {
+    return timerSet;
+  }
+
+  private void setUpTimer() {
+    if (timerSet) return;
+    timerSet = true;
+    persistTimer.scheduleAtFixedRate(new PersistTask(this), 1000, PERSIST_PERIOD);
+  }
+
+  private static class PersistTask extends TimerTask {
+    WorkloadManager manager;
+    public PersistTask(WorkloadManager instance) {
+      manager = instance;
+    }
+
+    @Override
+    public void run() {
+      manager.persist();
     }
   }
 }
