@@ -1,11 +1,12 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ListStatistic {
+public class ListStatistic implements Serializable {
   long averageSpan;
   long spanNum;
   long maxSpan;

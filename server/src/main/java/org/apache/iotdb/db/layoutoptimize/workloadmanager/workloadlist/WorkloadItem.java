@@ -3,6 +3,7 @@ package org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord.VisitedMeasurements;
 import org.apache.iotdb.db.layoutoptimize.workloadmanager.workloadlist.statisitc.ItemStatistic;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class WorkloadItem {
+public class WorkloadItem implements Serializable {
   // the record start time and end time of the item
   private long startTime;
   private long endTime;

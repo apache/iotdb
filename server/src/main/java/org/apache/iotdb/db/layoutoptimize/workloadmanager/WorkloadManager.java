@@ -25,6 +25,7 @@ public class WorkloadManager {
   private WorkloadList workloadList = new WorkloadList();
   private final Timer persistTimer = new Timer();
   private boolean timerSet = false;
+  private boolean changed = false;
   private static long PERSIST_PERIOD = 60L * 1000L;
   private final File workloadFile =
       new File(
@@ -33,6 +34,9 @@ public class WorkloadManager {
               + "workload.bin");
 
   public static WorkloadManager getInstance() {
+    if (!INSTANCE.isTimerSet()) {
+      INSTANCE.setUpTimer();
+    }
     return INSTANCE;
   }
 
@@ -51,6 +55,7 @@ public class WorkloadManager {
     writeLock.lock();
     try {
       workloadList.addRecord(deviceID, sensors, span);
+      changed = true;
     } finally {
       writeLock.unlock();
     }
@@ -106,6 +111,7 @@ public class WorkloadManager {
       workloadList = (WorkloadList) is.readObject();
       is.close();
       logger.info("successfully load workload manager from file");
+      changed = true;
       return true;
     } catch (IOException | ClassNotFoundException e) {
       logger.info("fail to load workload manager");
@@ -140,6 +146,14 @@ public class WorkloadManager {
     persistTimer.scheduleAtFixedRate(new PersistTask(this), 1000, PERSIST_PERIOD);
   }
 
+  private boolean isChanged() {
+    return changed;
+  }
+
+  private void setChanged(boolean changed) {
+    this.changed = changed;
+  }
+
   private static class PersistTask extends TimerTask {
     WorkloadManager manager;
     public PersistTask(WorkloadManager instance) {
@@ -148,7 +162,10 @@ public class WorkloadManager {
 
     @Override
     public void run() {
-      manager.persist();
+      if (manager.isChanged()) {
+        manager.setChanged(false);
+        manager.persist();
+      }
     }
   }
 }
