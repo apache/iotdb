@@ -102,38 +102,11 @@ public class WorkloadManager {
   }
 
   public boolean loadFromFile() {
-    if (!workloadFile.exists()) {
-      logger.info("fail to load from {}, because it does not exist", workloadFile);
-      return false;
-    }
-    try {
-      ObjectInputStream is = new ObjectInputStream(new FileInputStream(workloadFile));
-      workloadList = (WorkloadList) is.readObject();
-      is.close();
-      logger.info("successfully load workload manager from file");
-      changed = true;
-      return true;
-    } catch (IOException | ClassNotFoundException e) {
-      logger.info("fail to load workload manager");
-      return false;
-    }
+    return true;
   }
 
   public boolean persist() {
-    try {
-      if (!workloadFile.exists()) {
-        workloadFile.createNewFile();
-      }
-      ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(workloadFile));
-      os.writeObject(workloadList);
-      os.flush();
-      os.close();
-      logger.info("successfully persist workload manager");
-      return true;
-    } catch (IOException e) {
-      logger.info("fail to persist workload manager");
-      return false;
-    }
+    return true;
   }
 
   private boolean isTimerSet() {
