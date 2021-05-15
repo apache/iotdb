@@ -456,46 +456,6 @@ public class TsFileProcessor {
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
   }
 
-  private void checkMemcheckMemCostAndAddToTspInfoCostAndAddToTspInfo(
-      InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException {
-    if (start >= end) {
-      return;
-    }
-    long[] memIncrements = new long[3]; // memTable, text, chunk metadata
-
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
-
-    int columnIndex = 0;
-    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
-      // for aligned timeseries
-      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
-        VectorMeasurementSchema vectorSchema =
-            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
-        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[columnIndex++];
-        }
-        updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
-      }
-      // for non aligned
-      else {
-        // skip failed Measurements
-        TSDataType dataType = insertTabletPlan.getDataTypes()[columnIndex];
-        String measurement = insertTabletPlan.getMeasurements()[i];
-        Object column = insertTabletPlan.getColumns()[columnIndex];
-        columnIndex++;
-        if (dataType == null || column == null || measurement == null) {
-          continue;
-        }
-        updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
-      }
-    }
-    long memTableIncrement = memIncrements[0];
-    long textDataIncrement = memIncrements[1];
-    long chunkMetadataIncrement = memIncrements[2];
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
-  }
-
   private void updateMemCost(
       TSDataType dataType,
       String measurement,
