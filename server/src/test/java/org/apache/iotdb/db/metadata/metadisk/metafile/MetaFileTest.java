@@ -156,25 +156,30 @@ public class MetaFileTest {
 
   @Test
   public void testIOPerformance() throws IOException {
+    int sgNum=5;
     int deviceNum = 1000;
-    int schemaNum = 100;
+    int schemaNum = 500;
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
     MNode root = new InternalMNode(null, "root");
-    StorageGroupMNode sg = new StorageGroupMNode(root, "sg", 1000);
-    root.addChild("sg", sg);
-    String d, t;
+    String s,d, t;
+    StorageGroupMNode sg;
     MNode device;
     MeasurementMNode m;
-    for (int i = 0; i < deviceNum; i++) {
-      d = "d" + i;
-      device = new InternalMNode(sg, d);
-      sg.addChild(d, device);
-      for (int j = 0; j < schemaNum; j++) {
-        t = "t" + j;
-        m = new MeasurementMNode(device, t, new MeasurementSchema(t, TSDataType.INT32), null);
-        device.addChild(t, m);
+    for(int k=0;k<sgNum;k++){
+      s="sg"+k;
+      sg = new StorageGroupMNode(root, s, 1000);
+      root.addChild(s, sg);
+      for (int i = 0; i < deviceNum; i++) {
+        d = "d" + i;
+        device = new InternalMNode(sg, d);
+        sg.addChild(d, device);
+        for (int j = 0; j < schemaNum; j++) {
+          t = "t" + j;
+          m = new MeasurementMNode(device, t, new MeasurementSchema(t, TSDataType.INT32), null);
+          device.addChild(t, m);
+        }
       }
     }
     endTime = System.currentTimeMillis();
@@ -185,8 +190,18 @@ public class MetaFileTest {
     endTime = System.currentTimeMillis();
     System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
 
+    PersistenceInfo persistenceInfo=root.getPersistenceInfo();
+    root=null;
+    sg=null;
+    device=null;
+    m=null;
     startTime = System.currentTimeMillis();
-    root = metaFile.readRecursively(root.getPersistenceInfo());
+    System.gc();
+    endTime = System.currentTimeMillis();
+    System.out.println("GC time: " + (endTime - startTime) + "ms.");
+
+    startTime = System.currentTimeMillis();
+    root = metaFile.readRecursively(persistenceInfo);
     endTime = System.currentTimeMillis();
     System.out.println(count(root));
     System.out.println("MTree read from file time: " + (endTime - startTime) + "ms.");

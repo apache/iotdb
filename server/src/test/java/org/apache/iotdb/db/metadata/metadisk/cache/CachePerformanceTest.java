@@ -20,9 +20,10 @@ public class CachePerformanceTest {
 
   private static Logger logger = LoggerFactory.getLogger(CachePerformanceTest.class);
 
-  private static final int TIMESERIES_NUM = 100;
+  private static final int TIMESERIES_NUM = 500;
   private static final int DEVICE_NUM = 1000;
-  private static final int NODE_NUM = TIMESERIES_NUM * (DEVICE_NUM) + DEVICE_NUM + 3;
+  private static final double CACHE_RATIO=0.75;
+  private static final int NODE_NUM = (int)((TIMESERIES_NUM * (DEVICE_NUM) + DEVICE_NUM + 3)*CACHE_RATIO);
 
   private static final String BASE_PATH = CachePerformanceTest.class.getResource("").getPath();
   private static final String METAFILE_FILEPATH = BASE_PATH + "metafile.bin";
@@ -102,6 +103,7 @@ public class CachePerformanceTest {
       readCostTime += accessMTree(mTreeMem);
       mTreeMem.clear();
       mTreeMem = null;
+      System.gc();
     }
     System.out.println(
         "MTreeMem RW performance: "
@@ -123,6 +125,7 @@ public class CachePerformanceTest {
       mTreeDisk.clear();
       metaFile.delete();
       mTreeDisk = null;
+      System.gc();
     }
     System.out.println(
         "MTreeDisk RW performance: "
@@ -138,13 +141,13 @@ public class CachePerformanceTest {
     startTime = System.currentTimeMillis();
     for (int i = 0; i < DEVICE_NUM; i++) {
       for (int j = 0; j < TIMESERIES_NUM; j++) {
-        mTree.createTimeseries(
-            paths[i][j],
-            TSDataType.TEXT,
-            TSEncoding.PLAIN,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            Collections.emptyMap(),
-            null);
+        mTree.unlockMNode(mTree.createTimeseries(
+                paths[i][j],
+                TSDataType.TEXT,
+                TSEncoding.PLAIN,
+                TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                Collections.emptyMap(),
+                null));
       }
     }
     endTime = System.currentTimeMillis();
