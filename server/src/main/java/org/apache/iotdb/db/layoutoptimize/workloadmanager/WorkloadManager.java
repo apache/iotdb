@@ -156,6 +156,7 @@ public class WorkloadManager {
 
   private static class PersistTask extends TimerTask {
     WorkloadManager manager;
+
     public PersistTask(WorkloadManager instance) {
       manager = instance;
     }
