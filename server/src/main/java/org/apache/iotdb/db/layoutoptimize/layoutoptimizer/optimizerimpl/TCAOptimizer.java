@@ -117,6 +117,12 @@ public class TCAOptimizer extends LayoutOptimizer {
     SampleRateKeeper keeper = SampleRateKeeper.getInstance();
     BigDecimal totalSampleRate = BigDecimal.valueOf(0);
     int totalNum = 0;
+    if (keeper.hasSampleRateForDevice(queryRecord.getDevice().getFullPath())) {
+      try {
+        keeper.updateSampleRate(queryRecord.getDevice().getFullPath());
+      } catch (Exception e) {
+      }
+    }
     for (String measurement : measurements) {
       try {
         totalSampleRate =
