@@ -46,7 +46,10 @@ public class WorkloadInfo {
   public QueryRecord sample() {
     Set<String> visitMeasurement = new HashSet<>();
     Random random = new Random();
-    int visitSize = random.nextInt(measurementVisitCount.size() - 1) + 1;
+    int visitSize = random.nextInt(measurementVisitCount.size()) + 1;
+    if (visitSize > measurementVisitCount.size()) {
+      visitSize -= 1;
+    }
     long randNum = 0L;
     long span = 0L;
     for (int i = 0; i < visitSize; i++) {
