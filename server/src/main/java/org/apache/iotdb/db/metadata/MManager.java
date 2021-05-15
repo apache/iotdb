@@ -1905,81 +1905,83 @@ public class MManager {
     MNode deviceMNode =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
-
-    // 2. get schema of each measurement
-    // if do not has measurement
-    MeasurementMNode measurementMNode;
-    TSDataType dataType;
-    for (int i = 0; i < measurementList.length; i++) {
-      try {
-        MNode child = getMNode(deviceMNode, measurementList[i]);
-        if (child instanceof MeasurementMNode) {
-          measurementMNode = (MeasurementMNode) child;
-        } else if (child instanceof StorageGroupMNode) {
-          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
-        } else {
-          if (!config.isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+    try {
+      // 2. get schema of each measurement
+      // if do not has measurement
+      MeasurementMNode measurementMNode;
+      TSDataType dataType;
+      for (int i = 0; i < measurementList.length; i++) {
+        try {
+          MNode child = getMNode(deviceMNode, measurementList[i]);
+          if (child instanceof MeasurementMNode) {
+            measurementMNode = (MeasurementMNode) child;
+          } else if (child instanceof StorageGroupMNode) {
+            throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
           } else {
-            // child is null or child is type of MNode
-            dataType = getTypeInLoc(plan, i);
-            // create it, may concurrent created by multiple thread
-            internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
-            measurementMNode = (MeasurementMNode) getMNode(deviceMNode, measurementList[i]);
+            if (!config.isAutoCreateSchemaEnabled()) {
+              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
+            } else {
+              // child is null or child is type of MNode
+              dataType = getTypeInLoc(plan, i);
+              // create it, may concurrent created by multiple thread
+              internalCreateTimeseries(deviceId.concatNode(measurementList[i]), dataType);
+              measurementMNode = (MeasurementMNode) getMNode(deviceMNode, measurementList[i]);
+            }
           }
-        }
 
-        // check type is match
-        TSDataType insertDataType = null;
-        if (plan instanceof InsertRowPlan) {
-          if (!((InsertRowPlan) plan).isNeedInferType()) {
-            // only when InsertRowPlan's values is object[], we should check type
+          // check type is match
+          TSDataType insertDataType = null;
+          if (plan instanceof InsertRowPlan) {
+            if (!((InsertRowPlan) plan).isNeedInferType()) {
+              // only when InsertRowPlan's values is object[], we should check type
+              insertDataType = getTypeInLoc(plan, i);
+            } else {
+              insertDataType = measurementMNode.getSchema().getType();
+            }
+          } else if (plan instanceof InsertTabletPlan) {
             insertDataType = getTypeInLoc(plan, i);
-          } else {
-            insertDataType = measurementMNode.getSchema().getType();
           }
-        } else if (plan instanceof InsertTabletPlan) {
-          insertDataType = getTypeInLoc(plan, i);
-        }
 
-        if (measurementMNode.getSchema().getType() != insertDataType) {
+          if (measurementMNode.getSchema().getType() != insertDataType) {
+            logger.warn(
+                    "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                    measurementList[i],
+                    insertDataType,
+                    measurementMNode.getSchema().getType());
+            DataTypeMismatchException mismatchException =
+                    new DataTypeMismatchException(
+                            measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+            if (!config.isEnablePartialInsert()) {
+              throw mismatchException;
+            } else {
+              // mark failed measurement
+              plan.markFailedMeasurementInsertion(i, mismatchException);
+              continue;
+            }
+          }
+
+          measurementMNodes[i] = measurementMNode;
+
+          // set measurementName instead of alias
+          measurementList[i] = measurementMNode.getName();
+
+        } catch (MetadataException e) {
           logger.warn(
-              "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i],
-              insertDataType,
-              measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException =
-              new DataTypeMismatchException(
-                  measurementList[i], insertDataType, measurementMNode.getSchema().getType());
-          if (!config.isEnablePartialInsert()) {
-            throw mismatchException;
-          } else {
+                  "meet error when check {}.{}, message: {}",
+                  deviceId,
+                  measurementList[i],
+                  e.getMessage());
+          if (config.isEnablePartialInsert()) {
             // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, mismatchException);
-            continue;
+            plan.markFailedMeasurementInsertion(i, e);
+          } else {
+            throw e;
           }
-        }
-
-        measurementMNodes[i] = measurementMNode;
-
-        // set measurementName instead of alias
-        measurementList[i] = measurementMNode.getName();
-
-      } catch (MetadataException e) {
-        logger.warn(
-            "meet error when check {}.{}, message: {}",
-            deviceId,
-            measurementList[i],
-            e.getMessage());
-        if (config.isEnablePartialInsert()) {
-          // mark failed measurement
-          plan.markFailedMeasurementInsertion(i, e);
-        } else {
-          throw e;
         }
       }
+    }finally {
+      mtree.unlockMNode(deviceMNode);
     }
-    mtree.unlockMNode(deviceMNode);
     return deviceMNode;
   }
 
