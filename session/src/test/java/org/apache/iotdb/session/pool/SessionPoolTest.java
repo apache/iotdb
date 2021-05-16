@@ -46,7 +46,7 @@ import static org.junit.Assert.fail;
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
 
-  private CompactionStrategy defaultCompaction =
+  private final CompactionStrategy defaultCompaction =
       IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
 
   @Before
@@ -143,8 +143,9 @@ public class SessionPoolTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
       fail();
+    } finally {
+      pool.close();
     }
-    pool.close();
   }
 
   @Test
@@ -290,6 +291,7 @@ public class SessionPoolTest {
     // restart the server
     EnvironmentUtils.reactiveDaemon();
     write10Data(pool, true);
+    pool.close();
   }
 
   private void write10Data(SessionPool pool, boolean failWhenThrowException) {
