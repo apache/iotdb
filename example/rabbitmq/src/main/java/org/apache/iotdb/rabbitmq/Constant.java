@@ -34,7 +34,7 @@ public class Constant {
   public static final String PLAIN = "PLAIN";
   public static final String SNAPPY = "SNAPPY";
 
-  public static final String[][] CREATE_TIMESERIES = {
+  public static final String[][] TIMESERIESLIST = {
     {"root.vehicle.d0.s0", "INT32", PLAIN, SNAPPY},
     {"root.vehicle.d0.s1", "TEXT", PLAIN, SNAPPY},
     {"root.vehicle.d1.s2", "FLOAT", PLAIN, SNAPPY},
