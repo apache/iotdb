@@ -683,8 +683,9 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
-  /** default config for double write **/
+  /** default config for double write * */
   private boolean enableDoubleWrite = false;
+
   private String secondaryAddress = "127.0.0.1";
   private int secondaryPort = 6668;
   private String secondaryUser = "root";

@@ -608,7 +608,7 @@ public class Session {
     insertRecord(deviceId, request);
   }
 
-  private void insertRecord(String deviceId, TSInsertRecordReq request)
+  public void insertRecord(String deviceId, TSInsertRecordReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     try {
       getSessionConnection(deviceId).insertRecord(request);
@@ -883,6 +883,15 @@ public class Session {
     }
   }
 
+  public void insertRecords(TSInsertRecordsReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      defaultSessionConnection.insertRecords(request);
+    } catch (RedirectException ignored) {
+      // ignore
+    }
+  }
+
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
@@ -928,6 +937,15 @@ public class Session {
     TSInsertRecordsOfOneDeviceReq request =
         genTSInsertRecordsOfOneDeviceReq(
             deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+    try {
+      getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  public void insertRecordsOfOneDevice(String deviceId, TSInsertRecordsOfOneDeviceReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
     try {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
