@@ -68,7 +68,7 @@ public class RabbitMQConsumer {
     }
   }
 
-  private void createTimeseries(String[] sql)
+  private void createTimeseries(String[] timeseriesInfo)
       throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
