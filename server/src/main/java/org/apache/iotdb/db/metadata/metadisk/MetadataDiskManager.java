@@ -136,6 +136,9 @@ public class MetadataDiskManager implements MetadataAccess {
         return null;
       }
       if (result.isLoaded()) {
+        if(result.isLockedInMemory()){
+          return result;
+        }
         if (result.isCached()) {
           cacheStrategy.applyChange(result);
         } else {
@@ -146,7 +149,7 @@ public class MetadataDiskManager implements MetadataAccess {
         }
       } else {
         result = getMNodeFromDisk(result.getPersistenceInfo());
-        parent.addChild(result.getName(), result);
+        result=parent.addChild(result);
         if (result.isMeasurement()) {
           MeasurementMNode measurementMNode = (MeasurementMNode) result;
           if (measurementMNode.getAlias() != null) {
@@ -180,7 +183,7 @@ public class MetadataDiskManager implements MetadataAccess {
       }
       if (!result.isLoaded()) {
         result = getMNodeFromDisk(result.getPersistenceInfo());
-        parent.addChild(result.getName(), result);
+        result=parent.addChild(result);
         if (result.isMeasurement()) {
           MeasurementMNode measurementMNode = (MeasurementMNode) result;
           if (measurementMNode.getAlias() != null) {

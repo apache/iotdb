@@ -553,6 +553,11 @@ public class MTree implements MTreeInterface {
     return cur;
   }
 
+  @Override
+  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException {
+    return getNodeByPathWithStorageGroupCheck(path);
+  }
+
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
    * device], throw exception Get storage group node, if the give path is not a storage group, throw

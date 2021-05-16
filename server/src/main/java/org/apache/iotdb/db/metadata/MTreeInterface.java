@@ -118,6 +118,8 @@ public interface MTreeInterface extends Serializable {
    */
   MNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
 
+  MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
+
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
    * device], throw exception Get storage group node, if the give path is not a storage group, throw

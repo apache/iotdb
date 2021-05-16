@@ -514,6 +514,36 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
+  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(rootName)) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    boolean storageGroupChecked = false;
+    MNode cur = metadataDiskManager.getRoot();
+    for (int i = 1; i < nodes.length; i++) {
+      if(!cur.hasChild(nodes[i])){
+        unlockMNodePath(cur);
+        if (!storageGroupChecked) {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+        throw new PathNotExistException(path.getFullPath());
+      }
+      cur = metadataDiskManager.getChild(cur, nodes[i],true);
+      if (cur.isStorageGroup()) {
+        storageGroupChecked = true;
+      }
+    }
+
+    if (!storageGroupChecked) {
+      unlockMNodePath(cur);
+      throw new StorageGroupNotSetException(path.getFullPath());
+    }
+    unlockMNodePath(cur.getParent());
+    return cur;
+  }
+
+  @Override
   public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
     MNode node = getNodeByPath(path);

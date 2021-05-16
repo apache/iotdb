@@ -1087,24 +1087,34 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
-    MNode node = getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel);
-    mtree.unlockMNode(node);
+    MNode node = getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel,false);
     node = processMNodeForExternChildrenCheck(node);
     return node;
   }
 
   private MNode getDeviceNodeWithAutoCreateWithoutReturnProcess(
-      PartialPath path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
+      PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked) throws MetadataException {
     MNode node;
     boolean shouldSetStorageGroup;
     try {
-      node = getMNodeFromCacheWithMemoryLock(path);
+      if(isLocked){
+        node= mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
+      }else {
+        node=getMNodeFromCache(path);
+      }
       return node;
     } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path.getFullPath());
       }
       shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+    }catch (MetadataException e){
+      if(e instanceof  PathNotExistException){
+        if (!autoCreateSchema) {
+          throw e;
+        }
+      }
+      shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
     }
 
     try {
@@ -1113,10 +1123,16 @@ public class MManager {
         setStorageGroup(storageGroupPath);
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if(!isLocked){
+        unlockNode(node);
+      }
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+      if(!isLocked){
+        unlockNode(node);
+      }
       return node;
     }
   }
@@ -1140,23 +1156,19 @@ public class MManager {
 
   public Map<String, MeasurementMNode> getMeasurementNodesInDeviceWithMemoryLock(PartialPath path)
       throws MetadataException {
-    try {
-      MNode node = getMNodeFromCacheWithMemoryLock(path);
-      Map<String, MeasurementMNode> result = new HashMap<>();
-      MNode child;
-      for (String childName : node.getChildren().keySet()) {
-        child = mtree.getChildMNodeInDeviceWithMemoryLock(node, childName);
-        if (child.isMeasurement()) {
-          result.put(childName, (MeasurementMNode) child);
-        } else {
-          mtree.unlockMNode(child);
-        }
+    MNode node = mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
+    Map<String, MeasurementMNode> result = new HashMap<>();
+    MNode child;
+    for (String childName : node.getChildren().keySet()) {
+      child = mtree.getChildMNodeInDeviceWithMemoryLock(node, childName);
+      if (child.isMeasurement()) {
+        result.put(childName, (MeasurementMNode) child);
+      } else {
+        mtree.unlockMNode(child);
       }
-      mtree.unlockMNode(node);
-      return result;
-    } catch (CacheException e) {
-      throw new PathNotExistException(path.getFullPath());
     }
+    mtree.unlockMNode(node);
+    return result;
   }
 
   /**
@@ -1904,7 +1916,7 @@ public class MManager {
     // 1. get device node
     MNode deviceMNode =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(
-            deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+            deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel(),true);
     try {
       // 2. get schema of each measurement
       // if do not has measurement
@@ -2040,15 +2052,6 @@ public class MManager {
     if (MTreeType == MTREE_DISK_BASED && !node.isCached()) {
       mNodeCache.removeObject(path);
       return mNodeCache.loadObjectByKey(path);
-    }
-    return node;
-  }
-
-  private MNode getMNodeFromCacheWithMemoryLock(PartialPath path) throws CacheException, MetadataException{
-    MNode node = mNodeCache.get(path);
-    if (MTreeType == MTREE_DISK_BASED && !node.isLockedInMemory()) {
-      mNodeCache.removeObject(path);
-      return mtree.getNodeByPathWithMemoryLock(path);
     }
     return node;
   }
