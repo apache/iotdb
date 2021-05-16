@@ -34,12 +34,10 @@ import com.rabbitmq.client.Envelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 /**
  * The class is to show how to get data from RabbitMQ. The data is sent by class RabbitMQProducer.
@@ -48,36 +46,20 @@ public class RabbitMQConsumer {
 
   private static final Logger logger = LoggerFactory.getLogger(RabbitMQProducer.class);
 
-  private Session session;
+  public RabbitMQConsumer() {}
 
-  public RabbitMQConsumer() {
-    try {
-      session =
-          new Session(
-              Constant.IOTDB_CONNECTION_HOST,
-              Constant.IOTDB_CONNECTION_PORT,
-              Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
-      session.open();
-      session.setStorageGroup(Constant.STORAGE_GROUP);
-      for (String[] timeseriesInfo : Constant.TIMESERIESLIST) {
-        createTimeseries(sql);
-      }
-    } catch (Exception e) {
-      logger.error(e.getMessage());
+  public static void main(String[] args) throws Exception {
+    Session session =
+        new Session(
+            Constant.IOTDB_CONNECTION_HOST,
+            Constant.IOTDB_CONNECTION_PORT,
+            Constant.IOTDB_CONNECTION_USER,
+            Constant.IOTDB_CONNECTION_PASSWORD);
+    session.open();
+    session.setStorageGroup(Constant.STORAGE_GROUP);
+    for (String[] timeseries : Constant.TIMESERIESLIST) {
+      createTimeseries(session, timeseries);
     }
-  }
-
-  private void createTimeseries(String[] timeseriesInfo)
-      throws StatementExecutionException, IoTDBConnectionException {
-    String timeseriesId = timeseriesInfo[0];
-    TSDataType dataType = TSDataType.valueOf(timeseriesInfo[1]);
-    TSEncoding encoding = TSEncoding.valueOf(timeseriesInfo[2]);
-    CompressionType compressionType = CompressionType.valueOf(timeseriesInfo[3]);
-    session.createTimeseries(timeseries, dataType, encoding, compressionType);
-  }
-
-  public static void main(String[] args) throws IOException, TimeoutException {
     RabbitMQConsumer consumer = new RabbitMQConsumer();
     Channel channel = RabbitMQChannelUtils.getChannelInstance(Constant.CONNECTION_NAME);
     AMQP.Queue.DeclareOk declareOk =
@@ -91,7 +73,7 @@ public class RabbitMQConsumer {
               String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) {
             logger.info(consumerTag + ", " + envelope.toString() + ", " + properties.toString());
             try {
-              consumer.insert(new String(body));
+              consumer.insert(session, new String(body));
             } catch (Exception e) {
               logger.error(e.getMessage());
             }
@@ -101,7 +83,17 @@ public class RabbitMQConsumer {
         declareOk.getQueue(), true, Constant.RABBITMQ_CONSUMER_TAG, defaultConsumer);
   }
 
-  private void insert(String data) throws IoTDBConnectionException, StatementExecutionException {
+  private static void createTimeseries(Session session, String[] timeseries)
+      throws StatementExecutionException, IoTDBConnectionException {
+    String timeseriesId = timeseries[0];
+    TSDataType dataType = TSDataType.valueOf(timeseries[1]);
+    TSEncoding encoding = TSEncoding.valueOf(timeseries[2]);
+    CompressionType compressionType = CompressionType.valueOf(timeseries[3]);
+    session.createTimeseries(timeseriesId, dataType, encoding, compressionType);
+  }
+
+  private void insert(Session session, String data)
+      throws IoTDBConnectionException, StatementExecutionException {
     String[] dataArray = data.split(",");
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
