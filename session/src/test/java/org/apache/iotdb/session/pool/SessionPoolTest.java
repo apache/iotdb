@@ -170,8 +170,8 @@ public class SessionPoolTest {
                   pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
-              e.printStackTrace();
-              fail();
+              logger.error("correctQuery failed", e);
+              fail(e.getMessage());
             }
           });
     }
@@ -181,7 +181,7 @@ public class SessionPoolTest {
       assertTrue(pool.currentAvailableSize() <= 3);
       assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
-      logger.error("correctQuery", e);
+      logger.error("correctQuery failed", e);
       fail(e.getMessage());
     }
   }
@@ -272,6 +272,7 @@ public class SessionPoolTest {
       while (wrapper.hasNext()) {
         wrapper.next();
       }
+      pool.closeResultSet(wrapper);
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
