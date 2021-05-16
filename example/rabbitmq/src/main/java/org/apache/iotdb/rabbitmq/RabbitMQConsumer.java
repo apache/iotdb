@@ -60,7 +60,7 @@ public class RabbitMQConsumer {
               Constant.IOTDB_CONNECTION_PASSWORD);
       session.open();
       session.setStorageGroup(Constant.STORAGE_GROUP);
-      for (String[] sql : Constant.CREATE_TIMESERIES) {
+      for (String[] timeseriesInfo : Constant.TIMESERIESLIST) {
         createTimeseries(sql);
       }
     } catch (Exception e) {
