@@ -30,6 +30,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -45,7 +47,7 @@ import static org.junit.Assert.fail;
 
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
-
+  private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
   private final CompactionStrategy defaultCompaction =
       IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
 
@@ -81,7 +83,7 @@ public class SessionPoolTest {
                   Collections.singletonList(TSDataType.INT64),
                   Collections.singletonList(3L));
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              fail();
+              fail(e.getMessage());
             }
           });
     }
@@ -89,8 +91,8 @@ public class SessionPoolTest {
     try {
       assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("insert failed", e);
+      fail(e.getMessage());
     }
     assertTrue(pool.currentAvailableSize() <= 3);
     assertEquals(0, pool.currentOccupiedSize());
@@ -131,7 +133,7 @@ public class SessionPoolTest {
               // this is incorrect becasue wrapper is not closed.
               // so all other 7 queries will be blocked
             } catch (IoTDBConnectionException | StatementExecutionException e) {
-              fail();
+              fail(e.getMessage());
             }
           });
     }
@@ -141,8 +143,8 @@ public class SessionPoolTest {
       assertEquals(0, pool.currentAvailableSize());
       assertTrue(pool.currentOccupiedSize() <= 3);
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("incorrectExecuteQueryStatement failed,", e);
+      fail(e.getMessage());
     } finally {
       pool.close();
     }
@@ -179,8 +181,8 @@ public class SessionPoolTest {
       assertTrue(pool.currentAvailableSize() <= 3);
       assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("correctQuery", e);
+      fail(e.getMessage());
     }
   }
 
@@ -202,8 +204,8 @@ public class SessionPoolTest {
               }
               pool.closeResultSet(wrapper);
             } catch (Exception e) {
-              e.printStackTrace();
-              fail();
+              logger.error("executeRawDataQuery", e);
+              fail(e.getMessage());
             }
           });
     }
@@ -273,8 +275,8 @@ public class SessionPoolTest {
       assertEquals(1, pool.currentAvailableSize());
       assertEquals(0, pool.currentOccupiedSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
-      fail();
+      logger.error("tryIfTheServerIsRestartButDataIsGotten", e);
+      fail(e.getMessage());
     }
     pool.close();
   }
@@ -306,7 +308,7 @@ public class SessionPoolTest {
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         // will fail this 10 times.
         if (failWhenThrowException) {
-          fail();
+          fail(e.getMessage());
         }
       }
     }
@@ -327,7 +329,7 @@ public class SessionPoolTest {
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals("Session pool is closed", e.getMessage());
     } catch (StatementExecutionException e) {
-      fail();
+      fail(e.getMessage());
     }
     // some other test cases are not covered:
     // e.g., thread A created a new session, but not returned; thread B close the pool; A get the
