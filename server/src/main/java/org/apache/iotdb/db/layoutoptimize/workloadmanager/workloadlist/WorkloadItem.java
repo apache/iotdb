@@ -26,7 +26,7 @@ public class WorkloadItem {
   private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
   private ReentrantReadWriteLock.ReadLock readLock = readWriteLock.readLock();
   private ReentrantReadWriteLock.WriteLock writeLock = readWriteLock.writeLock();
-  private final long RECORD_THRESHOLD = 199L;
+  private final long RECORD_THRESHOLD = 49L;
   private final ItemStatistic statistic = new ItemStatistic();
 
   public WorkloadItem(

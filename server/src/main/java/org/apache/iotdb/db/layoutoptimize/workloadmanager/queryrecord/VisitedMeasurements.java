@@ -1,8 +1,9 @@
 package org.apache.iotdb.db.layoutoptimize.workloadmanager.queryrecord;
 
+import java.io.Serializable;
 import java.util.*;
 
-public class VisitedMeasurements {
+public class VisitedMeasurements implements Serializable {
   String deviceID;
   List<String> measurements;
   private int _hashCode;

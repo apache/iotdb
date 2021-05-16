@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class WorkloadManager {
@@ -21,6 +23,10 @@ public class WorkloadManager {
   private final ReentrantReadWriteLock.ReadLock readLock = lock.readLock();
   private final ReentrantReadWriteLock.WriteLock writeLock = lock.writeLock();
   private WorkloadList workloadList = new WorkloadList();
+  private final Timer persistTimer = new Timer();
+  private boolean timerSet = false;
+  private boolean changed = false;
+  private static long PERSIST_PERIOD = 60L * 1000L;
   private final File workloadFile =
       new File(
           IoTDBDescriptor.getInstance().getConfig().getLayoutDir()
@@ -28,10 +34,15 @@ public class WorkloadManager {
               + "workload.bin");
 
   public static WorkloadManager getInstance() {
+    if (!INSTANCE.isTimerSet()) {
+      INSTANCE.setUpTimer();
+    }
     return INSTANCE;
   }
 
-  private WorkloadManager() {}
+  private WorkloadManager() {
+    loadFromFile();
+  }
 
   /**
    * Add query record to the manager
@@ -44,6 +55,7 @@ public class WorkloadManager {
     writeLock.lock();
     try {
       workloadList.addRecord(deviceID, sensors, span);
+      changed = true;
     } finally {
       writeLock.unlock();
     }
@@ -90,36 +102,44 @@ public class WorkloadManager {
   }
 
   public boolean loadFromFile() {
-    if (!workloadFile.exists()) {
-      logger.info("fail to load from {}, because it does not exist", workloadFile);
-      return false;
-    }
-    try {
-      ObjectInputStream is = new ObjectInputStream(new FileInputStream(workloadFile));
-      workloadList = (WorkloadList) is.readObject();
-      is.close();
-      logger.info("successfully load workload manager from file");
-      return true;
-    } catch (IOException | ClassNotFoundException e) {
-      logger.info("fail to load workload manager");
-      return false;
-    }
+    return true;
   }
 
   public boolean persist() {
-    try {
-      if (!workloadFile.exists()) {
-        workloadFile.createNewFile();
+    return true;
+  }
+
+  private boolean isTimerSet() {
+    return timerSet;
+  }
+
+  private void setUpTimer() {
+    if (timerSet) return;
+    timerSet = true;
+    persistTimer.scheduleAtFixedRate(new PersistTask(this), 1000, PERSIST_PERIOD);
+  }
+
+  private boolean isChanged() {
+    return changed;
+  }
+
+  private void setChanged(boolean changed) {
+    this.changed = changed;
+  }
+
+  private static class PersistTask extends TimerTask {
+    WorkloadManager manager;
+
+    public PersistTask(WorkloadManager instance) {
+      manager = instance;
+    }
+
+    @Override
+    public void run() {
+      if (manager.isChanged()) {
+        manager.setChanged(false);
+        manager.persist();
       }
-      ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(workloadFile));
-      os.writeObject(workloadList);
-      os.flush();
-      os.close();
-      logger.info("successfully persist workload manager");
-      return true;
-    } catch (IOException e) {
-      logger.info("fail to persist workload manager");
-      return false;
     }
   }
 }
