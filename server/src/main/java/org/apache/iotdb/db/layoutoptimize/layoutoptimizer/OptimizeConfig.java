@@ -3,7 +3,7 @@ package org.apache.iotdb.db.layoutoptimize.layoutoptimizer;
 public class OptimizeConfig {
   private double SACoolingRate = 0.01;
   private double SAInitTemperature = 100;
-  private int SAMaxIteration = 20000;
+  private int SAMaxIteration = 2000;
   private long SAMaxTime = 30L * 60L * 1000L;
   private int recordSampleNum = 100;
   private int logEpoch = 100;
