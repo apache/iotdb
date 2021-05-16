@@ -70,10 +70,10 @@ public class RabbitMQConsumer {
 
   private void createTimeseries(String[] timeseriesInfo)
       throws StatementExecutionException, IoTDBConnectionException {
-    String timeseries = sql[0];
-    TSDataType dataType = TSDataType.valueOf(sql[1]);
-    TSEncoding encoding = TSEncoding.valueOf(sql[2]);
-    CompressionType compressionType = CompressionType.valueOf(sql[3]);
+    String timeseriesId = timeseriesInfo[0];
+    TSDataType dataType = TSDataType.valueOf(timeseriesInfo[1]);
+    TSEncoding encoding = TSEncoding.valueOf(timeseriesInfo[2]);
+    CompressionType compressionType = CompressionType.valueOf(timeseriesInfo[3]);
     session.createTimeseries(timeseries, dataType, encoding, compressionType);
   }
 
