@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 
 // this test is not for testing the correctness of Session API. So we just implement one of the API.
 public class SessionPoolTest {
+
   private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
   private final CompactionStrategy defaultCompaction =
       IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
@@ -90,13 +91,14 @@ public class SessionPoolTest {
     service.shutdown();
     try {
       assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+      assertTrue(pool.currentAvailableSize() <= 3);
+      assertEquals(0, pool.currentOccupiedSize());
     } catch (InterruptedException e) {
       logger.error("insert failed", e);
       fail(e.getMessage());
+    } finally {
+      pool.close();
     }
-    assertTrue(pool.currentAvailableSize() <= 3);
-    assertEquals(0, pool.currentOccupiedSize());
-    pool.close();
   }
 
   @Test
@@ -110,11 +112,12 @@ public class SessionPoolTest {
           Collections.singletonList("s"),
           Collections.singletonList(TSDataType.INT64),
           Collections.singletonList(3L));
+      assertEquals(1, pool.currentAvailableSize());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       // do nothing
+    } finally {
+      pool.close();
     }
-    assertEquals(1, pool.currentAvailableSize());
-    pool.close();
   }
 
   @Test
@@ -187,7 +190,7 @@ public class SessionPoolTest {
   }
 
   @Test
-  public void executeRawDataQuery() throws InterruptedException {
+  public void executeRawDataQuery() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);
     write10Data(pool, true);
@@ -209,11 +212,16 @@ public class SessionPoolTest {
             }
           });
     }
-    service.shutdown();
-    assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
-    assertTrue(pool.currentAvailableSize() <= 3);
-    assertEquals(0, pool.currentOccupiedSize());
-    pool.close();
+    try {
+      service.shutdown();
+      assertTrue(service.awaitTermination(10, TimeUnit.SECONDS));
+      assertTrue(pool.currentAvailableSize() <= 3);
+      assertEquals(0, pool.currentOccupiedSize());
+    } catch (InterruptedException e) {
+      fail(e.getMessage());
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
@@ -253,6 +261,11 @@ public class SessionPoolTest {
         fail("should be TTransportException but get an exception: " + e.getMessage());
       }
       return;
+    } finally {
+      if (wrapper != null) {
+        pool.closeResultSet(wrapper);
+      }
+      pool.close();
     }
     fail("should throw exception but not");
   }
@@ -278,12 +291,13 @@ public class SessionPoolTest {
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error("tryIfTheServerIsRestartButDataIsGotten", e);
       fail(e.getMessage());
+    } finally {
+      pool.close();
     }
-    pool.close();
   }
 
   @Test
-  public void restart() throws Exception {
+  public void restart() {
     SessionPool pool =
         new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
     write10Data(pool, true);
