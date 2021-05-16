@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.TConfiguration;
+import org.apache.thrift.transport.TTransportException;
+
 /**
  * Note that this class is mainly copied from class {@link
  * org.apache.thrift.transport.AutoExpandingBufferWriteTransport}. since that class does not support
@@ -62,4 +65,16 @@ public class AutoScalingBufferWriteTransport extends NonOpenTransport {
   public byte[] getBuffer() {
     return buf.array();
   }
+
+  @Override
+  public TConfiguration getConfiguration() {
+    // should never call this method.
+    return null;
+  }
+
+  @Override
+  public void updateKnownMessageSize(long size) throws TTransportException {}
+
+  @Override
+  public void checkReadBytesAvailable(long numBytes) throws TTransportException {}
 }

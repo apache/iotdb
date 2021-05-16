@@ -38,9 +38,11 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.rpc.TConfigurationConst;
+import org.apache.iotdb.rpc.TSocketWrapper;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -74,6 +76,8 @@ public class EnvironmentUtils {
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   private static IoTDB daemon;
+
+  private static TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static boolean examinePorts =
       Boolean.parseBoolean(System.getProperty("test.port.closed", "false"));
@@ -149,7 +153,7 @@ public class EnvironmentUtils {
   }
 
   private static boolean examinePorts() {
-    TTransport transport = new TSocket("127.0.0.1", 6667, 100);
+    TTransport transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 6667, 100);
     if (!transport.isOpen()) {
       try {
         transport.open();
@@ -161,7 +165,7 @@ public class EnvironmentUtils {
       }
     }
     // try sync service
-    transport = new TSocket("127.0.0.1", 5555, 100);
+    transport = TSocketWrapper.wrap(tConfiguration, "127.0.0.1", 5555, 100);
     if (!transport.isOpen()) {
       try {
         transport.open();
