@@ -88,7 +88,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Install Boost and Win_Flex_Bison
         run: mkdir D:\a\cpp ; `
-          Invoke-WebRequest https://gitSetEnvironmentVariablehub.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
+          Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
           [Environment]::("Path", $env:Path + ";D:\a\cpp", "User") ; `
           Invoke-WebRequest https://boostorg.jfrog.io/artifactory/main/release/1.72.0/source/boost_1_72_0.zip -OutFile D:\a\cpp\boost_1_72_0.zip ; `
           Expand-Archive D:\a\cpp\boost_1_72_0.zip -DestinationPath D:\a\cpp ; `
