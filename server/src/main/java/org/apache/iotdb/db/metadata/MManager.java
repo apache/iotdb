@@ -2014,19 +2014,6 @@ public class MManager {
     }
   }
 
-  private TSDataType getType(InsertSinglePointPlan plan) throws MetadataException {
-    TSDataType dataType;
-    if (plan instanceof InsertSinglePointPlan) {
-      InsertSinglePointPlan tPlan = (InsertSinglePointPlan) plan;
-      dataType = TypeInferenceUtils.getPredictedDataType(tPlan.getValue(), tPlan.isNeedInferType());
-    } else {
-      throw new MetadataException(
-          String.format(
-              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
-    }
-    return dataType;
-  }
-
   /** Collect the timeseries schemas under "startingPath". */
   public void collectSeries(PartialPath startingPath, List<IMeasurementSchema> measurementSchemas) {
     MNode mNode;
