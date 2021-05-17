@@ -241,7 +241,6 @@ public class EnvironmentUtils {
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() {
     logger.warn("EnvironmentUtil setup...");
-    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     // we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
