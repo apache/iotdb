@@ -11,6 +11,8 @@ import java.util.concurrent.BlockingQueue;
 public class DoubleWriteConsumer implements Runnable {
   private BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue;
   private Session doubleWriteSession;
+  private long consumerCnt = 0;
+  private long consumerTime = 0;
 
   public DoubleWriteConsumer(
       BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue,
@@ -22,8 +24,12 @@ public class DoubleWriteConsumer implements Runnable {
   @Override
   public void run() {
     try {
-      Pair<DoubleWriteType, TSInsertRecordsReq> head;
-      while (!((head = doubleWriteQueue.take()).left == DoubleWriteType.DOUBLE_WRITE_END)) {
+      while (true) {
+        long startTime = System.currentTimeMillis();
+        Pair<DoubleWriteType, TSInsertRecordsReq> head = doubleWriteQueue.take();
+        if (head.left == DoubleWriteType.DOUBLE_WRITE_END) {
+          break;
+        }
         switch (head.left) {
             //          case TSInsertRecordReq:
             //            InsertRowPlan plan = new InsertRowPlan();
@@ -69,9 +75,16 @@ public class DoubleWriteConsumer implements Runnable {
             //                tsInsertStringRecordsReq.getValuesList());
             //            break;
         }
+        consumerCnt += 1;
+        long endTime = System.currentTimeMillis();
+        consumerTime += endTime - startTime;
       }
     } catch (InterruptedException | IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
+  }
+
+  public double getEfficiency() {
+    return (double) consumerCnt / (double) consumerTime * 1000.0;
   }
 }

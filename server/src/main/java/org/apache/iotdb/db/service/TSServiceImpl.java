@@ -201,6 +201,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private final Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private final Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
   private final Map<Long, DoubleWriteProducer> sessionIdProducerMap = new ConcurrentHashMap<>();
+  private final Map<Long, DoubleWriteConsumer> sessionIdConsumerMap = new ConcurrentHashMap<>();
   // private final Map<Long, DoubleWriteConsumer> sessionIdConsumerMap = new ConcurrentHashMap<>();
 
   // The sessionId is unique in one IoTDB instance.
@@ -312,6 +313,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             new DoubleWriteConsumer(doubleWriteQueue, doubleWriteSession);
         new Thread(doubleWriteConsumer).start();
         sessionIdProducerMap.put(sessionId, doubleWriteProducer);
+        sessionIdConsumerMap.put(sessionId, doubleWriteConsumer);
       }
     } else {
       tsStatus =
@@ -345,7 +347,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
+      sessionIdProducerMap.get(sessionId).put(new Pair<>(DoubleWriteType.DOUBLE_WRITE_END, null));
       System.out.println("fullCnt: " + sessionIdProducerMap.get(sessionId).getFullCnt());
+      System.out.println("Producer: " + sessionIdProducerMap.get(sessionId).getEfficiency() + "/s");
+      System.out.println("Consumer: " + sessionIdConsumerMap.get(sessionId).getEfficiency() + "/s");
     }
 
     return new TSStatus(
