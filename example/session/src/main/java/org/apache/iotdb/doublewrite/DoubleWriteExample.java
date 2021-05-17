@@ -28,13 +28,14 @@ import java.util.List;
 
 public class DoubleWriteExample {
   private static Session session;
-  private static String deviceId;
+  private static String deviceId = "root.dw.d01";
+  private static String host = "127.0.0.1";
+  private static int rpcPort = 6668;
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6668, "root", "root");
+    session = new Session(host, rpcPort, "root", "root");
     session.open();
-    deviceId = "root.dw.d01";
     testInsertRecords();
     session.close();
   }
