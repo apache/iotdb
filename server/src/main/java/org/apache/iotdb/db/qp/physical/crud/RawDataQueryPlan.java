@@ -24,12 +24,16 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -52,6 +56,49 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public RawDataQueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
+  }
+
+  @Override
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
+    // sort paths by device, to accelerate the metadata read process
+    List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      indexedPaths.add(new Pair<>(paths.get(i), i));
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
+    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+    Set<String> columnForReaderSet = new HashSet<>();
+    Set<String> columnForDisplaySet = new HashSet<>();
+
+    for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
+      PartialPath originalPath = indexedPath.left;
+      Integer originalIndex = indexedPath.right;
+
+      String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
+      if (!columnForReaderSet.contains(columnForReader)) {
+        addDeduplicatedPaths(originalPath);
+        addDeduplicatedDataTypes(dataTypes.get(originalIndex));
+        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
+        if (this instanceof AggregationPlan) {
+          ((AggregationPlan) this)
+              .addDeduplicatedAggregations(getAggregations().get(originalIndex));
+        }
+        columnForReaderSet.add(columnForReader);
+      }
+
+      String columnForDisplay = getColumnForDisplay(columnForReader, originalIndex);
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        addPathToIndex(columnForDisplay, getPathToIndex().size());
+        columnForDisplaySet.add(columnForDisplay);
+      }
+    }
+
+    if (!isRawQuery()) {
+      transformPaths(IoTDB.metaManager);
+    } else {
+      transformVectorPaths(physicalGenerator, columnForDisplaySet);
+    }
   }
 
   public IExpression getExpression() {
@@ -130,6 +177,26 @@ public class RawDataQueryPlan extends QueryPlan {
         deduplicatedPaths.set(i, path);
       }
     }
+  }
+
+  public void transformVectorPaths(
+      PhysicalGenerator physicalGenerator, Set<String> columnForDisplaySet)
+      throws MetadataException {
+    Pair<List<PartialPath>, Map<String, Integer>> pair =
+        physicalGenerator.getSeriesSchema(getDeduplicatedPaths());
+
+    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+    List<TSDataType> vectorizedDeduplicatedDataTypes =
+        new ArrayList<>(physicalGenerator.getSeriesTypes(vectorizedDeduplicatedPaths));
+    setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
+    setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
+
+    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
+    Map<String, Integer> pathToIndex = new HashMap<>();
+    for (String columnForDisplay : columnForDisplaySet) {
+      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+    }
+    setVectorPathToIndex(pathToIndex);
   }
 
   public List<PartialPath> getDeduplicatedVectorPaths() {

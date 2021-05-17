@@ -28,6 +28,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
+import java.util.Set;
 
 public class TimeSeriesOperand extends Expression {
 
@@ -71,6 +72,11 @@ public class TimeSeriesOperand extends Expression {
     for (PartialPath actualPath : wildcardsRemover.removeWildcardFrom(path)) {
       resultExpressions.add(new TimeSeriesOperand(actualPath));
     }
+  }
+
+  @Override
+  public void collectPaths(Set<PartialPath> pathSet) {
+    pathSet.add(path);
   }
 
   @Override

@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 public class FunctionExpression extends Expression {
 
@@ -126,6 +127,13 @@ public class FunctionExpression extends Expression {
     for (List<Expression> functionExpression : wildcardsRemover.removeWildcardsFrom(expressions)) {
       resultExpressions.add(
           new FunctionExpression(functionName, functionAttributes, functionExpression));
+    }
+  }
+
+  @Override
+  public void collectPaths(Set<PartialPath> pathSet) {
+    for (Expression expression : expressions) {
+      expression.collectPaths(pathSet);
     }
   }
 

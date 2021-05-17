@@ -122,7 +122,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -131,7 +130,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -451,7 +449,7 @@ public class PhysicalGenerator {
     }
   }
 
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
@@ -592,8 +590,15 @@ public class PhysicalGenerator {
       }
       return queryPlan;
     }
+
+    queryPlan.setResultColumns(queryOperator.getSelectOperator().getResultColumns());
+
     try {
-      deduplicate(queryPlan);
+      List<PartialPath> paths = queryPlan.getPaths();
+      List<TSDataType> dataTypes = getSeriesTypes(paths);
+      queryPlan.setDataTypes(dataTypes);
+
+      queryPlan.deduplicate(this);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -847,117 +852,7 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void deduplicate(QueryPlan queryPlan) throws MetadataException {
-    // generate dataType first
-    List<PartialPath> paths = queryPlan.getPaths();
-    List<TSDataType> dataTypes = getSeriesTypes(paths);
-    queryPlan.setDataTypes(dataTypes);
-
-    // deduplicate from here
-    if (queryPlan instanceof AlignByDevicePlan) {
-      return;
-    }
-
-    RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
-    Set<String> columnForReaderSet = new HashSet<>();
-    // if it's a last query, no need to sort by device
-    if (queryPlan instanceof LastQueryPlan) {
-      for (int i = 0; i < paths.size(); i++) {
-        PartialPath path = paths.get(i);
-        String column = queryPlan.getColumnForReaderFromPath(path, i);
-        if (!columnForReaderSet.contains(column)) {
-          TSDataType seriesType = dataTypes.get(i);
-          rawDataQueryPlan.addDeduplicatedPaths(path);
-          rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-          columnForReaderSet.add(column);
-        }
-      }
-      ((LastQueryPlan) queryPlan).transformPaths(IoTDB.metaManager);
-      return;
-    }
-
-    // sort path by device
-    List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = paths.get(i);
-      if (path != null) { // non-udf
-        indexedPaths.add(new Pair<>(paths.get(i), i));
-      } else { // udf
-        FunctionExpression functionExpression =
-            (FunctionExpression)
-                ((UDTFPlan) queryPlan).getExecutorByOriginalOutputColumnIndex(i).getExpression();
-        for (PartialPath udfPath : functionExpression.getPaths()) {
-          indexedPaths.add(new Pair<>(udfPath, i));
-        }
-      }
-    }
-    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
-
-    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
-    Set<String> columnForDisplaySet = new HashSet<>();
-    for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
-      PartialPath originalPath = indexedPath.left;
-      Integer originalIndex = indexedPath.right;
-
-      String columnForReader = queryPlan.getColumnForReaderFromPath(originalPath, originalIndex);
-      boolean isUdf = queryPlan instanceof UDTFPlan && paths.get(originalIndex) == null;
-
-      if (!columnForReaderSet.contains(columnForReader)) {
-        rawDataQueryPlan.addDeduplicatedPaths(originalPath);
-        rawDataQueryPlan.addDeduplicatedDataTypes(
-            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
-        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
-        if (queryPlan instanceof AggregationPlan) {
-          ((AggregationPlan) queryPlan)
-              .addDeduplicatedAggregations(queryPlan.getAggregations().get(originalIndex));
-        }
-        columnForReaderSet.add(columnForReader);
-      }
-
-      String columnForDisplay = queryPlan.getColumnForDisplay(columnForReader, originalIndex);
-
-      if (!columnForDisplaySet.contains(columnForDisplay)) {
-        queryPlan.addPathToIndex(columnForDisplay, queryPlan.getPathToIndex().size());
-        if (queryPlan instanceof UDTFPlan) {
-          if (isUdf) {
-            ((UDTFPlan) queryPlan).addUdfOutputColumn(columnForDisplay);
-          } else {
-            ((UDTFPlan) queryPlan).addRawQueryOutputColumn(columnForDisplay);
-          }
-        }
-        columnForDisplaySet.add(columnForDisplay);
-      }
-    }
-    if (queryPlan instanceof UDTFPlan) {
-      ((UDTFPlan) queryPlan).setPathNameToReaderIndex(pathNameToReaderIndex);
-      return;
-    }
-
-    if (!rawDataQueryPlan.isRawQuery()) {
-      rawDataQueryPlan.transformPaths(IoTDB.metaManager);
-    } else {
-      // support vector
-      List<PartialPath> deduplicatedPaths = rawDataQueryPlan.getDeduplicatedPaths();
-      Pair<List<PartialPath>, Map<String, Integer>> pair = getSeriesSchema(deduplicatedPaths);
-
-      List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
-      List<TSDataType> vectorizedDeduplicatedDataTypes =
-          new ArrayList<>(getSeriesTypes(vectorizedDeduplicatedPaths));
-      rawDataQueryPlan.setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
-      rawDataQueryPlan.setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
-
-      Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-      Map<String, Integer> pathToIndex = new HashMap<>();
-      for (String columnForDisplay : columnForDisplaySet) {
-        pathToIndex.put(
-            columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
-      }
-      queryPlan.setVectorPathToIndex(pathToIndex);
-    }
-  }
-
-  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
       throws MetadataException {
     return IoTDB.metaManager.getSeriesSchemas(paths);
   }

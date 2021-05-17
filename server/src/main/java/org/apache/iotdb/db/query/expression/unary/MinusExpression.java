@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class MinusExpression extends Expression {
 
@@ -63,6 +64,11 @@ public class MinusExpression extends Expression {
     for (Expression resultExpression : resultExpressionsForRecursion) {
       resultExpressions.add(new MinusExpression(resultExpression));
     }
+  }
+
+  @Override
+  public void collectPaths(Set<PartialPath> pathSet) {
+    expression.collectPaths(pathSet);
   }
 
   @Override

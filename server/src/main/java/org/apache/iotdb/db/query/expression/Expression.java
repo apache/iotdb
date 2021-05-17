@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
+import java.util.Set;
 
 public abstract class Expression {
 
@@ -40,6 +41,7 @@ public abstract class Expression {
     return isTimeSeriesGeneratingFunctionExpression;
   }
 
+  // TODO: implement this method
   public abstract TSDataType dataType() throws MetadataException;
 
   public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
@@ -47,4 +49,6 @@ public abstract class Expression {
   public abstract void removeWildcards(
       WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws LogicalOptimizeException;
+
+  public abstract void collectPaths(Set<PartialPath> pathSet);
 }

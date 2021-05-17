@@ -19,19 +19,43 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class LastQueryPlan extends RawDataQueryPlan {
 
   public LastQueryPlan() {
     super();
     setOperatorType(Operator.OperatorType.LAST);
+  }
+
+  @Override
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
+    Set<String> columnForReaderSet = new HashSet<>();
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = paths.get(i);
+      String column = getColumnForReaderFromPath(path, i);
+      if (!columnForReaderSet.contains(column)) {
+        TSDataType seriesType = dataTypes.get(i);
+        addDeduplicatedPaths(path);
+        addDeduplicatedDataTypes(seriesType);
+        columnForReaderSet.add(column);
+      }
+    }
+    transformPaths(IoTDB.metaManager);
   }
 
   @Override

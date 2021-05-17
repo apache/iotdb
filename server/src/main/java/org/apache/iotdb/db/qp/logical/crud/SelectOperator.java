@@ -96,14 +96,10 @@ public final class SelectOperator extends Operator {
       pathsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {
         Expression expression = resultColumn.getExpression();
-        if (expression instanceof TimeSeriesOperand) {
-          pathsCache.add(((TimeSeriesOperand) resultColumn.getExpression()).getPath());
-        } else {
-          TimeSeriesOperand timeSeriesOperand =
-              (TimeSeriesOperand)
-                  ((FunctionExpression) resultColumn.getExpression()).getExpressions().get(0);
-          pathsCache.add(timeSeriesOperand.getPath());
-        }
+        pathsCache.add(
+            expression instanceof TimeSeriesOperand
+                ? ((TimeSeriesOperand) expression).getPath()
+                : null);
       }
     }
     return pathsCache;

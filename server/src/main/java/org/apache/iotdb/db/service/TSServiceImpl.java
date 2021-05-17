@@ -82,6 +82,8 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -992,8 +994,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
       throws TException, MetadataException {
-    // Restore column header of aggregate to func(column_name), only
-    // support single aggregate function for now
+    List<ResultColumn> resultColumns = plan.getResultColumns();
     List<PartialPath> paths = plan.getPaths();
     List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
@@ -1040,11 +1041,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(
-              paths.get(i) != null
+              !(resultColumns.get(i).getExpression() instanceof FunctionExpression)
                   ? paths.get(i).getFullPath()
                   : udtfPlan.getExecutorByOriginalOutputColumnIndex(i).getExpression().toString());
           seriesTypes.add(
-              paths.get(i) != null
+              !(resultColumns.get(i).getExpression() instanceof FunctionExpression)
                   ? udtfPlan.getDataTypes().get(i)
                   : udtfPlan
                       .getExecutorByOriginalOutputColumnIndex(i)

@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public abstract class BinaryExpression extends Expression {
 
@@ -99,6 +100,12 @@ public abstract class BinaryExpression extends Expression {
         }
       }
     }
+  }
+
+  @Override
+  public void collectPaths(Set<PartialPath> pathSet) {
+    leftExpression.collectPaths(pathSet);
+    rightExpression.collectPaths(pathSet);
   }
 
   @Override

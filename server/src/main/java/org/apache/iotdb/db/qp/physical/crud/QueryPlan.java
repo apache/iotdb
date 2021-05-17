@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.HashMap;
@@ -31,6 +34,7 @@ import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
+  protected List<ResultColumn> resultColumns = null;
   protected List<PartialPath> paths = null;
   protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
@@ -54,6 +58,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
   }
+
+  public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
   @Override
   public List<PartialPath> getPaths() {
@@ -149,5 +155,13 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
     this.vectorPathToIndex = vectorPathToIndex;
+  }
+
+  public List<ResultColumn> getResultColumns() {
+    return resultColumns;
+  }
+
+  public void setResultColumns(List<ResultColumn> resultColumns) {
+    this.resultColumns = resultColumns;
   }
 }

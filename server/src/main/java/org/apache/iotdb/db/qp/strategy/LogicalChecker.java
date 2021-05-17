@@ -47,8 +47,23 @@ public class LogicalChecker {
 
   private static void checkSelectOperator(QueryOperator queryOperator)
       throws LogicalOperatorException {
+    checkLast(queryOperator);
     checkAggregation(queryOperator);
     checkAlignByDevice(queryOperator);
+  }
+
+  private static void checkLast(QueryOperator queryOperator) throws LogicalOperatorException {
+    SelectOperator selectOperator = queryOperator.getSelectOperator();
+    if (!selectOperator.isLastQuery()) {
+      return;
+    }
+
+    for (ResultColumn resultColumn : selectOperator.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (!(expression instanceof TimeSeriesOperand)) {
+        throw new LogicalOperatorException("Last queries can only be applied on raw time series.");
+      }
+    }
   }
 
   private static void checkAggregation(QueryOperator queryOperator)
@@ -57,6 +72,7 @@ public class LogicalChecker {
     if (!selectOperator.hasAggregationFunction()) {
       return;
     }
+
     for (ResultColumn resultColumn : selectOperator.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof TimeSeriesOperand) {

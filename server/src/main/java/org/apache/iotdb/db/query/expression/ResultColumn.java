@@ -24,7 +24,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ResultColumn {
 
@@ -56,6 +58,12 @@ public class ResultColumn {
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }
+  }
+
+  public Set<PartialPath> collectPaths() {
+    Set<PartialPath> pathSet = new HashSet<>();
+    expression.collectPaths(pathSet);
+    return pathSet;
   }
 
   public Expression getExpression() {
