@@ -138,7 +138,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
-    return columnForReader;
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   public boolean isEnableRedirect() {

@@ -81,6 +81,8 @@ public class TimeSeriesOperand extends Expression {
 
   @Override
   public String toString() {
-    return path.toString();
+    return path.isTsAliasExists()
+        ? path.getTsAlias()
+        : path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 }

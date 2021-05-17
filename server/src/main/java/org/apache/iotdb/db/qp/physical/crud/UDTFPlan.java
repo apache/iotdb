@@ -187,13 +187,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex) {
-    return !(resultColumns.get(pathIndex).getExpression() instanceof TimeSeriesOperand)
-        ? getExecutorByOriginalOutputColumnIndex(pathIndex).getExpression().toString()
-        : columnForReader;
-  }
-
-  @Override
   public boolean isRawQuery() {
     return false;
   }

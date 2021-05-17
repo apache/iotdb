@@ -83,7 +83,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return true;
   }
 
-  private void concatSelect(QueryOperator queryOperator) {
+  private void concatSelect(QueryOperator queryOperator) throws LogicalOptimizeException {
     if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()) {
       return;
     }

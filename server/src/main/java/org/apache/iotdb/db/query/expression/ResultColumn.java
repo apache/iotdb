@@ -43,9 +43,14 @@ public class ResultColumn {
     alias = null;
   }
 
-  public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns) {
+  public void concat(List<PartialPath> prefixPaths, List<ResultColumn> resultColumns)
+      throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressions);
+    if (hasAlias() && 1 < resultExpressions.size()) {
+      throw new LogicalOptimizeException(
+          String.format("alias '%s' can only be matched with one time series", alias));
+    }
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }
@@ -68,6 +73,10 @@ public class ResultColumn {
 
   public Expression getExpression() {
     return expression;
+  }
+
+  public boolean hasAlias() {
+    return alias != null;
   }
 
   public String getAlias() {
