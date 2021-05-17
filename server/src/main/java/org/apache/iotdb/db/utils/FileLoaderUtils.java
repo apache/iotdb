@@ -181,7 +181,7 @@ public class FileLoaderUtils {
                       .collect(Collectors.toList()),
                   allSensors,
                   context.isDebug());
-      if (timeSeriesMetadata != null) {
+      if (timeSeriesMetadata != null && !timeSeriesMetadata.isEmpty()) {
         timeSeriesMetadata
             .get(0)
             .setChunkMetadataLoader(
