@@ -846,15 +846,6 @@ public class Session {
     }
   }
 
-  public void insertRecords(TSInsertRecordsReq request)
-      throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      defaultSessionConnection.insertRecords(request);
-    } catch (RedirectException ignored) {
-      // ignore
-    }
-  }
-
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve

@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.doublewrite;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -40,49 +58,10 @@ public class DoubleWriteConsumer implements Runnable {
           break;
         }
         switch (head.left) {
-            //          case TSInsertRecordReq:
-            //            InsertRowPlan plan = new InsertRowPlan();
-            //            plan.deserialize(head.right);
-            //            TSInsertRecordReq req = new TSInsertRecordReq();
-            //            req.setTimestamp(plan.getTime());
-            //            req.setMeasurements(Arrays.asList(plan.getMeasurements()));
-            //            req.setValues(plan.getValues());
-            //            //            doubleWriteSession.insertRecord(
-            //            //                tsInsertRecordReq.getDeviceId(), (TSInsertRecordReq)
-            // head.right
-            //            //            );
-            //            doubleWriteSession.insertRecord("root.dw.d02", (TSInsertRecordReq)
-            // head.right);
-            //            break;
           case TSInsertRecordsReq:
             TSInsertRecordsReq tsInsertRecordsReq = head.right;
-
-            // for test
-            //            List<String> deviceIds = new ArrayList<>();
-            //            for (int i = 0; i < tsInsertRecordsReq.getDeviceIds().size(); i++) {
-            //              deviceIds.add("root.wd.d02");
-            //            }
-            //            tsInsertRecordsReq.setDeviceIds(deviceIds);
-            //            System.out.println(tsInsertRecordsReq.getDeviceIds());
-
             doubleWriteClient.insertRecords(tsInsertRecordsReq);
             break;
-            //          case TSInsertRecordsOfOneDeviceReq:
-            //            TSInsertRecordsOfOneDeviceReq tsInsertRecordsOfOneDeviceReq =
-            //                (TSInsertRecordsOfOneDeviceReq) head.right;
-            //            doubleWriteSession.insertRecordsOfOneDevice(
-            //                tsInsertRecordsOfOneDeviceReq.getDeviceId(),
-            // tsInsertRecordsOfOneDeviceReq);
-            //            break;
-            //          case TSInsertStringRecordsReq:
-            //            TSInsertStringRecordsReq tsInsertStringRecordsReq =
-            //                (TSInsertStringRecordsReq) head.right;
-            //            doubleWriteSession.insertRecords(
-            //                tsInsertStringRecordsReq.getDeviceIds(),
-            //                tsInsertStringRecordsReq.getTimestamps(),
-            //                tsInsertStringRecordsReq.getMeasurementsList(),
-            //                tsInsertStringRecordsReq.getValuesList());
-            //            break;
         }
         consumerCnt += 1;
         long endTime = System.nanoTime();

@@ -286,7 +286,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           tsStatus.message,
           req.getUsername());
 
-      // open double write
+      // if open double write
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
         BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue =
             new LinkedBlockingQueue<>();
@@ -370,11 +370,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     }
 
+    // if open double write
     if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
       sessionIdProducerMap.get(sessionId).put(new Pair<>(DoubleWriteType.DOUBLE_WRITE_END, null));
-      // double write debug
-      System.out.println("fullCnt: " + sessionIdProducerMap.get(sessionId).getFullCnt());
-      System.out.println("Consumer: " + sessionIdConsumerMap.get(sessionId).getEfficiency() + "/s");
       sessionIdProducerMap.remove(sessionId);
       sessionIdConsumerMap.remove(sessionId);
     }
