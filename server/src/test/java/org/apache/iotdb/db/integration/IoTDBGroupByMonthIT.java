@@ -224,6 +224,35 @@ public class IoTDBGroupByMonthIT {
     }
   }
 
+  /** StartTime: now() - 1mo, EndTime: now(). */
+  @Test
+  public void groupByNaturalMonth6() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from root.sg1.d1 GROUP BY ([now() - 1mo, now()), 1d)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          if (ans.equals("0.0")) {
+            cnt++;
+          }
+        }
+        Assert.assertTrue(cnt >= 28);
+        Assert.assertTrue(cnt <= 31);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");

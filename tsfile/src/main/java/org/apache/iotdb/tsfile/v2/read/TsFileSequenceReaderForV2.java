@@ -145,11 +145,11 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    */
   @Override
   public TsFileMetadata readFileMetadata() throws IOException {
-    if (tsFileMetaData == null) {
-      versionInfo = new ArrayList<>();
-      tsFileMetaData =
-          TsFileMetadataV2.deserializeFrom(
-              readData(fileMetadataPos, fileMetadataSize), versionInfo);
+    if (tsFileMetaData == null || versionInfo == null) {
+      Pair<TsFileMetadata, List<Pair<Long, Long>>> pair =
+          TsFileMetadataV2.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+      tsFileMetaData = pair.left;
+      versionInfo = pair.right;
     }
     return tsFileMetaData;
   }

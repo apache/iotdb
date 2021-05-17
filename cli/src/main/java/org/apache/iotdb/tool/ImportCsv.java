@@ -435,6 +435,9 @@ public class ImportCsv extends AbstractCsvTool {
         nextNode(path, nodes, '\'');
       }
     }
+    if (path.charAt(path.length() - 1) == ',') {
+      nodes.add("");
+    }
     if (startIndex <= path.length() - 1) {
       nodes.add(path.substring(startIndex));
     }

@@ -159,3 +159,4 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
+

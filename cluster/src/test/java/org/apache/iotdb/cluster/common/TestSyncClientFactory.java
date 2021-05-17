@@ -24,9 +24,11 @@ import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -66,6 +68,17 @@ public class TestSyncClientFactory implements SyncClientFactory {
           public void write(byte[] bytes, int i, int i1) {
             // do nothing
           }
+
+          @Override
+          public TConfiguration getConfiguration() {
+            return null;
+          }
+
+          @Override
+          public void updateKnownMessageSize(long size) throws TTransportException {}
+
+          @Override
+          public void checkReadBytesAvailable(long numBytes) throws TTransportException {}
         };
     return new TestSyncClient(
         protocolFactory.getProtocol(dummyTransport),
