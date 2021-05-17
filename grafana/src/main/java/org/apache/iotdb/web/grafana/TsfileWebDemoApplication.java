@@ -18,13 +18,23 @@
  */
 package org.apache.iotdb.web.grafana;
 
+import org.apache.iotdb.jdbc.Config;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Repository;
 
 @SpringBootApplication
+@Repository
+@PropertySource("classpath:application.properties")
 public class TsfileWebDemoApplication {
 
-  public static void main(String[] args) {
+  @Value("${rpc_thrift_compression_enable}")
+  private boolean rpcThriftCompressionEnable;
+
+  public void main(String[] args) {
+    Config.rpcThriftCompressionEnable = this.rpcThriftCompressionEnable;
     SpringApplication.run(TsfileWebDemoApplication.class, args);
   }
 }
