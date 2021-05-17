@@ -185,7 +185,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  public void merge(
+  public boolean merge(
       boolean fullMerge,
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
@@ -197,7 +197,7 @@ public abstract class TsFileManagement {
             storageGroupName,
             (System.currentTimeMillis() - mergeStartTime));
       }
-      return;
+      return false;
     }
     // wait until seq merge has finished
     while (isSeqMerging) {
@@ -206,7 +206,7 @@ public abstract class TsFileManagement {
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();
-        return;
+        return false;
       }
     }
     isUnseqMerging = true;
@@ -214,13 +214,13 @@ public abstract class TsFileManagement {
     if (seqMergeList.isEmpty()) {
       logger.info("{} no seq files to be merged", storageGroupName);
       isUnseqMerging = false;
-      return;
+      return false;
     }
 
     if (unSeqMergeList.isEmpty()) {
       logger.info("{} no unseq files to be merged", storageGroupName);
       isUnseqMerging = false;
-      return;
+      return false;
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -234,7 +234,7 @@ public abstract class TsFileManagement {
         logger.info(
             "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
         isUnseqMerging = false;
-        return;
+        return false;
       }
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
@@ -271,9 +271,10 @@ public abstract class TsFileManagement {
             mergeFiles[0].size(),
             mergeFiles[1].size());
       }
-
+      return true;
     } catch (MergeException | IOException e) {
       logger.error("{} cannot select file for merge", storageGroupName, e);
+      return false;
     }
   }
 
