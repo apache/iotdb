@@ -133,7 +133,7 @@ public class ClusterAggregator {
    * @param timeFilter nullable
    */
   private List<AggregateResult> getAggregateResult(
-      Path path,
+      PartialPath path,
       Set<String> deviceMeasurements,
       List<String> aggregations,
       TSDataType dataType,
@@ -168,7 +168,7 @@ public class ClusterAggregator {
                 aggregations,
                 deviceMeasurements,
                 dataType,
-                path.getFullPath(),
+                path,
                 timeFilter,
                 context,
                 ascending);
