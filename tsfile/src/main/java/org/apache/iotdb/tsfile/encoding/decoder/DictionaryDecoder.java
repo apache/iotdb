@@ -46,14 +46,7 @@ public class DictionaryDecoder extends Decoder {
   @Override
   public boolean hasNext(ByteBuffer buffer) {
     if (map == null) {
-      map = new ArrayList<>();
-      int length = ReadWriteForEncodingUtils.readVarInt(buffer);
-      for (int i = 0; i < length; i++) {
-        int binaryLength = ReadWriteForEncodingUtils.readVarInt(buffer);
-        byte[] buf = new byte[binaryLength];
-        buffer.get(buf, 0, binaryLength);
-        map.add(new Binary(buf));
-      }
+      initMap(buffer);
     }
 
     try {
@@ -67,8 +60,24 @@ public class DictionaryDecoder extends Decoder {
 
   @Override
   public Binary readBinary(ByteBuffer buffer) {
+    if (map == null) {
+      initMap(buffer);
+    }
     int code = valueDecoder.readInt(buffer);
+    System.out.println("----");
+    System.out.println(code);
     return map.get(code);
+  }
+
+  private void initMap(ByteBuffer buffer) {
+    map = new ArrayList<>();
+    int length = ReadWriteForEncodingUtils.readVarInt(buffer);
+    for (int i = 0; i < length; i++) {
+      int binaryLength = ReadWriteForEncodingUtils.readVarInt(buffer);
+      byte[] buf = new byte[binaryLength];
+      buffer.get(buf, 0, binaryLength);
+      map.add(new Binary(buf));
+    }
   }
 
   @Override

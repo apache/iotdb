@@ -50,6 +50,8 @@ public abstract class Decoder {
     switch (encoding) {
       case PLAIN:
         return new PlainDecoder();
+      case PLAIN_DICTIONARY:
+        return new DictionaryDecoder();
       case RLE:
         switch (dataType) {
           case BOOLEAN:

@@ -25,42 +25,40 @@ public class DictionaryDecoderTest {
 
   @Test
   public void testAllUnique() {
-      testAll("a", "b", "c");
-      testAll("x", "o", "q");
-      testAll(",", ".", "c", "b", "e");
+    testAll("a", "b", "c");
+    testAll("x", "o", "q");
+    testAll(",", ".", "c", "b", "e");
   }
 
   @Test
   public void testAllSame() {
-      testAll("a", "a", "a");
-      testAll("b", "b", "b");
+    testAll("a", "a", "a");
+    testAll("b", "b", "b");
   }
 
   @Test
   public void testMixed() {
-      // all characters
-      String[] allChars = new String[256];
-      allChars[0] = "" + (char)('a' + 1);
-      for (int i = 0; i < 256; i++) {
-          allChars[i] = "" + (char)(i) + (char)(i) + (char)(i);
-      }
-      testAll(allChars);
-
+    // all characters
+    String[] allChars = new String[256];
+    allChars[0] = "" + (char) ('a' + 1);
+    for (int i = 0; i < 256; i++) {
+      allChars[i] = "" + (char) (i) + (char) (i) + (char) (i);
+    }
+    testAll(allChars);
   }
 
   private void testAll(String... all) {
     for (String s : all) {
-        encoder.encode(new Binary(s), baos);
+      encoder.encode(new Binary(s), baos);
     }
     encoder.flush(baos);
 
     ByteBuffer out = ByteBuffer.wrap(baos.toByteArray());
 
     for (String s : all) {
-        assertTrue(decoder.hasNext(out));
-        assertEquals(s, decoder.readBinary(out).getStringValue());
+      assertTrue(decoder.hasNext(out));
+      assertEquals(s, decoder.readBinary(out).getStringValue());
     }
-
 
     decoder.reset();
     baos.reset();
