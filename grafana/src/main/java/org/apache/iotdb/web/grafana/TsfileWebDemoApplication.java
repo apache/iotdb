@@ -31,10 +31,10 @@ import org.springframework.stereotype.Repository;
 public class TsfileWebDemoApplication {
 
   @Value("${rpc_thrift_compression_enable}")
-  private boolean rpcThriftCompressionEnable;
+  private static boolean rpcThriftCompressionEnable;
 
-  public void main(String[] args) {
-    Config.rpcThriftCompressionEnable = this.rpcThriftCompressionEnable;
+  public static void main(String[] args) {
+    Config.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
     SpringApplication.run(TsfileWebDemoApplication.class, args);
   }
 }
