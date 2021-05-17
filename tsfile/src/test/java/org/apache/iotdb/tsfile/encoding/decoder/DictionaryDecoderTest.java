@@ -36,6 +36,18 @@ public class DictionaryDecoderTest {
       testAll("b", "b", "b");
   }
 
+  @Test
+  public void testMixed() {
+      // all characters
+      String[] allChars = new String[256];
+      allChars[0] = "" + (char)('a' + 1);
+      for (int i = 0; i < 256; i++) {
+          allChars[i] = "" + (char)(i) + (char)(i) + (char)(i);
+      }
+      testAll(allChars);
+
+  }
+
   private void testAll(String... all) {
     for (String s : all) {
         encoder.encode(new Binary(s), baos);
