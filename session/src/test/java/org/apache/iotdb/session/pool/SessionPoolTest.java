@@ -239,7 +239,11 @@ public class SessionPoolTest {
       }
     } catch (IoTDBConnectionException e) {
       pool.closeResultSet(wrapper);
+      pool.close();
+      EnvironmentUtils.stopDaemon();
+
       EnvironmentUtils.reactiveDaemon();
+      pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null, false);
       correctQuery(pool);
       pool.close();
       return;
@@ -254,7 +258,10 @@ public class SessionPoolTest {
         }
       } catch (IoTDBConnectionException ec) {
         pool.closeResultSet(wrapper);
+        pool.close();
+        EnvironmentUtils.stopDaemon();
         EnvironmentUtils.reactiveDaemon();
+        pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false, null, false);
         correctQuery(pool);
         pool.close();
       } catch (StatementExecutionException es) {
@@ -302,7 +309,9 @@ public class SessionPoolTest {
         new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
     write10Data(pool, true);
     // stop the server.
+    pool.close();
     EnvironmentUtils.stopDaemon();
+    pool = new SessionPool("127.0.0.1", 6667, "root", "root", 1, 1, 1000, false, null, false);
     // all this ten data will fail.
     write10Data(pool, false);
     // restart the server
