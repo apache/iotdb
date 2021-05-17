@@ -513,7 +513,7 @@ public class StorageGroupProcessor {
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
         && seqTsFileResources.size() > 0) {
-      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+      for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
         executeCompaction(
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
@@ -2005,11 +2005,10 @@ public class StorageGroupProcessor {
 
   /** close compaction merge callback, to release some locks */
   private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
+    this.compactionMergeWorking = false;
     if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       executeCompaction(
           timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    } else {
-      this.compactionMergeWorking = false;
     }
   }
 
