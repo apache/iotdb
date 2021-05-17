@@ -51,7 +51,7 @@ DBeaver is a SQL client software application and a database administration tool.
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
 
-5. Add libs listed below (can be found in CLI) and clict `Find Class`
+5. Add libs listed below (can be found in CLI) and click `Find Class`
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.00.57%20AM.png?raw=true)
 
@@ -79,7 +79,6 @@ DBeaver is a SQL client software application and a database administration tool.
 10. Enjoy IoTDB with DBeaver
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)
-
 
 
 
