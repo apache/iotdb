@@ -685,6 +685,21 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
 
+      conf.setEnableDoubleWrite(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_double_write", conf.isEnableDoubleWrite() + "")));
+
+      conf.setSecondaryAddress(
+          properties.getProperty("secondary_address", conf.getSecondaryAddress()));
+
+      conf.setSecondaryPort(
+          Integer.parseInt(properties.getProperty("secondary_port", conf.getSecondaryPort() + "")));
+
+      conf.setSecondaryUser(properties.getProperty("secondary_user", conf.getSecondaryUser()));
+
+      conf.setSecondaryPassword(
+          properties.getProperty("secondary_password", conf.getSecondaryPassword()));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

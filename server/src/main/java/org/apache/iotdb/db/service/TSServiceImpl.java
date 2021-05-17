@@ -27,6 +27,9 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.doublewrite.DoubleWriteConsumer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteProducer;
+import org.apache.iotdb.db.doublewrite.DoubleWriteType;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -83,6 +86,7 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,6 +122,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -146,11 +151,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -193,6 +194,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // Record the username for every rpc connection (session).
   private final Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private final Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
+  private final Map<Long, DoubleWriteProducer> sessionIdProducerMap = new ConcurrentHashMap<>();
+  private final Map<Long, DoubleWriteConsumer> sessionIdConsumerMap = new ConcurrentHashMap<>();
 
   // The sessionId is unique in one IoTDB instance.
   private final AtomicLong sessionIdGenerator = new AtomicLong();
@@ -282,6 +285,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           IoTDBConstant.GLOBAL_DB_NAME,
           tsStatus.message,
           req.getUsername());
+
+      // open double write
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
+        Session doubleWriteSession =
+            new Session(
+                IoTDBDescriptor.getInstance().getConfig().getSecondaryAddress(),
+                IoTDBDescriptor.getInstance().getConfig().getSecondaryPort(),
+                IoTDBDescriptor.getInstance().getConfig().getSecondaryUser(),
+                IoTDBDescriptor.getInstance().getConfig().getSecondaryPassword());
+        try {
+          doubleWriteSession.open();
+        } catch (IoTDBConnectionException e) {
+          e.printStackTrace();
+        }
+        BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue =
+            new ArrayBlockingQueue<>(1024);
+        DoubleWriteProducer doubleWriteProducer = new DoubleWriteProducer(doubleWriteQueue);
+        DoubleWriteConsumer doubleWriteConsumer =
+            new DoubleWriteConsumer(doubleWriteQueue, doubleWriteSession);
+        new Thread(doubleWriteConsumer).start();
+        sessionIdProducerMap.put(sessionId, doubleWriteProducer);
+        sessionIdConsumerMap.put(sessionId, doubleWriteConsumer);
+      }
     } else {
       tsStatus =
           RpcUtils.getStatus(
@@ -311,6 +337,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       for (long queryId : statementId2QueryId.getOrDefault(statementId, Collections.emptySet())) {
         releaseQueryResourceNoExceptions(queryId);
       }
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
+      sessionIdProducerMap.get(sessionId).put(new Pair<>(DoubleWriteType.DOUBLE_WRITE_END, null));
+      // double write debug
+      System.out.println("fullCnt: " + sessionIdProducerMap.get(sessionId).getFullCnt());
+      System.out.println("Producer: " + sessionIdProducerMap.get(sessionId).getEfficiency() + "/s");
+      System.out.println("Consumer: " + sessionIdConsumerMap.get(sessionId).getEfficiency() + "/s");
     }
 
     return new TSStatus(
@@ -1335,6 +1369,22 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
+
+    // double write
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
+      DoubleWriteProducer producer = sessionIdProducerMap.get(req.getSessionId());
+      TSInsertRecordsReq newReq = new TSInsertRecordsReq(req);
+      List<ByteBuffer> valueList = req.getValuesList();
+      List<ByteBuffer> valueListCopy = new ArrayList<>();
+      for (ByteBuffer value : valueList) {
+        byte[] valueCopy = new byte[value.array().length];
+        System.arraycopy(value.array(), 0, valueCopy, 0, value.array().length);
+        valueListCopy.add(ByteBuffer.wrap(valueCopy));
+      }
+      newReq.setValuesList(valueListCopy);
+      producer.put(new Pair<>(DoubleWriteType.TSInsertRecordsReq, newReq));
+    }
+
     boolean allCheckSuccess = true;
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {

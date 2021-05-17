@@ -639,6 +639,14 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** default config for double write * */
+  private boolean enableDoubleWrite = false;
+
+  private String secondaryAddress = "127.0.0.1";
+  private int secondaryPort = 6668;
+  private String secondaryUser = "root";
+  private String secondaryPassword = "root";
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2068,5 +2076,45 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public boolean isEnableDoubleWrite() {
+    return this.enableDoubleWrite;
+  }
+
+  public void setEnableDoubleWrite(boolean enableDoubleWrite) {
+    this.enableDoubleWrite = enableDoubleWrite;
+  }
+
+  public String getSecondaryAddress() {
+    return this.secondaryAddress;
+  }
+
+  public void setSecondaryAddress(String secondaryAddress) {
+    this.secondaryAddress = secondaryAddress;
+  }
+
+  public int getSecondaryPort() {
+    return this.secondaryPort;
+  }
+
+  public void setSecondaryPort(int secondaryPort) {
+    this.secondaryPort = secondaryPort;
+  }
+
+  public String getSecondaryUser() {
+    return this.secondaryUser;
+  }
+
+  public void setSecondaryUser(String secondaryUser) {
+    this.secondaryUser = secondaryUser;
+  }
+
+  public String getSecondaryPassword() {
+    return this.secondaryPassword;
+  }
+
+  public void setSecondaryPassword(String secondaryPassword) {
+    this.secondaryPassword = secondaryPassword;
   }
 }
