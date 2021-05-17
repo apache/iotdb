@@ -19,7 +19,7 @@
 
 -->
 
-## DBeaver
+## DBeaver-IoTDB
 
 DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB的JDBC驱动与IoTDB进行交互。
 
@@ -79,7 +79,6 @@ DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB�
 10. 可以开始通过DBeaver使用IoTDB
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)
-
 
 
 
