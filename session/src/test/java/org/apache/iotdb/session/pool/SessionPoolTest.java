@@ -248,10 +248,12 @@ public class SessionPoolTest {
       pool.close();
       return;
     } catch (StatementExecutionException e) {
-      // I do not why? the first call wrapper.hasNext() will cause InterruptedException and IoTDB
-      // warps
-      // it as StatementExecutionException, the second call can make sure that the thrift server's
-      // connection is closed.
+      // After receiving the stop request, thrift calls shutdownNow() to process the executing task.
+      // However, when the executing task is blocked, it will report InterruptedException error.
+      // And IoTDB warps it as one StatementExecutionException.
+      // If the thrift task thread is running, the thread will not be affected and will continue to
+      // run, only if the interrupt flag of the thread is set to true. So here, we call the close
+      // function on the client and wait for some time before the thrift server can exit normally.
       try {
         while (wrapper.hasNext()) {
           wrapper.next();
