@@ -45,15 +45,24 @@ DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB�
 2. 启动 DBeaver
 
 3. 打开 Driver Manager
+
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.22%20AM.png?raw=true)
 4. 为IoTDB新建一个驱动类型
+
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
+
 5. 添加下图中的这些库 (可以在CLI文件夹下找到)，点击 `Find Class`
+
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.00.57%20AM.png?raw=true)
+
 6. 编辑驱动设置
+
   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.03.03%20AM.png?raw=true)
+  
 7. 新建 DataBase Connection， 选择 iotdb
+
   ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.05.44%20AM.png?raw=true) 
+
 8. 编辑JDBC连接设置
    
    ```
@@ -62,10 +71,15 @@ DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB�
    Password: root
    ```
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.09%20AM.png?raw=true)
+
 9. 测试连接
+
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.07.31%20AM.png?raw=true)
+
 10. 可以开始通过DBeaver使用IoTDB
+
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)
+
 
 
 
