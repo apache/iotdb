@@ -158,6 +158,10 @@ public class MManager {
 
   private byte MTreeType = MTREE_DISK_BASED;
 
+  public byte getMTreeType(){
+    return MTreeType;
+  }
+
   public void setMTreeType(byte MTreeType) {
     if (MTreeType == MTREE_DISK_BASED) {
       this.MTreeType = MTreeType;
@@ -406,30 +410,29 @@ public class MManager {
               plan.getProps(),
               plan.getAlias());
 
-      try {
-
-        // update tag index
-        if (plan.getTags() != null) {
-          // tag key, tag value
-          for (Entry<String, String> entry : plan.getTags().entrySet()) {
-            if (entry.getKey() == null || entry.getValue() == null) {
-              continue;
-            }
-            tagIndex
-                .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-                .add(leafMNode);
+      // update tag index
+      if (plan.getTags() != null) {
+        // tag key, tag value
+        for (Entry<String, String> entry : plan.getTags().entrySet()) {
+          if (entry.getKey() == null || entry.getValue() == null) {
+            continue;
           }
+          tagIndex
+                  .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+                  .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+                  .add(leafMNode);
         }
+      }
 
-        // update statistics and schemaDataTypeNumMap
-        totalSeriesNumber.addAndGet(1);
-        if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-          logger.warn("Current series number {} is too large...", totalSeriesNumber);
-          allowToCreateNewSeries = false;
-        }
-        updateSchemaDataTypeNumMap(type, 1);
+      // update statistics and schemaDataTypeNumMap
+      totalSeriesNumber.addAndGet(1);
+      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+        allowToCreateNewSeries = false;
+      }
+      updateSchemaDataTypeNumMap(type, 1);
 
+      try {
         // write log
         if (!isRecovering) {
           // either tags or attributes is not empty
@@ -442,6 +445,8 @@ public class MManager {
         }
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
+
+
       } finally {
         // leafMNode has been locked before try
         mtree.unlockMNode(leafMNode);
@@ -1236,6 +1241,7 @@ public class MManager {
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       leafMNode.setOffset(offset);
       mtree.updateMNode(leafMNode);
+      updateToTagIndex(leafMNode);
     } finally {
       mtree.unlockMNode(mNode);
     }
@@ -1254,8 +1260,33 @@ public class MManager {
       leafMNode.getParent().addAlias(alias, leafMNode);
       leafMNode.setAlias(alias);
       mtree.updateMNode(leafMNode);
+      updateToTagIndex(leafMNode);
     } finally {
       mtree.unlockMNode(mNode);
+    }
+  }
+
+  // used for MeasurementMNode change to keep tagIndex updated when MTreeDiskBased
+  private void updateToTagIndex(MeasurementMNode node) throws MetadataException{
+    if (MTreeType==MTREE_MEMORY_BASED||node.getOffset() < 0) {
+      return;
+    }
+    Map<String, String> tagMap=null;
+    try {
+      tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
+    }catch (IOException e){
+      throw new MetadataException(e);
+    }
+    if (tagMap != null) {
+      Set<MeasurementMNode> set;
+      for (Entry<String, String> entry : tagMap.entrySet()) {
+        if (tagIndex.containsKey(entry.getKey())
+                && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+          set=tagIndex.get(entry.getKey()).get(entry.getValue());
+          set.remove(node);
+          set.add(node);
+        }
+      }
     }
   }
 

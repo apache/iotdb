@@ -335,13 +335,12 @@ public class MetadataDiskManager implements MetadataAccess {
 
   @Override
   public MNode deleteChild(MNode parent, String childName) throws MetadataException {
-    readLock.lock();
+    writeLock.lock();
     try {
       MNode child = getChild(parent, childName);
       parent.deleteChild(childName);
 
       if (child.isCached()) {
-        // todo case isLockedInMemory
         cacheStrategy.remove(child);
       }
 
@@ -357,7 +356,7 @@ public class MetadataDiskManager implements MetadataAccess {
         throw new MetadataException(e.getMessage());
       }
     } finally {
-      readLock.unlock();
+      writeLock.unlock();
     }
   }
 

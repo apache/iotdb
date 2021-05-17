@@ -28,7 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class LRUCacheStrategy implements CacheStrategy {
 
-  private int size = 0;
+  private volatile int size = 0;
   private CacheEntry first;
   private CacheEntry last;
 
@@ -198,7 +198,9 @@ public class LRUCacheStrategy implements CacheStrategy {
     if (entry == null) {
       return;
     }
-    removeOne(entry);
+    if(isInCacheList(entry)){
+      removeOne(entry);
+    }
     mNode.setCacheEntry(null);
     for (MNode child : mNode.getChildren().values()) {
       removeRecursively(child);

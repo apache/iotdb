@@ -155,6 +155,14 @@ public class MeasurementMNode extends InternalMNode {
     return result;
   }
 
+  public boolean equals(Object o){
+    if(!(o instanceof MeasurementMNode)){
+      return false;
+    }
+    MeasurementMNode measurementMNode=(MeasurementMNode)o;
+    return getFullPath().equals(measurementMNode.getFullPath())&&schema.equals(measurementMNode.getSchema());
+  }
+
   /**
    * deserialize MeasuremetMNode from string array
    *
