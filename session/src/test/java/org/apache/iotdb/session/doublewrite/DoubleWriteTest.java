@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.session.doublewrite;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -55,9 +55,9 @@ public class DoubleWriteTest {
       timestamps.add(time);
       if (time != 0 && time % 10 == 0) {
         produceCnt += 1;
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
-        long endTime = System.currentTimeMillis();
+        long endTime = System.nanoTime();
         produceTime += endTime - startTime;
         deviceIds.clear();
         measurementsList.clear();
@@ -67,6 +67,6 @@ public class DoubleWriteTest {
     }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
-    System.out.println("Producer: " + (double) produceCnt / (double) produceTime * 1000.0 + "/s");
+    System.out.println("Producer: " + (double) produceCnt / (double) produceTime * 1000000000.0 + "/s");
   }
 }

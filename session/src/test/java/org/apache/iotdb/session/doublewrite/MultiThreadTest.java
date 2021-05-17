@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.doublewrite;
+package org.apache.iotdb.session.doublewrite;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;

@@ -86,10 +86,7 @@ import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.RedirectException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.*;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -122,7 +119,6 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -134,7 +130,11 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -288,22 +288,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // open double write
       if (IoTDBDescriptor.getInstance().getConfig().isEnableDoubleWrite()) {
-        Session doubleWriteSession =
-            new Session(
-                IoTDBDescriptor.getInstance().getConfig().getSecondaryAddress(),
-                IoTDBDescriptor.getInstance().getConfig().getSecondaryPort(),
-                IoTDBDescriptor.getInstance().getConfig().getSecondaryUser(),
-                IoTDBDescriptor.getInstance().getConfig().getSecondaryPassword());
-        try {
-          doubleWriteSession.open();
-        } catch (IoTDBConnectionException e) {
-          e.printStackTrace();
-        }
         BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue =
-            new ArrayBlockingQueue<>(1024);
+            new LinkedBlockingQueue<>();
         DoubleWriteProducer doubleWriteProducer = new DoubleWriteProducer(doubleWriteQueue);
-        DoubleWriteConsumer doubleWriteConsumer =
-            new DoubleWriteConsumer(doubleWriteQueue, doubleWriteSession);
+        DoubleWriteConsumer doubleWriteConsumer = getDoubleWriteConsumer(doubleWriteQueue);
         new Thread(doubleWriteConsumer).start();
         sessionIdProducerMap.put(sessionId, doubleWriteProducer);
         sessionIdConsumerMap.put(sessionId, doubleWriteConsumer);
@@ -325,6 +313,49 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return version.equals(CURRENT_RPC_VERSION);
   }
 
+  private DoubleWriteConsumer getDoubleWriteConsumer(
+      BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> blockingQueue) {
+    try {
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      RpcTransportFactory.setDefaultBufferCapacity(config.getThriftDefaultBufferSize());
+      EndPoint endPoint = new EndPoint(config.getSecondaryAddress(), config.getSecondaryPort());
+      RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
+
+      TTransport transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              new TSocket(endPoint.getIp(), endPoint.getPort(), 0));
+      try {
+        transport.open();
+      } catch (TTransportException e) {
+        throw new IoTDBConnectionException(e);
+      }
+
+      TSIService.Iface client = new TSIService.Client(new TBinaryProtocol(transport));
+      client = RpcUtils.newSynchronizedClient(client);
+
+      TSOpenSessionReq openReq = new TSOpenSessionReq();
+      openReq.setUsername(config.getSecondaryUser());
+      openReq.setPassword(config.getSecondaryPassword());
+      openReq.setZoneId(ZoneId.systemDefault().toString());
+
+      long sessionId;
+      try {
+        TSOpenSessionResp openResp = client.openSession(openReq);
+        RpcUtils.verifySuccess(openResp.getStatus());
+        sessionId = openResp.getSessionId();
+      } catch (Exception e) {
+        transport.close();
+        throw new IoTDBConnectionException(e);
+      }
+
+      return new DoubleWriteConsumer(blockingQueue, client, transport, sessionId);
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
+
+    return null;
+  }
+
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     long sessionId = req.getSessionId();
@@ -343,7 +374,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       sessionIdProducerMap.get(sessionId).put(new Pair<>(DoubleWriteType.DOUBLE_WRITE_END, null));
       // double write debug
       System.out.println("fullCnt: " + sessionIdProducerMap.get(sessionId).getFullCnt());
-      System.out.println("Producer: " + sessionIdProducerMap.get(sessionId).getEfficiency() + "/s");
       System.out.println("Consumer: " + sessionIdConsumerMap.get(sessionId).getEfficiency() + "/s");
       sessionIdProducerMap.remove(sessionId);
       sessionIdConsumerMap.remove(sessionId);

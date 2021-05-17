@@ -1,31 +1,40 @@
 package org.apache.iotdb.db.doublewrite;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransport;
 
 import java.util.concurrent.BlockingQueue;
 
 public class DoubleWriteConsumer implements Runnable {
   private BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue;
-  private Session doubleWriteSession;
+  private TSIService.Iface doubleWriteClient;
+  private TTransport transport;
+  private long sessionId;
   private long consumerCnt = 0;
   private long consumerTime = 0;
 
   public DoubleWriteConsumer(
       BlockingQueue<Pair<DoubleWriteType, TSInsertRecordsReq>> doubleWriteQueue,
-      Session doubleWriteSession) {
+      TSIService.Iface doubleWriteClient,
+      TTransport transport,
+      long sessionId) {
     this.doubleWriteQueue = doubleWriteQueue;
-    this.doubleWriteSession = doubleWriteSession;
+    this.doubleWriteClient = doubleWriteClient;
+    this.transport = transport;
+    this.sessionId = sessionId;
   }
 
   @Override
   public void run() {
     try {
       while (true) {
-        long startTime = System.currentTimeMillis();
+        long startTime = System.nanoTime();
         Pair<DoubleWriteType, TSInsertRecordsReq> head = doubleWriteQueue.take();
         if (head.left == DoubleWriteType.DOUBLE_WRITE_END) {
           break;
@@ -56,7 +65,7 @@ public class DoubleWriteConsumer implements Runnable {
             //            tsInsertRecordsReq.setDeviceIds(deviceIds);
             //            System.out.println(tsInsertRecordsReq.getDeviceIds());
 
-            doubleWriteSession.insertRecords(tsInsertRecordsReq);
+            doubleWriteClient.insertRecords(tsInsertRecordsReq);
             break;
             //          case TSInsertRecordsOfOneDeviceReq:
             //            TSInsertRecordsOfOneDeviceReq tsInsertRecordsOfOneDeviceReq =
@@ -76,16 +85,27 @@ public class DoubleWriteConsumer implements Runnable {
             //            break;
         }
         consumerCnt += 1;
-        long endTime = System.currentTimeMillis();
+        long endTime = System.nanoTime();
         consumerTime += endTime - startTime;
       }
-      doubleWriteSession.close();
-    } catch (InterruptedException | IoTDBConnectionException | StatementExecutionException e) {
+
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+      try {
+        doubleWriteClient.closeSession(req);
+      } catch (TException e) {
+        throw new IoTDBConnectionException(
+            "Error occurs when closing session at server. Maybe server is down.", e);
+      } finally {
+        if (transport != null) {
+          transport.close();
+        }
+      }
+    } catch (TException | InterruptedException | IoTDBConnectionException e) {
       e.printStackTrace();
     }
   }
 
   public double getEfficiency() {
-    return (double) consumerCnt / (double) consumerTime * 1000.0;
+    return (double) consumerCnt / (double) consumerTime * 1000000000.0;
   }
 }
