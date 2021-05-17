@@ -80,6 +80,7 @@ public class SchemaUtils {
 
     Set<TSEncoding> textSet = new HashSet<>();
     textSet.add(TSEncoding.PLAIN);
+    textSet.add(TSEncoding.PLAIN_DICTIONARY);
     schemaChecker.put(TSDataType.TEXT, textSet);
   }
 

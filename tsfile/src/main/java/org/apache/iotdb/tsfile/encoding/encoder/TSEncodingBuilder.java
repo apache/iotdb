@@ -58,6 +58,8 @@ public abstract class TSEncodingBuilder {
     switch (type) {
       case PLAIN:
         return new Plain();
+      case PLAIN_DICTIONARY:
+        return new Dictionary();
       case RLE:
         return new Rle();
       case TS_2DIFF:
@@ -294,6 +296,25 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
+    }
+  }
+
+  public static class Dictionary extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case TEXT:
+          return new DictionaryEncoder();
+        default:
+          throw new UnSupportedDataTypeException(
+              "PLAIN_DICTIONARY doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
     }
   }
 }
