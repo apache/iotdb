@@ -67,6 +67,7 @@ public class DictionaryEncoder extends Encoder {
     } catch (IOException e) {
       logger.error("tsfile-encoding DictionaryEncoder: error occurs when flushing", e);
     }
+    reset();
   }
 
   @Override
@@ -91,5 +92,12 @@ public class DictionaryEncoder extends Encoder {
 
   private void writeEncodedData(ByteArrayOutputStream out) throws IOException {
     valuesEncoder.flush(out);
+  }
+
+  private void reset() {
+    valueToCode.clear();
+    map.clear();
+    valuesEncoder.reset();
+    mapSize = 0;
   }
 }
