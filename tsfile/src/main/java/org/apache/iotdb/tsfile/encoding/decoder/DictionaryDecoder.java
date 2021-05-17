@@ -64,8 +64,6 @@ public class DictionaryDecoder extends Decoder {
       initMap(buffer);
     }
     int code = valueDecoder.readInt(buffer);
-    System.out.println("----");
-    System.out.println(code);
     return map.get(code);
   }
 
