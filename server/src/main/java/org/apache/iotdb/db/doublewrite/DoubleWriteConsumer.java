@@ -79,6 +79,7 @@ public class DoubleWriteConsumer implements Runnable {
         long endTime = System.currentTimeMillis();
         consumerTime += endTime - startTime;
       }
+      doubleWriteSession.close();
     } catch (InterruptedException | IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }

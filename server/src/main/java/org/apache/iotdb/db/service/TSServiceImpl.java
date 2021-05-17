@@ -345,6 +345,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       System.out.println("fullCnt: " + sessionIdProducerMap.get(sessionId).getFullCnt());
       System.out.println("Producer: " + sessionIdProducerMap.get(sessionId).getEfficiency() + "/s");
       System.out.println("Consumer: " + sessionIdConsumerMap.get(sessionId).getEfficiency() + "/s");
+      sessionIdProducerMap.remove(sessionId);
+      sessionIdConsumerMap.remove(sessionId);
     }
 
     return new TSStatus(
