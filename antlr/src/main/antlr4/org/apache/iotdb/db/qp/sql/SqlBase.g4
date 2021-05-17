@@ -251,16 +251,21 @@ specialClause
     | orderByTimeClause specialLimit? #orderByTimeStatement
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
     ;
 
 specialLimit
     : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
+    | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
     ;
+
+withoutNullClause
+    : WITHOUT NULL (ALL | ANY)
+    ;
+
 
 orderByTimeClause
     : ORDER BY TIME (DESC | ASC)?
@@ -1310,6 +1315,14 @@ DEBUG
 
 NULL
     : N U L L
+    ;
+
+WITHOUT
+    : W I T H O U T
+    ;
+
+ANY
+    : A N Y
     ;
 
 //============================
