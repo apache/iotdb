@@ -292,6 +292,20 @@ public class IoTDBSessionComplexIT {
   }
 
   @Test
+  public void testLastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+
+    insertRecords();
+
+    lastDataQuery();
+  }
+
+  @Test
   public void test()
       throws ClassNotFoundException, SQLException, IoTDBConnectionException,
           StatementExecutionException {
@@ -591,6 +605,25 @@ public class IoTDBSessionComplexIT {
       Assert.assertEquals("3,1,2,1,2,", sb.toString());
     }
     Assert.assertEquals(50, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+  private void lastDataQuery() throws StatementExecutionException, IoTDBConnectionException {
+    List<String> suffixPath = new ArrayList<>();
+    List<String> prefixPath = new ArrayList<>();
+
+    suffixPath.add("s1");
+    suffixPath.add("s2");
+    prefixPath.add("root.sg1.d2");
+
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(suffixPath, prefixPath);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+    }
+    Assert.assertEquals(2, count);
     sessionDataSet.closeOperationHandle();
   }
 

@@ -77,6 +77,7 @@ public class SessionExample {
     query();
     queryWithTimeout();
     rawDataQuery();
+    lastDataQuery();
     queryByIterator();
     deleteData();
     deleteTimeseries();
@@ -575,6 +576,22 @@ public class SessionExample {
       System.out.println(dataSet.next());
     }
     dataSet.closeOperationHandle();
+  }
+
+  private static void lastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> suffixPath = new ArrayList<>();
+    List<String> prefixPath = new ArrayList<>();
+    suffixPath.add("s3");
+    suffixPath.add("s4");
+    suffixPath.add("s5");
+    prefixPath.add("root.sg1.d1");
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(suffixPath, prefixPath, 3);
+    System.out.println(sessionDataSet.getColumnNames());
+    sessionDataSet.setFetchSize(1024);
+    while (sessionDataSet.hasNext()) {
+      System.out.println(sessionDataSet.next());
+    }
+    sessionDataSet.closeOperationHandle();
   }
 
   private static void queryByIterator()

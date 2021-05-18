@@ -291,6 +291,16 @@ struct TSRawDataQueryReq {
   7: optional bool enableRedirectQuery;
 }
 
+struct TSLastDataQueryReq {
+  1: required i64 sessionId
+  2: required list<string> suffixPath
+  3: required list<string> prefixPath
+  4: optional i32 fetchSize
+  5: required i64 time
+  6: required i64 statementId
+  7: optional bool enableRedirectQuery;
+}
+
 struct TSCreateMultiTimeseriesReq {
   1: required i64 sessionId
   2: required list<string> paths
@@ -394,6 +404,8 @@ service TSIService {
   TSStatus deleteData(1:TSDeleteDataReq req);
 
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
+
+  TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
 
   i64 requestStatementId(1:i64 sessionId);
 

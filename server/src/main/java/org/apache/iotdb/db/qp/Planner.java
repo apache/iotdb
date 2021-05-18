@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
@@ -137,6 +138,44 @@ public class Planner {
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
+  }
+
+  /** convert last data query to physical plan directly */
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(TSLastDataQueryReq req, ZoneId zoneId)
+      throws QueryProcessException, IllegalPathException {
+    List<String> suffixPath = req.getSuffixPath();
+    List<String> prefixPath = req.getPrefixPath();
+    long time = req.getTime();
+
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+
+    selectOp.setLastQuery();
+
+    for (String p : suffixPath) {
+      PartialPath path = new PartialPath(p);
+      selectOp.addSelectPath(path);
+    }
+    for (String p : prefixPath) {
+      PartialPath path = new PartialPath(p);
+      fromOp.addPrefixTablePath(path);
+    }
+
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+
+    PartialPath timePath = new PartialPath(TIME);
+
+    BasicFunctionOperator basicFunctionOperator =
+        new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(time));
+    queryOp.setFilterOperator(basicFunctionOperator);
+
+    int maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+
+    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
+    return physicalGenerator.transformToPhysicalPlan(op, req.fetchSize);
   }
 
   /**

@@ -25,29 +25,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.*;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -392,6 +370,45 @@ public class SessionConnection {
         sessionId,
         execResp.queryDataSet,
         execResp.isIgnoreTimeStamp());
+  }
+
+  protected SessionDataSet executeLastDataQuery(
+      List<String> suffixPath, List<String> prefixPath, long time)
+      throws StatementExecutionException, IoTDBConnectionException, RedirectException {
+    TSLastDataQueryReq tsLastDataQueryReq =
+        new TSLastDataQueryReq(sessionId, suffixPath, prefixPath, time, statementId);
+    tsLastDataQueryReq.setFetchSize(session.fetchSize);
+    tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
+    TSExecuteStatementResp tsExecuteStatementResp;
+    try {
+      tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+      RpcUtils.verifySuccessWithRedirection(tsExecuteStatementResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          tsLastDataQueryReq.setSessionId(sessionId);
+          tsLastDataQueryReq.setStatementId(statementId);
+          tsExecuteStatementResp = client.executeLastDataQuery(tsLastDataQueryReq);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+
+    RpcUtils.verifySuccess(tsExecuteStatementResp.getStatus());
+    return new SessionDataSet(
+        "",
+        tsExecuteStatementResp.getColumns(),
+        tsExecuteStatementResp.getDataTypeList(),
+        tsExecuteStatementResp.columnNameIndexMap,
+        tsExecuteStatementResp.getQueryId(),
+        statementId,
+        client,
+        sessionId,
+        tsExecuteStatementResp.queryDataSet,
+        tsExecuteStatementResp.isIgnoreTimeStamp());
   }
 
   protected void insertRecord(TSInsertRecordReq request)

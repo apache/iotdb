@@ -590,6 +590,47 @@ public class Session {
   }
 
   /**
+   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168;
+   * <PrefixPath> + <suffixPath> = <TimeSeries>
+   *
+   * @param suffixPath root.ln.wf01.wt01
+   * @param prefixPath status
+   * @param LastTime get the last data,whose timestamp greater than or equal LastTime
+   */
+  public SessionDataSet executeLastDataQuery(
+      List<String> suffixPath, List<String> prefixPath, long LastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeLastDataQuery(suffixPath, prefixPath, LastTime);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeLastDataQuery(suffixPath, prefixPath, LastTime);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  /**
+   * query eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
+   *
+   * @param suffixPath query statement
+   * @param prefixPath query statement
+   */
+  public SessionDataSet executeLastDataQuery(List<String> suffixPath, List<String> prefixPath)
+      throws StatementExecutionException, IoTDBConnectionException {
+    long time = 0L;
+    return executeLastDataQuery(suffixPath, prefixPath, time);
+  }
+
+  /**
    * insert data in one row, if you want to improve your performance, please use insertRecords
    * method or insertTablet method
    *
