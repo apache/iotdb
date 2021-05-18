@@ -332,6 +332,7 @@ public class InternalMNode implements MNode {
 
     newChildNode.setPersistenceInfo(oldChildNode.getPersistenceInfo());
     newChildNode.setCacheEntry(oldChildNode.getCacheEntry());
+    oldChildNode.setCacheEntry(null);
 
     this.deleteChild(measurement);
     this.addChild(newChildNode.getName(), newChildNode);
@@ -382,6 +383,9 @@ public class InternalMNode implements MNode {
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
+    if(cacheEntry!=null){
+      cacheEntry.setMNode(this);
+    }
   }
 
   @Override

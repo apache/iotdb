@@ -526,7 +526,9 @@ public class MetadataDiskManager implements MetadataAccess {
       root=new InternalMNode(null,IoTDBConstant.PATH_ROOT);
       cacheStrategy.lockMNode(root);
       cacheStrategy.setModified(root,false);
-      metaFile.close();
+      if(metaFile!=null){
+        metaFile.close();
+      }
       metaFile = null;
     } finally {
       writeLock.unlock();

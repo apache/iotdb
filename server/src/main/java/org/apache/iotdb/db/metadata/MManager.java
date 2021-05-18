@@ -445,8 +445,6 @@ public class MManager {
         }
         leafMNode.setOffset(offset);
         mtree.updateMNode(leafMNode);
-
-
       } finally {
         // leafMNode has been locked before try
         mtree.unlockMNode(leafMNode);
@@ -1101,25 +1099,26 @@ public class MManager {
       PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked) throws MetadataException {
     MNode node;
     boolean shouldSetStorageGroup;
-    try {
-      if(isLocked){
-        node= mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
-      }else {
-        node=getMNodeFromCache(path);
-      }
-      return node;
-    } catch (CacheException e) {
-      if (!autoCreateSchema) {
-        throw new PathNotExistException(path.getFullPath());
-      }
-      shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
-    }catch (MetadataException e){
-      if(e instanceof  PathNotExistException){
-        if (!autoCreateSchema) {
-          throw e;
+    if(isLocked){
+      try {
+        return mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
+      }catch (MetadataException e){
+        if(e instanceof  PathNotExistException){
+          if (!autoCreateSchema) {
+            throw e;
+          }
         }
+        shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
       }
-      shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
+    }else {
+      try {
+        return getMNodeFromCache(path);
+      } catch (CacheException e) {
+        if (!autoCreateSchema) {
+          throw new PathNotExistException(path.getFullPath());
+        }
+        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+      }
     }
 
     try {
