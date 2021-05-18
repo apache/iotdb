@@ -542,6 +542,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
+    queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
+    queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
     return queryDataSet;
   }
 

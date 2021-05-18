@@ -1308,6 +1308,20 @@ Total line number = 10
 It costs 0.009s
 ```
 
+#### Null Value Control over Query Results
+
+* IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```
+
+* In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+```
+
 ### Use Alias
 
 Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
