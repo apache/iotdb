@@ -1048,6 +1048,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (context.suffixPath() != null) {
       return new TimeSeriesOperand(parseSuffixPath(context.suffixPath()));
     }
+    if (context.literal != null) {
+      return new TimeSeriesOperand(new PartialPath(new String[] {context.literal.getText()}));
+    }
     if (context.unary != null) {
       return context.MINUS() != null
           ? new MinusExpression(parseExpression(context.expression(0)))

@@ -122,6 +122,10 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -630,7 +634,7 @@ public class PhysicalGenerator {
     List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
     // remove stars in fromPaths and get deviceId with deduplication
     List<PartialPath> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-    List<PartialPath> suffixPaths = queryOperator.getSelectOperator().getPaths();
+    List<ResultColumn> resultColumns = queryOperator.getSelectOperator().getResultColumns();
     List<String> originAggregations = queryOperator.getSelectOperator().getAggregationFunctions();
 
     // to record result measurement columns
@@ -645,8 +649,13 @@ public class PhysicalGenerator {
     Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
     List<PartialPath> paths = new ArrayList<>();
 
-    for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
-      PartialPath suffixPath = suffixPaths.get(i);
+    for (int i = 0; i < resultColumns.size(); i++) { // per suffix in SELECT
+      ResultColumn resultColumn = resultColumns.get(i);
+      Expression suffixExpression = resultColumn.getExpression();
+      PartialPath suffixPath =
+          suffixExpression instanceof TimeSeriesOperand
+              ? ((TimeSeriesOperand) suffixExpression).getPath()
+              : (((FunctionExpression) suffixExpression).getPaths().get(0));
 
       // to record measurements in the loop of a suffix path
       Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
@@ -659,24 +668,23 @@ public class PhysicalGenerator {
       }
 
       for (PartialPath device : devices) { // per device in FROM after deduplication
-
         PartialPath fullPath = device.concatPath(suffixPath);
         try {
           // remove stars in SELECT to get actual paths
           List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
-          if (suffixPath.isTsAliasExists()) {
+          if (resultColumn.hasAlias()) {
             if (actualPaths.size() == 1) {
               String columnName = actualPaths.get(0).getMeasurement();
               if (originAggregations != null && !originAggregations.isEmpty()) {
                 measurementAliasMap.put(
-                    originAggregations.get(i) + "(" + columnName + ")", suffixPath.getTsAlias());
+                    originAggregations.get(i) + "(" + columnName + ")", resultColumn.getAlias());
               } else {
-                measurementAliasMap.put(columnName, suffixPath.getTsAlias());
+                measurementAliasMap.put(columnName, resultColumn.getAlias());
               }
             } else if (actualPaths.size() >= 2) {
               throw new QueryProcessException(
                   "alias '"
-                      + suffixPath.getTsAlias()
+                      + resultColumn.getAlias()
                       + "' can only be matched with one time series");
             }
           }

@@ -115,12 +115,13 @@ resultColumn
    ;
 
 expression
-   : (PLUS | MINUS) unary=expression
+   : LR_BRACKET unary=expression RR_BRACKET
+   | (PLUS | MINUS) unary=expression
    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
    | suffixPath
-   | LR_BRACKET unary=expression RR_BRACKET
+   | literal=SINGLE_QUOTE_STRING_LITERAL
    ;
 
 functionAttribute

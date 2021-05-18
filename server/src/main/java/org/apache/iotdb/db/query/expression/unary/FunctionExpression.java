@@ -147,12 +147,14 @@ public class FunctionExpression extends Expression {
     return dataTypes;
   }
 
-  // TODO: remove this method
   public List<PartialPath> getPaths() {
     if (paths == null) {
       paths = new ArrayList<>();
       for (Expression expression : expressions) {
-        paths.add(((TimeSeriesOperand) expression).getPath());
+        paths.add(
+            expression instanceof TimeSeriesOperand
+                ? ((TimeSeriesOperand) expression).getPath()
+                : null);
       }
     }
     return paths;

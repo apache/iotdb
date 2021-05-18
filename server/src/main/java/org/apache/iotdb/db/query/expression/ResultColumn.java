@@ -60,6 +60,10 @@ public class ResultColumn {
       throws LogicalOptimizeException {
     List<Expression> resultExpressions = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressions);
+    if (hasAlias() && 1 < resultExpressions.size()) {
+      throw new LogicalOptimizeException(
+          String.format("alias '%s' can only be matched with one time series", alias));
+    }
     for (Expression resultExpression : resultExpressions) {
       resultColumns.add(new ResultColumn(resultExpression, alias));
     }
