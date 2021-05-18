@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 
 import java.io.IOException;
 import java.util.List;
@@ -38,4 +39,6 @@ public interface ITimeSeriesMetadata {
   List<IChunkMetadata> loadChunkMetadataList() throws IOException;
 
   List<IChunkMetadata> getChunkMetadataList();
+
+  void setChunkMetadataLoader(IChunkMetadataLoader chunkMetadataLoader);
 }

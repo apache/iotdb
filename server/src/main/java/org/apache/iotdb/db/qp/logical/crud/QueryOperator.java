@@ -66,6 +66,12 @@ public class QueryOperator extends RootOperator {
 
   private IndexType indexType;
 
+  // if true, we don't need the row whose any column is null
+  private boolean withoutAnyNull;
+
+  // if true, we don't need the row whose all columns are null
+  private boolean withoutAllNull;
+
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.QUERY;
@@ -289,5 +295,21 @@ public class QueryOperator extends RootOperator {
 
   public boolean hasTimeSeriesGeneratingFunction() {
     return selectOperator.hasTimeSeriesGeneratingFunction();
+  }
+
+  public boolean isWithoutAnyNull() {
+    return withoutAnyNull;
+  }
+
+  public void setWithoutAnyNull(boolean withoutAnyNull) {
+    this.withoutAnyNull = withoutAnyNull;
+  }
+
+  public boolean isWithoutAllNull() {
+    return withoutAllNull;
+  }
+
+  public void setWithoutAllNull(boolean withoutAllNull) {
+    this.withoutAllNull = withoutAllNull;
   }
 }
