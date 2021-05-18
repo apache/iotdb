@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class WildcardsRemover {
@@ -126,7 +127,7 @@ public class WildcardsRemover {
       extendedExpressions.add(actualExpressions);
     }
     if (atLeastOneSeriesNotExisted) {
-      return extendedExpressions;
+      return Collections.emptyList();
     }
 
     List<List<Expression>> actualExpressions = new ArrayList<>();
