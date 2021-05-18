@@ -285,7 +285,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
+  protected IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:
@@ -298,7 +298,7 @@ public abstract class TsFileManagement {
   }
 
   /** acquire the write locks of the resource , the merge lock and the compaction lock */
-  private void doubleWriteLock(TsFileResource seqFile) {
+  protected void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
     boolean compactionLockGot;
     while (true) {
@@ -320,12 +320,12 @@ public abstract class TsFileManagement {
   }
 
   /** release the write locks of the resource , the merge lock and the compaction lock */
-  private void doubleWriteUnlock(TsFileResource seqFile) {
+  protected void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();
     seqFile.writeUnlock();
   }
 
-  private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
+  protected void removeUnseqFiles(List<TsFileResource> unseqFiles) {
     writeLock();
     try {
       removeAll(unseqFiles, false);
@@ -349,7 +349,7 @@ public abstract class TsFileManagement {
   }
 
   @SuppressWarnings("squid:S1141")
-  private void updateMergeModification(TsFileResource seqFile) {
+  protected void updateMergeModification(TsFileResource seqFile) {
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -376,7 +376,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private void removeMergingModification() {
+  protected void removeMergingModification() {
     try {
       if (mergingModification != null) {
         mergingModification.remove();

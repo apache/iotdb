@@ -237,7 +237,7 @@ public class IoTDBConfig {
   private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   /** Is the write mem control for writing enable. */
-  private boolean enableMemControl = true;
+  private boolean enableMemControl = false;
 
   /** Is the write ahead log enable. */
   private boolean enableIndex = false;
@@ -269,7 +269,7 @@ public class IoTDBConfig {
   private long tsFileSizeThreshold = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
-  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
+  private long memtableSizeThreshold = 1 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -289,7 +289,7 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** LEVEL_COMPACTION, NO_COMPACTION */
-  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.TRADITIONAL_LEVEL_COMPACTION;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq

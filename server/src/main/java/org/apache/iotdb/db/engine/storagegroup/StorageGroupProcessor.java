@@ -801,11 +801,7 @@ public class StorageGroupProcessor {
       partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
           timePartitionId, id -> new HashMap<>());
 
-      boolean isSequence =
-          insertRowPlan.getTime()
-              > partitionLatestFlushedTimeForEachDevice
-                  .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+      boolean isSequence = false;
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -1981,11 +1977,10 @@ public class StorageGroupProcessor {
 
   /** close compaction merge callback, to release some locks */
   private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
+    this.compactionMergeWorking = false;
     if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       executeCompaction(
           timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    } else {
-      this.compactionMergeWorking = false;
     }
   }
 
