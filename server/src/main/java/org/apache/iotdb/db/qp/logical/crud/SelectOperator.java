@@ -116,7 +116,9 @@ public final class SelectOperator extends Operator {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {
         aggregationFunctionsCache.add(
-            ((FunctionExpression) resultColumn.getExpression()).getFunctionName());
+            hasAggregationFunction()
+                ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
+                : null);
       }
     }
     return aggregationFunctionsCache;

@@ -98,7 +98,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (queryOperator.getIndexType() != null) {
+    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()
+        || queryOperator.getIndexType() != null) {
       return;
     }
 
