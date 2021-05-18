@@ -96,11 +96,14 @@ jobs:
           .\bootstrap.bat ; `
           .\b2.exe
       - name: Install OpenSSL
-        run:  Invoke-WebRequest https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe -OutFile D:\a\cpp ; `
+        run: mkdir D:\a\cpp\openssl ; `
+            Invoke-WebRequest https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe -OutFile D:\a\cpp\openssl ; `
+            cd D:\a\cpp\openssl; `
+            .\Win64OpenSSL-1_1_1k.exe; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
       - name: Add Flex and Bison Path and OpenSSL
         shell: bash
-        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && mv Win64OpenSSL-1_1_1k.exe openssl.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
+        run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
       - name: Test with Maven
         shell: bash
         run: source ~/.bash_profile && mvn -B clean integration-test -P compile-cpp -Dboost.include.dir=/d/a/cpp/boost_1_72_0 -Dboost.library.dir=/d/a/cpp/boost_1_72_0/stage/lib -Dtsfile.test.skip=true -Djdbc.test.skip=true -Diotdb.test.skip=true -Dtest.port.closed=true -Denforcer.skip=true -pl server,client-cpp,example/client-cpp-example -am
