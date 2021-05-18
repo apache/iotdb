@@ -1099,7 +1099,7 @@ public class MManager {
       PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked) throws MetadataException {
     MNode node;
     boolean shouldSetStorageGroup;
-    if(isLocked){
+    if(MTreeType==MTREE_DISK_BASED&&isLocked){
       try {
         return mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
       }catch (MetadataException e){
