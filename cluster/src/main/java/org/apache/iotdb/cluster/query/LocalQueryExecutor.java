@@ -596,7 +596,11 @@ public class LocalQueryExecutor {
     try {
       path = new PartialPath(request.getPath());
     } catch (IllegalPathException e) {
-      logger.error("{}: aggregation has error path: {}, queryId: {}", name, request.getPath(), request.getQueryId());
+      logger.error(
+          "{}: aggregation has error path: {}, queryId: {}",
+          name,
+          request.getPath(),
+          request.getQueryId());
       throw new QueryProcessException(e);
     }
     Filter timeFilter = null;

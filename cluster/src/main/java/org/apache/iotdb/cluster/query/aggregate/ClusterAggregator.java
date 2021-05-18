@@ -165,13 +165,7 @@ public class ClusterAggregator {
             partitionGroup.getHeader());
         List<AggregateResult> aggrResult =
             localQueryExecutor.getAggrResult(
-                aggregations,
-                deviceMeasurements,
-                dataType,
-                path,
-                timeFilter,
-                context,
-                ascending);
+                aggregations, deviceMeasurements, dataType, path, timeFilter, context, ascending);
         logger.debug(
             "{}: queried aggregation {} of {} in {} locally are {}",
             metaGroupMember.getName(),
