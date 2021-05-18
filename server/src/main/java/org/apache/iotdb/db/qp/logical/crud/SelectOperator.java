@@ -112,11 +112,15 @@ public final class SelectOperator extends Operator {
   }
 
   public List<String> getAggregationFunctions() {
+    if (!hasAggregationFunction()) {
+      return null;
+    }
     if (aggregationFunctionsCache == null) {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {
+        Expression expression = resultColumn.getExpression();
         aggregationFunctionsCache.add(
-            hasAggregationFunction()
+            expression instanceof FunctionExpression
                 ? ((FunctionExpression) resultColumn.getExpression()).getFunctionName()
                 : null);
       }
