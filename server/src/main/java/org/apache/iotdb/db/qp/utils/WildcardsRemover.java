@@ -65,6 +65,15 @@ public class WildcardsRemover {
     consumed = 0;
   }
 
+  public WildcardsRemover(ConcatPathOptimizer concatPathOptimizer) {
+    this.concatPathOptimizer = concatPathOptimizer;
+
+    maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
+    soffset = 0;
+    limit = maxDeduplicatedPathNum + 1;
+    consumed = 0;
+  }
+
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
       Pair<List<PartialPath>, Integer> pair =
@@ -108,7 +117,8 @@ public class WildcardsRemover {
     boolean atLeastOneSeriesNotExisted = false;
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(this, actualExpressions);
+      originExpression.removeWildcards(
+          new WildcardsRemover(concatPathOptimizer), actualExpressions);
       if (actualExpressions.isEmpty()) {
         atLeastOneSeriesNotExisted = true;
         break;
@@ -122,16 +132,21 @@ public class WildcardsRemover {
     List<List<Expression>> actualExpressions = new ArrayList<>();
     ConcatPathOptimizer.cartesianProduct(
         extendedExpressions, actualExpressions, 0, new ArrayList<>());
-    for (@SuppressWarnings("squid:S1481") List<Expression> ignored : actualExpressions) {
+
+    List<List<Expression>> splitExpressions = new ArrayList<>();
+    for (List<Expression> actualExpression : actualExpressions) {
       if (offset != 0) {
         --offset;
+        continue;
       } else if (limit != 0) {
         --limit;
       } else {
         break;
       }
+      splitExpressions.add(actualExpression);
     }
-    return actualExpressions;
+    consumed += actualExpressions.size();
+    return splitExpressions;
   }
 
   /** @return should break the loop or not */

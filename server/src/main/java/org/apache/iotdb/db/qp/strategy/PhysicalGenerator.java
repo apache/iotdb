@@ -462,7 +462,7 @@ public class PhysicalGenerator {
 
     @Override
     public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
-      QueryPlan queryPlan;
+      AggregationPlan queryPlan;
       if (queryOperator.hasTimeSeriesGeneratingFunction()) {
         throw new QueryProcessException(
             "User-defined and built-in hybrid aggregation is not supported.");
@@ -474,8 +474,9 @@ public class PhysicalGenerator {
       } else {
         queryPlan = new AggregationPlan();
       }
-      ((AggregationPlan) queryPlan)
-          .setAggregations(queryOperator.getSelectOperator().getAggregationFunctions());
+
+      queryPlan.setPaths(queryOperator.getSelectOperator().getPaths());
+      queryPlan.setAggregations(queryOperator.getSelectOperator().getAggregationFunctions());
 
       if (queryOperator.isGroupByTime()) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
@@ -500,7 +501,7 @@ public class PhysicalGenerator {
           }
         }
       } else if (queryOperator.isGroupByLevel()) {
-        ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
+        queryPlan.setLevel(queryOperator.getLevel());
         try {
           if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
             throw new QueryProcessException("Aggregate among unmatched data types");
