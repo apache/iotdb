@@ -52,6 +52,7 @@ DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB�
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2010.56.51%20AM.png?raw=true)
 
 5. 添加下图中的这些库，点击 `Find Class`
+   
    也可以在源代码运行`mvn clean package -pl jdbc -am -DskipTests -P get-jar-with-dependencies`后，在`iotdb/jdbc/target/` 下找到并添加名为`iotdb-jdbc-{version}-jar-with-dependencies.jar`的库。
     
 
@@ -81,6 +82,5 @@ DBeaver是一个SQL客户端和数据库管理工具。DBeaver可以使用IoTDB�
 10. 可以开始通过DBeaver使用IoTDB
 
    ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/DBeaver/Screen%20Shot%202021-05-17%20at%2011.08.33%20AM.png?raw=true)
-
 
 
