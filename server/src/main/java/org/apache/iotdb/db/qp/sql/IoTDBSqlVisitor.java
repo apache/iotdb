@@ -1268,7 +1268,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       } else {
         props = new HashMap<>();
       }
-      queryOp.getSelectOperator().addResultColumn(new ResultColumn(new TimeSeriesOperand(path)));
+      List<ResultColumn> resultColumns = new ArrayList<>();
+      resultColumns.add(new ResultColumn(new TimeSeriesOperand(path)));
+      queryOp.getSelectOperator().setResultColumns(resultColumns);
       props.put(PATTERN, compositePattern);
       props.put(THRESHOLD, thresholds);
       queryOp.setIndexType(IndexType.ELB_INDEX);

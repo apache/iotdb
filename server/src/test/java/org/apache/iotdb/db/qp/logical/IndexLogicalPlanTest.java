@@ -131,7 +131,8 @@ public class IndexLogicalPlanTest {
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
     Assert.assertEquals(
-        "Speed", queryOperator.getSelectOperator().getResultColumns().get(0).toString());
+        "Speed",
+        queryOperator.getSelectOperator().getResultColumns().get(0).getExpression().toString());
     Assert.assertEquals(
         "root.Wind.AZQ02", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.ELB_INDEX, queryOperator.getIndexType());
