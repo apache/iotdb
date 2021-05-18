@@ -152,7 +152,7 @@ WHERE time >= 1
 
 ![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
-用户也可以参考 [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) 编写更丰富多彩的文档。
+用户也可以参考 [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) 编写更丰富多彩的文档。
 
 以上样例放置于 `$IoTDB_HOME/zeppelin-interpreter/Zeppelin-IoTDB-Demo.zpln`
 
