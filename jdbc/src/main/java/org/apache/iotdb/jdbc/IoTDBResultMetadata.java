@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
@@ -35,6 +37,21 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
     this.ignoreTimestamp = ignoreTimestamp;
+    checkNonAlignDataset();
+  }
+
+  private void checkNonAlignDataset() {
+    if (ignoreTimestamp || columnInfoList == null || columnTypeList == null) {
+      return;
+    }
+    // disable align
+    if (columnInfoList.size() == columnTypeList.size() * 2) {
+      for (int i = 1; i < columnInfoList.size(); i++) {
+        if (i % 2 == 0) {
+          columnTypeList.add(i - 1, String.valueOf(TSDataType.INT64));
+        }
+      }
+    }
   }
 
   @Override
