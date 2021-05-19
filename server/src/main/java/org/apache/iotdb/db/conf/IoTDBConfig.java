@@ -326,6 +326,14 @@ public class IoTDBConfig {
   /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of unseq level. */
   private int unseqLevelNum = 1;
 
+  /**
+   * Works when compaction_strategy is LEVEL_COMPACTION. The max open file num in each unseq
+   * compaction task. We use the unseq file num as the open file num # This parameters have to be
+   * much smaller than the permitted max open file num of each process controlled by operator
+   * system(65535 in most system).
+   */
+  private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
+
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -1474,6 +1482,15 @@ public class IoTDBConfig {
 
   public void setUnseqLevelNum(int unseqLevelNum) {
     this.unseqLevelNum = unseqLevelNum;
+  }
+
+  public int getMaxSelectUnseqFileNumInEachUnseqCompaction() {
+    return maxSelectUnseqFileNumInEachUnseqCompaction;
+  }
+
+  public void setMaxSelectUnseqFileNumInEachUnseqCompaction(
+      int maxSelectUnseqFileNumInEachUnseqCompaction) {
+    this.maxSelectUnseqFileNumInEachUnseqCompaction = maxSelectUnseqFileNumInEachUnseqCompaction;
   }
 
   public int getMergeChunkSubThreadNum() {
