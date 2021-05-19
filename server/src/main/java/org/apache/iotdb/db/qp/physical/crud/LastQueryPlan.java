@@ -71,9 +71,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
   private boolean isValidExpression(IExpression expression) {
     if (expression instanceof GlobalTimeExpression) {
       Filter filter = ((GlobalTimeExpression) expression).getFilter();
-      if (filter instanceof TimeGtEq || filter instanceof TimeGt) {
-        return true;
-      }
+      return filter instanceof TimeGtEq || filter instanceof TimeGt;
     }
     return false;
   }
