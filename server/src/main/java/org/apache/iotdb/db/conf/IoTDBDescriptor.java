@@ -270,11 +270,17 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
-      conf.setAvgSeriesPointNumberThreshold(
+      conf.setAvgSeqSeriesPointNumberThreshold(
           Integer.parseInt(
               properties.getProperty(
-                  "avg_series_point_number_threshold",
-                  Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+                  "avg_seq_series_point_number_threshold",
+                  Integer.toString(conf.getAvgSeqSeriesPointNumberThreshold()))));
+
+      conf.setAvgUnseqSeriesPointNumberThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "avg_unseq_series_point_number_threshold",
+                  Integer.toString(conf.getAvgSeqSeriesPointNumberThreshold()))));
 
       conf.setCheckPeriodWhenInsertBlocked(
           Integer.parseInt(

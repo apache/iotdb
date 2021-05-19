@@ -204,7 +204,7 @@ public class TsFileRecoverPerformer {
   private void redoLogs(
       RestorableTsFileIOWriter restorableTsFileIOWriter, Supplier<ByteBuffer[]> supplier)
       throws StorageGroupProcessorException {
-    IMemTable recoverMemTable = new PrimitiveMemTable();
+    IMemTable recoverMemTable = new PrimitiveMemTable(sequence);
     LogReplayer logReplayer =
         new LogReplayer(
             logNodePrefix,

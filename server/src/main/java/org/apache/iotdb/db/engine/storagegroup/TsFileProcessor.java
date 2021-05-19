@@ -177,10 +177,11 @@ public class TsFileProcessor {
 
     if (workMemTable == null) {
       if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
+        workMemTable = new PrimitiveMemTable(enableMemControl, sequence);
         MemTableManager.getInstance().addMemtableNumber();
       } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+        workMemTable =
+            MemTableManager.getInstance().getAvailableMemTable(storageGroupName, sequence);
       }
     }
 
@@ -229,10 +230,11 @@ public class TsFileProcessor {
 
     if (workMemTable == null) {
       if (enableMemControl) {
-        workMemTable = new PrimitiveMemTable(enableMemControl);
+        workMemTable = new PrimitiveMemTable(enableMemControl, sequence);
         MemTableManager.getInstance().addMemtableNumber();
       } else {
-        workMemTable = MemTableManager.getInstance().getAvailableMemTable(storageGroupName);
+        workMemTable =
+            MemTableManager.getInstance().getAvailableMemTable(storageGroupName, sequence);
       }
     }
 

@@ -51,8 +51,11 @@ public abstract class AbstractMemTable implements IMemTable {
   protected boolean disableMemControl = true;
 
   private boolean shouldFlush = false;
-  private int avgSeriesPointNumThreshold =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+  private int avgSeqSeriesPointNumThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getAvgSeqSeriesPointNumberThreshold();
+  private int avgUnseqSeriesPointNumThreshold =
+      IoTDBDescriptor.getInstance().getConfig().getAvgUnseqSeriesPointNumberThreshold();
+
   /** memory size of data points, including TEXT values */
   private long memSize = 0;
   /**
@@ -70,6 +73,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   private long minPlanIndex = Long.MAX_VALUE;
+
+  protected boolean isSequence = false;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -102,7 +107,11 @@ public abstract class AbstractMemTable implements IMemTable {
         measurement,
         k -> {
           seriesNumber++;
-          totalPointsNumThreshold += avgSeriesPointNumThreshold;
+          if (isSequence) {
+            totalPointsNumThreshold += avgSeqSeriesPointNumThreshold;
+          } else {
+            totalPointsNumThreshold += avgUnseqSeriesPointNumThreshold;
+          }
           return genMemSeries(schema);
         });
   }
