@@ -590,8 +590,8 @@ public class Session {
   }
 
   /**
-   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168;
-   * <PrefixPath> + <suffixPath> = <TimeSeries>
+   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168; <PrefixPath> +
+   * <suffixPath> = <TimeSeries>
    *
    * @param suffixPath root.ln.wf01.wt01
    * @param prefixPath status
