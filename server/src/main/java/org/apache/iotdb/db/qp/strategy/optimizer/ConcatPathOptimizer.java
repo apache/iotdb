@@ -27,10 +27,11 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
@@ -68,13 +69,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private static boolean optimizable(QueryOperator queryOperator) {
-    FromOperator from = queryOperator.getFromOperator();
+    FromComponent from = queryOperator.getFromComponent();
     if (from == null || from.getPrefixPaths().isEmpty()) {
       LOGGER.warn(WARNING_NO_PREFIX_PATHS);
       return false;
     }
 
-    SelectOperator select = queryOperator.getSelectOperator();
+    SelectComponent select = queryOperator.getSelectComponent();
     if (select == null || select.getResultColumns().isEmpty()) {
       LOGGER.warn(WARNING_NO_SUFFIX_PATHS);
       return false;
@@ -84,35 +85,35 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private void concatSelect(QueryOperator queryOperator) throws LogicalOptimizeException {
-    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()) {
+    if (queryOperator.isAlignByDevice() && !(queryOperator instanceof LastQueryOperator)) {
       return;
     }
 
-    List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+    List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
-    for (ResultColumn suffixColumn : queryOperator.getSelectOperator().getResultColumns()) {
+    for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
       suffixColumn.concat(prefixPaths, resultColumns);
     }
-    queryOperator.getSelectOperator().setResultColumns(resultColumns);
+    queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()
+    if (queryOperator.isAlignByDevice() && !(queryOperator instanceof LastQueryOperator)
         || queryOperator.getIndexType() != null) {
       return;
     }
 
     WildcardsRemover wildcardsRemover = new WildcardsRemover(this, queryOperator, fetchSize);
     List<ResultColumn> resultColumns = new ArrayList<>();
-    for (ResultColumn resultColumn : queryOperator.getSelectOperator().getResultColumns()) {
+    for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
       if (wildcardsRemover.checkIfPathNumberIsOverLimit(resultColumns)) {
         break;
       }
     }
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
-    queryOperator.getSelectOperator().setResultColumns(resultColumns);
+    queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
 
   private void concatFilter(QueryOperator queryOperator) throws LogicalOptimizeException {
@@ -122,11 +123,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     Set<PartialPath> filterPaths = new HashSet<>();
-    if (!queryOperator.isAlignByDevice() || queryOperator.isLastQuery()) {
+    if (!queryOperator.isAlignByDevice() || queryOperator instanceof LastQueryOperator) {
       // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without
       // prefix first
       queryOperator.setFilterOperator(
-          concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
+          concatFilter(queryOperator.getFromComponent().getPrefixPaths(), filter, filterPaths));
     }
     queryOperator.getFilterOperator().setPathSet(filterPaths);
   }

@@ -30,9 +30,17 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
+import org.apache.iotdb.db.qp.logical.crud.FillClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.FillQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.GroupByFillClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.GroupByFillQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
@@ -471,41 +479,45 @@ public class PhysicalGenerator {
         throw new QueryProcessException(
             "User-defined and built-in hybrid aggregation is not supported.");
       }
-      if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
+      if (queryOperator instanceof GroupByFillQueryOperator) {
         queryPlan = new GroupByTimeFillPlan();
-      } else if (queryOperator.isGroupByTime()) {
+      } else if (queryOperator instanceof GroupByQueryOperator) {
         queryPlan = new GroupByTimePlan();
       } else {
         queryPlan = new AggregationPlan();
       }
 
-      queryPlan.setPaths(queryOperator.getSelectOperator().getPaths());
-      queryPlan.setAggregations(queryOperator.getSelectOperator().getAggregationFunctions());
+      queryPlan.setPaths(queryOperator.getSelectComponent().getPaths());
+      queryPlan.setAggregations(queryOperator.getSelectComponent().getAggregationFunctions());
 
-      if (queryOperator.isGroupByTime()) {
+      if (queryOperator instanceof GroupByQueryOperator) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
-        groupByTimePlan.setInterval(queryOperator.getUnit());
-        groupByTimePlan.setIntervalByMonth(queryOperator.isIntervalByMonth());
-        groupByTimePlan.setSlidingStep(queryOperator.getSlidingStep());
-        groupByTimePlan.setSlidingStepByMonth(queryOperator.isSlidingStepByMonth());
-        groupByTimePlan.setLeftCRightO(queryOperator.isLeftCRightO());
-        if (!queryOperator.isLeftCRightO()) {
-          groupByTimePlan.setStartTime(queryOperator.getStartTime() + 1);
-          groupByTimePlan.setEndTime(queryOperator.getEndTime() + 1);
+        GroupByClauseComponent groupByClauseComponent =
+            (GroupByClauseComponent) queryOperator.getSpecialClauseComponent();
+        groupByTimePlan.setInterval(groupByClauseComponent.getUnit());
+        groupByTimePlan.setIntervalByMonth(groupByClauseComponent.isIntervalByMonth());
+        groupByTimePlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
+        groupByTimePlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
+        groupByTimePlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
+        if (!groupByClauseComponent.isLeftCRightO()) {
+          groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
+          groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
         } else {
-          groupByTimePlan.setStartTime(queryOperator.getStartTime());
-          groupByTimePlan.setEndTime(queryOperator.getEndTime());
+          groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime());
+          groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime());
         }
       }
-      if (queryOperator.isFill()) {
-        ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+      if (queryOperator instanceof GroupByFillQueryOperator) {
+        GroupByFillClauseComponent groupByFillClauseComponent =
+            (GroupByFillClauseComponent) queryOperator.getSpecialClauseComponent();
+        ((GroupByTimeFillPlan) queryPlan).setFillType(groupByFillClauseComponent.getFillTypes());
         for (String aggregation : queryPlan.getAggregations()) {
           if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
             throw new QueryProcessException("Group By Fill only support last_value function");
           }
         }
       } else if (queryOperator.isGroupByLevel()) {
-        queryPlan.setLevel(queryOperator.getLevel());
+        queryPlan.setLevel(queryOperator.getSpecialClauseComponent().getLevel());
         try {
           if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
             throw new QueryProcessException("Aggregate among unmatched data types");
@@ -523,17 +535,19 @@ public class PhysicalGenerator {
 
     @Override
     public QueryPlan transform(QueryOperator queryOperator) throws QueryProcessException {
+      FillQueryOperator fillQueryOperator = (FillQueryOperator) queryOperator;
       if (queryOperator.hasTimeSeriesGeneratingFunction()) {
         throw new QueryProcessException("Fill functions are not supported in UDF queries.");
       }
       FillQueryPlan queryPlan = new FillQueryPlan();
-      FilterOperator timeFilter = queryOperator.getFilterOperator();
+      FilterOperator timeFilter = fillQueryOperator.getFilterOperator();
       if (!timeFilter.isSingle()) {
         throw new QueryProcessException("Slice query must select a single time point");
       }
       long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
       queryPlan.setQueryTime(time);
-      queryPlan.setFillType(queryOperator.getFillTypes());
+      queryPlan.setFillType(
+          ((FillClauseComponent) fillQueryOperator.getSpecialClauseComponent()).getFillTypes());
       return queryPlan;
     }
   }
@@ -544,24 +558,25 @@ public class PhysicalGenerator {
 
     if (queryOperator.hasAggregationFunction()) {
       queryPlan = new AggPhysicalPlanRule().transform(queryOperator);
-    } else if (queryOperator.isFill()) {
+    } else if (queryOperator instanceof FillQueryOperator) {
       queryPlan = new FillPhysicalPlanRule().transform(queryOperator);
-    } else if (queryOperator.isLastQuery()) {
+    } else if (queryOperator instanceof LastQueryOperator) {
       queryPlan = new LastQueryPlan();
     } else if (queryOperator.getIndexType() != null) {
       queryPlan = new QueryIndexPlan();
     } else if (queryOperator.hasTimeSeriesGeneratingFunction()) {
-      queryPlan = new UDTFPlan(queryOperator.getSelectOperator().getZoneId());
+      queryPlan = new UDTFPlan(queryOperator.getSelectComponent().getZoneId());
       ((UDTFPlan) queryPlan)
-          .constructUdfExecutors(queryOperator.getSelectOperator().getResultColumns());
+          .constructUdfExecutors(queryOperator.getSelectComponent().getResultColumns());
     } else {
       queryPlan = new RawDataQueryPlan();
     }
 
-    if (queryOperator.isAlignByDevice()) {
+    if (queryOperator.getSpecialClauseComponent() != null
+        && queryOperator.getSpecialClauseComponent().isAlignByDevice()) {
       queryPlan = getAlignQueryPlan(queryOperator, queryPlan);
     } else {
-      queryPlan.setPaths(queryOperator.getSelectOperator().getPaths());
+      queryPlan.setPaths(queryOperator.getSelectComponent().getPaths());
       // Last query result set will not be affected by alignment
       if (queryPlan instanceof LastQueryPlan && !queryOperator.isAlignByTime()) {
         throw new QueryProcessException("Disable align cannot be applied to LAST query.");
@@ -588,9 +603,6 @@ public class PhysicalGenerator {
       }
     }
 
-    queryPlan.setWithoutAllNull(queryOperator.isWithoutAllNull());
-    queryPlan.setWithoutAnyNull(queryOperator.isWithoutAnyNull());
-
     if (queryOperator.getIndexType() != null) {
       if (queryPlan instanceof QueryIndexPlan) {
         ((QueryIndexPlan) queryPlan).setIndexType(queryOperator.getIndexType());
@@ -599,7 +611,7 @@ public class PhysicalGenerator {
       return queryPlan;
     }
 
-    queryPlan.setResultColumns(queryOperator.getSelectOperator().getResultColumns());
+    queryPlan.setResultColumns(queryOperator.getSelectComponent().getResultColumns());
 
     try {
       List<PartialPath> paths = queryPlan.getPaths();
@@ -611,9 +623,14 @@ public class PhysicalGenerator {
       throw new QueryProcessException(e);
     }
 
-    queryPlan.setRowLimit(queryOperator.getRowLimit());
-    queryPlan.setRowOffset(queryOperator.getRowOffset());
-    queryPlan.setAscending(queryOperator.isAscending());
+    if (queryOperator.getSpecialClauseComponent() != null) {
+      SpecialClauseComponent specialClauseComponent = queryOperator.getSpecialClauseComponent();
+      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
+      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
+      queryPlan.setAscending(specialClauseComponent.isAscending());
+    }
 
     return queryPlan;
   }
@@ -634,11 +651,11 @@ public class PhysicalGenerator {
       alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
     }
 
-    List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+    List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     // remove stars in fromPaths and get deviceId with deduplication
     List<PartialPath> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-    List<ResultColumn> resultColumns = queryOperator.getSelectOperator().getResultColumns();
-    List<String> originAggregations = queryOperator.getSelectOperator().getAggregationFunctions();
+    List<ResultColumn> resultColumns = queryOperator.getSelectComponent().getResultColumns();
+    List<String> originAggregations = queryOperator.getSelectComponent().getAggregationFunctions();
 
     // to record result measurement columns
     List<String> measurements = new ArrayList<>();
@@ -771,9 +788,9 @@ public class PhysicalGenerator {
     }
 
     // slimit trim on the measurementColumnList
-    if (queryOperator.hasSlimit()) {
-      int seriesSlimit = queryOperator.getSeriesLimit();
-      int seriesOffset = queryOperator.getSeriesOffset();
+    if (queryOperator.getSpecialClauseComponent().hasSlimit()) {
+      int seriesSlimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
+      int seriesOffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
       measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
     }
 
@@ -890,12 +907,12 @@ public class PhysicalGenerator {
 
   private static boolean verifyAllAggregationDataTypesEqual(QueryOperator queryOperator)
       throws MetadataException {
-    List<String> aggregations = queryOperator.getSelectOperator().getAggregationFunctions();
+    List<String> aggregations = queryOperator.getSelectComponent().getAggregationFunctions();
     if (aggregations.isEmpty()) {
       return true;
     }
 
-    List<PartialPath> paths = queryOperator.getSelectOperator().getPaths();
+    List<PartialPath> paths = queryOperator.getSelectComponent().getPaths();
     List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
     String aggType = aggregations.get(0);
     switch (aggType) {

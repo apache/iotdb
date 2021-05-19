@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -39,11 +40,11 @@ public class WildcardsRemover {
   private final ConcatPathOptimizer concatPathOptimizer;
 
   private final int maxDeduplicatedPathNum;
-  private final int soffset;
+  private int soffset = 0;
 
-  private int offset;
-  private int limit;
-  private int consumed;
+  private int offset = 0;
+  private int limit = Integer.MAX_VALUE;
+  private int consumed = 0;
 
   public WildcardsRemover(
       ConcatPathOptimizer concatPathOptimizer, QueryOperator queryOperator, int fetchSize) {
@@ -54,25 +55,21 @@ public class WildcardsRemover {
     // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
     // set it to Integer.MAX_VALUE - 1
     maxDeduplicatedPathNum =
-        queryOperator.isLastQuery()
+        queryOperator instanceof LastQueryOperator
             ? Integer.MAX_VALUE - 1
             : QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    soffset = queryOperator.getSeriesOffset();
-    offset = soffset;
+    if (queryOperator.getSpecialClauseComponent() != null) {
+      soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
+      offset = soffset;
 
-    final int slimit = queryOperator.getSeriesLimit();
-    limit = slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
-
-    consumed = 0;
+      final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
+      limit = slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
+    }
   }
 
   public WildcardsRemover(ConcatPathOptimizer concatPathOptimizer) {
     this.concatPathOptimizer = concatPathOptimizer;
-
     maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    soffset = 0;
-    limit = maxDeduplicatedPathNum + 1;
-    consumed = 0;
   }
 
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {

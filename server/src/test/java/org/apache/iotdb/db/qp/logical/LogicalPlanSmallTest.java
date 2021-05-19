@@ -43,63 +43,63 @@ public class LogicalPlanSmallTest {
   @Test
   public void testLimit() {
     String sqlStr = "select * from root.vehicle.d1 limit 10";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
-    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(10, operator.getSpecialClauseComponent().getRowLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getRowOffset());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getSeriesLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getSeriesOffset());
   }
 
   @Test
   public void testOffset() {
     String sqlStr = "select * from root.vehicle.d1 limit 10 offset 20";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
-    Assert.assertEquals(20, ((QueryOperator) operator).getRowOffset());
-    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(10, operator.getSpecialClauseComponent().getRowLimit());
+    Assert.assertEquals(20, operator.getSpecialClauseComponent().getRowOffset());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getSeriesLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getSeriesOffset());
   }
 
   @Test
   public void testSlimit() {
     String sqlStr = "select * from root.vehicle.d1 limit 10 slimit 1";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(10, ((QueryOperator) operator).getRowLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
-    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(10, operator.getSpecialClauseComponent().getRowLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getRowOffset());
+    Assert.assertEquals(1, operator.getSpecialClauseComponent().getSeriesLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getSeriesOffset());
   }
 
   @Test
   public void testSOffset() {
     String sqlStr =
         "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 50 slimit 10 soffset 100";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
-    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(50, operator.getSpecialClauseComponent().getRowLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getRowOffset());
+    Assert.assertEquals(10, operator.getSpecialClauseComponent().getSeriesLimit());
+    Assert.assertEquals(100, operator.getSpecialClauseComponent().getSeriesOffset());
   }
 
   @Test
   public void testSOffsetTimestamp() {
     String sqlStr =
         "select * from root.vehicle.d1 where s1 < 20 and timestamp <= now() limit 50 slimit 10 soffset 100";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
-    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
-    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
-    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(50, operator.getSpecialClauseComponent().getRowLimit());
+    Assert.assertEquals(0, operator.getSpecialClauseComponent().getRowOffset());
+    Assert.assertEquals(10, operator.getSpecialClauseComponent().getSeriesLimit());
+    Assert.assertEquals(100, operator.getSpecialClauseComponent().getSeriesOffset());
   }
 
   @Test(expected = SQLParserException.class)
@@ -171,10 +171,10 @@ public class LogicalPlanSmallTest {
   public void testSoffsetNotPositive() {
     String sqlStr =
         "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 1";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
-    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
-    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(1, operator.getSpecialClauseComponent().getSeriesOffset());
+    Assert.assertEquals(1, operator.getSpecialClauseComponent().getSeriesLimit());
   }
 
   @Test(expected = LogicalOptimizeException.class)
@@ -204,10 +204,10 @@ public class LogicalPlanSmallTest {
   @Test
   public void testDisableAlign() {
     String sqlStr = "select * from root.vehicle disable align";
-    RootOperator operator =
-        (RootOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    QueryOperator operator =
+        (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
-    Assert.assertFalse(((QueryOperator) operator).isAlignByTime());
+    Assert.assertFalse(operator.isAlignByTime());
   }
 
   @Test
@@ -239,7 +239,7 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(QueryOperator.class, operator.getClass());
     ArrayList<PartialPath> paths = new ArrayList<>();
     paths.add(new PartialPath("*"));
-    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectOperator().getPaths());
+    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectComponent().getPaths());
   }
 
   @Test

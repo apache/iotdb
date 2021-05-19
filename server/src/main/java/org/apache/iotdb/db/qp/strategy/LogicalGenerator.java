@@ -24,9 +24,9 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser;
@@ -84,9 +84,9 @@ public class LogicalGenerator {
   public static Operator generate(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query operator and set its global time filter
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+    QueryOperator queryOp = new QueryOperator();
+    FromComponent fromOp = new FromComponent();
+    SelectComponent selectOp = new SelectComponent(zoneId);
 
     // iterate the path list and add it to from operator
     for (String p : rawDataQueryReq.getPaths()) {
@@ -95,8 +95,8 @@ public class LogicalGenerator {
     }
     selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
 
-    queryOp.setSelectOperator(selectOp);
-    queryOp.setFromOperator(fromOp);
+    queryOp.setSelectComponent(selectOp);
+    queryOp.setFromComponent(fromOp);
 
     // set time filter operator
     FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);

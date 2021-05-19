@@ -19,21 +19,16 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information of {@code FROM} clause. */
-public class FromOperator extends Operator {
+public class FromComponent {
 
-  private List<PartialPath> prefixList;
+  private List<PartialPath> prefixList = new ArrayList<>();;
 
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FROM;
-    prefixList = new ArrayList<>();
-  }
+  public FromComponent() {}
 
   public void addPrefixTablePath(PartialPath prefixPath) {
     prefixList.add(prefixPath);

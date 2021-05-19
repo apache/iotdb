@@ -47,13 +47,13 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
  */
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
-  // it is the symbol of token. e.g. AND is & and OR is |
+  // The symbol of token. e.g. AND is & and OR is |
   String tokenSymbol;
 
-  private List<FilterOperator> childOperators;
+  private List<FilterOperator> childOperators = new ArrayList<>();
   // leaf filter operator means it doesn't have left and right child filterOperator. Leaf filter
   // should set FunctionOperator.
-  protected boolean isLeaf;
+  protected boolean isLeaf = false;
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
   boolean isSingle = false;
   // if isSingle = false, singlePath must be null
@@ -64,9 +64,6 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
   public FilterOperator(int tokenType) {
     super(tokenType);
     operatorType = OperatorType.FILTER;
-    childOperators = new ArrayList<>();
-    this.tokenIntType = tokenType;
-    isLeaf = false;
     tokenSymbol = SQLConstant.tokenSymbol.get(tokenType);
   }
 

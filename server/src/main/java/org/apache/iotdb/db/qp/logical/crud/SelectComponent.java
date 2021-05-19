@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
@@ -30,11 +29,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectOperator extends Operator {
+public final class SelectComponent {
 
   private final ZoneId zoneId;
 
-  private boolean isLastQuery = false;
   private boolean hasAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
 
@@ -44,22 +42,12 @@ public final class SelectOperator extends Operator {
   private List<String> aggregationFunctionsCache;
 
   /** init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>. */
-  public SelectOperator(int tokenIntType, ZoneId zoneId) {
-    super(tokenIntType);
-    operatorType = OperatorType.SELECT;
+  public SelectComponent(ZoneId zoneId) {
     this.zoneId = zoneId;
   }
 
   public ZoneId getZoneId() {
     return zoneId;
-  }
-
-  public void markAsLastQuery() {
-    isLastQuery = true;
-  }
-
-  public boolean isLastQuery() {
-    return isLastQuery;
   }
 
   public boolean hasAggregationFunction() {

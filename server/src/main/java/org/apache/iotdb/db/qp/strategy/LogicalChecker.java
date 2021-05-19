@@ -22,8 +22,9 @@ package org.apache.iotdb.db.qp.strategy;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
@@ -53,12 +54,12 @@ public class LogicalChecker {
   }
 
   private static void checkLast(QueryOperator queryOperator) throws LogicalOperatorException {
-    SelectOperator selectOperator = queryOperator.getSelectOperator();
-    if (!selectOperator.isLastQuery()) {
+    SelectComponent selectComponent = queryOperator.getSelectComponent();
+    if (!(queryOperator instanceof LastQueryOperator)) {
       return;
     }
 
-    for (ResultColumn resultColumn : selectOperator.getResultColumns()) {
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (!(expression instanceof TimeSeriesOperand)) {
         throw new LogicalOperatorException("Last queries can only be applied on raw time series.");
@@ -68,12 +69,12 @@ public class LogicalChecker {
 
   private static void checkAggregation(QueryOperator queryOperator)
       throws LogicalOperatorException {
-    SelectOperator selectOperator = queryOperator.getSelectOperator();
-    if (!selectOperator.hasAggregationFunction()) {
+    SelectComponent selectComponent = queryOperator.getSelectComponent();
+    if (!selectComponent.hasAggregationFunction()) {
       return;
     }
 
-    for (ResultColumn resultColumn : selectOperator.getResultColumns()) {
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof TimeSeriesOperand) {
         throw new LogicalOperatorException(
@@ -88,12 +89,12 @@ public class LogicalChecker {
       return;
     }
 
-    SelectOperator selectOperator = queryOperator.getSelectOperator();
-    if (selectOperator.hasTimeSeriesGeneratingFunction()) {
+    SelectComponent selectComponent = queryOperator.getSelectComponent();
+    if (selectComponent.hasTimeSeriesGeneratingFunction()) {
       throw new LogicalOperatorException("ALIGN BY DEVICE clause is not supported in UDF queries.");
     }
 
-    for (PartialPath path : selectOperator.getPaths()) {
+    for (PartialPath path : selectComponent.getPaths()) {
       String device = path.getDevice();
       if (!device.isEmpty()) {
         throw new LogicalOperatorException(

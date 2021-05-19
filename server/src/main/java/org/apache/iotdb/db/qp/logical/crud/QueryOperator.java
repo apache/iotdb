@@ -19,78 +19,42 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
 public class QueryOperator extends RootOperator {
 
-  private SelectOperator selectOperator;
-  private FromOperator fromOperator;
-  private FilterOperator filterOperator;
+  protected SelectComponent selectComponent;
+  protected FromComponent fromComponent;
+  protected FilterOperator filterOperator;
+  protected SpecialClauseComponent specialClauseComponent;
 
-  private long startTime;
-  private long endTime;
-  // time interval
-  private long unit;
-  // sliding step
-  private long slidingStep;
-  private boolean isGroupByTime = false;
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
-  // if it is left close and right open interval
-  private boolean leftCRightO;
+  protected Map<String, Object> props;
 
-  private Map<TSDataType, IFill> fillTypes;
-  private boolean isFill = false;
+  protected IndexType indexType;
 
-  private boolean isGroupByLevel = false;
-  private int level = -1;
-
-  private int rowLimit = 0;
-  private int rowOffset = 0;
-  private int seriesLimit = 0;
-  private int seriesOffset = 0;
-
-  private boolean isAlignByDevice = false;
-  private boolean isAlignByTime = true;
-
-  private String column;
-
-  private boolean ascending = true;
-
-  private Map<String, Object> props;
-
-  private IndexType indexType;
-
-  // if true, we don't need the row whose any column is null
-  private boolean withoutAnyNull;
-
-  // if true, we don't need the row whose all columns are null
-  private boolean withoutAllNull;
-
-  public QueryOperator(int tokenIntType) {
-    super(tokenIntType);
+  public QueryOperator() {
+    super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
   }
 
-  public SelectOperator getSelectOperator() {
-    return selectOperator;
+  public SelectComponent getSelectComponent() {
+    return selectComponent;
   }
 
-  public void setSelectOperator(SelectOperator selectOperator) {
-    this.selectOperator = selectOperator;
+  public void setSelectComponent(SelectComponent selectComponent) {
+    this.selectComponent = selectComponent;
   }
 
-  public FromOperator getFromOperator() {
-    return fromOperator;
+  public FromComponent getFromComponent() {
+    return fromComponent;
   }
 
-  public void setFromOperator(FromOperator fromOperator) {
-    this.fromOperator = fromOperator;
+  public void setFromComponent(FromComponent fromComponent) {
+    this.fromComponent = fromComponent;
   }
 
   public FilterOperator getFilterOperator() {
@@ -99,6 +63,14 @@ public class QueryOperator extends RootOperator {
 
   public void setFilterOperator(FilterOperator filterOperator) {
     this.filterOperator = filterOperator;
+  }
+
+  public void setSpecialClauseComponent(SpecialClauseComponent specialClauseComponent) {
+    this.specialClauseComponent = specialClauseComponent;
+  }
+
+  public SpecialClauseComponent getSpecialClauseComponent() {
+    return specialClauseComponent;
   }
 
   public Map<String, Object> getProps() {
@@ -117,199 +89,23 @@ public class QueryOperator extends RootOperator {
     this.indexType = indexType;
   }
 
-  public boolean isFill() {
-    return isFill;
-  }
-
-  public void setFill(boolean fill) {
-    isFill = fill;
-  }
-
-  public Map<TSDataType, IFill> getFillTypes() {
-    return fillTypes;
-  }
-
-  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
-  }
-
-  public boolean isGroupByLevel() {
-    return isGroupByLevel;
-  }
-
-  public void setGroupByLevel(boolean isGroupBy) {
-    this.isGroupByLevel = isGroupBy;
-  }
-
-  public boolean isLeftCRightO() {
-    return leftCRightO;
-  }
-
-  public void setLeftCRightO(boolean leftCRightO) {
-    this.leftCRightO = leftCRightO;
-  }
-
-  public int getRowLimit() {
-    return rowLimit;
-  }
-
-  public void setRowLimit(int rowLimit) {
-    this.rowLimit = rowLimit;
-  }
-
-  public int getRowOffset() {
-    return rowOffset;
-  }
-
-  public void setRowOffset(int rowOffset) {
-    this.rowOffset = rowOffset;
-  }
-
-  public boolean hasLimit() {
-    return rowLimit > 0;
-  }
-
-  public int getSeriesLimit() {
-    return seriesLimit;
-  }
-
-  public void setSeriesLimit(int seriesLimit) {
-    this.seriesLimit = seriesLimit;
-  }
-
-  public int getSeriesOffset() {
-    return seriesOffset;
-  }
-
-  public void setSeriesOffset(int seriesOffset) {
-    this.seriesOffset = seriesOffset;
-  }
-
-  public boolean hasSlimit() {
-    return seriesLimit > 0;
-  }
-
-  public long getUnit() {
-    return unit;
-  }
-
-  public void setUnit(long unit) {
-    this.unit = unit;
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
-  }
-
-  public long getEndTime() {
-    return endTime;
-  }
-
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
-  }
-
-  public long getSlidingStep() {
-    return slidingStep;
-  }
-
-  public void setSlidingStep(long slidingStep) {
-    this.slidingStep = slidingStep;
-  }
-
-  public boolean isAlignByDevice() {
-    return isAlignByDevice;
-  }
-
-  public void setAlignByDevice(boolean isAlignByDevice) {
-    this.isAlignByDevice = isAlignByDevice;
-  }
-
-  public boolean isAlignByTime() {
-    return isAlignByTime;
-  }
-
-  public void setAlignByTime(boolean isAlignByTime) {
-    this.isAlignByTime = isAlignByTime;
-  }
-
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
-  }
-
-  public boolean isGroupByTime() {
-    return isGroupByTime;
-  }
-
-  public void setGroupByTime(boolean groupByTime) {
-    isGroupByTime = groupByTime;
-  }
-
-  public boolean isSlidingStepByMonth() {
-    return isSlidingStepByMonth;
-  }
-
-  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
-  }
-
-  public boolean isIntervalByMonth() {
-    return isIntervalByMonth;
-  }
-
-  public void setIntervalByMonth(boolean isIntervalByMonth) {
-    this.isIntervalByMonth = isIntervalByMonth;
-  }
-
-  public String getColumn() {
-    return column;
-  }
-
-  public void setColumn(String column) {
-    this.column = column;
-  }
-
-  public boolean isAscending() {
-    return ascending;
-  }
-
-  public void setAscending(boolean ascending) {
-    this.ascending = ascending;
-  }
-
-  public boolean isLastQuery() {
-    return selectOperator.isLastQuery();
-  }
-
   public boolean hasAggregationFunction() {
-    return selectOperator.hasAggregationFunction();
+    return selectComponent.hasAggregationFunction();
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
-    return selectOperator.hasTimeSeriesGeneratingFunction();
+    return selectComponent.hasTimeSeriesGeneratingFunction();
   }
 
-  public boolean isWithoutAnyNull() {
-    return withoutAnyNull;
+  public boolean isAlignByDevice() {
+    return specialClauseComponent != null && specialClauseComponent.isAlignByDevice();
   }
 
-  public void setWithoutAnyNull(boolean withoutAnyNull) {
-    this.withoutAnyNull = withoutAnyNull;
+  public boolean isAlignByTime() {
+    return specialClauseComponent == null || specialClauseComponent.isAlignByTime();
   }
 
-  public boolean isWithoutAllNull() {
-    return withoutAllNull;
-  }
-
-  public void setWithoutAllNull(boolean withoutAllNull) {
-    this.withoutAllNull = withoutAllNull;
+  public boolean isGroupByLevel() {
+    return specialClauseComponent != null && specialClauseComponent.getLevel() != -1;
   }
 }

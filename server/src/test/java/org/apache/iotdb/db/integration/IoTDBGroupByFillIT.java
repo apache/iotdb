@@ -526,7 +526,7 @@ public class IoTDBGroupByFillIT {
       hasResultSet =
           statement.execute(
               "select last_value(temperature) from root.ln.wf01.wt01 "
-                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])order by time desc");
+                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
