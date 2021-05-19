@@ -131,7 +131,7 @@ public abstract class Cases {
     String timeSeriesSuffix = ".temperature WITH DATATYPE=DOUBLE, ENCODING=RLE";
     String timeSeries;
     for (int i = 0; i < n; i++) {
-      timeSeries = timeSeriesPrefix + String.valueOf(i) + timeSeriesSuffix;
+      timeSeries = timeSeriesPrefix + i + timeSeriesSuffix;
       writeStatement.execute(String.format("create timeseries %s ", timeSeries));
     }
 
@@ -144,6 +144,57 @@ public abstract class Cases {
       }
       Assert.assertEquals(n, cnt);
       resultSet.close();
+    }
+  }
+
+  @Test
+  public void testInsertAlignedValues() throws SQLException {
+    writeStatement.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (4000, (true, 17.1))");
+    writeStatement.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (5000, (false, 20.1))");
+    writeStatement.execute(
+        "insert into root.t1.wf01.wt01(time, (status, temperature)) values (6000, (true, 22))");
+    // auto-create-schema test
+    // same sg, but different device
+    writeStatement.execute(
+        "insert into root.t1.wf01.wt02(time, (status, temperature)) values (6000, (false, 22))");
+    writeStatement.close();
+
+    for (Statement readStatement : readStatements) {
+      ResultSet rs1 = readStatement.executeQuery("select status from root.t1.wf01.wt01");
+      rs1.next();
+      Assert.assertTrue(rs1.getBoolean(2));
+      rs1.close();
+
+      ResultSet rs2 = readStatement.executeQuery("select status from root.t1.wf01.wt02");
+      rs2.next();
+      Assert.assertFalse(rs2.getBoolean(2));
+      rs2.close();
+
+      ResultSet rs3 = readStatement.executeQuery("select * from root.t1.wf01.wt01");
+      rs3.next();
+      Assert.assertEquals(4000, rs3.getLong(1));
+      Assert.assertTrue(rs3.getBoolean(2));
+      Assert.assertEquals(17.1, rs3.getFloat(3), 0.1);
+
+      rs3.next();
+      Assert.assertEquals(5000, rs3.getLong(1));
+      Assert.assertFalse(rs3.getBoolean(2));
+      Assert.assertEquals(20.1, rs3.getFloat(3), 0.1);
+
+      rs3.next();
+      Assert.assertEquals(6000, rs3.getLong(1));
+      Assert.assertTrue(rs3.getBoolean(2));
+      Assert.assertEquals(22, rs3.getFloat(3), 0.1);
+      rs3.close();
+
+      ResultSet rs4 = readStatement.executeQuery("select * from root.t1.wf01.wt02");
+      rs4.next();
+      Assert.assertEquals(6000, rs4.getLong(1));
+      Assert.assertFalse(rs4.getBoolean(2));
+      Assert.assertEquals(22, rs4.getFloat(3), 0.1);
+      rs4.close();
     }
   }
 }

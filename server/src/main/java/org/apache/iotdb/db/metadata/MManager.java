@@ -1354,9 +1354,20 @@ public class MManager {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
+   * @param isTemplate, If path doesn't exists in mNodeCache. For the call to create the template,
+   *     it needs to guarantee the success of the creation if no sg will be created; For the call to
+   *     create the device, it needs to make sure that a PathNotExistException will be thrown.
+   *     * @param isTemplate, If path doesn't exists in mNodeCache. For the call to create the
+   * @param allowCreateSg, The stand-alone version can create an sg at will, but the cluster version
+   *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
+   *     thrown here
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
-      PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
+      PartialPath path,
+      boolean autoCreateSchema,
+      boolean allowCreateSg,
+      boolean isTemplate,
+      int sgLevel)
       throws IOException, MetadataException {
     Pair<MNode, Template> node;
     boolean shouldSetStorageGroup;
@@ -1364,12 +1375,11 @@ public class MManager {
       node = mNodeCache.get(path);
       return node;
     } catch (CacheException e) {
-      if (!autoCreateSchema) {
+      if (!autoCreateSchema && !isTemplate) {
         throw new PathNotExistException(path.getFullPath());
       }
       shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
     }
-
     try {
       if (shouldSetStorageGroup) {
         if (allowCreateSg) {
@@ -1379,6 +1389,7 @@ public class MManager {
           throw new StorageGroupNotSetException(path.getFullPath());
         }
       }
+
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       if (!(node.left instanceof StorageGroupMNode)) {
         logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
@@ -1395,10 +1406,14 @@ public class MManager {
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
-  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path, boolean isTemplate)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
-        path, config.isAutoCreateSchemaEnabled(), true, config.getDefaultStorageGroupLevel());
+        path,
+        config.isAutoCreateSchemaEnabled(),
+        true,
+        isTemplate,
+        config.getDefaultStorageGroupLevel());
   }
 
   // attention: this path must be a device node
@@ -2161,7 +2176,7 @@ public class MManager {
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    Pair<MNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
+    Pair<MNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId, false);
     if (deviceMNode.left.getDeviceTemplate() != null) {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
@@ -2425,7 +2440,7 @@ public class MManager {
       // get mnode and update template should be atomic
       synchronized (this) {
         Pair<MNode, Template> node =
-            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
+            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()), true);
 
         if (node.left.getDeviceTemplate() != null) {
           if (node.left.getDeviceTemplate().equals(template)) {

@@ -511,12 +511,13 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path, boolean isTemplate)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path,
-        ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema(),
+        config.isAutoCreateSchemaEnabled(),
         false,
+        isTemplate,
         config.getDefaultStorageGroupLevel());
   }
 
@@ -742,7 +743,7 @@ public class CMManager extends MManager {
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
     if (hasVector) {
-      return createAlignedTimeseries(seriesList, (InsertTabletPlan) insertPlan);
+      return createAlignedTimeseries(seriesList, insertPlan);
     }
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
@@ -755,16 +756,27 @@ public class CMManager extends MManager {
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
   }
 
-  private boolean createAlignedTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
+  private boolean createAlignedTimeseries(List<String> seriesList, InsertPlan insertPlan)
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
       measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
     }
 
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (TSDataType dataType : insertPlan.getDataTypes()) {
+    List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> encodings = new ArrayList<>(measurements.size());
+    for (int index = 0; index < measurements.size(); index++) {
+      TSDataType dataType;
+      if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
+        dataType = insertPlan.getDataTypes()[index];
+      } else {
+        dataType =
+            TypeInferenceUtils.getPredictedDataType(
+                insertPlan instanceof InsertTabletPlan
+                    ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+                    : ((InsertRowPlan) insertPlan).getValues()[index],
+                true);
+      }
       dataTypes.add(dataType);
       encodings.add(getDefaultEncoding(dataType));
     }
