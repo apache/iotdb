@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -217,6 +218,11 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     return chunkLoader;
   }
 
+  @Override
+  public boolean needSetChunkLoader() {
+    return chunkLoader == null;
+  }
+
   public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
   }
@@ -319,6 +325,16 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
   @Override
   public byte getMask() {
     return mask;
+  }
+
+  @Override
+  public boolean isTimeColumn() {
+    return mask == TsFileConstant.TIME_COLUMN_MASK;
+  }
+
+  @Override
+  public boolean isValueColumn() {
+    return mask == TsFileConstant.VALUE_COLUMN_MASK;
   }
 
   public void setMask(byte mask) {

@@ -41,8 +41,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertTrue;
 
@@ -61,17 +62,13 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);
@@ -123,17 +120,13 @@ public class RemoteGroupByExecutorTest extends BaseQueryTest {
       for (int i = 0; i < AggregationType.values().length; i++) {
         aggregationTypes.add(i);
       }
+      Set<String> deviceMeasurements = new HashSet<>();
+      deviceMeasurements.add(path.getMeasurement());
 
       ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
       List<GroupByExecutor> groupByExecutors =
           readerFactory.getGroupByExecutors(
-              path,
-              Collections.singleton(path.getMeasurement()),
-              dataType,
-              context,
-              timeFilter,
-              aggregationTypes,
-              true);
+              path, deviceMeasurements, dataType, context, timeFilter, aggregationTypes, true);
 
       for (int i = 0; i < groupByExecutors.size(); i++) {
         GroupByExecutor groupByExecutor = groupByExecutors.get(i);

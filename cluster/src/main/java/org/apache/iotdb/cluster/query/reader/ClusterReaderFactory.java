@@ -63,7 +63,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.SeriesReaderFactory;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -317,7 +316,7 @@ public class ClusterReaderFactory {
                 context,
                 dataGroupMember,
                 ascending);
-        partialPathPointReaderMap.put(partialPath.getFullPath(), seriesPointReader);
+        partialPathPointReaderMap.put(PartialPath.getExactFullPath(partialPath), seriesPointReader);
       }
 
       if (logger.isDebugEnabled()) {
@@ -515,7 +514,7 @@ public class ClusterReaderFactory {
         ((SlotPartitionTable) metaGroupMember.getPartitionTable()).getNodeSlots(header);
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    return SeriesReaderFactory.createSeriesReader(
+    return new SeriesReader(
         path,
         allSensors,
         dataType,
@@ -579,10 +578,7 @@ public class ClusterReaderFactory {
       Set<String> fullPaths = Sets.newHashSet();
       dataSourceInfo
           .getPartialPaths()
-          .forEach(
-              partialPath -> {
-                fullPaths.add(partialPath.getFullPath());
-              });
+          .forEach(partialPath -> fullPaths.add(partialPath.getFullPath()));
       return new MultEmptyReader(fullPaths);
     }
     throw new StorageEngineException(
@@ -1006,7 +1002,7 @@ public class ClusterReaderFactory {
               dataGroupMember.getHeader(),
               ascending);
       partialPathBatchReaderMap.put(
-          partialPath.getFullPath(), new SeriesRawDataBatchReader(seriesReader));
+          PartialPath.getExactFullPath(partialPath), new SeriesRawDataBatchReader(seriesReader));
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

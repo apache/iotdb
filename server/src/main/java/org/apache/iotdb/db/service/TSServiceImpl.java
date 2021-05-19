@@ -137,7 +137,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
-import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -164,7 +163,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** Thrift RPC implementation at server side. */
-public class TSServiceImpl implements TSIService.Iface, ServerContext {
+public class TSServiceImpl implements TSIService.Iface {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final Logger SLOW_SQL_LOGGER = LoggerFactory.getLogger("SLOW_SQL");

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -225,7 +226,7 @@ public class ValueChunkWriter {
         statistics,
         pageBuffer.size(),
         numOfPages,
-        0x40);
+        TsFileConstant.VALUE_COLUMN_MASK);
 
     long dataOffset = writer.getPos();
 

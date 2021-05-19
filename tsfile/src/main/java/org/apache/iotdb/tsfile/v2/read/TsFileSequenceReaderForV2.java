@@ -145,11 +145,11 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
    */
   @Override
   public TsFileMetadata readFileMetadata() throws IOException {
-    if (tsFileMetaData == null) {
-      versionInfo = new ArrayList<>();
-      tsFileMetaData =
-          TsFileMetadataV2.deserializeFrom(
-              readData(fileMetadataPos, fileMetadataSize), versionInfo);
+    if (tsFileMetaData == null || versionInfo == null) {
+      Pair<TsFileMetadata, List<Pair<Long, Long>>> pair =
+          TsFileMetadataV2.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+      tsFileMetaData = pair.left;
+      versionInfo = pair.right;
     }
     return tsFileMetaData;
   }
@@ -196,10 +196,8 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
-  /**
-   * Find the leaf node that contains path, return all the sensors in that leaf node which are also
-   * in allSensors set
-   */
+  /*Find the leaf node that contains path, return all the sensors in that leaf node which are also
+  in allSensors set */
   @SuppressWarnings("squid:S3776")
   @Override
   public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)

@@ -72,7 +72,12 @@ public abstract class TsFileManagement {
 
   private long mergeStartTime;
 
+  /** whether execute merge chunk in this task */
+  protected boolean isMergeExecutedInCurrentTask = false;
+
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+  private final int maxOpenFileNumInEachUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -166,7 +171,7 @@ public abstract class TsFileManagement {
     @Override
     public Void call() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
       return null;
     }
   }
@@ -182,7 +187,9 @@ public abstract class TsFileManagement {
     @Override
     public Void call() {
       recover();
-      closeCompactionMergeCallBack.call();
+      // in recover logic, we do not have to start next compaction task, and in this case the param
+      // time partition is useless, we can just pass 0L
+      closeCompactionMergeCallBack.call(false, 0L);
       return null;
     }
   }
@@ -223,6 +230,16 @@ public abstract class TsFileManagement {
       logger.info("{} no unseq files to be merged", storageGroupName);
       isUnseqMerging = false;
       return;
+    }
+
+    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
+      logger.info(
+          "{} too much unseq files to be merged, reduce it to {}",
+          storageGroupName,
+          maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList =
+          unSeqMergeList.subList(
+              unSeqMergeList.size() - maxOpenFileNumInEachUnseqCompaction, unSeqMergeList.size());
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -403,7 +420,9 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          if (!mergedFile.delete()) {
+            logger.warn("Delete file {} failed", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {
