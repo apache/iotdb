@@ -29,8 +29,13 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   public PrimitiveMemTable() {}
 
-  public PrimitiveMemTable(boolean enableMemControl) {
+  public PrimitiveMemTable(boolean isSequence) {
+    this.isSequence = isSequence;
+  }
+
+  public PrimitiveMemTable(boolean enableMemControl, boolean isSequence) {
     this.disableMemControl = !enableMemControl;
+    this.isSequence = isSequence;
   }
 
   public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {

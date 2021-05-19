@@ -272,7 +272,10 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 1 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 10000;
+  private int avgSeqSeriesPointNumberThreshold = 10000;
+
+  /** When average series point number reaches this, flush the memtable to disk */
+  private int avgUnseqSeriesPointNumberThreshold = 10000;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
@@ -1377,12 +1380,20 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public int getAvgSeriesPointNumberThreshold() {
-    return avgSeriesPointNumberThreshold;
+  public int getAvgSeqSeriesPointNumberThreshold() {
+    return avgSeqSeriesPointNumberThreshold;
   }
 
-  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
-    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
+  public void setAvgSeqSeriesPointNumberThreshold(int avgSeqSeriesPointNumberThreshold) {
+    this.avgSeqSeriesPointNumberThreshold = avgSeqSeriesPointNumberThreshold;
+  }
+
+  public int getAvgUnseqSeriesPointNumberThreshold() {
+    return avgUnseqSeriesPointNumberThreshold;
+  }
+
+  public void setAvgUnseqSeriesPointNumberThreshold(int avgUnseqSeriesPointNumberThreshold) {
+    this.avgUnseqSeriesPointNumberThreshold = avgUnseqSeriesPointNumberThreshold;
   }
 
   public int getMergeChunkPointNumberThreshold() {
