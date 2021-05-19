@@ -654,15 +654,15 @@ public class IoTDBConfig {
 
   /** enable the OpenApi ssl. */
   private boolean enable_https = false;
- /** openapi ssl key Store Path*/
+  /** openapi ssl key Store Path */
   private String keyStorePath = "";
-  /** openapi ssl trust Store Path*/
+  /** openapi ssl trust Store Path */
   private String trustStorePath = "";
-  /** openapi ssl key Store password*/
+  /** openapi ssl key Store password */
   private String keyStorePwd = "";
-  /** openapi ssl trust Store password*/
+  /** openapi ssl trust Store password */
   private String trustStorePwd = "";
-  /** OpenApi ssl timeout  */
+  /** OpenApi ssl timeout */
   private int idleTimeout = 50000;
 
   public String getTrustStorePwd() {

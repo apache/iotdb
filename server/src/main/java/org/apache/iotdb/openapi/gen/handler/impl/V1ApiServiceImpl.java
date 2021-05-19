@@ -189,11 +189,14 @@ public class V1ApiServiceImpl extends V1ApiService {
             listvalues.add(fields.get(i - 1).getObjectValue(fields.get(i - 1).getDataType()));
             listtemp.get(i).put("values", listvalues);
           }
-          if (listtemp.get(i).get("type") == null&&(fields.get(i - 1) == null||fields.get(i - 1).getDataType()==null)) {
+          if (listtemp.get(i).get("type") == null
+              && (fields.get(i - 1) == null || fields.get(i - 1).getDataType() == null)) {
             listtemp.get(i).put("type", "");
-          } else if (listtemp.get(i).get("type") == null&&fields.get(i - 1) != null&&fields.get(i - 1).getDataType()!=null) {
+          } else if (listtemp.get(i).get("type") == null
+              && fields.get(i - 1) != null
+              && fields.get(i - 1).getDataType() != null) {
             listtemp.get(i).put("type", fields.get(i - 1).getDataType());
-          }else if (listtemp.get(i).get("type").toString().length() == 0
+          } else if (listtemp.get(i).get("type").toString().length() == 0
               && fields.get(i - 1) != null
               && fields.get(i - 1).getDataType() != null) {
             listtemp.get(i).put("type", fields.get(i - 1).getDataType());
