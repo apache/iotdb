@@ -19,6 +19,21 @@
 
 -->
 
+# Apache IoTDB 0.11.4
+
+## Bug Fixes
+* IOTDB-1303 Disable group by without aggregation function in select clause
+* IOTDB-1306 Fix insertion blocked caused the deadlock in memory control module 
+* IOTDB-1308 Fix users with READ_TIMESERIES permission cannot execute group by fill queries
+* IOTDB-1344 Fix cannot create timeseries caused by the timeseries count doesn't reset when deleting storage group 
+* Fix unseq compaction throws a wrong exception if some paths are not in the file
+
+## Improvements
+* continuous compaction in level compaction strategy when no tsfile is to be closed
+
+## New Features
+* support brackets with number in timeseries path
+
 # Apache IoTDB 0.11.3
 
 ## Bug Fixes
