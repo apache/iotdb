@@ -190,15 +190,6 @@ public abstract class TsFileManagement {
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
       long dataTTL) {
-    if (isUnseqMerging) {
-      if (logger.isInfoEnabled()) {
-        logger.info(
-            "{} Last merge is ongoing, currently consumed time: {}ms",
-            storageGroupName,
-            (System.currentTimeMillis() - mergeStartTime));
-      }
-      return false;
-    }
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
@@ -271,6 +262,17 @@ public abstract class TsFileManagement {
             mergeFiles[0].size(),
             mergeFiles[1].size());
       }
+      // wait until unseq merge has finished
+      while (isUnseqMerging) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("{} [Compaction] shutdown", storageGroupName, e);
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
+
       return true;
     } catch (MergeException | IOException e) {
       logger.error("{} cannot select file for merge", storageGroupName, e);
