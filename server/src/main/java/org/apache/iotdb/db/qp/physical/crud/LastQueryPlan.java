@@ -21,18 +21,19 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class LastQueryPlan extends RawDataQueryPlan {
@@ -44,18 +45,19 @@ public class LastQueryPlan extends RawDataQueryPlan {
 
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
+    List<ResultColumn> deduplicatedResultColumns = new ArrayList<>();
     Set<String> columnForReaderSet = new HashSet<>();
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = paths.get(i);
-      String column = getColumnForReaderFromPath(path, i);
+    for (int i = 0; i < resultColumns.size(); i++) {
+      String column = resultColumns.get(i).getResultColumnName();
       if (!columnForReaderSet.contains(column)) {
-        TSDataType seriesType = dataTypes.get(i);
-        addDeduplicatedPaths(path);
-        addDeduplicatedDataTypes(seriesType);
+        addDeduplicatedPaths(paths.get(i));
+        addDeduplicatedDataTypes(dataTypes.get(i));
+        deduplicatedResultColumns.add(resultColumns.get(i));
         columnForReaderSet.add(column);
       }
     }
     transformPaths(IoTDB.metaManager);
+    setResultColumns(deduplicatedResultColumns);
   }
 
   @Override
@@ -71,9 +73,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
   private boolean isValidExpression(IExpression expression) {
     if (expression instanceof GlobalTimeExpression) {
       Filter filter = ((GlobalTimeExpression) expression).getFilter();
-      if (filter instanceof TimeGtEq || filter instanceof TimeGt) {
-        return true;
-      }
+      return filter instanceof TimeGtEq || filter instanceof TimeGt;
     }
     return false;
   }

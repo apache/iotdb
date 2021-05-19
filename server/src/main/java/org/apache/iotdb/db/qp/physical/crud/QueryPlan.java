@@ -134,12 +134,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    String columnForReader = path.isTsAliasExists() ? path.getTsAlias() : null;
-    if (columnForReader == null) {
-      columnForReader =
-          path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
-    }
-    return columnForReader;
+    ResultColumn resultColumn = resultColumns.get(pathIndex);
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex)
