@@ -836,6 +836,22 @@ public class TsFileResource {
             + TSFILE_SUFFIX);
   }
 
+  public static File createNewTsFileNameByOffset(File tsFile, int offset) {
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFile.getName());
+    tsFileName.setTime(tsFileName.time + offset);
+    return new File(
+        path,
+        tsFileName.time
+            + FILE_NAME_SEPARATOR
+            + tsFileName.version
+            + FILE_NAME_SEPARATOR
+            + tsFileName.mergeCnt
+            + FILE_NAME_SEPARATOR
+            + tsFileName.unSeqMergeCnt
+            + TSFILE_SUFFIX);
+  }
+
   public static class TsFileName {
 
     private long time;
