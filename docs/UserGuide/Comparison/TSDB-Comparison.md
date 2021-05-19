@@ -293,6 +293,10 @@ We test the performance of writing from two aspects: *batch size* and *client nu
 10 clients read data concurrently. The number of storage group is 10. There are 10 devices and each device has 10 measurements (i.e.,, 100 time series total).
 The data type is *double*, encoding type is *GORILLA*
 
+* Compression:
+
+We use several famous dataset as test. We compare TsFile(the file format of IoTDB) with Parquet, ORC and Csv by their file size after the same dataset is written.
+
 The IoTDB version is v0.11.1.
 
 **Write performance**:
@@ -300,17 +304,17 @@ The IoTDB version is v0.11.1.
 * batch size:
 
 10 clients write data concurrently.
-IoTDB uses batch insertion API and the batch size is distributed from 1ms to 1min (write N data points per write API call).
+IoTDB uses batch insertion API and the batch size is distributed from 0 to 6000 (write N data points per write API call).
 
 The write throughput (points/second) is:
 
-![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106254214-6cacbe80-6253-11eb-8532-d6a1829f8f66.png)
+![Batch Size with Write Throughput (points/second)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
 <span id = "exp1"> <center>Figure 1. Batch Size with Write throughput (points/second) IoTDB v0.11.1</center></span>
 
 
 The write delay (ms) is:
 
-![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/106251391-df1b9f80-624f-11eb-9f1f-66823839acba.png)
+![Batch Size with Write Delay (ms)](https://user-images.githubusercontent.com/24886743/118790013-f1395080-b8c7-11eb-9e22-3310fa4ec804.png)
 <center>Figure 2. Batch Size with Write Delay (ms) IoTDB v0.11.1</center>
 
 * client num:
@@ -331,14 +335,22 @@ The write throughput (points/second) is:
 ![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
 <center>Figure 6. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
-![Downsampling query](Query.pnghttps://user-images.githubusercontent.com/24886743/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
+![Downsampling query](https://user-images.githubusercontent.com/24886743/118790090-0615e400-b8c8-11eb-93d8-3c7fe1a154a1.png)
 <center>Figure 7. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
 ![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
 <center>Figure 8. Latest query time cost(ms) IoTDB v0.11.1</center>
 
-We can see that IoTDB outperforms others. 
+**Compression performance**
 
+* Dataset:
+
+REDD, TDrive, Geolife, NOAA
+
+![Data compression](https://user-images.githubusercontent.com/24886743/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
+<center>Figure 9. Data compression IoTDB v0.11.1</center>
+
+We can see that IoTDB outperforms others.
 
 #### More details
 

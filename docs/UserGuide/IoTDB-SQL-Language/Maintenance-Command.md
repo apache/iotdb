@@ -31,10 +31,10 @@ IoTDB> FLUSH root.sg1,root.sg2
 
 ### MERGE
 
-Merge sequence and unsequence data. Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
+Execute Level Compaction and unsequence Compaction task. Currently IoTDB supports the following two types of SQL to manually trigger the compaction process of data files:
 
-* `MERGE` Only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
-* `FULL MERGE` Rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
+* `MERGE` Execute Level Compaction first and then execute unsequence Compaction. In unsequence Compaction, this command will only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
+* `FULL MERGE` Execute Level Compaction first and then execute unsequence Compaction. In unsequence Compaction, this command will rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
 
 ```
 IoTDB> MERGE
