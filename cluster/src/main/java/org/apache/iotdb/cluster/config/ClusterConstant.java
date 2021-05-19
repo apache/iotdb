@@ -38,7 +38,7 @@ public class ClusterConstant {
 
   public static final int RETRY_WAIT_TIME_MS = 10;
 
-  public static final int THREAD_POLL_WAIT_TERMINATION_TIME = 10 * 1000;
+  public static final int THREAD_POLL_WAIT_TERMINATION_TIME_S = 10;
 
   public static final Node EMPTY_NODE = new Node();
 

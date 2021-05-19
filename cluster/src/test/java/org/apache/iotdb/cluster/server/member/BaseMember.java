@@ -103,6 +103,7 @@ public class BaseMember {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     preLogBufferSize = ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
+    ClusterDescriptor.getInstance().getConfig().setRaftLogBufferSize(409600);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();

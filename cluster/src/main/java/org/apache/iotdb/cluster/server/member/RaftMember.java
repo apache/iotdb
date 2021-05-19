@@ -108,7 +108,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
@@ -344,9 +344,9 @@ public abstract class RaftMember {
     catchUpService.shutdownNow();
     appendLogThreadPool.shutdownNow();
     try {
-      heartBeatService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
-      catchUpService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
-      appendLogThreadPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+      heartBeatService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
+      catchUpService.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
+      appendLogThreadPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(
@@ -357,7 +357,8 @@ public abstract class RaftMember {
     if (serialToParallelPool != null) {
       serialToParallelPool.shutdownNow();
       try {
-        serialToParallelPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+        serialToParallelPool.awaitTermination(
+            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for asyncThreadPool to end", e);
@@ -367,7 +368,7 @@ public abstract class RaftMember {
     if (commitLogPool != null) {
       commitLogPool.shutdownNow();
       try {
-        commitLogPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+        commitLogPool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);

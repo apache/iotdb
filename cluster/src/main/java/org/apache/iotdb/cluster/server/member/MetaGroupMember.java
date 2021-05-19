@@ -151,7 +151,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME;
+import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
@@ -366,7 +366,7 @@ public class MetaGroupMember extends RaftMember {
     if (reportThread != null) {
       reportThread.shutdownNow();
       try {
-        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for reportThread to end", e);
@@ -375,7 +375,8 @@ public class MetaGroupMember extends RaftMember {
     if (hardLinkCleanerThread != null) {
       hardLinkCleanerThread.shutdownNow();
       try {
-        hardLinkCleanerThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME, TimeUnit.SECONDS);
+        hardLinkCleanerThread.awaitTermination(
+            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
