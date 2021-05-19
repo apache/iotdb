@@ -19,22 +19,10 @@
 
 -->
 
-# TsFile的Hive连接器
+## Hive-TsFile
 
-## 概要
 
-- TsFile的Hive连接器使用手册
-  - 什么是TsFile的Hive连接器
-  - 系统环境要求
-  - 数据类型对应关系
-  - 为Hive添加依赖jar包
-  - 创建Tsfile-backed的Hive表
-  - 从Tsfile-backed的Hive表中查询
-    - 选择查询语句示例
-    - 聚合查询语句示例
-  - 后续工作
-
-## 什么是TsFile的Hive连接器
+### 什么是TsFile的Hive连接器
 
 TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的支持，
 使用户能够通过Hive操作Tsfile。
@@ -45,15 +33,14 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 * 使用HQL查询tsfile
 * 到现在为止, 写操作在hive-connector中还没有被支持. 所以, HQL中的insert操作是不被允许的
 
-## 系统环境要求
+### 系统环境要求
 
 |Hadoop Version |Hive Version | Java Version | TsFile |
 |-------------  |------------ | ------------ |------------ |
-| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.10.0`|
+| `2.7.3` or `3.2.1`       |    `2.3.6` or `3.1.2`  | `1.8`        | `0.13.0-SNAPSHOT+`|
 
-> 注意：关于如何下载和使用Tsfile, 请参考以下链接: <https://github.com/apache/iotdb/tree/master/tsfile>。
 
-## 数据类型对应关系
+### 数据类型对应关系
 
 | TsFile 数据类型   | Hive 数据类型 |
 | ---------------- | --------------- |
@@ -65,23 +52,23 @@ TsFile的Hive连接器实现了对Hive读取外部Tsfile类型的文件格式的
 | TEXT      	   | STRING          |
 
 
-## 为Hive添加依赖jar包
+### 为Hive添加依赖jar包
 
 为了在Hive中使用Tsfile的hive连接器，我们需要把hive连接器的jar导入进hive。
 
-从 <https://github.com/apache/iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
+从 <https://github.com/apache/iotdb>下载完iotdb后, 你可以使用 `mvn clean package -pl hive-connector -am -Dmaven.test.skip=true -P get-jar-with-dependencies`命令得到一个 `hive-connector-X.X.X-SNAPSHOT-jar-with-dependencies.jar`。
 
 然后在hive的命令行中，使用`add jar XXX`命令添加依赖。例如:
 
 ```shell
-hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.12.0-SNAPSHOT-jar-with-dependencies.jar;
+hive> add jar /Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar;
 
-Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.12.0-SNAPSHOT-jar-with-dependencies.jar] to class path
-Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.12.0-SNAPSHOT-jar-with-dependencies.jar]
+Added [/Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar] to class path
+Added resources: [/Users/hive/iotdb/hive-connector/target/hive-connector-0.13.0-SNAPSHOT-jar-with-dependencies.jar]
 ```
 
 
-## 创建Tsfile-backed的Hive表
+### 创建Tsfile-backed的Hive表
 
 为了创建一个Tsfile-backed的表，需要将`serde`指定为`org.apache.iotdb.hive.TsFileSerDe`，
 将`inputformat`指定为`org.apache.iotdb.hive.TSFHiveInputFormat`，
@@ -126,7 +113,7 @@ Time taken: 0.053 seconds, Fetched: 2 row(s)
 到目前为止, Tsfile-backed的表已经可以像hive中其他表一样被操作了。
 
 
-## 从Tsfile-backed的Hive表中查询
+### 从Tsfile-backed的Hive表中查询
 
 在做任何查询之前，我们需要通过如下命令，在hive中设置`hive.input.format`：
 
@@ -139,7 +126,7 @@ hive> set hive.input.format=org.apache.hadoop.hive.ql.io.HiveInputFormat;
 
 例如:
 
-### 选择查询语句示例
+#### 选择查询语句示例
 
 ```
 hive> select * from only_sensor_1 limit 10;
@@ -157,7 +144,7 @@ OK
 Time taken: 1.464 seconds, Fetched: 10 row(s)
 ```
 
-### 聚合查询语句示例
+#### 聚合查询语句示例
 
 ```
 hive> select count(*) from only_sensor_1;
@@ -184,6 +171,4 @@ OK
 Time taken: 11.334 seconds, Fetched: 1 row(s)
 ```
 
-## 后续工作
 
-我们现在仅支持查询操作，写操作的支持还在开发中...

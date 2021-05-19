@@ -42,6 +42,10 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
+  private Map<String, Integer> vectorPathToIndex = new HashMap<>();
+
+  private boolean enableRedirect = false;
+
   public QueryPlan() {
     super(true);
     setOperatorType(Operator.OperatorType.QUERY);
@@ -101,6 +105,10 @@ public abstract class QueryPlan extends PhysicalPlan {
     pathToIndex.put(columnName, index);
   }
 
+  public void setPathToIndex(Map<String, Integer> pathToIndex) {
+    this.pathToIndex = pathToIndex;
+  }
+
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
   }
@@ -125,5 +133,21 @@ public abstract class QueryPlan extends PhysicalPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
     return columnForReader;
+  }
+
+  public boolean isEnableRedirect() {
+    return enableRedirect;
+  }
+
+  public void setEnableRedirect(boolean enableRedirect) {
+    this.enableRedirect = enableRedirect;
+  }
+
+  public Map<String, Integer> getVectorPathToIndex() {
+    return vectorPathToIndex;
+  }
+
+  public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
+    this.vectorPathToIndex = vectorPathToIndex;
   }
 }

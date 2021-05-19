@@ -973,6 +973,41 @@ public class RaftLogManagerTest {
   }
 
   @Test
+  public void testInnerDeleteLogsWithLargeLog() {
+    long maxMemSize = ClusterDescriptor.getInstance().getConfig().getMaxMemorySizeForRaftLog();
+    int minNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMinNumOfLogsInMem();
+    int maxNumOfLogsInMem = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
+    ClusterDescriptor.getInstance().getConfig().setMaxNumOfLogsInMem(10);
+    ClusterDescriptor.getInstance().getConfig().setMinNumOfLogsInMem(10);
+    ClusterDescriptor.getInstance().getConfig().setMaxMemorySizeForRaftLog(1024 * 56);
+    CommittedEntryManager committedEntryManager =
+        new CommittedEntryManager(
+            ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    RaftLogManager instance =
+        new TestRaftLogManager(
+            committedEntryManager, new SyncLogDequeSerializer(testIdentifier), logApplier);
+    List<Log> logs = TestUtils.prepareLargeTestLogs(12);
+
+    try {
+      instance.append(logs.subList(0, 7));
+      instance.maybeCommit(6, 6);
+      while (instance.getMaxHaveAppliedCommitIndex() < 6) {
+        // wait
+      }
+      instance.append(logs.subList(7, 12));
+      instance.maybeCommit(11, 11);
+
+      List<Log> entries = instance.getEntries(0, 12);
+      assertEquals(logs.subList(5, 12), entries);
+    } finally {
+      instance.close();
+      ClusterDescriptor.getInstance().getConfig().setMaxNumOfLogsInMem(maxNumOfLogsInMem);
+      ClusterDescriptor.getInstance().getConfig().setMinNumOfLogsInMem(minNumOfLogsInMem);
+      ClusterDescriptor.getInstance().getConfig().setMaxMemorySizeForRaftLog(maxMemSize);
+    }
+  }
+
+  @Test
   @SuppressWarnings("java:S2925")
   public void testReapplyBlockedLogs() throws LogExecutionException, InterruptedException {
     CommittedEntryManager committedEntryManager =

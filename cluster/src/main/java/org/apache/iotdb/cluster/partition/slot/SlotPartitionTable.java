@@ -12,6 +12,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy.DefaultStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 import org.slf4j.Logger;
@@ -24,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -102,7 +104,7 @@ public class SlotPartitionTable implements PartitionTable {
   private void init(Collection<Node> nodes) {
     logger.info("Initializing a new partition table");
     nodeRing.addAll(nodes);
-    nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    Collections.sort(nodeRing);
     localGroups = getPartitionGroups(thisNode);
     assignPartitions();
   }
@@ -310,7 +312,7 @@ public class SlotPartitionTable implements PartitionTable {
       dataOutputStream.writeInt(totalSlotNumbers);
       dataOutputStream.writeInt(nodeSlotMap.size());
       for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        NodeSerializeUtils.serialize(entry.getKey(), dataOutputStream);
         SerializeUtils.serializeIntList(entry.getValue(), dataOutputStream);
       }
 
@@ -341,7 +343,7 @@ public class SlotPartitionTable implements PartitionTable {
     for (int i = 0; i < size; i++) {
       Node node = new Node();
       List<Integer> slots = new ArrayList<>();
-      SerializeUtils.deserialize(node, buffer);
+      NodeSerializeUtils.deserialize(node, buffer);
       SerializeUtils.deserializeIntList(slots, buffer);
       nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
@@ -368,7 +370,7 @@ public class SlotPartitionTable implements PartitionTable {
     lastLogIndex = buffer.getLong();
 
     nodeRing.addAll(nodeSlotMap.keySet());
-    nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
+    Collections.sort(nodeRing);
     logger.info("All known nodes: {}", nodeRing);
 
     localGroups = getPartitionGroups(thisNode);

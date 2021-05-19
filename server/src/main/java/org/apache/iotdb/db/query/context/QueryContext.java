@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.context;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,10 +49,17 @@ public class QueryContext {
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 
+  private boolean debug;
+
   public QueryContext() {}
 
   public QueryContext(long queryId) {
     this.queryId = queryId;
+  }
+
+  public QueryContext(long queryId, boolean debug) {
+    this.queryId = queryId;
+    this.debug = debug;
   }
 
   /**
@@ -87,6 +94,10 @@ public class QueryContext {
     return queryId;
   }
 
+  public boolean isDebug() {
+    return debug;
+  }
+
   public long getQueryTimeLowerBound() {
     return queryTimeLowerBound;
   }
@@ -95,7 +106,7 @@ public class QueryContext {
     this.queryTimeLowerBound = queryTimeLowerBound;
   }
 
-  public boolean chunkNotSatisfy(ChunkMetadata chunkMetaData) {
+  public boolean chunkNotSatisfy(IChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() < queryTimeLowerBound;
   }
 }

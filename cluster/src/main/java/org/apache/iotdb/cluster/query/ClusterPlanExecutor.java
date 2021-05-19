@@ -383,6 +383,92 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
+    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
+    List<Future<Void>> futureList = new ArrayList<>();
+    for (PartitionGroup group : globalGroups) {
+      futureList.add(
+          pool.submit(
+              () -> {
+                Set<String> nextChildrenNodes = null;
+                try {
+                  nextChildrenNodes = getChildNodeInNextLevel(group, path);
+                } catch (CheckConsistencyException e) {
+                  logger.error("Fail to get next children nodes of {} from {}", path, group, e);
+                }
+                if (nextChildrenNodes != null) {
+                  resultSet.addAll(nextChildrenNodes);
+                } else {
+                  logger.error("Fail to get next children nodes of {} from {}", path, group);
+                }
+                return null;
+              }));
+    }
+    waitForThreadPool(futureList, pool, "getChildNodeInNextLevel()");
+    return resultSet;
+  }
+
+  private Set<String> getChildNodeInNextLevel(PartitionGroup group, PartialPath path)
+      throws CheckConsistencyException {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      return getLocalChildNodeInNextLevel(group, path);
+    } else {
+      return getRemoteChildNodeInNextLevel(group, path);
+    }
+  }
+
+  private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
+      throws CheckConsistencyException {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeaderWithConsistencyCheck(false);
+    try {
+      return IoTDB.metaManager.getChildNodeInNextLevel(path);
+    } catch (MetadataException e) {
+      logger.error("Cannot not get next children nodes of {} from {} locally", path, group);
+      return Collections.emptySet();
+    }
+  }
+
+  private Set<String> getRemoteChildNodeInNextLevel(PartitionGroup group, PartialPath path) {
+    Set<String> nextChildrenNodes = null;
+    for (Node node : group) {
+      try {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client =
+              metaGroupMember
+                  .getClientProvider()
+                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          nextChildrenNodes =
+              SyncClientAdaptor.getChildNodeInNextLevel(
+                  client, group.getHeader(), path.getFullPath());
+        } else {
+          try (SyncDataClient syncDataClient =
+              metaGroupMember
+                  .getClientProvider()
+                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+            nextChildrenNodes =
+                syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
+          }
+        }
+        if (nextChildrenNodes != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return nextChildrenNodes;
+  }
+
+  @Override
   protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);

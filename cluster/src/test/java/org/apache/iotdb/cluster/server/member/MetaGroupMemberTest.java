@@ -67,6 +67,7 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -98,7 +99,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -137,7 +138,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MetaGroupMemberTest extends MemberTest {
+public class MetaGroupMemberTest extends BaseMember {
 
   private DataClusterServer dataClusterServer;
   protected boolean mockDataClusterServer;
@@ -277,7 +278,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   private PullSchemaResp mockedPullTimeSeriesSchema(PullSchemaRequest request) {
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     List<String> prefixPaths = request.getPrefixPaths();
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -286,12 +287,12 @@ public class MetaGroupMemberTest extends MemberTest {
         if (!prefixPath.equals(TestUtils.getTestSeries(10, 0))) {
           IoTDB.metaManager.collectSeries(new PartialPath(prefixPath), schemas);
           dataOutputStream.writeInt(schemas.size());
-          for (MeasurementSchema schema : schemas) {
-            schema.serializeTo(dataOutputStream);
+          for (IMeasurementSchema schema : schemas) {
+            schema.partialSerializeTo(dataOutputStream);
           }
         } else {
           dataOutputStream.writeInt(1);
-          TestUtils.getTestMeasurementSchema(0).serializeTo(dataOutputStream);
+          TestUtils.getTestMeasurementSchema(0).partialSerializeTo(dataOutputStream);
         }
       }
     } catch (IOException | IllegalPathException e) {
@@ -856,7 +857,7 @@ public class MetaGroupMemberTest extends MemberTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
@@ -918,7 +919,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
-      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
+      IMeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         IoTDB.metaManager.createTimeseries(
             new PartialPath(schema.getMeasurementId()),
@@ -1318,6 +1319,38 @@ public class MetaGroupMemberTest extends MemberTest {
 
     assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
     assertTrue(testMetaMember.getAllNodes().contains(TestUtils.getNode(10)));
+  }
+
+  @Test
+  public void testRouteIntervalsDisablePartition()
+      throws IllegalPathException, StorageEngineException {
+    boolean isEablePartition = StorageEngine.isEnablePartition();
+    StorageEngine.setEnablePartition(false);
+    testMetaMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    List<PartitionGroup> partitionGroups =
+        testMetaMember.routeIntervals(intervals, new PartialPath(TestUtils.getTestSg(0)));
+    assertEquals(1, partitionGroups.size());
+    StorageEngine.setEnablePartition(isEablePartition);
+  }
+
+  @Test
+  public void testRouteIntervalsEnablePartition()
+      throws IllegalPathException, StorageEngineException {
+    boolean isEablePartition = StorageEngine.isEnablePartition();
+    StorageEngine.setEnablePartition(true);
+    testMetaMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    List<PartitionGroup> partitionGroups =
+        testMetaMember.routeIntervals(intervals, new PartialPath(TestUtils.getTestSg(0)));
+    assertTrue(partitionGroups.size() > 1);
+    StorageEngine.setEnablePartition(isEablePartition);
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) {

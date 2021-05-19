@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -88,7 +89,7 @@ public class SyncClientAdaptorTest {
   private ByteBuffer peekNextNotNullValueResult;
   private Map<Integer, SimpleSnapshot> snapshotMap;
   private ByteBuffer lastResult;
-  private List<MeasurementSchema> measurementSchemas;
+  private List<IMeasurementSchema> measurementSchemas;
   private List<TimeseriesSchema> timeseriesSchemas;
   private List<String> paths;
 
@@ -180,6 +181,12 @@ public class SyncClientAdaptorTest {
           }
 
           @Override
+          public void getChildNodeInNextLevel(
+              Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+            resultHandler.onComplete(new HashSet<>(Arrays.asList("1", "2", "3")));
+          }
+
+          @Override
           public void getChildNodePathInNextLevel(
               Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(Arrays.asList("1", "2", "3")));
@@ -196,8 +203,8 @@ public class SyncClientAdaptorTest {
               PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
             ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
             byteBuffer.putInt(measurementSchemas.size());
-            for (MeasurementSchema schema : measurementSchemas) {
-              schema.serializeTo(byteBuffer);
+            for (IMeasurementSchema schema : measurementSchemas) {
+              schema.partialSerializeTo(byteBuffer);
             }
             byteBuffer.flip();
             resultHandler.onComplete(new PullSchemaResp(byteBuffer));
@@ -356,6 +363,9 @@ public class SyncClientAdaptorTest {
     assertEquals(
         Arrays.asList("1", "2", "3"),
         SyncClientAdaptor.getNodeList(dataClient, TestUtils.getNode(0), "root", 0));
+    assertEquals(
+        new HashSet<>(Arrays.asList("1", "2", "3")),
+        SyncClientAdaptor.getChildNodeInNextLevel(dataClient, TestUtils.getNode(0), "root"));
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
         SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getNode(0), "root"));

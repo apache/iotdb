@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class RecordUtils {
     for (int i = 2; i < items.length - 1; i += 2) {
       // get measurementId and value
       measurementId = items[i].trim();
-      MeasurementSchema measurementSchema =
+      IMeasurementSchema measurementSchema =
           schema.getSeriesSchema(new Path(deviceId, measurementId));
       if (measurementSchema == null) {
         LOG.warn("measurementId:{},type not found, pass", measurementId);

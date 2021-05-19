@@ -53,6 +53,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -126,6 +127,7 @@ public class TestUtils {
       Log log = new LargeTestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
+      log.setByteSize(8192);
       logList.add(log);
     }
     return logList;
@@ -186,7 +188,7 @@ public class TestUtils {
     return "s" + seriesNum;
   }
 
-  public static MeasurementSchema getTestMeasurementSchema(int seriesNum) {
+  public static IMeasurementSchema getTestMeasurementSchema(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     return new MeasurementSchema(
@@ -200,7 +202,7 @@ public class TestUtils {
   public static MeasurementMNode getTestMeasurementMNode(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    MeasurementSchema measurementSchema =
+    IMeasurementSchema measurementSchema =
         new MeasurementSchema(
             TestUtils.getTestMeasurement(seriesNum),
             dataType,
@@ -386,7 +388,7 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          MeasurementSchema schema = getTestMeasurementSchema(k);
+          IMeasurementSchema schema = getTestMeasurementSchema(k);
           writer.registerTimeseries(new Path(getTestSg(sgNum), schema.getMeasurementId()), schema);
         }
 
@@ -394,7 +396,7 @@ public class TestUtils {
           long timestamp = i * ptNum + j;
           TSRecord record = new TSRecord(timestamp, getTestSg(sgNum));
           for (int k = 0; k < seriesNum; k++) {
-            MeasurementSchema schema = getTestMeasurementSchema(k);
+            IMeasurementSchema schema = getTestMeasurementSchema(k);
             DataPoint dataPoint =
                 DataPoint.getDataPoint(
                     schema.getType(), schema.getMeasurementId(), String.valueOf(k));

@@ -45,8 +45,9 @@ public class StatusUtils {
   public static final TSStatus TIMESERIES_NOT_EXIST_ERROR =
       getStatus(TSStatusCode.TIMESERIES_NOT_EXIST);
   public static final TSStatus NO_CONNECTION = getStatus(TSStatusCode.NO_CONNECTION);
+  public static final TSStatus DUPLICATED_TEMPLATE = getStatus(TSStatusCode.DUPLICATED_TEMPLATE);
 
-  private static TSStatus getStatus(TSStatusCode statusCode) {
+  public static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatus status = new TSStatus();
     status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
