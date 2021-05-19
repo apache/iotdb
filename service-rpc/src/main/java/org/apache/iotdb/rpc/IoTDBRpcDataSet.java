@@ -204,13 +204,26 @@ public class IoTDBRpcDataSet {
       return true;
     }
     if (emptyResultSet) {
-      return false;
+      try {
+        close();
+        return false;
+      } catch (TException e) {
+        throw new IoTDBConnectionException(
+            "Cannot close dataset, because of network connection: {} ", e);
+      }
     }
-    if (fetchResults()) {
+    if (fetchResults() && hasCachedResults()) {
       constructOneRow();
       return true;
+    } else {
+      try {
+        close();
+        return false;
+      } catch (TException e) {
+        throw new IoTDBConnectionException(
+            "Cannot close dataset, because of network connection: {} ", e);
+      }
     }
-    return false;
   }
 
   public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
@@ -223,6 +236,7 @@ public class IoTDBRpcDataSet {
       RpcUtils.verifySuccess(resp.getStatus());
       if (!resp.hasResultSet) {
         emptyResultSet = true;
+        close();
       } else {
         tsQueryDataSet = resp.getQueryDataSet();
       }
