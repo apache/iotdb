@@ -19,6 +19,46 @@
 
 -->
 
+# Apache IoTDB 0.12.1
+
+## Bug Fixes
+* [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.sg1.d1 
+* [IOTDB-1219] Fix a potential NPE issue in UDF module
+* [IOTDB-1286] Fix 4 C++ mem-leak points
+* [IOTDB-1294] Fix delete operation become invalid after compaction
+* [IOTDB-1313] Fix lossing time precision when import csv with unsupported timestamp format
+* [IOTDB-1316] The importCsv tool should continue inserting if a part of insertion failed 
+* [IOTDB-1317] Fix log CatchUp always failed due to not check the follower's match index 
+* [IOTDB-1323] Fix return a success message when encounter RuntimeException during the insertion process
+* [IOTDB-1325] Fix StackOverflow Exception in group by natural month query
+* [IOTDB-1330] Fix the load tsfile bug when the cross multi partition's tsfile only have one page
+* [IOTDB-1348] Fix Last plan not work in cluster mode
+* [IOTDB-1376] Fix BatchProcessException was not correctly handled in BaseApplier
+* [ISSUE-3116] Fix bug when using natural month unit in time interval in group by query
+* Fix the plan index is always zero when using insertRecords interface to run the cluster
+* Add authority check for users create timeseries using executeBatch interface without the privilege
+* Fix versionInfo NPE when query upgrading 0.11 tsfile
+* Fix upgrade tool cannot load old tsfile if time partition enabled in 0.11 
+* Fix import csv throw ArrayOutOfIndexError when the last value in a line is null
+
+## Improvements
+* [IOTDB-1315] ExportCsvTool should support timestamp `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
+* [IOTDB-1339] optimize TimeoutChangeableTSnappyFramedTransport
+* [IOTDB-1356] Separate unseq_file_num_in_each_level from selecting candidate file in unseq compaction
+* [IOTDB-1357] Compaction use append chunk merge strategy when chunk is already large enough
+* [IOTDB-1380] Automatically close the dataset while there is no more data
+* Optimize sync leader for meta
+
+## New Features
+* [IOTDB-1190] Fully support HTTP URL char set in timeseries path
+* [IOTDB-1321][IOTDB-1322] Filter RowRecord automatically if any column in it is null or all columns are null
+* [IOTDB-1357] Compaction use append chunk merge strategy when chunk is already large
+* [ISSUE-3089] Make it possible for storage groups to have name with hyphen
+
+## Miscellaneous changes
+* Uncomment the less used configurations
+* Enable the configration `concurrent_writing_time_partition`
+
 # Apache IoTDB 0.12.0
 
 ## New Features
@@ -79,6 +119,20 @@
 * [PR-2582] Fix sync bug for tsfiles's directory changed by vitural storage group
 * [ISSUE-2911] Fix The write stream is not closed when executing the command 'tracing off'
 
+# Apache IoTDB 0.11.4
+
+## Bug Fixes
+* IOTDB-1303 Disable group by without aggregation function in select clause
+* IOTDB-1306 Fix insertion blocked caused the deadlock in memory control module 
+* IOTDB-1308 Fix users with READ_TIMESERIES permission cannot execute group by fill queries
+* IOTDB-1344 Fix cannot create timeseries caused by the timeseries count doesn't reset when deleting storage group 
+* Fix unseq compaction throws a wrong exception if some paths are not in the file
+
+## Improvements
+* continuous compaction in level compaction strategy when no tsfile is to be closed
+
+## New Features
+* support brackets with number in timeseries path
 
 # Apache IoTDB 0.11.3
 
