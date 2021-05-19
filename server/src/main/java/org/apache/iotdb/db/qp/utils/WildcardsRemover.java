@@ -80,8 +80,6 @@ public class WildcardsRemover {
       Pair<List<PartialPath>, Integer> pair =
           concatPathOptimizer.removeWildcard(path, limit, offset);
 
-      checkAndSetTsAlias(path, pair.left);
-
       consumed += pair.right;
       if (offset != 0) {
         int delta = offset - pair.right;
@@ -96,18 +94,6 @@ public class WildcardsRemover {
       return pair.left;
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error occurred when removing star: " + e.getMessage());
-    }
-  }
-
-  private void checkAndSetTsAlias(PartialPath originPath, List<PartialPath> actualPaths)
-      throws LogicalOptimizeException {
-    if (originPath.isTsAliasExists()) {
-      if (actualPaths.size() == 1) {
-        actualPaths.get(0).setTsAlias(originPath.getTsAlias());
-      } else if (actualPaths.size() >= 2) {
-        throw new LogicalOptimizeException(
-            "alias '" + originPath.getTsAlias() + "' can only be matched with one time series");
-      }
     }
   }
 

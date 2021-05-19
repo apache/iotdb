@@ -58,11 +58,7 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     for (PartialPath prefixPath : prefixPaths) {
-      PartialPath fullPath = prefixPath.concatPath(path);
-      if (path.isTsAliasExists()) {
-        fullPath.setTsAlias(path.getTsAlias());
-      }
-      resultExpressions.add(new TimeSeriesOperand(fullPath));
+      resultExpressions.add(new TimeSeriesOperand(prefixPath.concatPath(path)));
     }
   }
 
@@ -81,8 +77,6 @@ public class TimeSeriesOperand extends Expression {
 
   @Override
   public String toString() {
-    return path.isTsAliasExists()
-        ? path.getTsAlias()
-        : path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
+    return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }
 }

@@ -1284,9 +1284,6 @@ public class MManager {
         if (partialPath.isMeasurementAliasExists()) {
           indexMap.put(partialPath.getFullPathWithAlias(), index);
         }
-        if (partialPath.isTsAliasExists()) {
-          indexMap.put(partialPath.getTsAlias(), index);
-        }
         i++;
       }
     }
