@@ -97,9 +97,9 @@ jobs:
           .\b2.exe
       - name: Install OpenSSL
         run: mkdir D:\a\cpp\openssl ; `
-            Invoke-WebRequest https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe -OutFile D:\a\cpp\openssl ; `
-            cd D:\a\cpp\openssl; `
-            .\Win64OpenSSL-1_1_1k.exe; `
+          Invoke-WebRequest https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe -OutFile D:\a\cpp\openssl\openssl.exe ; `
+          cd D:\a\cpp\openssl; `
+          .\openssl.exe; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
       - name: Add Flex and Bison Path and OpenSSL
         shell: bash
