@@ -41,7 +41,7 @@ public class DictionaryEncoder extends Encoder {
   private long mapSize;
 
   public DictionaryEncoder() {
-    super(TSEncoding.PLAIN_DICTIONARY);
+    super(TSEncoding.DICTIONARY);
 
     valueToCode = new HashMap<>();
     map = new ArrayList<>();

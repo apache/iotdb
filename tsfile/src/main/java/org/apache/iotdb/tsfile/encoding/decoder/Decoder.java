@@ -50,8 +50,6 @@ public abstract class Decoder {
     switch (encoding) {
       case PLAIN:
         return new PlainDecoder();
-      case PLAIN_DICTIONARY:
-        return new DictionaryDecoder();
       case RLE:
         switch (dataType) {
           case BOOLEAN:
@@ -112,6 +110,8 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case DICTIONARY:
+        return new DictionaryDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

@@ -38,7 +38,7 @@ public class DictionaryDecoder extends Decoder {
   private IntRleDecoder valueDecoder;
 
   public DictionaryDecoder() {
-    super(TSEncoding.PLAIN_DICTIONARY);
+    super(TSEncoding.DICTIONARY);
 
     valueDecoder = new IntRleDecoder();
   }

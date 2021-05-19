@@ -112,7 +112,8 @@ namespace TSEncoding {
         BITMAP = 5,
         GORILLA_V1 = 6,
         REGULAR = 7,
-        GORILLA = 8
+        GORILLA = 8,
+        DICTIONARY = 9
     };
 }
 namespace TSStatusCode {

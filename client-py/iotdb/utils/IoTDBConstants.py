@@ -40,6 +40,7 @@ class TSEncoding(Enum):
     GORILLA_V1 = 6
     REGULAR = 7
     GORILLA = 8
+    DICTIONARY = 9
 
 
 @unique

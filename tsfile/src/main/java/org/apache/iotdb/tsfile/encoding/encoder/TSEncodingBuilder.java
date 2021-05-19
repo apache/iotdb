@@ -58,8 +58,6 @@ public abstract class TSEncodingBuilder {
     switch (type) {
       case PLAIN:
         return new Plain();
-      case PLAIN_DICTIONARY:
-        return new Dictionary();
       case RLE:
         return new Rle();
       case TS_2DIFF:
@@ -70,6 +68,8 @@ public abstract class TSEncodingBuilder {
         return new Regular();
       case GORILLA:
         return new GorillaV2();
+      case DICTIONARY:
+        return new Dictionary();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
