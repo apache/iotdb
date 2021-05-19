@@ -32,6 +32,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * An encoder implementing dictionary encoding.
+ *
+ * Encoding format:
+ * <map> <indexes>
+ *   <map> := <map length> <map data>
+ *     <map data> := [<entry size><entry data>]...
+ *   <indexes> := [<index>]...
+ */
 public class DictionaryEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
 
@@ -78,7 +87,7 @@ public class DictionaryEncoder extends Encoder {
 
   @Override
   public long getMaxByteSize() {
-    // assume all points are unique
+    // has max size when when all points are unique
     return 4 + mapSize + valuesEncoder.getMaxByteSize();
   }
 
