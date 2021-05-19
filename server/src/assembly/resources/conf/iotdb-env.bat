@@ -67,8 +67,8 @@ set system_memory_in_mb=%system_memory_in_mb:,=%
 set /a half_=%system_memory_in_mb%/2
 set /a quarter_=%half_%/2
 
-if ["%half_%"] GTR ["1024"] set half_=1024
-if ["%quarter_%"] GTR ["65536"] set quarter_=65536
+if ["%half_%"] GTR ["1024"] set %half_%=1024
+if ["%quarter_%"] GTR ["65536"] set %quarter_%=65536
 
 if ["%half_%"] GTR ["quarter_"] (
 	set max_heap_size_in_mb=%half_%
