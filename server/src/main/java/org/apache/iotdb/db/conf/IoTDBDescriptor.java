@@ -348,6 +348,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "unseq_level_num", Integer.toString(conf.getUnseqLevelNum()))));
 
+      conf.setMaxSelectUnseqFileNumInEachUnseqCompaction(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_open_file_num_in_each_unseq_compaction",
+                  Integer.toString(conf.getMaxSelectUnseqFileNumInEachUnseqCompaction()))));
+
       conf.setUnseqFileNumInEachLevel(
           Integer.parseInt(
               properties.getProperty(
@@ -606,9 +612,11 @@ public class IoTDBDescriptor {
       // String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
-      //      conf.setConcurrentWritingTimePartition(
-      //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
-      //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_writing_time_partition",
+                  String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
