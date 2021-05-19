@@ -218,7 +218,7 @@ public class IoTDBInterpreterTest {
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.ERROR, actual.code());
     Assert.assertEquals(
-        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:14 mismatched input 'a' expecting {FROM, ',', '.'}",
+        "SQLException: 401: Error occurred while parsing SQL to physical plan: line 1:14 mismatched input 'a' expecting {FROM, AS, ',', '*', '-', '+', '/', MOD, '.'}",
         actual.message().get(0).getData());
 
     wrongSql = "select * from root a";
