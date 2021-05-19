@@ -603,8 +603,11 @@ AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String,
 其中：
 * `alertname` 是必传参数，用于标识一个 `alert`，`alertname` 字段可用于 `AlertManager` 发送告警时的分组和消重。
 * `extraLabels` 可选传，在后台与 `alertname` 组合成 `labels` 一起标识一个 `alert`，可用于 `AlertManager` 发送告警时的分组和消重。
-* `annotations` 可选传，它的 value 值可使用 Go 语言模板风格的 `{{.<label_key>}}`，
- `{{.<label_key>}}` 在最终生成消息时会被替换为 `labels[<label_key>]`。
+* `annotations` 可选传，它的 value 值可使用 Go 语言模板风格的 
+    ```
+    {{.<label_key>}}
+    ```
+    它在最终生成消息时会被替换为 `labels[<label_key>]`。
 * `labels` 和 `annotations` 会被解析成 json 字符串发送给 `AlertManager`：
 ```json
 {
