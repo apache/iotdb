@@ -1351,7 +1351,39 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
-      parseTypeClause(typeClause, fillTypes);
+      if (typeClause.ALL() != null) {
+        if (typeClause.linearClause() != null) {
+          throw new SQLParserException("fill all doesn't support linear fill");
+        }
+        IFill fill;
+        if (typeClause.previousUntilLastClause() != null) {
+          long preRange;
+          if (typeClause.previousUntilLastClause().DURATION() != null) {
+            preRange =
+                DatetimeUtils.convertDurationStrToLong(
+                    typeClause.previousUntilLastClause().DURATION().getText());
+          } else {
+            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+          }
+          fill = new PreviousFill(preRange, true);
+        } else {
+          long preRange;
+          if (typeClause.previousClause().DURATION() != null) {
+            preRange =
+                DatetimeUtils.convertDurationStrToLong(
+                    typeClause.previousClause().DURATION().getText());
+          } else {
+            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+          }
+          fill = new PreviousFill(preRange);
+        }
+        for (TSDataType tsDataType : TSDataType.values()) {
+          fillTypes.put(tsDataType, fill.copy());
+        }
+        break;
+      } else {
+        parseTypeClause(typeClause, fillTypes);
+      }
     }
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
