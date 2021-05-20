@@ -39,8 +39,6 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
-import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
@@ -95,14 +93,12 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -142,6 +138,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -183,10 +180,6 @@ public class MetaGroupMember extends RaftMember {
    * members in this node
    */
   private static final int REPORT_INTERVAL_SEC = 10;
-
-  /** how many times is a data record replicated, also the number of nodes in a data group */
-  private static final int REPLICATION_NUM =
-      ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   /**
    * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
@@ -861,8 +854,8 @@ public class MetaGroupMember extends RaftMember {
    * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
-      throws AddSelfException, LogExecutionException, ChangeMembershipException,
-          InterruptedException, UnsupportedPlanException, CheckConsistencyException {
+      throws AddSelfException, LogExecutionException, InterruptedException,
+          CheckConsistencyException {
     AddNodeResponse response = new AddNodeResponse();
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
@@ -1445,26 +1438,6 @@ public class MetaGroupMember extends RaftMember {
     return result;
   }
 
-  /** split a plan into several sub-plans, each belongs to only one data group. */
-  private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
-      throws UnsupportedPlanException, CheckConsistencyException {
-    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
-    try {
-      planGroupMap = router.splitAndRoutePlan(plan);
-    } catch (StorageGroupNotSetException e) {
-      // synchronize with the leader to see if this node has unpulled storage groups
-      syncLeaderWithConsistencyCheck(true);
-      try {
-        planGroupMap = router.splitAndRoutePlan(plan);
-      } catch (MetadataException | UnknownLogTypeException ex) {
-        // ignore
-      }
-    } catch (MetadataException | UnknownLogTypeException e) {
-      logger.error("Cannot route plan {}", plan, e);
-    }
-    return planGroupMap;
-  }
-
   /**
    * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
    * nodes time out, will a TIME_OUT be returned.
@@ -1663,12 +1636,9 @@ public class MetaGroupMember extends RaftMember {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     boolean allRedirect = true;
-    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
-      if (tmpStatus.isSetRedirectNode()) {
-        endPoint = tmpStatus.getRedirectNode();
-      } else {
+      if (!tmpStatus.isSetRedirectNode()) {
         allRedirect = false;
       }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1694,49 +1664,6 @@ public class MetaGroupMember extends RaftMember {
               StatusUtils.EXECUTE_STATEMENT_ERROR,
               MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
-    return status;
-  }
-
-  /**
-   * Forward a plan to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
-   * returned. The error messages from each group (if any) will be compacted into one string.
-   *
-   * @para plan
-   */
-  private TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
-    // the error codes from the groups that cannot execute the plan
-    TSStatus status;
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    for (PartitionGroup partitionGroup : partitionGroups) {
-      if (partitionGroup.contains(thisNode)) {
-        // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
-        status =
-            getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
-                .executeNonQueryPlan(plan);
-      } else {
-        // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", plan, partitionGroup.getHeader());
-        status = forwardPlan(plan, partitionGroup);
-      }
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && (!(plan instanceof DeleteTimeSeriesPlan)
-              || status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(
-            String.format(
-                "[%s@%s:%s]", status.getCode(), partitionGroup.getHeader(), status.getMessage()));
-      }
-    }
-    if (errorCodePartitionGroups.isEmpty()) {
-      status = StatusUtils.OK;
-    } else {
-      status =
-          StatusUtils.getStatus(
-              StatusUtils.EXECUTE_STATEMENT_ERROR,
-              MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
-    }
-    logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
   }
 
@@ -1939,7 +1866,10 @@ public class MetaGroupMember extends RaftMember {
       } else {
         return collectMigrationStatusSync(node);
       }
-    } catch (TException | InterruptedException e) {
+    } catch (TException e) {
+      logger.error("{}: Cannot get the status of node {}", name, node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("{}: Cannot get the status of node {}", name, node, e);
     }
     return null;
@@ -1990,8 +1920,8 @@ public class MetaGroupMember extends RaftMember {
    * @param node the node to be removed.
    */
   public long removeNode(Node node)
-      throws PartitionTableUnavailableException, LogExecutionException, ChangeMembershipException,
-          InterruptedException, UnsupportedPlanException, CheckConsistencyException {
+      throws PartitionTableUnavailableException, LogExecutionException, InterruptedException,
+          CheckConsistencyException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -2090,24 +2020,28 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  public void sendLogToAllDataGroups(Log log)
-      throws ChangeMembershipException, InterruptedException {
+  public void sendLogToAllDataGroups(Log log) throws ChangeMembershipException {
     if (logger.isDebugEnabled()) {
       logger.debug("Send log {} to all data groups: start", log);
     }
 
     Map<PhysicalPlan, PartitionGroup> planGroupMap = router.splitAndRouteChangeMembershipLog(log);
-    List<String> errorCodePartitionGroups = new ArrayList<>();
+    List<String> errorCodePartitionGroups = new CopyOnWriteArrayList<>();
     CountDownLatch counter = new CountDownLatch(planGroupMap.size());
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       getAppendLogThreadPool()
           .submit(() -> forwardChangeMembershipPlan(log, entry, errorCodePartitionGroups, counter));
     }
-    counter.await();
+    try {
+      counter.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ChangeMembershipException(
+          String.format("Can not wait all data groups to apply %s", log));
+    }
     if (!errorCodePartitionGroups.isEmpty()) {
       throw new ChangeMembershipException(
-          String.format(
-              "apply %s failed with status {%s}", log, errorCodePartitionGroups.toString()));
+          String.format("Apply %s failed with status {%s}", log, errorCodePartitionGroups));
     }
     if (logger.isDebugEnabled()) {
       logger.debug("Send log {} to all data groups: end", log);
@@ -2142,9 +2076,8 @@ public class MetaGroupMember extends RaftMember {
           }
           Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
         } catch (InterruptedException e) {
-          synchronized (errorCodePartitionGroups) {
-            errorCodePartitionGroups.add(e.getMessage());
-          }
+          Thread.currentThread().interrupt();
+          errorCodePartitionGroups.add(e.getMessage());
           return;
         }
         retryTime++;
@@ -2201,6 +2134,7 @@ public class MetaGroupMember extends RaftMember {
                   try {
                     Thread.sleep(RaftServer.getHeartBeatIntervalMs());
                   } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     // ignore
                   }
                   super.stop();

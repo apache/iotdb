@@ -22,12 +22,10 @@ package org.apache.iotdb.cluster.server.service;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.AddSelfException;
-import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -76,12 +74,10 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     AddNodeResponse addNodeResponse;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException
-        | LogExecutionException
-        | ChangeMembershipException
-        | InterruptedException
-        | UnsupportedPlanException
-        | CheckConsistencyException e) {
+    } catch (AddSelfException | LogExecutionException | CheckConsistencyException e) {
+      throw new TException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new TException(e);
     }
     if (addNodeResponse != null) {
@@ -163,10 +159,12 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
       result = metaGroupMember.removeNode(node);
     } catch (PartitionTableUnavailableException
         | LogExecutionException
-        | ChangeMembershipException
-        | InterruptedException
-        | UnsupportedPlanException
         | CheckConsistencyException e) {
+      logger.error("Can not remove node {}", node, e);
+      throw new TException(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Can not remove node {}", node, e);
       throw new TException(e);
     }
 

@@ -427,12 +427,9 @@ public class Coordinator {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     boolean allRedirect = true;
-    EndPoint endPoint = null;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
-      if (tmpStatus.isSetRedirectNode()) {
-        endPoint = tmpStatus.getRedirectNode();
-      } else {
+      if (!tmpStatus.isSetRedirectNode()) {
         allRedirect = false;
       }
       if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

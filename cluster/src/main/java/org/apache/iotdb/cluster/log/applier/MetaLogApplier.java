@@ -65,8 +65,7 @@ public class MetaLogApplier extends BaseApplier {
     }
   }
 
-  private void applyAddNodeLog(AddNodeLog log)
-      throws ChangeMembershipException, InterruptedException {
+  private void applyAddNodeLog(AddNodeLog log) throws ChangeMembershipException {
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
       logger.info("Ignore previous change membership log");
       // ignore previous change membership log
@@ -78,8 +77,7 @@ public class MetaLogApplier extends BaseApplier {
     member.applyAddNode(log);
   }
 
-  private void applyRemoveNodeLog(RemoveNodeLog log)
-      throws ChangeMembershipException, InterruptedException {
+  private void applyRemoveNodeLog(RemoveNodeLog log) throws ChangeMembershipException {
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
       // ignore previous change membership log
       return;

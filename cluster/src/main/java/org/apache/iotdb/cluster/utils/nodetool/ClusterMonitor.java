@@ -79,7 +79,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   @Override
   public List<Pair<Node, NodeCharacter>> getMetaGroup() {
     MetaGroupMember metaMember = getMetaGroupMember();
-    if (metaMember.getPartitionTable() == null) {
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
     List<Pair<Node, NodeCharacter>> res = new ArrayList<>();
@@ -95,7 +95,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
 
   public List<Node> getRing() {
     MetaGroupMember metaMember = getMetaGroupMember();
-    if (metaMember.getPartitionTable() == null) {
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
     return metaMember.getPartitionTable().getAllNodes();
@@ -104,7 +104,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   @Override
   public List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception {
     MetaGroupMember metaMember = getMetaGroupMember();
-    if (metaMember.getPartitionTable() == null) {
+    if (metaMember == null || metaMember.getPartitionTable() == null) {
       return null;
     }
     RaftNode raftNode = new RaftNode(metaMember.getThisNode(), raftId);
@@ -127,7 +127,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   @Override
   public Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception {
     MetaGroupMember member = getMetaGroupMember();
-    if (member.getPartitionTable() == null) {
+    if (member == null || member.getPartitionTable() == null) {
       throw new Exception(BUILDING_CLUSTER_INFO);
     }
     if (member.getCharacter() != NodeCharacter.LEADER) {
