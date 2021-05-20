@@ -28,6 +28,7 @@ import java.util.concurrent.TimeoutException;
 
 public class RabbitMQChannelUtils {
 
+  @SuppressWarnings("squid:S2095")
   public static Channel getChannelInstance(String connectionDescription)
       throws IOException, TimeoutException {
     ConnectionFactory connectionFactory = getConnectionFactory();

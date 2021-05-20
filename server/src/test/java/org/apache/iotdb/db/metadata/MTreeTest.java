@@ -59,6 +59,7 @@ public class MTreeTest {
   }
 
   @Test
+  @SuppressWarnings("squid:S5783")
   public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
     MTree root = new MTree();
     try {
