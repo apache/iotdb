@@ -18,6 +18,17 @@
  */
 package org.apache.iotdb.db.sql;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -25,8 +36,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Stream;
 
 public abstract class Cases {
 
@@ -34,6 +45,7 @@ public abstract class Cases {
   protected Connection writeConnection;
   protected Statement[] readStatements;
   protected Connection[] readConnections;
+  protected Session session;
 
   /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
   public abstract void init() throws Exception;
@@ -47,6 +59,7 @@ public abstract class Cases {
     for (Connection connection : readConnections) {
       connection.close();
     }
+    session.close();
   }
 
   // if we seperate the test into multiply test() methods, then the docker container have to be
@@ -145,5 +158,53 @@ public abstract class Cases {
       Assert.assertEquals(n, cnt);
       resultSet.close();
     }
+  }
+
+  @Test
+  public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    String[] vectorMeasurements = new String[10];
+
+    Stream.iterate(0, i -> i + 1)
+        .limit(10)
+        .forEach(
+            i -> {
+              dataTypes.add(TSDataType.DOUBLE);
+              vectorMeasurements[i] = "vm" + i;
+              encodings.add(TSEncoding.RLE);
+              compressionTypes.add(CompressionType.SNAPPY);
+            });
+    encodingList.add(encodings);
+    dataTypeList.add(dataTypes);
+    measurementList.add(Arrays.asList(vectorMeasurements));
+
+    session.createDeviceTemplate(
+        "testcontainer", measurementList, dataTypeList, encodingList, compressionTypes);
+    session.setStorageGroup("root.template");
+    session.setDeviceTemplate("testcontainer", "root.template");
+
+    VectorMeasurementSchema vectorMeasurementSchema =
+        new VectorMeasurementSchema(vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
+
+    Tablet tablet = new Tablet("root.template.device1", Arrays.asList(vectorMeasurementSchema));
+    for (int i = 0; i < 10; i++) {
+      tablet.addTimestamp(i, i);
+      for (int j = 0; j < 10; j++) {
+        tablet.addValue("vm" + j, i, (double) i);
+        tablet.rowSize++;
+      }
+    }
+    session.insertTablet(tablet);
+
+    SessionDataSet sessionDataSet =
+        session.executeQueryStatement("select count(*) from root.template.device1");
+    Assert.assertTrue(sessionDataSet.hasNext());
+    RowRecord next = sessionDataSet.next();
+    Assert.assertEquals(10, next.getFields().get(0).getLongV());
   }
 }
