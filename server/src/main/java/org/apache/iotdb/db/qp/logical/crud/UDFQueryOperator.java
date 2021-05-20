@@ -18,4 +18,14 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-public class UDFQueryOperator extends QueryOperator {}
+public class UDFQueryOperator extends QueryOperator {
+
+  public UDFQueryOperator() {}
+
+  public UDFQueryOperator(QueryOperator queryOperator) {
+    this.selectComponent = queryOperator.getSelectComponent();
+    this.fromComponent = queryOperator.getFromComponent();
+    this.filterOperator = queryOperator.getFilterOperator();
+    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+  }
+}

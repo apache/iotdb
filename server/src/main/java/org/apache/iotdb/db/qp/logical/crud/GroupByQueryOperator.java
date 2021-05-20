@@ -18,4 +18,4 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-public class GroupByQueryOperator extends QueryOperator {}
+public class GroupByQueryOperator extends AggregationQueryOperator {}

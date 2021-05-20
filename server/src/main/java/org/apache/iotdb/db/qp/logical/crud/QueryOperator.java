@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -33,7 +35,6 @@ public class QueryOperator extends RootOperator {
   protected SpecialClauseComponent specialClauseComponent;
 
   protected Map<String, Object> props;
-
   protected IndexType indexType;
 
   public QueryOperator() {
@@ -107,5 +108,24 @@ public class QueryOperator extends RootOperator {
 
   public boolean isGroupByLevel() {
     return specialClauseComponent != null && specialClauseComponent.getLevel() != -1;
+  }
+
+  public void check() throws LogicalOperatorException {
+    if (isAlignByDevice()) {
+      if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        throw new LogicalOperatorException(
+            "ALIGN BY DEVICE clause is not supported in UDF queries.");
+      }
+
+      for (PartialPath path : selectComponent.getPaths()) {
+        String device = path.getDevice();
+        if (!device.isEmpty()) {
+          throw new LogicalOperatorException(
+              "The paths of the SELECT clause can only be single level. In other words, "
+                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                  + " For more details please refer to the SQL document.");
+        }
+      }
+    }
   }
 }

@@ -22,8 +22,6 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class GroupByTimePlan extends AggregationPlan {
 
-  public static final String LACK_FUNC_ERROR_MESSAGE =
-      "Lack aggregation function in group by query";
   // [startTime, endTime)
   private long startTime;
   private long endTime;

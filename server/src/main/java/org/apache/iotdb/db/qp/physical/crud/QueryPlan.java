@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -109,7 +108,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     return alignByTime;
   }
 
-  public void setAlignByTime(boolean align) throws QueryProcessException {
+  public void setAlignByTime(boolean align) {
     alignByTime = align;
   }
 

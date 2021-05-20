@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
 public class LastQueryOperator extends QueryOperator {
 
   public LastQueryOperator() {}
@@ -27,5 +32,17 @@ public class LastQueryOperator extends QueryOperator {
     this.fromComponent = queryOperator.getFromComponent();
     this.filterOperator = queryOperator.getFilterOperator();
     this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+  }
+
+  @Override
+  public void check() throws LogicalOperatorException {
+    super.check();
+
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (!(expression instanceof TimeSeriesOperand)) {
+        throw new LogicalOperatorException("Last queries can only be applied on raw time series.");
+      }
+    }
   }
 }

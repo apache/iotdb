@@ -18,4 +18,21 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-public class FillQueryOperator extends QueryOperator {}
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+
+public class FillQueryOperator extends QueryOperator {
+
+  @Override
+  public void check() throws LogicalOperatorException {
+    super.check();
+
+    if (!isAlignByTime()) {
+      throw new LogicalOperatorException("FILL doesn't support disable align clause.");
+    }
+
+    if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
+      throw new LogicalOperatorException("Only \"=\" can be used in fill function");
+    }
+  }
+}

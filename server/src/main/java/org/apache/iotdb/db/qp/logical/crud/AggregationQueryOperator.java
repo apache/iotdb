@@ -18,4 +18,38 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-public class AggregationQueryOperator extends QueryOperator {}
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+
+public class AggregationQueryOperator extends QueryOperator {
+
+  public static final String ERROR_MESSAGE1 =
+      "Common queries and aggregated queries are not allowed to appear at the same time";
+
+  public AggregationQueryOperator() {}
+
+  public AggregationQueryOperator(QueryOperator queryOperator) {
+    this.selectComponent = queryOperator.getSelectComponent();
+    this.fromComponent = queryOperator.getFromComponent();
+    this.filterOperator = queryOperator.getFilterOperator();
+    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+  }
+
+  @Override
+  public void check() throws LogicalOperatorException {
+    super.check();
+
+    if (!isAlignByTime()) {
+      throw new LogicalOperatorException("AGGREGATION doesn't support disable align clause.");
+    }
+
+    for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+      Expression expression = resultColumn.getExpression();
+      if (expression instanceof TimeSeriesOperand) {
+        throw new LogicalOperatorException(ERROR_MESSAGE1);
+      }
+    }
+  }
+}

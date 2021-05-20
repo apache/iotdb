@@ -45,6 +45,7 @@ import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -1029,11 +1030,27 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
+    boolean isFirstElement = true;
     for (ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
+      // judge query type according to the first select element
+      if (!hasDecidedQueryType() && isFirstElement) {
+        if (selectComponent.hasAggregationFunction()) {
+          queryOp = new AggregationQueryOperator(queryOp);
+        } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+          queryOp = new UDFQueryOperator(queryOp);
+        }
+        isFirstElement = false;
+      }
     }
 
     queryOp.setSelectComponent(selectComponent);
+  }
+
+  private boolean hasDecidedQueryType() {
+    return queryOp instanceof GroupByQueryOperator
+        || queryOp instanceof FillQueryOperator
+        || queryOp instanceof LastQueryOperator;
   }
 
   @Override
@@ -1333,19 +1350,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx) {
-    /*    if (!queryOp.hasAggregationFunction()) {
-      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
-    }*/
     GroupByLevelClauseComponent groupByLevelClauseComponent = new GroupByLevelClauseComponent();
     groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
 
   public void parseFillClause(FillClauseContext ctx) {
-    /*    FilterOperator filterOperator = queryOp.getFilterOperator();
-    if (!filterOperator.isLeaf() || filterOperator.getTokenIntType() != SQLConstant.EQUAL) {
-      throw new SQLParserException("Only \"=\" can be used in fill function");
-    }*/
     FillClauseComponent fillClauseComponent = new FillClauseComponent();
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
@@ -1449,9 +1459,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseGroupByTimeClause(GroupByTimeClauseContext ctx) {
-    /*    if (!queryOp.hasAggregationFunction()) {
-      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
-    }*/
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
     groupByClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
     // parse timeUnit
@@ -1479,9 +1486,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private void parseGroupByFillClause(GroupByFillClauseContext ctx) {
-    /*    if (!queryOp.hasAggregationFunction()) {
-      throw new SQLParserException(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE);
-    }*/
     GroupByFillClauseComponent groupByFillClauseComponent = new GroupByFillClauseComponent();
     groupByFillClauseComponent.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
