@@ -70,6 +70,7 @@ public class QueryDataSetUtils {
         // filter rows whose columns are null according to the rule
         if ((queryDataSet.isWithoutAllNull() && rowRecord.isAllNull())
             || (queryDataSet.isWithoutAnyNull() && rowRecord.hasNullField())) {
+          queryDataSet.decreaseAlreadyReturnedRowNum();
           i--;
           continue;
         }
