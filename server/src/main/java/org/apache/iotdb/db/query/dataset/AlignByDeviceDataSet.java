@@ -235,7 +235,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice.getFullPath()));
     rowRecord.addField(deviceField);
-    // device field should not be considered as a value field it should affect the WITHOUT NULL judgement
+    // device field should not be considered as a value field it should affect the WITHOUT NULL
+    // judgement
     rowRecord.resetNullFlag();
 
     List<Field> measurementFields = originRowRecord.getFields();
