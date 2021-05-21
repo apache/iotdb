@@ -446,8 +446,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
 
   @Override
   protected void merge(long timePartition) {
-    isMergeExecutedInCurrentTask = merge(forkedSequenceTsFileResources, true, timePartition);
-    isMergeExecutedInCurrentTask = merge(forkedUnSequenceTsFileResources, false, timePartition);
+    isMergeExecutedInCurrentTask = merge(forkedUnSequenceTsFileResources, timePartition);
   }
 
   private void deleteLevelFilesInList(
@@ -477,8 +476,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
   }
 
   @SuppressWarnings("squid:S3776")
-  private boolean merge(
-      List<List<TsFileResource>> mergeResources, boolean sequence, long timePartition) {
+  private boolean merge(List<List<TsFileResource>> mergeResources, long timePartition) {
     long startTimeMillis = System.currentTimeMillis();
     // whether execute merge chunk in the loop below
     boolean isMergeExecutedInCurrentTask = false;
@@ -559,19 +557,12 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
                       String.format("%s [Compaction] abort", storageGroupName));
                 }
 
-                if (sequence) {
-                  sequenceTsFileResources
-                      .get(timePartition)
-                      .get(i + 1)
-                      .addAll(targetTsFileResources);
-                } else {
-                  unSequenceTsFileResources
-                      .get(timePartition)
-                      .get(i + 1)
-                      .addAll(targetTsFileResources);
-                }
-                deleteLevelFilesInList(timePartition, unSeqMergeList, i, sequence);
-                deleteLevelFilesInList(timePartition, seqResources, i + 1, sequence);
+                unSequenceTsFileResources
+                    .get(timePartition)
+                    .get(i + 1)
+                    .addAll(targetTsFileResources);
+                deleteLevelFilesInList(timePartition, unSeqMergeList, i, false);
+                deleteLevelFilesInList(timePartition, seqResources, i + 1, false);
                 if (mergeResources.size() > i + 1) {
                   mergeResources.get(i + 1).removeAll(seqResources);
                   mergeResources.get(i + 1).addAll(targetTsFileResources);
@@ -597,7 +588,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
       logger.info(
           "{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
           storageGroupName,
-          sequence,
+          false,
           System.currentTimeMillis() - startTimeMillis);
     }
     return isMergeExecutedInCurrentTask;

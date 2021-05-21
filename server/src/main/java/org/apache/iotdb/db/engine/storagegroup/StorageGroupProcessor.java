@@ -507,9 +507,8 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
-        && seqTsFileResources.size() > 0) {
-      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      for (long timePartitionId : partitionMaxFileVersions.keySet()) {
         executeCompaction(
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
@@ -2084,7 +2083,7 @@ public class StorageGroupProcessor {
   public void merge(boolean isFullMerge) {
     writeLock();
     try {
-      for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
+      for (long timePartitionId : partitionMaxFileVersions.keySet()) {
         executeCompaction(timePartitionId, isFullMerge);
       }
     } finally {

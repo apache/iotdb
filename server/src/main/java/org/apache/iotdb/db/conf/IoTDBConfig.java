@@ -269,13 +269,13 @@ public class IoTDBConfig {
   private long tsFileSizeThreshold = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
-  private long memtableSizeThreshold = 1 * 1024 * 1024L;
+  private long memtableSizeThreshold = 100000000 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeqSeriesPointNumberThreshold = 300000;
+  private int avgSeqSeriesPointNumberThreshold = 5120;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgUnseqSeriesPointNumberThreshold = 300000;
+  private int avgUnseqSeriesPointNumberThreshold = 5120;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
