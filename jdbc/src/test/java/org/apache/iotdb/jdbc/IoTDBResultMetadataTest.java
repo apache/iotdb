@@ -143,88 +143,11 @@ public class IoTDBResultMetadataTest {
       "root.a.b.double",
       "root.a.b.text"
     };
-    String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
+    String[] typesString = {"TIMESTAMP", "BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
     int[] types = {
       Types.BOOLEAN, Types.INTEGER, Types.BIGINT, Types.FLOAT, Types.DOUBLE, Types.VARCHAR
     };
     metadata = new IoTDBResultMetadata(Arrays.asList(columns), Arrays.asList(typesString), false);
-    flag = false;
-    try {
-      metadata.getColumnType(columns.length + 1);
-    } catch (Exception e) {
-      flag = true;
-    }
-    assertTrue(flag);
-
-    flag = false;
-    try {
-      metadata.getColumnType(0);
-    } catch (Exception e) {
-      flag = true;
-    }
-    assertTrue(flag);
-
-    assertEquals(Types.TIMESTAMP, metadata.getColumnType(1));
-    for (int i = 1; i <= types.length; i++) {
-      assertEquals(metadata.getColumnType(i + 1), types[i - 1]);
-    }
-  }
-
-  @Test
-  public void testGetColumnTypeDisableAlign() throws SQLException {
-    metadata = new IoTDBResultMetadata(null, null, false);
-    boolean flag = false;
-    try {
-      metadata.getColumnType(1);
-    } catch (Exception e) {
-      flag = true;
-    }
-    assertTrue(flag);
-
-    List<String> columnInfoList = new ArrayList<>();
-    metadata = new IoTDBResultMetadata(columnInfoList, null, false);
-    flag = false;
-    try {
-      metadata.getColumnType(1);
-    } catch (Exception e) {
-      flag = true;
-    }
-    assertTrue(flag);
-
-    String[] columns = {
-      "timestamp",
-      "root.a.b.boolean",
-      "timestamp",
-      "root.a.b.int32",
-      "timestamp",
-      "root.a.b.int64",
-      "timestamp",
-      "root.a.b.float",
-      "timestamp",
-      "root.a.b.double",
-      "timestamp",
-      "root.a.b.text"
-    };
-    String[] typesString = {"BOOLEAN", "INT32", "INT64", "FLOAT", "DOUBLE", "TEXT"};
-    int[] types = {
-      Types.BOOLEAN,
-      Types.BIGINT,
-      Types.INTEGER,
-      Types.BIGINT,
-      Types.BIGINT,
-      Types.BIGINT,
-      Types.FLOAT,
-      Types.BIGINT,
-      Types.DOUBLE,
-      Types.BIGINT,
-      Types.VARCHAR
-    };
-
-    metadata =
-        new IoTDBResultMetadata(
-            new ArrayList<>(Arrays.asList(columns)),
-            new ArrayList<>(Arrays.asList(typesString)),
-            false);
     flag = false;
     try {
       metadata.getColumnType(columns.length + 1);
