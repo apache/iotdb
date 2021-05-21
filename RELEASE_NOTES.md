@@ -56,6 +56,7 @@
 * [ISSUE-3089] Make it possible for storage groups to have name with hyphen
 
 ## Miscellaneous changes
+* [IOTDB-1259] upgrade libthrift from 0.12.0/0.13.0 to 0.14.1
 * Uncomment the less used configurations
 * Enable the configration `concurrent_writing_time_partition`
 
