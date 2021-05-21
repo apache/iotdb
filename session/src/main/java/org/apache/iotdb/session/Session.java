@@ -590,12 +590,13 @@ public class Session {
   }
 
   /**
-   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168; <PrefixPath> +
-   * <suffixPath> = <TimeSeries>
+   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168; must satisfy
+   * <PrefixPath> + <suffixPath> = <TimeSeries>
    *
-   * @param suffixPath root.ln.wf01.wt01
-   * @param prefixPath status
-   * @param LastTime get the last data,whose timestamp greater than or equal LastTime
+   * @param suffixPath the timeSeries suffix. eg. root.ln.wf01.wt01
+   * @param prefixPath the timeSeries prefix. eg. status
+   * @param LastTime get the last data,whose timestamp greater than or equal LastTime eg.
+   *     1621326244168
    */
   public SessionDataSet executeLastDataQuery(
       List<String> suffixPath, List<String> prefixPath, long LastTime)
@@ -621,8 +622,8 @@ public class Session {
   /**
    * query eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
    *
-   * @param suffixPath query statement
-   * @param prefixPath query statement
+   * @param suffixPath the timeSeries suffix. eg. root.ln.wf01.wt01
+   * @param prefixPath the timeSeries prefix. eg. status
    */
   public SessionDataSet executeLastDataQuery(List<String> suffixPath, List<String> prefixPath)
       throws StatementExecutionException, IoTDBConnectionException {
