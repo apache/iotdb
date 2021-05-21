@@ -38,6 +38,10 @@ public class LastQueryOperator extends QueryOperator {
   public void check() throws LogicalOperatorException {
     super.check();
 
+    if (isAlignByDevice()) {
+      throw new LogicalOperatorException("Last query doesn't support align by device.");
+    }
+
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (!(expression instanceof TimeSeriesOperand)) {
