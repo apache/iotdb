@@ -98,4 +98,9 @@ public class RowRecord {
   public boolean isAllNull() {
     return allNull;
   }
+
+  public void resetNullFlag() {
+    hasNullField = false;
+    allNull = true;
+  }
 }
