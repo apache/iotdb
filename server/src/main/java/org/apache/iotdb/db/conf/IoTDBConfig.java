@@ -630,7 +630,7 @@ public class IoTDBConfig {
   private boolean enablePartialInsert = true;
 
   // Open ID Secret
-  private String openIdProviderUrl = null;
+  private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";

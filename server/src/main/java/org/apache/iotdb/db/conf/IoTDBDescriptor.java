@@ -596,20 +596,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
-      //      conf.setEnablePartition(Boolean.parseBoolean(
-      //          properties.getProperty("enable_partition",
-      // String.valueOf(conf.isEnablePartition()))));
-
-      // Time range for dividing storage group
-      //      conf.setPartitionInterval(Long.parseLong(properties
-      //              .getProperty("partition_interval",
-      // String.valueOf(conf.getPartitionInterval()))));
-
-      // the num of memtables in each storage group
-      //      conf.setConcurrentWritingTimePartition(
-      //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
-      //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
-
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
