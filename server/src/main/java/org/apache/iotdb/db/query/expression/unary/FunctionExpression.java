@@ -37,7 +37,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-public class FunctionExpression extends Expression {
+public class FunctionExpression implements Expression {
+
+  private final boolean isAggregationFunctionExpression;
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
@@ -53,7 +55,8 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
-    setFunctionExpressionType();
+    isAggregationFunctionExpression =
+        SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
   }
 
   public FunctionExpression(
@@ -61,15 +64,18 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
-    setFunctionExpressionType();
+    isAggregationFunctionExpression =
+        SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
   }
 
-  private void setFunctionExpressionType() {
-    if (SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase())) {
-      isAggregationFunctionExpression = true;
-    } else {
-      isTimeSeriesGeneratingFunctionExpression = true;
-    }
+  @Override
+  public boolean isAggregationFunctionExpression() {
+    return isAggregationFunctionExpression;
+  }
+
+  @Override
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return !isAggregationFunctionExpression;
   }
 
   public void addAttribute(String key, String value) {

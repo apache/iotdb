@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public abstract class BinaryExpression extends Expression {
+public abstract class BinaryExpression implements Expression {
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;

@@ -28,27 +28,23 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.List;
 import java.util.Set;
 
-public abstract class Expression {
+public interface Expression {
 
-  protected boolean isAggregationFunctionExpression = false;
-  protected boolean isTimeSeriesGeneratingFunctionExpression = false;
-
-  public boolean isAggregationFunctionExpression() {
-    return isAggregationFunctionExpression;
+  default boolean isAggregationFunctionExpression() {
+    return false;
   }
 
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return isTimeSeriesGeneratingFunctionExpression;
+  default boolean isTimeSeriesGeneratingFunctionExpression() {
+    return false;
   }
 
   // TODO: implement this method
-  public abstract TSDataType dataType() throws MetadataException;
+  TSDataType dataType() throws MetadataException;
 
-  public abstract void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
+  void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 
-  public abstract void removeWildcards(
-      WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+  void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
       throws LogicalOptimizeException;
 
-  public abstract void collectPaths(Set<PartialPath> pathSet);
+  void collectPaths(Set<PartialPath> pathSet);
 }

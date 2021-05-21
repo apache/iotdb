@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.util.List;
 import java.util.Set;
 
-public class TimeSeriesOperand extends Expression {
+public class TimeSeriesOperand implements Expression {
 
   protected PartialPath path;
   protected TSDataType dataType;
