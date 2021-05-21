@@ -701,19 +701,23 @@ public class IoTDBDescriptor {
       }
 
       conf.setAuthorizerProvider(
-          properties.getProperty(
-              "authorizer_provider_class",
-              "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
+          properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
       // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
+      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", conf.getOpenIdProviderUrl()));
 
       conf.setEnablePartition(
           Boolean.parseBoolean(
-              properties.getProperty("enable_partition", conf.isEnablePartition() + "")));
+              properties.getProperty(
+                  "enable_partition", String.valueOf(conf.isEnablePartition()))));
 
       conf.setPartitionInterval(
           Long.parseLong(
-              properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
+              properties.getProperty(
+                  "partition_interval", String.valueOf(conf.getPartitionInterval()))));
+
+      conf.setAdminName(properties.getProperty("admin_name", conf.getAdminName()));
+
+      conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
