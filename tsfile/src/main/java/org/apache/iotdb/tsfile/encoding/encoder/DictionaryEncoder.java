@@ -35,11 +35,12 @@ import java.util.List;
 /**
  * An encoder implementing dictionary encoding.
  *
- * Encoding format:
+ * <pre>Encoding format: {@code
  * <map> <indexes>
- *   <map> := <map length> <map data>
- *     <map data> := [<entry size><entry data>]...
- *   <indexes> := [<index>]...
+ * <map> := <map length> <map data>
+ * <map data> := [<entry size><entry data>]...
+ * <indexes> := [<index>]...
+ * }</pre>
  */
 public class DictionaryEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);

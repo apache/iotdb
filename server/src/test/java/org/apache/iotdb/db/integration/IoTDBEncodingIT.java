@@ -244,9 +244,9 @@ public class IoTDBEncodingIT {
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderDictionary() {
     try (Connection connection =
-             DriverManager.getConnection(
-                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE TIMESERIES root.db_0.tab0.city WITH DATATYPE=TEXT,ENCODING=DICTIONARY");
       statement.execute("insert into root.db_0.tab0(time,city) values(1,\"Nanjing\")");
@@ -272,9 +272,9 @@ public class IoTDBEncodingIT {
   @Test
   public void testSetTimeEncoderRegularAndValueEncoderDictionaryOutOfOrder() {
     try (Connection connection =
-             DriverManager.getConnection(
-                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE TIMESERIES root.db_0.tab0.city WITH DATATYPE=TEXT,ENCODING=DICTIONARY");
       statement.execute("insert into root.db_0.tab0(time,city) values(1,\"Nanjing\")");
