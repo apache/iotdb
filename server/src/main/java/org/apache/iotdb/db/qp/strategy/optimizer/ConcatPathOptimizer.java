@@ -67,16 +67,16 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return queryOperator;
   }
 
-  private static boolean optimizable(QueryOperator queryOperator) {
-    FromOperator from = queryOperator.getFromOperator();
-    if (from == null || from.getPrefixPaths().isEmpty()) {
-      LOGGER.warn(WARNING_NO_PREFIX_PATHS);
-      return false;
-    }
-
+  private boolean optimizable(QueryOperator queryOperator) {
     SelectOperator select = queryOperator.getSelectOperator();
     if (select == null || select.getResultColumns().isEmpty()) {
       LOGGER.warn(WARNING_NO_SUFFIX_PATHS);
+      return false;
+    }
+
+    FromOperator from = queryOperator.getFromOperator();
+    if (from == null || from.getPrefixPaths().isEmpty()) {
+      LOGGER.warn(WARNING_NO_PREFIX_PATHS);
       return false;
     }
 
