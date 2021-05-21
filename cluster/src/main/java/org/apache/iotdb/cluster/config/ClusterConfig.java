@@ -185,20 +185,20 @@ public class ClusterConfig {
   }
 
   /**
-   * If the path is not updated frequently, you can enable cache to update the path every 1s
-   * improving the query performance by 14%
+   * If the path is not updated frequently, you can enable cache to update the paths every
+   * queryPathsCacheUpdateInterval improving the query performance by 14%
    */
   private boolean enableQueryPathsCache = false;
 
   /**
-   * When enable_query_paths_cache is true, this parameter effective. query paths cache size,
-   * default value is 1000
+   * When enable_query_paths_cache is true, this parameters can take effect. Cache size of query
+   * paths, default value is 1000
    */
   private int queryPathsCacheSize = 1000;
 
   /**
-   * When enable_query_paths_cache is true, this parameter effective. cache update interval time,
-   * default value is 1000 ms
+   * When enable_query_paths_cache is true, this parameters can take effect. cache update interval
+   * time, default value is 1000 ms
    */
   private int queryPathsCacheUpdateInterval = 1000;
 

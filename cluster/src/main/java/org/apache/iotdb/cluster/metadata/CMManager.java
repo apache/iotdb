@@ -568,10 +568,10 @@ public class CMManager extends MManager {
     private long valueSizeThreshold;
     private AtomicLong valueSize = new AtomicLong(0);
 
-    // period executor thread
+    // periodic executor thread
     private ScheduledExecutorService periodExecutorService;
 
-    // executor every partition group update cache
+    // every partition-group update cache
     private ExecutorService executorService = Executors.newFixedThreadPool(4);
 
     private int cacheUpdateInteval;
