@@ -827,4 +827,20 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void queryNonexistentSeries() {
+    String sqlStr =
+        "select max(s100), udf(*, s100), udf(*, s100), udf(s100, s100) from root.vehicle.d4";
+
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      assertEquals(1, resultSet.getMetaData().getColumnCount());
+      assertEquals("Time", resultSet.getMetaData().getColumnName(1));
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }

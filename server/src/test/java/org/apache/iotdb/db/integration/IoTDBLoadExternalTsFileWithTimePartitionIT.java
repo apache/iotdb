@@ -52,7 +52,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 
-public class IoTDBLoadExternalTsfileWithTimePartitionIT {
+public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
   String DOT = ".";
   String tempDir = "temp";
@@ -61,11 +61,15 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   String[] devices = new String[] {"d1", "d2"};
   String[] measurements = new String[] {"s1", "s2"};
 
-  // generate several tsfiles, with timestamp from startTime(inclusive) to endTime(exclusive)
+  // generate several tsFiles, with timestamp from startTime(inclusive) to endTime(exclusive)
   long startTime = 0;
   long endTime = 1000_000;
 
   long timePartition = 100; // unit s
+
+  long recordTimeGap = 1000;
+
+  int originalTsFileNum = 0;
 
   boolean originalIsEnablePartition;
   long originalPartitionInterval;
@@ -134,7 +138,7 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
   }
 
   /** create multiple tsfiles, each correspond to a time partition. */
-  private void prepareData() throws IOException {
+  private void prepareData() {
     File dir = new File(tempDir);
     if (dir.exists()) {
       FileUtils.deleteDirectory(dir);
@@ -144,8 +148,8 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
       File f;
       TsFileWriter tsFileWriter = null;
       int counter = 0;
-      for (long timestamp = startTime; timestamp < endTime; timestamp += 1000) {
-        if (timestamp % (timePartition * 1000) == 0) {
+      for (long timestamp = startTime; timestamp < endTime; timestamp += recordTimeGap) {
+        if (timestamp % (timePartition * recordTimeGap) == 0) {
           if (tsFileWriter != null) {
             tsFileWriter.flushAllChunkGroups();
             tsFileWriter.close();
@@ -160,13 +164,14 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
       }
       tsFileWriter.flushAllChunkGroups();
       tsFileWriter.close();
+      originalTsFileNum = counter + 1;
     } catch (Throwable e) {
       e.printStackTrace();
     }
   }
 
   @Test
-  public void loadTsfileWithTimePartition() {
+  public void loadTsFileWithTimePartition() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -174,16 +179,29 @@ public class IoTDBLoadExternalTsfileWithTimePartitionIT {
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
 
       String dataDir = config.getDataDirs()[0];
-      File f = new File(dataDir, new PartialPath("sequence") + File.separator + "root.ln");
-      System.out.println(Arrays.toString(f.list()));
-      Assert.assertEquals((endTime - startTime) / (timePartition * 1000), f.list().length);
+      // sequence/logical_sg/virtual_sg/time_partitions
+      File f =
+          new File(
+              dataDir,
+              new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
+      Assert.assertEquals(
+          (endTime - startTime) / (timePartition), f.list().length * originalTsFileNum);
 
-      for (int i = 0; i < (endTime - startTime) / (timePartition * 1000); i++) {
-        Assert.assertEquals("" + i, f.list()[i]);
+      int totalPartitionsNum = (int) ((endTime - startTime) / (timePartition) / originalTsFileNum);
+      int[] splitTsFilePartitions = new int[totalPartitionsNum];
+      for (int i = 0; i < splitTsFilePartitions.length; i++) {
+        splitTsFilePartitions[i] = Integer.parseInt(f.list()[i]);
       }
+      Arrays.sort(splitTsFilePartitions);
+
+      for (int i = 0; i < (endTime - startTime) / (timePartition) / originalTsFileNum; i++) {
+        Assert.assertEquals((i * originalTsFileNum), splitTsFilePartitions[i]);
+      }
+
       // each time partition folder should contain 2 files, the tsfile and the resource file
-      for (int i = 0; i < (endTime - startTime) / (timePartition * 1000); i++) {
-        Assert.assertEquals(2, new File(f.getAbsolutePath(), "" + i).list().length);
+      for (int i = 0; i < (endTime - startTime) / (timePartition) / originalTsFileNum; i++) {
+        Assert.assertEquals(
+            2, new File(f.getAbsolutePath(), "" + i * originalTsFileNum).list().length);
       }
     } catch (SQLException | IllegalPathException throwables) {
       throwables.printStackTrace();

@@ -736,4 +736,75 @@ public class MManagerBasicTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testTotalSeriesNumber() {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      assertEquals(6, manager.getTotalSeriesNumber());
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, manager.getTotalSeriesNumber());
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, manager.getTotalSeriesNumber());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
 }

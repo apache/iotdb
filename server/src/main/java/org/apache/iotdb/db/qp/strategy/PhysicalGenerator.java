@@ -519,7 +519,7 @@ public class PhysicalGenerator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
       throws QueryProcessException {
-    QueryPlan queryPlan = null;
+    QueryPlan queryPlan;
 
     if (queryOperator.hasAggregation()) {
       queryPlan = new AggPhysicalPlanRule().transform(queryOperator, fetchSize);
@@ -565,6 +565,9 @@ public class PhysicalGenerator {
         }
       }
     }
+
+    queryPlan.setWithoutAllNull(queryOperator.isWithoutAllNull());
+    queryPlan.setWithoutAnyNull(queryOperator.isWithoutAnyNull());
 
     if (queryOperator.getIndexType() != null) {
       if (queryPlan instanceof QueryIndexPlan) {
