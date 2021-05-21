@@ -189,4 +189,76 @@ public class IoTDBWithoutAllNullIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void withoutAllNullTest4() {
+    String[] retArray1 = new String[] {"11,root.testWithoutAllNull.d1,24,true,55.5"};
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ALL LIMIT 1 OFFSET 1 ALIGN BY DEVICE");
+
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString("last_value(s1)")
+                  + ","
+                  + resultSet.getString("last_value(s2)")
+                  + ","
+                  + resultSet.getString("last_value(s3)");
+          assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void withoutAllNullTest5() {
+    String[] retArray1 = new String[] {"6,root.testWithoutAllNull.d1,20,true,null"};
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) ORDER BY TIME DESC WITHOUT NULL ALL LIMIT 1 OFFSET 1 ALIGN BY DEVICE");
+
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString("last_value(s1)")
+                  + ","
+                  + resultSet.getString("last_value(s2)")
+                  + ","
+                  + resultSet.getString("last_value(s3)");
+          assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
