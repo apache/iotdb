@@ -38,6 +38,6 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
 
   @Override
   boolean isAdmin(String username) {
-    return IoTDBDescriptor.getInstance().getConfig().getAdminName().equals(username);
+    return config.getAdminName().equals(username);
   }
 }
