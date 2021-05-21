@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBWithoutAllNullIT {
 
@@ -192,7 +194,7 @@ public class IoTDBWithoutAllNullIT {
   public void withoutAllNullTest4() {
     String[] retArray1 = new String[] {"11,root.testWithoutAllNull.d1,24,true,55.5"};
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -207,7 +209,7 @@ public class IoTDBWithoutAllNullIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString("Device")
-                  +","
+                  + ","
                   + resultSet.getString("last_value(s1)")
                   + ","
                   + resultSet.getString("last_value(s2)")
@@ -228,7 +230,7 @@ public class IoTDBWithoutAllNullIT {
   public void withoutAllNullTest5() {
     String[] retArray1 = new String[] {"6,root.testWithoutAllNull.d1,20,true,null"};
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -243,7 +245,7 @@ public class IoTDBWithoutAllNullIT {
               resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString("Device")
-                  +","
+                  + ","
                   + resultSet.getString("last_value(s1)")
                   + ","
                   + resultSet.getString("last_value(s2)")
