@@ -68,6 +68,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private boolean optimizable(QueryOperator queryOperator) {
+    if (queryOperator.isAlignByDevice()) {
+      return false;
+    }
+
     SelectOperator select = queryOperator.getSelectOperator();
     if (select == null || select.getResultColumns().isEmpty()) {
       LOGGER.warn(WARNING_NO_SUFFIX_PATHS);
@@ -84,10 +88,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   }
 
   private void concatSelect(QueryOperator queryOperator) throws LogicalOptimizeException {
-    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()) {
-      return;
-    }
-
     List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn suffixColumn : queryOperator.getSelectOperator().getResultColumns()) {
@@ -98,8 +98,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (queryOperator.isAlignByDevice() && !queryOperator.isLastQuery()
-        || queryOperator.getIndexType() != null) {
+    if (queryOperator.getIndexType() != null) {
       return;
     }
 
@@ -122,12 +121,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
 
     Set<PartialPath> filterPaths = new HashSet<>();
-    if (!queryOperator.isAlignByDevice() || queryOperator.isLastQuery()) {
-      // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without
-      // prefix first
-      queryOperator.setFilterOperator(
-          concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
-    }
+    queryOperator.setFilterOperator(
+        concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
     queryOperator.getFilterOperator().setPathSet(filterPaths);
   }
 
@@ -199,7 +194,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     try {
       for (PartialPath path : paths) {
         List<PartialPath> all = removeWildcard(path, 0, 0).left;
-        if (all.size() == 0) {
+        if (all.isEmpty()) {
           throw new LogicalOptimizeException(
               String.format("Unknown time series %s in `where clause`", path));
         }
