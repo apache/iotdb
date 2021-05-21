@@ -322,6 +322,18 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_strategy", conf.getCompactionStrategy().toString())));
 
+      conf.setBaseFileSize(
+          Long.parseLong(
+              properties.getProperty("base_file_size", Long.toString(conf.getBaseFileSize()))));
+
+      conf.setFileSizeRate(
+          Integer.parseInt(
+              properties.getProperty("file_size_rate", Integer.toString(conf.getFileSizeRate()))));
+
+      conf.setMaxLevelNum(
+          Integer.parseInt(
+              properties.getProperty("max_level_num", Integer.toString(conf.getMaxLevelNum()))));
+
       conf.setEnableUnseqCompaction(
           Boolean.parseBoolean(
               properties.getProperty(

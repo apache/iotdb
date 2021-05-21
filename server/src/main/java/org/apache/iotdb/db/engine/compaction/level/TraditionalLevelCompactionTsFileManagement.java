@@ -61,9 +61,9 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
   private static final Logger logger =
       LoggerFactory.getLogger(TraditionalLevelCompactionTsFileManagement.class);
 
-  private final long BASE_FILE_SIZE = 2 * 1024 * 1024L;
-  private final int FILE_SIZE_RATE = 5;
-  private final int MAX_LEVEL_NUM = 10;
+  private final long BASE_FILE_SIZE = IoTDBDescriptor.getInstance().getConfig().getBaseFileSize();
+  private final int FILE_SIZE_RATE = IoTDBDescriptor.getInstance().getConfig().getFileSizeRate();
+  private final int MAX_LEVEL_NUM = IoTDBDescriptor.getInstance().getConfig().getMaxLevelNum();
 
   // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =

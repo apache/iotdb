@@ -294,6 +294,10 @@ public class IoTDBConfig {
   /** LEVEL_COMPACTION, NO_COMPACTION */
   private CompactionStrategy compactionStrategy = CompactionStrategy.TRADITIONAL_LEVEL_COMPACTION;
 
+  private long baseFileSize = 2 * 1024 * 1024L;
+  private int fileSizeRate = 5;
+  private int maxLevelNum = 10;
+
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
    * files or not.
@@ -1434,6 +1438,30 @@ public class IoTDBConfig {
 
   public void setCompactionStrategy(CompactionStrategy compactionStrategy) {
     this.compactionStrategy = compactionStrategy;
+  }
+
+  public long getBaseFileSize() {
+    return baseFileSize;
+  }
+
+  public void setBaseFileSize(long baseFileSize) {
+    this.baseFileSize = baseFileSize;
+  }
+
+  public int getFileSizeRate() {
+    return fileSizeRate;
+  }
+
+  public void setFileSizeRate(int fileSizeRate) {
+    this.fileSizeRate = fileSizeRate;
+  }
+
+  public int getMaxLevelNum() {
+    return maxLevelNum;
+  }
+
+  public void setMaxLevelNum(int maxLevelNum) {
+    this.maxLevelNum = maxLevelNum;
   }
 
   public boolean isEnableUnseqCompaction() {
