@@ -235,6 +235,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     Field deviceField = new Field(TSDataType.TEXT);
     deviceField.setBinaryV(new Binary(currentDevice.getFullPath()));
     rowRecord.addField(deviceField);
+    rowRecord.resetNullFlag();
 
     List<Field> measurementFields = originRowRecord.getFields();
     Map<String, Field> currentColumnMap = new HashMap<>();
