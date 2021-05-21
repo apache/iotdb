@@ -1358,7 +1358,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         parseAllTypeClause(typeClause, fillTypes);
         break;
       } else {
-        parseBasicTypeClause(typeClause, fillTypes);
+        parsePrimitiveTypeClause(typeClause, fillTypes);
       }
     }
     queryOp.setFill(true);
@@ -1518,14 +1518,14 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         parseAllTypeClause(typeClause, fillTypes);
         break;
       } else {
-        parseBasicTypeClause(typeClause, fillTypes);
+        parsePrimitiveTypeClause(typeClause, fillTypes);
       }
     }
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
   }
 
-  private void parseBasicTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+  private void parsePrimitiveTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType().getText());
     if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(
