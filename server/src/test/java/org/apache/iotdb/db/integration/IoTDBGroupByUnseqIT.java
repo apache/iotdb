@@ -34,6 +34,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * This test contains one seq file and one unseq file.
+ * In the seq file, it contains two pages: 1,2,3,4 in one page, 8,10,11,12 in another page.
+ * In the unseq file, it only contains one page: 7, 9.
+ * The unseq page is overlapped with the second seq page.
+ */
 public class IoTDBGroupByUnseqIT {
 
   private static String[] dataSet1 = new String[]{
