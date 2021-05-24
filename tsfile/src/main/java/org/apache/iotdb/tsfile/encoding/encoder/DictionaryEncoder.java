@@ -45,28 +45,28 @@ import java.util.List;
 public class DictionaryEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
 
-  private HashMap<Binary, Integer> valueToCode;
-  private List<Binary> map;
+  private HashMap<Binary, Integer> entryIndex;
+  private List<Binary> indexEntry;
   private IntRleEncoder valuesEncoder;
   private long mapSize;
 
   public DictionaryEncoder() {
     super(TSEncoding.DICTIONARY);
 
-    valueToCode = new HashMap<>();
-    map = new ArrayList<>();
+    entryIndex = new HashMap<>();
+    indexEntry = new ArrayList<>();
     valuesEncoder = new IntRleEncoder();
     mapSize = 0;
   }
 
   @Override
   public void encode(Binary value, ByteArrayOutputStream out) {
-    if (!valueToCode.containsKey(value)) {
-      valueToCode.put(value, valueToCode.size());
-      map.add(value);
+    if (!entryIndex.containsKey(value)) {
+      entryIndex.put(value, entryIndex.size());
+      indexEntry.add(value);
       mapSize += value.getLength();
     }
-    valuesEncoder.encode(valueToCode.get(value), out);
+    valuesEncoder.encode(entryIndex.get(value), out);
   }
 
   @Override
@@ -93,8 +93,8 @@ public class DictionaryEncoder extends Encoder {
   }
 
   private void writeMap(ByteArrayOutputStream out) throws IOException {
-    ReadWriteForEncodingUtils.writeVarInt(map.size(), out);
-    for (Binary value : map) {
+    ReadWriteForEncodingUtils.writeVarInt(indexEntry.size(), out);
+    for (Binary value : indexEntry) {
       ReadWriteForEncodingUtils.writeVarInt(value.getLength(), out);
       out.write(value.getValues());
     }
@@ -105,8 +105,8 @@ public class DictionaryEncoder extends Encoder {
   }
 
   private void reset() {
-    valueToCode.clear();
-    map.clear();
+    entryIndex.clear();
+    indexEntry.clear();
     valuesEncoder.reset();
     mapSize = 0;
   }

@@ -68,8 +68,8 @@ public class DictionaryDecoder extends Decoder {
   }
 
   private void initMap(ByteBuffer buffer) {
-    map = new ArrayList<>();
     int length = ReadWriteForEncodingUtils.readVarInt(buffer);
+    map = new ArrayList<>(length);
     for (int i = 0; i < length; i++) {
       int binaryLength = ReadWriteForEncodingUtils.readVarInt(buffer);
       byte[] buf = new byte[binaryLength];
