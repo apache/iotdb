@@ -99,8 +99,10 @@ public class WildcardsRemover {
 
   public List<List<Expression>> removeWildcardsFrom(List<Expression> expressions)
       throws LogicalOptimizeException {
+    // One by one, remove the wildcards from the input expressions. In most cases, an expression
+    // will produce multiple expressions after removing the wildcards. We use extendedExpressions to
+    // collect the produced expressions.
     List<List<Expression>> extendedExpressions = new ArrayList<>();
-
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
       originExpression.removeWildcards(
@@ -113,11 +115,15 @@ public class WildcardsRemover {
       extendedExpressions.add(actualExpressions);
     }
 
+    // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
+    // removing all wildcards. We use actualExpressions to collect them.
     List<List<Expression>> actualExpressions = new ArrayList<>();
     ConcatPathOptimizer.cartesianProduct(
         extendedExpressions, actualExpressions, 0, new ArrayList<>());
 
-    List<List<Expression>> splitExpressions = new ArrayList<>();
+    // Apply the soffset & slimit control to the actualExpressions and return the remaining
+    // expressions.
+    List<List<Expression>> remainingExpressions = new ArrayList<>();
     for (List<Expression> actualExpression : actualExpressions) {
       if (offset != 0) {
         --offset;
@@ -127,10 +133,10 @@ public class WildcardsRemover {
       } else {
         break;
       }
-      splitExpressions.add(actualExpression);
+      remainingExpressions.add(actualExpression);
     }
     consumed += actualExpressions.size();
-    return splitExpressions;
+    return remainingExpressions;
   }
 
   /** @return should break the loop or not */
