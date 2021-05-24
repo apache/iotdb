@@ -96,7 +96,7 @@ jobs:
           .\bootstrap.bat ; `
           .\b2.exe
       - name: Install OpenSSL
-        run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp ; `
+        run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp\openssl-1.1.1k.zip ; `
           cd D:\a\cpp\ ; `
           unzip openssl-1.1.1k.zip; `
           [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp\openssl-1.1\x64", "User") ; `
