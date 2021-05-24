@@ -206,5 +206,18 @@ public abstract class Cases {
     Assert.assertTrue(sessionDataSet.hasNext());
     RowRecord next = sessionDataSet.next();
     Assert.assertEquals(10, next.getFields().get(0).getLongV());
+
+    sessionDataSet = session.executeQueryStatement("select count(vm1) from root.template.device1");
+    Assert.assertTrue(sessionDataSet.hasNext());
+    next = sessionDataSet.next();
+    Assert.assertEquals(10, next.getFields().get(0).getLongV());
+
+    sessionDataSet =
+        session.executeQueryStatement("select count(vm1),count(vm2) from root.template.device1");
+    Assert.assertTrue(sessionDataSet.hasNext());
+    next = sessionDataSet.next();
+    Assert.assertEquals(2, next.getFields().size());
+    Assert.assertEquals(10, next.getFields().get(0).getLongV());
+    Assert.assertEquals(10, next.getFields().get(1).getLongV());
   }
 }
