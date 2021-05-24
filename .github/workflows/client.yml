@@ -76,6 +76,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: sfackler/actions/rustup@master
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
@@ -95,6 +96,7 @@ jobs:
           cd D:\a\cpp\boost_1_72_0 ; `
           .\bootstrap.bat ; `
           .\b2.exe
+      - run: vcpkg install openssl:x64-windows
       - name: Install OpenSSL
         run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp\openssl-1.1.1k.zip ; `
           cd D:\a\cpp\ ; `
