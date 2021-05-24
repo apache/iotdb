@@ -595,7 +595,7 @@ public class Session {
    *
    * @param suffixPath the timeSeries suffix. eg. root.ln.wf01.wt01
    * @param prefixPath the timeSeries prefix. eg. status
-   * @param LastTime get the last data,whose timestamp greater than or equal LastTime eg.
+   * @param LastTime get the last data, whose timestamp greater than or equal LastTime eg.
    *     1621326244168
    */
   public SessionDataSet executeLastDataQuery(
