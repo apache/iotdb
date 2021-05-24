@@ -194,4 +194,8 @@ public abstract class QueryDataSet {
   public void setWithoutAllNull(boolean withoutAllNull) {
     this.withoutAllNull = withoutAllNull;
   }
+
+  public void decreaseAlreadyReturnedRowNum() {
+    alreadyReturnedRowNum--;
+  }
 }

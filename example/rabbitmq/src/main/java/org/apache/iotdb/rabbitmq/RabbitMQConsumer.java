@@ -54,7 +54,7 @@ public class RabbitMQConsumer {
             Constant.IOTDB_CONNECTION_HOST,
             Constant.IOTDB_CONNECTION_PORT,
             Constant.IOTDB_CONNECTION_USER,
-            Constant.IOTDB_CONNECTION_PASSWORD);
+            Constant.IOTDB_CONNECTION_PWD);
     session.open();
     session.setStorageGroup(Constant.STORAGE_GROUP);
     for (String[] timeseries : Constant.TIMESERIESLIST) {

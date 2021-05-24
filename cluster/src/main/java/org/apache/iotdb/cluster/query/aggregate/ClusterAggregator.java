@@ -133,7 +133,7 @@ public class ClusterAggregator {
    * @param timeFilter nullable
    */
   private List<AggregateResult> getAggregateResult(
-      Path path,
+      PartialPath path,
       Set<String> deviceMeasurements,
       List<String> aggregations,
       TSDataType dataType,
@@ -165,13 +165,7 @@ public class ClusterAggregator {
             partitionGroup.getHeader());
         List<AggregateResult> aggrResult =
             localQueryExecutor.getAggrResult(
-                aggregations,
-                deviceMeasurements,
-                dataType,
-                path.getFullPath(),
-                timeFilter,
-                context,
-                ascending);
+                aggregations, deviceMeasurements, dataType, path, timeFilter, context, ascending);
         logger.debug(
             "{}: queried aggregation {} of {} in {} locally are {}",
             metaGroupMember.getName(),
