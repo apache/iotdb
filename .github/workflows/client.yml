@@ -96,10 +96,10 @@ jobs:
           .\bootstrap.bat ; `
           .\b2.exe
       - name: Install OpenSSL
-        run: Invoke-WebRequest https://slproweb.com/download/Win64OpenSSL-1_1_1k.exe -OutFile D:\a\cpp\openssl.exe ; `
-          cd D:\a\cpp; `
-          .\openssl.exe; `
-          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp", "User") ; `
+        run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp ; `
+          cd D:\a\cpp\ ; `
+          unzip openssl-1.1.1k.zip; `
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";D:\a\cpp\openssl-1.1\x64", "User") ; `
       - name: Add Flex and Bison Path and OpenSSL
         shell: bash
         run: cd /d/a/cpp && unzip win_flex_bison.zip && mv win_flex.exe flex.exe && mv win_bison.exe bison.exe && echo 'export PATH=/d/a/cpp:$PATH' >> ~/.bash_profile && source ~/.bash_profile
