@@ -307,8 +307,7 @@ public abstract class TSEncodingBuilder {
         case TEXT:
           return new DictionaryEncoder();
         default:
-          throw new UnSupportedDataTypeException(
-              "DICTIONARY doesn't support data type: " + type);
+          throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
       }
     }
 
