@@ -26,8 +26,8 @@ public class CsvLineSplitTest {
   @Test
   public void testSplit() {
     Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\"\\\"\""));
+        new String[] {"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\\\""));
     Assert.assertArrayEquals(
-        new String[] {"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\"\\'\""));
+        new String[] {"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\\'"));
   }
 }
