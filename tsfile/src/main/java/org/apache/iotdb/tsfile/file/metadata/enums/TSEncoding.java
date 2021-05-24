@@ -20,15 +20,14 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
   PLAIN((byte) 0),
-  PLAIN_DICTIONARY((byte) 1),
+  DICTIONARY((byte) 1),
   RLE((byte) 2),
   DIFF((byte) 3),
   TS_2DIFF((byte) 4),
   BITMAP((byte) 5),
   GORILLA_V1((byte) 6),
   REGULAR((byte) 7),
-  GORILLA((byte) 8),
-  DICTIONARY((byte) 9);
+  GORILLA((byte) 8);
 
   private final byte type;
 
@@ -51,7 +50,7 @@ public enum TSEncoding {
       case 0:
         return TSEncoding.PLAIN;
       case 1:
-        return TSEncoding.PLAIN_DICTIONARY;
+        return TSEncoding.DICTIONARY;
       case 2:
         return TSEncoding.RLE;
       case 3:
@@ -66,8 +65,6 @@ public enum TSEncoding {
         return TSEncoding.REGULAR;
       case 8:
         return TSEncoding.GORILLA;
-      case 9:
-        return TSEncoding.DICTIONARY;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }
