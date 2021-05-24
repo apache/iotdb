@@ -183,12 +183,12 @@ public class IoTDBPreparedStatementTest {
 
   @SuppressWarnings("resource")
   @Test
-  public void oneStringArgument() throws Exception {
+  public void oneStringArgument1() throws Exception {
     String sql =
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
     IoTDBPreparedStatement ps =
         new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
-    ps.setString(1, "abcde");
+    ps.setString(1, "'abcde'");
     ps.execute();
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
@@ -196,6 +196,38 @@ public class IoTDBPreparedStatementTest {
     assertEquals(
         "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 'abcde' and time > 2017-11-1 0:13:00",
         argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void oneStringArgument2() throws Exception {
+    String sql =
+        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < ? and time > 2017-11-1 0:13:00";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "\"abcde\"");
+    ps.execute();
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatement(argument.capture());
+    assertEquals(
+        "SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < \"abcde\" and time > 2017-11-1 0:13:00",
+        argument.getValue().getStatement());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  public void oneStringArgument3() throws Exception {
+    String sql = "SELECT status, ? FROM root.ln.wf01.wt01";
+    IoTDBPreparedStatement ps =
+        new IoTDBPreparedStatement(connection, client, sessionId, sql, zoneId);
+    ps.setString(1, "temperature");
+    ps.execute();
+    ArgumentCaptor<TSExecuteStatementReq> argument =
+        ArgumentCaptor.forClass(TSExecuteStatementReq.class);
+    verify(client).executeStatement(argument.capture());
+    assertEquals(
+        "SELECT status, temperature FROM root.ln.wf01.wt01", argument.getValue().getStatement());
   }
 
   @SuppressWarnings("resource")
@@ -280,7 +312,7 @@ public class IoTDBPreparedStatementTest {
     ps.setLong(4, 123234345);
     ps.setFloat(5, 123.423f);
     ps.setDouble(6, -1323.0);
-    ps.setString(7, "abc");
+    ps.setString(7, "'abc'");
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
@@ -304,14 +336,14 @@ public class IoTDBPreparedStatementTest {
     ps.setLong(4, 123234345);
     ps.setFloat(5, 123.423f);
     ps.setDouble(6, -1323.0);
-    ps.setString(7, "abc");
+    ps.setString(7, "\"abc\"");
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatement(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,'abc')",
+        "INSERT INTO root.ln.wf01.wt01(timestamp,a,b,c,d,e,f) VALUES(2017-11-01T00:13:00,false,123,123234345,123.423,-1323.0,\"abc\")",
         argument.getValue().getStatement());
   }
 }
