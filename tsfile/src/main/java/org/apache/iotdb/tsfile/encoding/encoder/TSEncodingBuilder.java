@@ -308,7 +308,7 @@ public abstract class TSEncodingBuilder {
           return new DictionaryEncoder();
         default:
           throw new UnSupportedDataTypeException(
-              "PLAIN_DICTIONARY doesn't support data type: " + type);
+              "DICTIONARY doesn't support data type: " + type);
       }
     }
 
