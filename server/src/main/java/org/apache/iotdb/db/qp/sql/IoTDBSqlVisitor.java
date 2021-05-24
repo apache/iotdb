@@ -1367,8 +1367,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private void parseAllTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     IFill fill;
+    long preRange;
     if (ctx.previousUntilLastClause() != null) {
-      long preRange;
       if (ctx.previousUntilLastClause().DURATION() != null) {
         preRange =
             DatetimeUtils.convertDurationStrToLong(
@@ -1378,7 +1378,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       }
       fill = new PreviousFill(preRange, true);
     } else {
-      long preRange;
       if (ctx.previousClause().DURATION() != null) {
         preRange =
             DatetimeUtils.convertDurationStrToLong(ctx.previousClause().DURATION().getText());

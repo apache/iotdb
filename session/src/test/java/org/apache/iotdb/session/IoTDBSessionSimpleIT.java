@@ -589,22 +589,15 @@ public class IoTDBSessionSimpleIT {
     measurements.add("s4");
     measurements.add("s5");
     measurements.add("s6");
-    List<Object> startValues = new ArrayList<>();
-    startValues.add(false);
-    startValues.add(1);
-    startValues.add((long) 1);
-    startValues.add((float) 1.0);
-    startValues.add(1.0);
-    startValues.add("1");
-    session.insertRecord("root.sg.d", 1, measurements, tsDataTypes, startValues);
+    List<Object> values = new ArrayList<>();
+    values.add(false);
+    values.add(1);
+    values.add((long) 1);
+    values.add((float) 1.0);
+    values.add(1.0);
+    values.add("1");
+    session.insertRecord("root.sg.d", 1, measurements, tsDataTypes, values);
 
-    List<Object> endValues = new ArrayList<>();
-    endValues.add(true);
-    endValues.add(100);
-    endValues.add((long) 100);
-    endValues.add((float) 100.0);
-    endValues.add(100.0);
-    endValues.add("100");
     SessionDataSet dataSet =
         session.executeQueryStatement(
             "select * from root.sg.d where time=70 fill(all[previous, 1m])");
