@@ -101,19 +101,16 @@ public class WildcardsRemover {
       throws LogicalOptimizeException {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
 
-    boolean atLeastOneSeriesNotExisted = false;
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
       originExpression.removeWildcards(
           new WildcardsRemover(concatPathOptimizer), actualExpressions);
       if (actualExpressions.isEmpty()) {
-        atLeastOneSeriesNotExisted = true;
-        break;
+        // Let's ignore the eval of the function which has at least one non-existence series as
+        // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
+        return Collections.emptyList();
       }
       extendedExpressions.add(actualExpressions);
-    }
-    if (atLeastOneSeriesNotExisted) {
-      return Collections.emptyList();
     }
 
     List<List<Expression>> actualExpressions = new ArrayList<>();
