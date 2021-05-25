@@ -29,7 +29,6 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Code Coverage (Coveralls)
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -39,7 +38,6 @@ jobs:
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
           -Pcode-coverage
       - name: SonarCloud Report
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}

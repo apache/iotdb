@@ -37,6 +37,6 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: IT/UT Test
+      #- name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+      #  run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
