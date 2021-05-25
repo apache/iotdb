@@ -34,7 +34,7 @@ import java.util.List;
 public class DictionaryDecoder extends Decoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryDecoder.class);
 
-  private List<Binary> map;
+  private List<Binary> entryIndex;
   private IntRleDecoder valueDecoder;
 
   public DictionaryDecoder() {
@@ -45,7 +45,7 @@ public class DictionaryDecoder extends Decoder {
 
   @Override
   public boolean hasNext(ByteBuffer buffer) {
-    if (map == null) {
+    if (entryIndex == null) {
       initMap(buffer);
     }
 
@@ -60,27 +60,27 @@ public class DictionaryDecoder extends Decoder {
 
   @Override
   public Binary readBinary(ByteBuffer buffer) {
-    if (map == null) {
+    if (entryIndex == null) {
       initMap(buffer);
     }
     int code = valueDecoder.readInt(buffer);
-    return map.get(code);
+    return entryIndex.get(code);
   }
 
   private void initMap(ByteBuffer buffer) {
     int length = ReadWriteForEncodingUtils.readVarInt(buffer);
-    map = new ArrayList<>(length);
+    entryIndex = new ArrayList<>(length);
     for (int i = 0; i < length; i++) {
       int binaryLength = ReadWriteForEncodingUtils.readVarInt(buffer);
       byte[] buf = new byte[binaryLength];
       buffer.get(buf, 0, binaryLength);
-      map.add(new Binary(buf));
+      entryIndex.add(new Binary(buf));
     }
   }
 
   @Override
   public void reset() {
-    map = null;
+    entryIndex = null;
     valueDecoder.reset();
   }
 }
