@@ -1,55 +1,42 @@
 # This workflow will build a Java project with Maven
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: Main Mac and Linux
+name: Run Tests for Sonar-Coveralls
 
 on:
   push:
     branches:
       - master
-      - 'rel/*'
-      - Vector
+      - "rel/*"
     paths-ignore:
-      - 'docs/**'
+      - "docs/**"
   pull_request:
     branches:
       - master
-      - 'rel/*'
+      - "rel/*"
       - cluster_new
-      - Vector
     paths-ignore:
-      - 'docs/**'
-  # allow manually run the action:
-  workflow_dispatch:
+      - "docs/**"
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
 
 jobs:
-  unix:
-    strategy:
-      fail-fast: false
-      max-parallel: 20
-      matrix:
-        java: [ 8, 11, 16 ]
-        os: [ ubuntu-latest, macos-latest ]
-    runs-on: ${{ matrix.os}}
+  ubuntu:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK 11
         uses: actions/setup-java@v1
         with:
-          java-version: ${{ matrix.java }}
+          java-version: 11
       - name: Cache Maven packages
         uses: actions/cache@v2
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Check Apache Rat
-        run: mvn -B apache-rat:check -P site -P code-coverage
-      - name: IT/UT Test
-        shell: bash
+      #- name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run:  mvn -B clean post-integration-test -Dtest.port.closed=true
+      #  run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
