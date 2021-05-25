@@ -87,6 +87,7 @@ jobs:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - run: vcpkg install openssl:x64-windows
       - name: Install Boost and Win_Flex_Bison
         run: mkdir D:\a\cpp ; `
           Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
@@ -96,7 +97,6 @@ jobs:
           cd D:\a\cpp\boost_1_72_0 ; `
           .\bootstrap.bat ; `
           .\b2.exe
-      - run: vcpkg install openssl:x64-windows
       - name: Install OpenSSL
         run:  Invoke-WebRequest https://mirror.firedaemon.com/OpenSSL/openssl-1.1.1k.zip -OutFile D:\a\cpp\openssl-1.1.1k.zip ; `
           cd D:\a\cpp\ ; `
