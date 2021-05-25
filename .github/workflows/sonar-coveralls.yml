@@ -10,11 +10,7 @@ on:
       - "rel/*"
     paths-ignore:
       - "docs/**"
-  pull_request:
-    branches:
-      - master
-      - "rel/*"
-      - cluster_new
+  pull_request_target:
     paths-ignore:
       - "docs/**"
   # allow manually run the action:
