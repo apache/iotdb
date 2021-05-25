@@ -10,7 +10,7 @@ on:
       - "rel/*"
     paths-ignore:
       - "docs/**"
-  pull_request:
+  pull_request_target:
     branches:
       - master
       - "rel/*"
@@ -43,7 +43,6 @@ jobs:
         # we do not compile client-cpp for saving time, it is tested in client.yml
         run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
       - name: Code Coverage (Coveralls)
-        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
         run: |
           mvn -B post-integration-test -Pcode-coverage -pl code-coverage
           mvn -B coveralls:report \
@@ -53,7 +52,6 @@ jobs:
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
           -Pcode-coverage
       - name: SonarCloud Report
-        if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
