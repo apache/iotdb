@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sql;
 
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.session.Session;
 
 import org.junit.After;
 import org.junit.Before;
@@ -81,6 +82,8 @@ public abstract class ClusterIT extends Cases {
               "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
       readStatements[i] = readConnections[i].createStatement();
     }
+    session = new Session(getWriteRpcIp(), getWriteRpcPort());
+    session.open();
   }
 
   @After

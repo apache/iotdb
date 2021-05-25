@@ -592,7 +592,17 @@ public class LocalQueryExecutor {
 
     List<String> aggregations = request.getAggregations();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
-    String path = request.getPath();
+    PartialPath path = null;
+    try {
+      path = new PartialPath(request.getPath());
+    } catch (IllegalPathException e) {
+      logger.error(
+          "{}: aggregation has error path: {}, queryId: {}",
+          name,
+          request.getPath(),
+          request.getQueryId());
+      throw new QueryProcessException(e);
+    }
     Filter timeFilter = null;
     if (request.isSetTimeFilterBytes()) {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
@@ -643,7 +653,7 @@ public class LocalQueryExecutor {
       List<String> aggregations,
       Set<String> allSensors,
       TSDataType dataType,
-      String path,
+      PartialPath path,
       Filter timeFilter,
       QueryContext context,
       boolean ascending)
@@ -662,30 +672,26 @@ public class LocalQueryExecutor {
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getNodeSlots(dataGroupMember.getHeader());
-    try {
-      if (ascending) {
-        AggregationExecutor.aggregateOneSeries(
-            new PartialPath(path),
-            allSensors,
-            context,
-            timeFilter,
-            dataType,
-            results,
-            null,
-            new SlotTsFileFilter(nodeSlots));
-      } else {
-        AggregationExecutor.aggregateOneSeries(
-            new PartialPath(path),
-            allSensors,
-            context,
-            timeFilter,
-            dataType,
-            null,
-            results,
-            new SlotTsFileFilter(nodeSlots));
-      }
-    } catch (IllegalPathException e) {
-      // ignore
+    if (ascending) {
+      AggregationExecutor.aggregateOneSeries(
+          path,
+          allSensors,
+          context,
+          timeFilter,
+          dataType,
+          results,
+          null,
+          new SlotTsFileFilter(nodeSlots));
+    } else {
+      AggregationExecutor.aggregateOneSeries(
+          path,
+          allSensors,
+          context,
+          timeFilter,
+          dataType,
+          null,
+          results,
+          new SlotTsFileFilter(nodeSlots));
     }
     return results;
   }
