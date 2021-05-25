@@ -18,8 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+
 /** this class extends {@code RootOperator} and process insert statement. */
-public class InsertOperator extends SFWOperator {
+public class InsertOperator extends Operator {
+
+  private PartialPath device;
 
   private long[] times;
   private String[] measurementList;
@@ -28,6 +33,14 @@ public class InsertOperator extends SFWOperator {
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.INSERT;
+  }
+
+  public PartialPath getDevice() {
+    return device;
+  }
+
+  public void setDevice(PartialPath device) {
+    this.device = device;
   }
 
   public String[] getMeasurementList() {

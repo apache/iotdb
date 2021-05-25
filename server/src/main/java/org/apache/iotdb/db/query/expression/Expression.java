@@ -16,16 +16,35 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy.optimizer;
 
+package org.apache.iotdb.db.query.expression;
+
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/** provide a context, transform it for optimization. */
-@FunctionalInterface
-public interface ILogicalOptimizer {
+import java.util.List;
+import java.util.Set;
 
-  Operator transform(Operator operator, int fetchSize)
-      throws LogicalOptimizeException, PathNumOverLimitException;
+public interface Expression {
+
+  default boolean isAggregationFunctionExpression() {
+    return false;
+  }
+
+  default boolean isTimeSeriesGeneratingFunctionExpression() {
+    return false;
+  }
+
+  // TODO: implement this method
+  TSDataType dataType() throws MetadataException;
+
+  void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
+
+  void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
+      throws LogicalOptimizeException;
+
+  void collectPaths(Set<PartialPath> pathSet);
 }

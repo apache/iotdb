@@ -17,21 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.db.query.expression.binary;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.db.query.expression.Expression;
 
-import java.util.List;
+public class AdditionExpression extends BinaryExpression {
 
-public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
+  public AdditionExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
+  }
 
   @Override
-  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
-      throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
+  protected String operator() {
+    return "+";
   }
 }

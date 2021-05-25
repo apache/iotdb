@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.strategy.optimizer;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
-import org.apache.iotdb.db.qp.logical.Operator;
+package org.apache.iotdb.db.query.expression.binary;
 
-/** provide a context, transform it for optimization. */
-@FunctionalInterface
-public interface ILogicalOptimizer {
+import org.apache.iotdb.db.query.expression.Expression;
 
-  Operator transform(Operator operator, int fetchSize)
-      throws LogicalOptimizeException, PathNumOverLimitException;
+public class DivisionExpression extends BinaryExpression {
+
+  public DivisionExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
+  }
+
+  @Override
+  protected String operator() {
+    return "/";
+  }
 }
