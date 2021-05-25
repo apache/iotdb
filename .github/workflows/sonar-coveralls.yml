@@ -4,9 +4,6 @@
 name: Sonar-Coveralls(Ignore this on folk Repos)
 
 on:
-  push:
-    paths-ignore:
-      - "docs/**"
   pull_request_target:
     paths-ignore:
       - "docs/**"
