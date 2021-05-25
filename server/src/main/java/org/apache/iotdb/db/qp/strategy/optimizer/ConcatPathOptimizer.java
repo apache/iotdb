@@ -29,13 +29,11 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,14 +62,12 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     concatSelect(queryOperator);
     removeWildcardsInSelectPaths(queryOperator, fetchSize);
-    concatFilter(queryOperator);
+    concatFilterAndRemoveWildcards(queryOperator);
     return queryOperator;
   }
 
-  private static boolean optimizable(QueryOperator queryOperator) {
-    FromComponent from = queryOperator.getFromComponent();
-    if (from == null || from.getPrefixPaths().isEmpty()) {
-      LOGGER.warn(WARNING_NO_PREFIX_PATHS);
+  private boolean optimizable(QueryOperator queryOperator) {
+    if (queryOperator.isAlignByDevice()) {
       return false;
     }
 
@@ -81,14 +77,16 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return false;
     }
 
+    FromComponent from = queryOperator.getFromComponent();
+    if (from == null || from.getPrefixPaths().isEmpty()) {
+      LOGGER.warn(WARNING_NO_PREFIX_PATHS);
+      return false;
+    }
+
     return true;
   }
 
   private void concatSelect(QueryOperator queryOperator) throws LogicalOptimizeException {
-    if (queryOperator.isAlignByDevice() && !(queryOperator instanceof LastQueryOperator)) {
-      return;
-    }
-
     List<PartialPath> prefixPaths = queryOperator.getFromComponent().getPrefixPaths();
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn suffixColumn : queryOperator.getSelectComponent().getResultColumns()) {
@@ -99,12 +97,11 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
       throws LogicalOptimizeException, PathNumOverLimitException {
-    if (queryOperator.isAlignByDevice() && !(queryOperator instanceof LastQueryOperator)
-        || queryOperator.getIndexType() != null) {
+    if (queryOperator.getIndexType() != null) {
       return;
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(this, queryOperator, fetchSize);
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator, fetchSize);
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
@@ -116,29 +113,27 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
 
-  private void concatFilter(QueryOperator queryOperator) throws LogicalOptimizeException {
+  private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
+      throws LogicalOptimizeException {
     FilterOperator filter = queryOperator.getFilterOperator();
     if (filter == null) {
       return;
     }
 
     Set<PartialPath> filterPaths = new HashSet<>();
-    if (!queryOperator.isAlignByDevice() || queryOperator instanceof LastQueryOperator) {
-      // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without
-      // prefix first
-      queryOperator.setFilterOperator(
-          concatFilter(queryOperator.getFromComponent().getPrefixPaths(), filter, filterPaths));
-    }
+    queryOperator.setFilterOperator(
+        concatFilterAndRemoveWildcards(
+            queryOperator.getFromComponent().getPrefixPaths(), filter, filterPaths));
     queryOperator.getFilterOperator().setPathSet(filterPaths);
   }
 
-  private FilterOperator concatFilter(
+  private FilterOperator concatFilterAndRemoveWildcards(
       List<PartialPath> fromPaths, FilterOperator operator, Set<PartialPath> filterPaths)
       throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
-        newFilterList.add(concatFilter(fromPaths, child, filterPaths));
+        newFilterList.add(concatFilterAndRemoveWildcards(fromPaths, child, filterPaths));
       }
       operator.setChildren(newFilterList);
       return operator;
@@ -193,33 +188,23 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return filterBinaryTree;
   }
 
-  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> paths)
+  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)
       throws LogicalOptimizeException {
-    List<PartialPath> retPaths = new ArrayList<>();
-    HashSet<PartialPath> pathSet = new HashSet<>();
+    HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
-      for (PartialPath path : paths) {
-        List<PartialPath> all = removeWildcard(path, 0, 0).left;
-        if (all.size() == 0) {
+      for (PartialPath originalPath : originalPaths) {
+        List<PartialPath> all =
+            IoTDB.metaManager.getAllTimeseriesPathWithAlias(originalPath, 0, 0).left;
+        if (all.isEmpty()) {
           throw new LogicalOptimizeException(
-              String.format("Unknown time series %s in `where clause`", path));
+              String.format("Unknown time series %s in `where clause`", originalPath));
         }
-        for (PartialPath subPath : all) {
-          if (!pathSet.contains(subPath)) {
-            pathSet.add(subPath);
-            retPaths.add(subPath);
-          }
-        }
+        actualPaths.addAll(all);
       }
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
-    return retPaths;
-  }
-
-  public Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
-      throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
+    return new ArrayList<>(actualPaths);
   }
 
   public static <T> void cartesianProduct(

@@ -29,7 +29,7 @@ public class Constant {
   public static final String IOTDB_CONNECTION_HOST = "localhost";
   public static final int IOTDB_CONNECTION_PORT = 6667;
   public static final String IOTDB_CONNECTION_USER = "root";
-  public static final String IOTDB_CONNECTION_PASSWORD = "root";
+  public static final String IOTDB_CONNECTION_PWD = "root";
   public static final String STORAGE_GROUP = "root.vehicle";
   public static final String PLAIN = "PLAIN";
   public static final String SNAPPY = "SNAPPY";

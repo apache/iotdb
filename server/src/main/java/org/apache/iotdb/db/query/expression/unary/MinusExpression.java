@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class MinusExpression extends Expression {
+public class MinusExpression implements Expression {
 
   protected Expression expression;
 

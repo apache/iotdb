@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
@@ -60,10 +59,5 @@ public class ClusterPlanner extends Planner {
     // from logical operator to physical plan
     return new ClusterPhysicalGenerator()
         .transformToPhysicalPlan(operator, rawDataQueryReq.fetchSize);
-  }
-
-  @Override
-  protected ConcatPathOptimizer getConcatPathOptimizer() {
-    return new ClusterConcatPathOptimizer();
   }
 }

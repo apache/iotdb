@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -37,19 +38,14 @@ import java.util.List;
 
 public class WildcardsRemover {
 
-  private final ConcatPathOptimizer concatPathOptimizer;
-
   private final int maxDeduplicatedPathNum;
   private int soffset = 0;
 
-  private int offset = 0;
-  private int limit = Integer.MAX_VALUE;
+  private int currentOffset = 0;
+  private int currentLimit = Integer.MAX_VALUE;
   private int consumed = 0;
 
-  public WildcardsRemover(
-      ConcatPathOptimizer concatPathOptimizer, QueryOperator queryOperator, int fetchSize) {
-    this.concatPathOptimizer = concatPathOptimizer;
-
+  public WildcardsRemover(QueryOperator queryOperator, int fetchSize) {
     // Dataset of last query actually has only three columns, so we shouldn't limit the path num
     // while constructing logical plan
     // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
@@ -60,32 +56,32 @@ public class WildcardsRemover {
             : QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
     if (queryOperator.getSpecialClauseComponent() != null) {
       soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
-      offset = soffset;
+      currentOffset = soffset;
 
       final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
-      limit = slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
+      currentLimit =
+          slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
     }
   }
 
-  public WildcardsRemover(ConcatPathOptimizer concatPathOptimizer) {
-    this.concatPathOptimizer = concatPathOptimizer;
+  public WildcardsRemover() {
     maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
   }
 
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
       Pair<List<PartialPath>, Integer> pair =
-          concatPathOptimizer.removeWildcard(path, limit, offset);
+          IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, currentLimit, currentOffset);
 
       consumed += pair.right;
-      if (offset != 0) {
-        int delta = offset - pair.right;
-        offset = Math.max(delta, 0);
+      if (currentOffset != 0) {
+        int delta = currentOffset - pair.right;
+        currentOffset = Math.max(delta, 0);
         if (delta < 0) {
-          limit += delta;
+          currentLimit += delta;
         }
       } else {
-        limit -= pair.right;
+        currentLimit -= pair.right;
       }
 
       return pair.left;
@@ -96,47 +92,49 @@ public class WildcardsRemover {
 
   public List<List<Expression>> removeWildcardsFrom(List<Expression> expressions)
       throws LogicalOptimizeException {
+    // One by one, remove the wildcards from the input expressions. In most cases, an expression
+    // will produce multiple expressions after removing the wildcards. We use extendedExpressions to
+    // collect the produced expressions.
     List<List<Expression>> extendedExpressions = new ArrayList<>();
-
-    boolean atLeastOneSeriesNotExisted = false;
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(
-          new WildcardsRemover(concatPathOptimizer), actualExpressions);
+      originExpression.removeWildcards(new WildcardsRemover(), actualExpressions);
       if (actualExpressions.isEmpty()) {
-        atLeastOneSeriesNotExisted = true;
-        break;
+        // Let's ignore the eval of the function which has at least one non-existence series as
+        // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101
+        return Collections.emptyList();
       }
       extendedExpressions.add(actualExpressions);
     }
-    if (atLeastOneSeriesNotExisted) {
-      return Collections.emptyList();
-    }
 
+    // Calculate the Cartesian product of extendedExpressions to get the actual expressions after
+    // removing all wildcards. We use actualExpressions to collect them.
     List<List<Expression>> actualExpressions = new ArrayList<>();
     ConcatPathOptimizer.cartesianProduct(
         extendedExpressions, actualExpressions, 0, new ArrayList<>());
 
-    List<List<Expression>> splitExpressions = new ArrayList<>();
+    // Apply the soffset & slimit control to the actualExpressions and return the remaining
+    // expressions.
+    List<List<Expression>> remainingExpressions = new ArrayList<>();
     for (List<Expression> actualExpression : actualExpressions) {
-      if (offset != 0) {
-        --offset;
+      if (currentOffset != 0) {
+        --currentOffset;
         continue;
-      } else if (limit != 0) {
-        --limit;
+      } else if (currentLimit != 0) {
+        --currentLimit;
       } else {
         break;
       }
-      splitExpressions.add(actualExpression);
+      remainingExpressions.add(actualExpression);
     }
     consumed += actualExpressions.size();
-    return splitExpressions;
+    return remainingExpressions;
   }
 
   /** @return should break the loop or not */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
-    if (limit == 0) {
+    if (currentLimit == 0) {
       if (maxDeduplicatedPathNum < resultColumns.size()) {
         throw new PathNumOverLimitException(maxDeduplicatedPathNum);
       }

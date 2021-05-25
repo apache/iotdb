@@ -98,7 +98,7 @@ public class Planner {
    */
   private QueryOperator optimizeQueryOperator(QueryOperator root, int fetchSize)
       throws LogicalOperatorException, PathNumOverLimitException {
-    root = (QueryOperator) getConcatPathOptimizer().transform(root, fetchSize);
+    root = (QueryOperator) new ConcatPathOptimizer().transform(root, fetchSize);
 
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
@@ -110,10 +110,6 @@ public class Planner {
     root.setFilterOperator(filter);
 
     return root;
-  }
-
-  protected ConcatPathOptimizer getConcatPathOptimizer() {
-    return new ConcatPathOptimizer();
   }
 
   @TestOnly

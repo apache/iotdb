@@ -110,6 +110,9 @@ public class IndexLogicalPlanTest {
         "Glu",
         queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
     Assert.assertEquals(
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
         "root.Ery.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.RTREE_PAA, queryOperator.getIndexType());
     Assert.assertEquals(2, queryOperator.getProps().size());
@@ -130,6 +133,9 @@ public class IndexLogicalPlanTest {
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
+    Assert.assertEquals(
+        "Speed",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
     Assert.assertEquals(
         "Speed",
         queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());

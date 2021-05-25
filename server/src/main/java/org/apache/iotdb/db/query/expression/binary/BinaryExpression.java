@@ -29,15 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public abstract class BinaryExpression extends Expression {
+public abstract class BinaryExpression implements Expression {
+
+  protected final Expression leftExpression;
+  protected final Expression rightExpression;
 
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
     this.rightExpression = rightExpression;
   }
-
-  protected final Expression leftExpression;
-  protected final Expression rightExpression;
 
   /**
    * The result data type of all arithmetic operations will be DOUBLE.
