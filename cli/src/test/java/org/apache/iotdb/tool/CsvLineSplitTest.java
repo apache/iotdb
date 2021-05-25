@@ -29,5 +29,12 @@ public class CsvLineSplitTest {
         new String[] {"", "a", "b", "c", "\\\""}, ImportCsv.splitCsvLine(",a,b,c,\\\""));
     Assert.assertArrayEquals(
         new String[] {"", "a", "b", "\\'"}, ImportCsv.splitCsvLine(",a,b,\\'"));
+    Assert.assertArrayEquals(
+        new String[] {"", "a\",\"a", "\"a,,\"", "'"}, ImportCsv.splitCsvLine(",a\",\"a,\"a,,\",'"));
+    Assert.assertArrayEquals(
+        new String[] {"True", "a=\",\"a''"}, ImportCsv.splitCsvLine("True,a=\",\"a''"));
+    Assert.assertArrayEquals(
+        new String[] {"True", "\"a=,,,a=z//z'a\""},
+        ImportCsv.splitCsvLine("True,\"a=,,,a=z//z'a\""));
   }
 }
