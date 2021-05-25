@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -36,8 +37,6 @@ import java.util.List;
 
 /** Removes wildcards (applying memory control and slimit/soffset control) */
 public class WildcardsRemover {
-
-  private final ConcatPathOptimizer concatPathOptimizer;
 
   private final int maxDeduplicatedPathNum;
   private final int soffset;
@@ -48,10 +47,7 @@ public class WildcardsRemover {
   /** Records the path number that the MManager totally returned. */
   private int consumed;
 
-  public WildcardsRemover(
-      ConcatPathOptimizer concatPathOptimizer, QueryOperator queryOperator, int fetchSize) {
-    this.concatPathOptimizer = concatPathOptimizer;
-
+  public WildcardsRemover(QueryOperator queryOperator, int fetchSize) {
     // Dataset of last query actually has only three columns, so we shouldn't limit the path num
     // while constructing logical plan
     // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
@@ -70,9 +66,7 @@ public class WildcardsRemover {
     consumed = 0;
   }
 
-  public WildcardsRemover(ConcatPathOptimizer concatPathOptimizer) {
-    this.concatPathOptimizer = concatPathOptimizer;
-
+  public WildcardsRemover() {
     maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
     soffset = 0;
     currentLimit = maxDeduplicatedPathNum + 1;
@@ -82,7 +76,7 @@ public class WildcardsRemover {
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
       Pair<List<PartialPath>, Integer> pair =
-          concatPathOptimizer.removeWildcard(path, currentLimit, currentOffset);
+          IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, currentLimit, currentOffset);
 
       consumed += pair.right;
       if (currentOffset != 0) {
@@ -109,8 +103,7 @@ public class WildcardsRemover {
     List<List<Expression>> extendedExpressions = new ArrayList<>();
     for (Expression originExpression : expressions) {
       List<Expression> actualExpressions = new ArrayList<>();
-      originExpression.removeWildcards(
-          new WildcardsRemover(concatPathOptimizer), actualExpressions);
+      originExpression.removeWildcards(new WildcardsRemover(), actualExpressions);
       if (actualExpressions.isEmpty()) {
         // Let's ignore the eval of the function which has at least one non-existence series as
         // input. See IOTDB-1212: https://github.com/apache/iotdb/pull/3101

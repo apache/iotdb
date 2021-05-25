@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,7 +101,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return;
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(this, queryOperator, fetchSize);
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator, fetchSize);
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : queryOperator.getSelectOperator().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
@@ -189,33 +188,23 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return filterBinaryTree;
   }
 
-  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> paths)
+  private List<PartialPath> removeWildcardsInConcatPaths(List<PartialPath> originalPaths)
       throws LogicalOptimizeException {
-    List<PartialPath> retPaths = new ArrayList<>();
-    HashSet<PartialPath> pathSet = new HashSet<>();
+    HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
-      for (PartialPath path : paths) {
-        List<PartialPath> all = removeWildcard(path, 0, 0).left;
+      for (PartialPath originalPath : originalPaths) {
+        List<PartialPath> all =
+            IoTDB.metaManager.getAllTimeseriesPathWithAlias(originalPath, 0, 0).left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
-              String.format("Unknown time series %s in `where clause`", path));
+              String.format("Unknown time series %s in `where clause`", originalPath));
         }
-        for (PartialPath subPath : all) {
-          if (!pathSet.contains(subPath)) {
-            pathSet.add(subPath);
-            retPaths.add(subPath);
-          }
-        }
+        actualPaths.addAll(all);
       }
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
     }
-    return retPaths;
-  }
-
-  public Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
-      throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
+    return new ArrayList<>(actualPaths);
   }
 
   public static <T> void cartesianProduct(
