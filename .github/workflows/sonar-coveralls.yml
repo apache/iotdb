@@ -6,8 +6,6 @@ name: Sonar-Coveralls
 on:
   workflow_run:
     workflows: ["Run Tests for Sonar-Coveralls"]
-    types:
-      - completed
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
