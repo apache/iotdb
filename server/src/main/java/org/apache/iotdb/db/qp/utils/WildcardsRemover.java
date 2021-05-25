@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/** Removes wildcards (applying memory control and slimit/soffset control) */
 public class WildcardsRemover {
 
   private final ConcatPathOptimizer concatPathOptimizer;
@@ -41,8 +42,10 @@ public class WildcardsRemover {
   private final int maxDeduplicatedPathNum;
   private final int soffset;
 
-  private int offset;
-  private int limit;
+  private int currentOffset;
+  private int currentLimit;
+
+  /** Records the path number that the MManager totally returned. */
   private int consumed;
 
   public WildcardsRemover(
@@ -58,10 +61,11 @@ public class WildcardsRemover {
             ? Integer.MAX_VALUE - 1
             : QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
     soffset = queryOperator.getSeriesOffset();
-    offset = soffset;
+    currentOffset = soffset;
 
     final int slimit = queryOperator.getSeriesLimit();
-    limit = slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
+    currentLimit =
+        slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
 
     consumed = 0;
   }
@@ -71,24 +75,24 @@ public class WildcardsRemover {
 
     maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
     soffset = 0;
-    limit = maxDeduplicatedPathNum + 1;
+    currentLimit = maxDeduplicatedPathNum + 1;
     consumed = 0;
   }
 
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {
     try {
       Pair<List<PartialPath>, Integer> pair =
-          concatPathOptimizer.removeWildcard(path, limit, offset);
+          concatPathOptimizer.removeWildcard(path, currentLimit, currentOffset);
 
       consumed += pair.right;
-      if (offset != 0) {
-        int delta = offset - pair.right;
-        offset = Math.max(delta, 0);
+      if (currentOffset != 0) {
+        int delta = currentOffset - pair.right;
+        currentOffset = Math.max(delta, 0);
         if (delta < 0) {
-          limit += delta;
+          currentLimit += delta;
         }
       } else {
-        limit -= pair.right;
+        currentLimit -= pair.right;
       }
 
       return pair.left;
@@ -125,11 +129,11 @@ public class WildcardsRemover {
     // expressions.
     List<List<Expression>> remainingExpressions = new ArrayList<>();
     for (List<Expression> actualExpression : actualExpressions) {
-      if (offset != 0) {
-        --offset;
+      if (currentOffset != 0) {
+        --currentOffset;
         continue;
-      } else if (limit != 0) {
-        --limit;
+      } else if (currentLimit != 0) {
+        --currentLimit;
       } else {
         break;
       }
@@ -142,7 +146,7 @@ public class WildcardsRemover {
   /** @return should break the loop or not */
   public boolean checkIfPathNumberIsOverLimit(List<ResultColumn> resultColumns)
       throws PathNumOverLimitException {
-    if (limit == 0) {
+    if (currentLimit == 0) {
       if (maxDeduplicatedPathNum < resultColumns.size()) {
         throw new PathNumOverLimitException(maxDeduplicatedPathNum);
       }

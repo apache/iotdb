@@ -63,7 +63,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     concatSelect(queryOperator);
     removeWildcardsInSelectPaths(queryOperator, fetchSize);
-    concatFilter(queryOperator);
+    concatFilterAndRemoveWildcards(queryOperator);
     return queryOperator;
   }
 
@@ -114,7 +114,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     queryOperator.getSelectOperator().setResultColumns(resultColumns);
   }
 
-  private void concatFilter(QueryOperator queryOperator) throws LogicalOptimizeException {
+  private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
+      throws LogicalOptimizeException {
     FilterOperator filter = queryOperator.getFilterOperator();
     if (filter == null) {
       return;
@@ -122,17 +123,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     Set<PartialPath> filterPaths = new HashSet<>();
     queryOperator.setFilterOperator(
-        concatFilter(queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
+        concatFilterAndRemoveWildcards(
+            queryOperator.getFromOperator().getPrefixPaths(), filter, filterPaths));
     queryOperator.getFilterOperator().setPathSet(filterPaths);
   }
 
-  private FilterOperator concatFilter(
+  private FilterOperator concatFilterAndRemoveWildcards(
       List<PartialPath> fromPaths, FilterOperator operator, Set<PartialPath> filterPaths)
       throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
-        newFilterList.add(concatFilter(fromPaths, child, filterPaths));
+        newFilterList.add(concatFilterAndRemoveWildcards(fromPaths, child, filterPaths));
       }
       operator.setChildren(newFilterList);
       return operator;

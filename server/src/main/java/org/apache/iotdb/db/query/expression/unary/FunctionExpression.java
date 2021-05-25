@@ -39,12 +39,22 @@ import java.util.Set;
 
 public class FunctionExpression implements Expression {
 
+  /**
+   * true: aggregation function<br>
+   * false: time series generating function
+   */
   private final boolean isAggregationFunctionExpression;
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
 
+  /**
+   * example: select udf(a, b, udf(c)) from root.sg.d;
+   *
+   * <p>3 expressions [root.sg.d.a, root.sg.d.b, udf(root.sg.d.c)] will be in this field.
+   */
   private List<Expression> expressions;
+
   private List<TSDataType> dataTypes;
   private List<PartialPath> paths;
 
