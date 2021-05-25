@@ -40,7 +40,15 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     request.setRequireIdentifier(!node.isSetNodeIdentifier());
     synchronized (localMetaMember.getIdConflictNodes()) {
       request.unsetRegenerateIdentifier();
-      if (localMetaMember.getIdConflictNodes().contains(node)) {
+      boolean hasIdConflict = false;
+      for (Node idConflictNode : localMetaMember.getIdConflictNodes()) {
+        if (idConflictNode.getInternalIp().equals(node.internalIp)
+            && idConflictNode.getMetaPort() == node.metaPort) {
+          hasIdConflict = true;
+          break;
+        }
+      }
+      if (hasIdConflict) {
         request.setRegenerateIdentifier(true);
       }
     }

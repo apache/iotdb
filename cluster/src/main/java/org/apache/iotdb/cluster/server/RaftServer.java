@@ -71,9 +71,9 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
   private TServerTransport socket;
   // RPC processing server
   private TServer poolServer;
-  Node thisNode;
+  protected Node thisNode;
 
-  TProtocolFactory protocolFactory =
+  protected TProtocolFactory protocolFactory =
       config.isRpcThriftCompressionEnabled()
           ? new TCompactProtocol.Factory()
           : new TBinaryProtocol.Factory();
@@ -92,7 +92,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
     thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
   }
 
-  RaftServer(Node thisNode) {
+  protected RaftServer(Node thisNode) {
     this.thisNode = thisNode;
   }
 
@@ -167,14 +167,14 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
    * @return An AsyncProcessor that contains the extended interfaces of a non-abstract subclass of
    *     RaftService (DataService or MetaService).
    */
-  abstract TProcessor getProcessor();
+  protected abstract TProcessor getProcessor();
 
   /**
    * @return A socket that will be used to establish a thrift server to listen to RPC requests.
    *     DataServer and MetaServer use different port, so this is to be determined.
    * @throws TTransportException
    */
-  abstract TServerTransport getServerSocket() throws TTransportException;
+  protected abstract TServerTransport getServerSocket() throws TTransportException;
 
   /**
    * Each thrift RPC request will be processed in a separate thread and this will return the name
@@ -183,7 +183,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
    *
    * @return name prefix of RPC processing threads.
    */
-  abstract String getClientThreadPrefix();
+  protected abstract String getClientThreadPrefix();
 
   /**
    * The thrift server will be run in a separate thread, and this will be its name. It help you
@@ -191,7 +191,7 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
    *
    * @return The name of the thread running the thrift server.
    */
-  abstract String getServerClientName();
+  protected abstract String getServerClientName();
 
   private TServer createAsyncServer() throws TTransportException {
     socket = getServerSocket();

@@ -74,25 +74,29 @@ public class MetaClusterServer extends RaftServer
   private static Logger logger = LoggerFactory.getLogger(MetaClusterServer.class);
 
   // each node only contains one MetaGroupMember
-  private MetaGroupMember member;
-  private Coordinator coordinator;
+  protected MetaGroupMember member;
+  protected Coordinator coordinator;
   // the single-node IoTDB instance
   private IoTDB ioTDB;
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
-  private MetaAsyncService asyncService;
-  private MetaSyncService syncService;
-  private MetaHeartbeatServer metaHeartbeatServer;
+  protected MetaAsyncService asyncService;
+  protected MetaSyncService syncService;
+  protected MetaHeartbeatServer metaHeartbeatServer;
 
   public MetaClusterServer() throws QueryProcessException {
     super();
     metaHeartbeatServer = new MetaHeartbeatServer(thisNode, this);
     coordinator = new Coordinator();
-    member = new MetaGroupMember(protocolFactory, thisNode, coordinator);
+    member = createMetaGroupMember();
     coordinator.setMetaGroupMember(member);
     asyncService = new MetaAsyncService(member);
     syncService = new MetaSyncService(member);
     MetaPuller.getInstance().init(member);
+  }
+
+  protected MetaGroupMember createMetaGroupMember() throws QueryProcessException {
+    return new MetaGroupMember(protocolFactory, thisNode, coordinator);
   }
 
   /**
@@ -150,7 +154,7 @@ public class MetaClusterServer extends RaftServer
    * @throws TTransportException if create the socket fails
    */
   @Override
-  TServerTransport getServerSocket() throws TTransportException {
+  protected TServerTransport getServerSocket() throws TTransportException {
     logger.info(
         "[{}] Cluster node will listen {}:{}",
         getServerClientName(),
@@ -167,17 +171,17 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  String getClientThreadPrefix() {
+  protected String getClientThreadPrefix() {
     return "MetaClientThread-";
   }
 
   @Override
-  String getServerClientName() {
+  protected String getServerClientName() {
     return "MetaServerThread-";
   }
 
   @Override
-  TProcessor getProcessor() {
+  protected TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return new AsyncProcessor<>(this);
     } else {

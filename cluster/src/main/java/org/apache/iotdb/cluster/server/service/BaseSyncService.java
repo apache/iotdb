@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.util.List;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -31,22 +38,13 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
-import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
-import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
 
 public abstract class BaseSyncService implements RaftService.Iface {
 
@@ -54,7 +52,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   RaftMember member;
   String name;
 
-  BaseSyncService(RaftMember member) {
+  protected BaseSyncService(RaftMember member) {
     this.member = member;
     this.name = member.getName();
   }
@@ -153,28 +151,24 @@ public abstract class BaseSyncService implements RaftService.Iface {
 
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
-    if (member.getCharacter() != NodeCharacter.LEADER) {
-      // forward the plan to the leader
-      Client client = member.getSyncClient(member.getLeader());
-      if (client != null) {
-        TSStatus status;
-        try {
-          status = client.executeNonQueryPlan(request);
-        } catch (TException e) {
-          client.getInputProtocol().getTransport().close();
-          throw e;
-        } finally {
-          ClientUtils.putBackSyncClient(client);
-        }
-        return status;
-      } else {
-        return StatusUtils.NO_LEADER;
-      }
-    }
-
     try {
       return member.executeNonQueryPlan(request);
     } catch (Exception e) {
+      throw new TException(e);
+    }
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+    member.acknowledgeAppendLog(ack);
+  }
+
+  @Override
+  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+      throws TException {
+    try {
+      return member.appendEntryIndirect(request, subReceivers);
+    } catch (UnknownLogTypeException e) {
       throw new TException(e);
     }
   }

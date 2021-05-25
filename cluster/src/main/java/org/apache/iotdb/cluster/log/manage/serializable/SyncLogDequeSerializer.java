@@ -431,7 +431,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   @Override
   public void setHardStateAndFlush(HardState state) {
     this.state = state;
-    serializeMeta(meta);
+    // serializeMeta(meta);
   }
 
   @Override

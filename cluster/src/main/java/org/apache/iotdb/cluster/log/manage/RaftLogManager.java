@@ -420,6 +420,25 @@ public abstract class RaftLogManager {
     return -1;
   }
 
+  public long append(long lastIndex, long lastTerm, long leaderCommit, Log entry) {
+    long newLastIndex = lastIndex + 1;
+    if (entry.getCurrLogIndex() <= commitIndex) {
+      logger.debug(
+          "{}: entry {} conflict with committed entry [commitIndex({})]",
+          name,
+          entry.getCurrLogIndex(),
+          commitIndex);
+    } else {
+      append(entry);
+    }
+    try {
+      commitTo(Math.min(leaderCommit, newLastIndex));
+    } catch (LogExecutionException e) {
+      // exceptions are ignored on follower side
+    }
+    return newLastIndex;
+  }
+
   /**
    * Used by leader node or MaybeAppend to directly append to unCommittedEntryManager. Note that the
    * caller should ensure entries[0].index > committed.
@@ -453,6 +472,20 @@ public abstract class RaftLogManager {
    * @return the newly generated lastIndex
    */
   public long append(Log entry) {
+    long after = entry.getCurrLogIndex();
+    if (after <= commitIndex) {
+      logger.error("{}: after({}) is out of range [commitIndex({})]", name, after, commitIndex);
+      return -1;
+    }
+    getUnCommittedEntryManager().truncateAndAppend(entry);
+    Object logUpdateCondition = getLogUpdateCondition(entry.getCurrLogIndex());
+    synchronized (logUpdateCondition) {
+      logUpdateCondition.notifyAll();
+    }
+    return getLastLogIndex();
+  }
+
+  public long appendDirectly(Log entry) {
     long after = entry.getCurrLogIndex();
     if (after <= commitIndex) {
       logger.error("{}: after({}) is out of range [commitIndex({})]", name, after, commitIndex);

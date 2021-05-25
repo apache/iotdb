@@ -521,7 +521,7 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  TProcessor getProcessor() {
+  protected TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return new AsyncProcessor<>(this);
     } else {
@@ -530,7 +530,7 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  TServerTransport getServerSocket() throws TTransportException {
+  protected TServerTransport getServerSocket() throws TTransportException {
     logger.info(
         "[{}] Cluster node will listen {}:{}",
         getServerClientName(),
@@ -547,12 +547,12 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  String getClientThreadPrefix() {
+  protected String getClientThreadPrefix() {
     return "DataClientThread-";
   }
 
   @Override
-  String getServerClientName() {
+  protected String getServerClientName() {
     return "DataServerThread-";
   }
 

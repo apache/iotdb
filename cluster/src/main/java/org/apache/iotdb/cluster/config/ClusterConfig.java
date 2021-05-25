@@ -168,6 +168,8 @@ public class ClusterConfig {
 
   private boolean openServerRpcPort = false;
 
+  private boolean useIndirectBroadcasting = false;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -181,6 +183,14 @@ public class ClusterConfig {
       internalIp = "127.0.0.1";
     }
     seedNodeUrls = Arrays.asList(String.format("%s:%d", internalIp, internalMetaPort));
+  }
+
+  public boolean isUseIndirectBroadcasting() {
+    return useIndirectBroadcasting;
+  }
+
+  public void setUseIndirectBroadcasting(boolean useIndirectBroadcasting) {
+    this.useIndirectBroadcasting = useIndirectBroadcasting;
   }
 
   public int getSelectorNumOfClientPool() {

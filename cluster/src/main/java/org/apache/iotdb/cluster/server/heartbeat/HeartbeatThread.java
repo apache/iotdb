@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -152,7 +153,7 @@ public class HeartbeatThread implements Runnable {
     synchronized (nodes) {
       // avoid concurrent modification
       for (Node node : nodes) {
-        if (node.equals(localMember.getThisNode())) {
+        if (ClusterUtils.isNodeEquals(node, localMember.getThisNode())) {
           continue;
         }
         if (Thread.currentThread().isInterrupted()) {

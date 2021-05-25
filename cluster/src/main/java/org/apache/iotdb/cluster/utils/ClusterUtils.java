@@ -175,6 +175,18 @@ public class ClusterUtils {
     }
   }
 
+  public static boolean isNodeEquals(Node node1, Node node2) {
+    if (node1 == node2) {
+      return true;
+    }
+    if (node1 == null || node2 == null) {
+      return false;
+    }
+    return Objects.equals(node1.internalIp, node2.internalIp) && Objects.equals(node1.metaPort,
+        node2.metaPort);
+  }
+
+
   private static boolean seedNodesContains(List<Node> seedNodeList, List<Node> subSeedNodeList) {
     // Because identifier is not compared here, List.contains() is not suitable
     if (subSeedNodeList == null) {

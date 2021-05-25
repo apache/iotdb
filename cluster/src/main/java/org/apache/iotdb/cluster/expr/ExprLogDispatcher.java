@@ -17,10 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.expr;
 
-import org.apache.iotdb.cluster.config.ClusterConfig;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -34,25 +51,12 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A LogDispatcher serves a raft leader by queuing logs that the leader wants to send to its
@@ -61,32 +65,25 @@ import java.util.concurrent.atomic.AtomicLong;
  * follower A, the actual reach order may be log3, log2, and log1. According to the protocol, log3
  * and log2 must halt until log1 reaches, as a result, the total delay may increase significantly.
  */
-public class LogDispatcher {
+public class ExprLogDispatcher {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
-  RaftMember member;
-  private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
-  private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
-  List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
+  private static final Logger logger = LoggerFactory.getLogger(ExprLogDispatcher.class);
+  private List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
   private ExecutorService executorService;
   private static ExecutorService serializationService =
       Executors.newFixedThreadPool(
           Runtime.getRuntime().availableProcessors(),
           new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
-  public static int bindingThreadNum = 1;
+  private SyncClientPool clientPool;
+  private Node leader;
 
-  public LogDispatcher(RaftMember member) {
-    this.member = member;
+  public ExprLogDispatcher(List<Node> nodes, Node leader) {
     executorService = Executors.newCachedThreadPool();
-    createQueueAndBindingThreads();
-  }
-
-  void createQueueAndBindingThreads() {
-    for (Node node : member.getAllNodes()) {
-      if (!node.equals(member.getThisNode())) {
-        nodeLogQueues.add(createQueueAndBindingThread(node));
-      }
+    for (Node node : nodes) {
+      nodeLogQueues.add(createQueueAndBindingThread(node));
     }
+    clientPool = new SyncClientPool(new FactorySync(new Factory()));
+    this.leader = leader;
   }
 
   @TestOnly
@@ -120,33 +117,24 @@ public class LogDispatcher {
           addSucceeded = nodeLogQueue.add(log);
         }
 
-        if (!addSucceeded) {
-          logger.debug(
-              "Log queue[{}] of {} is full, ignore the log to this node", i, member.getName());
-        } else {
+        if (addSucceeded) {
           log.setEnqueueTime(System.nanoTime());
         }
-      } catch (IllegalStateException e) {
-        logger.debug(
-            "Log queue[{}] of {} is full, ignore the log to this node", i, member.getName());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
     }
   }
 
-  BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
+  private BlockingQueue<SendLogRequest> createQueueAndBindingThread(Node node) {
     BlockingQueue<SendLogRequest> logBlockingQueue =
         new ArrayBlockingQueue<>(
             ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem());
+    int bindingThreadNum = 1;
     for (int i = 0; i < bindingThreadNum; i++) {
-      executorService.submit(newDispatcherThread(node, logBlockingQueue));
+      executorService.submit(new DispatcherThread(node, logBlockingQueue));
     }
     return logBlockingQueue;
-  }
-
-  DispatcherThread newDispatcherThread(Node node, BlockingQueue<SendLogRequest> logBlockingQueue) {
-    return new DispatcherThread(node, logBlockingQueue);
   }
 
   public static class SendLogRequest {
@@ -228,32 +216,26 @@ public class LogDispatcher {
 
   class DispatcherThread implements Runnable {
 
-    Node receiver;
+    private Node node;
+    private Client client;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
-    private Peer peer;
 
-    DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
-      this.receiver = receiver;
+    DispatcherThread(Node node, BlockingQueue<SendLogRequest> logBlockingDeque) {
+      this.client = clientPool.getClient(node);
       this.logBlockingDeque = logBlockingDeque;
-      this.peer =
-          member
-              .getPeerMap()
-              .computeIfAbsent(receiver, r -> new Peer(member.getLogManager().getLastLogIndex()));
     }
 
     @Override
     public void run() {
-      Thread.currentThread().setName("LogDispatcher-" + member.getName() + "-" + receiver);
+      Thread.currentThread().setName("LogDispatcher-" + node);
       try {
         while (!Thread.interrupted()) {
-          synchronized (logBlockingDeque) {
-            SendLogRequest poll = logBlockingDeque.take();
-            currBatch.add(poll);
-            logBlockingDeque.drainTo(currBatch);
-          }
+          SendLogRequest poll = logBlockingDeque.take();
+          currBatch.add(poll);
+          logBlockingDeque.drainTo(currBatch);
           if (logger.isDebugEnabled()) {
-            logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
+            logger.debug("Sending {} logs to {}", currBatch.size(), node);
           }
           for (SendLogRequest request : currBatch) {
             request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
@@ -269,59 +251,25 @@ public class LogDispatcher {
       logger.info("Dispatcher exits");
     }
 
-    private void appendEntriesAsync(
-        List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
-        throws TException {
-      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
-      AsyncClient client = member.getSendLogAsyncClient(receiver);
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: append entries {} with {} logs", member.getName(), receiver, logList.size());
-      }
-      if (client != null) {
-        client.appendEntries(request, handler);
-      }
-    }
-
     private void appendEntriesSync(
         List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
 
       long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-      if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
-        logger.warn(
-            "{}: node {} timed out when appending {}",
-            member.getName(),
-            receiver,
-            currBatch.get(0).getLog());
-        return;
-      }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-      Client client = member.getSyncClient(receiver);
-      if (client == null) {
-        logger.error("No available client for {}", receiver);
-        return;
-      }
-      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
         long result = client.appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         if (result != -1 && logger.isInfoEnabled()) {
           logger.info(
-              "{}: Append {} logs to {}, resp: {}",
-              member.getName(),
+              "Append {} logs to {}, resp: {}",
               logList.size(),
-              receiver,
+              node,
               result);
         }
-        handler.onComplete(result);
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        handler.onError(e);
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
-      } finally {
-        ClientUtils.putBackSyncClient(client);
       }
     }
 
@@ -329,15 +277,8 @@ public class LogDispatcher {
         List<ByteBuffer> logList, List<SendLogRequest> currBatch, int firstIndex) {
       AppendEntriesRequest request = new AppendEntriesRequest();
 
-      if (member.getHeader() != null) {
-        request.setHeader(member.getHeader());
-      }
-      request.setLeader(member.getThisNode());
-      request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
-
-      synchronized (member.getTerm()) {
-        request.setTerm(member.getTerm().get());
-      }
+      request.setLeader(leader);
+      request.setTerm(1);
 
       request.setEntries(logList);
       // set index for raft
@@ -350,7 +291,7 @@ public class LogDispatcher {
       return request;
     }
 
-    private void sendLogs(List<SendLogRequest> currBatch) throws TException {
+    private void sendLogs(List<SendLogRequest> currBatch) {
       int logIndex = 0;
       logger.debug(
           "send logs from index {} to {}",
@@ -373,11 +314,7 @@ public class LogDispatcher {
         }
 
         AppendEntriesRequest appendEntriesRequest = prepareRequest(logList, currBatch, prevIndex);
-        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          appendEntriesAsync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
-        } else {
-          appendEntriesSync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
-        }
+        appendEntriesSync(logList, appendEntriesRequest, currBatch.subList(prevIndex, logIndex));
         for (; prevIndex < logIndex; prevIndex++) {
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
               currBatch.get(prevIndex).getLog().getCreateTime());
@@ -385,84 +322,9 @@ public class LogDispatcher {
       }
     }
 
-    private void sendBatchLogs(List<SendLogRequest> currBatch) throws TException {
-      if (currBatch.size() > 1) {
-        if (useBatchInLogCatchUp) {
-          sendLogs(currBatch);
-        } else {
-          for (SendLogRequest batch : currBatch) {
-            sendLog(batch);
-          }
-        }
-      } else {
-        sendLog(currBatch.get(0));
-      }
+    private void sendBatchLogs(List<SendLogRequest> currBatch) {
+      sendLogs(currBatch);
     }
 
-    void sendLog(SendLogRequest logRequest) {
-      Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
-      member.sendLogToFollower(
-          logRequest.getLog(),
-          logRequest.getVoteCounter(),
-          receiver,
-          logRequest.getLeaderShipStale(),
-          logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest());
-      Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
-    }
-
-    class AppendEntriesHandler implements AsyncMethodCallback<Long> {
-
-      private final List<AsyncMethodCallback<Long>> singleEntryHandlers;
-
-      private AppendEntriesHandler(List<SendLogRequest> batch) {
-        singleEntryHandlers = new ArrayList<>(batch.size());
-        for (SendLogRequest sendLogRequest : batch) {
-          AppendNodeEntryHandler handler =
-              getAppendNodeEntryHandler(
-                  sendLogRequest.getLog(),
-                  sendLogRequest.getVoteCounter(),
-                  receiver,
-                  sendLogRequest.getLeaderShipStale(),
-                  sendLogRequest.getNewLeaderTerm(),
-                  peer);
-          singleEntryHandlers.add(handler);
-        }
-      }
-
-      @Override
-      public void onComplete(Long aLong) {
-        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
-          singleEntryHandler.onComplete(aLong);
-        }
-      }
-
-      @Override
-      public void onError(Exception e) {
-        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
-          singleEntryHandler.onError(e);
-        }
-      }
-
-      private AppendNodeEntryHandler getAppendNodeEntryHandler(
-          Log log,
-          AtomicInteger voteCounter,
-          Node node,
-          AtomicBoolean leaderShipStale,
-          AtomicLong newLeaderTerm,
-          Peer peer) {
-        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-        handler.setReceiver(node);
-        handler.setVoteCounter(voteCounter);
-        handler.setLeaderShipStale(leaderShipStale);
-        handler.setLog(log);
-        handler.setMember(member);
-        handler.setPeer(peer);
-        handler.setReceiverTerm(newLeaderTerm);
-        return handler;
-      }
-    }
   }
 }

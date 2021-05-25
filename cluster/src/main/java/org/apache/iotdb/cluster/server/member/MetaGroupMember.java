@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.util.Comparator;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
@@ -1021,21 +1022,26 @@ public class MetaGroupMember extends RaftMember {
     ExecutorService pool = new ScheduledThreadPoolExecutor(getAllNodes().size() - 1);
     for (Node seedNode : getAllNodes()) {
       Node thisNode = getThisNode();
-      if (seedNode.equals(thisNode)) {
+      if (ClusterUtils.isNodeEquals(thisNode, seedNode)) {
         continue;
       }
       pool.submit(
           () -> {
-            CheckStatusResponse response = checkStatus(seedNode);
-            if (response != null) {
-              // check the response
-              ClusterUtils.examineCheckStatusResponse(
-                  response, consistentNum, inconsistentNum, seedNode);
-            } else {
-              logger.warn(
-                  "Start up exception. Cannot connect to node {}. Try again in next turn.",
-                  seedNode);
+            try {
+              CheckStatusResponse response = checkStatus(seedNode);
+              if (response != null) {
+                // check the response
+                ClusterUtils.examineCheckStatusResponse(
+                    response, consistentNum, inconsistentNum, seedNode);
+              } else {
+                logger.warn(
+                    "Start up exception. Cannot connect to node {}. Try again in next turn.",
+                    seedNode);
+              }
+            } catch (Exception e) {
+              logger.error("Start up exception:", e);
             }
+
           });
     }
     pool.shutdown();

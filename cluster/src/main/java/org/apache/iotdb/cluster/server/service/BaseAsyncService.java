@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import java.util.List;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -170,6 +172,23 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
               new EndPoint(
                   member.getThisNode().getClientIp(), member.getThisNode().getClientPort())));
     } catch (Exception e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack,
+      AsyncMethodCallback<Void> resultHandler) {
+    member.acknowledgeAppendLog(ack);
+    resultHandler.onComplete(null);
+  }
+
+  @Override
+  public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
+      AsyncMethodCallback<Long> resultHandler) {
+    try {
+      resultHandler.onComplete(member.appendEntryIndirect(request, subReceivers));
+    } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
     }
   }

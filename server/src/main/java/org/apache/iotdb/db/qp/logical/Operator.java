@@ -157,5 +157,6 @@ public abstract class Operator {
     CREATE_TEMPLATE,
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
+    EMPTY,
   }
 }
