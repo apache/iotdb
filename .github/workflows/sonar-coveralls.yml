@@ -3,12 +3,7 @@
 
 name: Sonar-Coveralls(Ignore this on folk Repos)
 
-on:
-  pull_request_target:
-    paths-ignore:
-      - "docs/**"
-  # allow manually run the action:
-  workflow_dispatch:
+on: [push, pull_request_target]
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
