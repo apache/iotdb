@@ -73,7 +73,6 @@ public abstract class Operator {
 
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
-    SFW,
     FILTER,
     GROUPBYTIME,
     SELECT,
