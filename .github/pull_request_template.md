@@ -5,7 +5,6 @@
 
 ### Content2 ...
 
-### Content3 ...
 
 <!--
 In each section, please describe design decisions made, including:
