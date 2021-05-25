@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
@@ -543,6 +544,86 @@ public class IoTDBSessionSimpleIT {
         Boolean.TRUE);
     session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
     checkResult(session);
+    session.close();
+  }
+
+  @Test
+  public void testFillAll() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg.d.s1");
+    paths.add("root.sg.d.s2");
+    paths.add("root.sg.d.s3");
+    paths.add("root.sg.d.s4");
+    paths.add("root.sg.d.s5");
+    paths.add("root.sg.d.s6");
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    tsDataTypes.add(TSDataType.BOOLEAN);
+    tsDataTypes.add(TSDataType.INT32);
+    tsDataTypes.add(TSDataType.INT64);
+    tsDataTypes.add(TSDataType.FLOAT);
+    tsDataTypes.add(TSDataType.DOUBLE);
+    tsDataTypes.add(TSDataType.TEXT);
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+    session.createMultiTimeseries(
+        paths, tsDataTypes, tsEncodings, compressionTypes, null, null, null, null);
+
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+    measurements.add("s5");
+    measurements.add("s6");
+    List<Object> values = new ArrayList<>();
+    values.add(false);
+    values.add(1);
+    values.add((long) 1);
+    values.add((float) 1.0);
+    values.add(1.0);
+    values.add("1");
+    session.insertRecord("root.sg.d", 1, measurements, tsDataTypes, values);
+
+    SessionDataSet dataSet =
+        session.executeQueryStatement(
+            "select * from root.sg.d where time=70 fill(all[previous, 1m])");
+    RowRecord record = dataSet.next();
+    assertEquals(70, record.getTimestamp());
+    for (Field field : record.getFields()) {
+      switch (field.getDataType()) {
+        case TEXT:
+          break;
+        case FLOAT:
+          assertEquals(1.0, field.getFloatV(), 0);
+          break;
+        case INT32:
+          assertEquals(1, field.getIntV());
+          break;
+        case INT64:
+          assertEquals(1, field.getLongV());
+          break;
+        case DOUBLE:
+          assertEquals(1.0, field.getDoubleV(), 0);
+          break;
+        case BOOLEAN:
+          assertEquals(false, field.getBoolV());
+          break;
+      }
+    }
     session.close();
   }
 

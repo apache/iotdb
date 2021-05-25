@@ -1351,10 +1351,44 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     List<TypeClauseContext> list = ctx.typeClause();
     Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
     for (TypeClauseContext typeClause : list) {
-      parseTypeClause(typeClause, fillTypes);
+      if (typeClause.ALL() != null) {
+        if (typeClause.linearClause() != null) {
+          throw new SQLParserException("fill all doesn't support linear fill");
+        }
+        parseAllTypeClause(typeClause, fillTypes);
+        break;
+      } else {
+        parsePrimitiveTypeClause(typeClause, fillTypes);
+      }
     }
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
+  }
+
+  private void parseAllTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+    IFill fill;
+    long preRange;
+    if (ctx.previousUntilLastClause() != null) {
+      if (ctx.previousUntilLastClause().DURATION() != null) {
+        preRange =
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.previousUntilLastClause().DURATION().getText());
+      } else {
+        preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+      }
+      fill = new PreviousFill(preRange, true);
+    } else {
+      if (ctx.previousClause().DURATION() != null) {
+        preRange =
+            DatetimeUtils.convertDurationStrToLong(ctx.previousClause().DURATION().getText());
+      } else {
+        preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+      }
+      fill = new PreviousFill(preRange);
+    }
+    for (TSDataType tsDataType : TSDataType.values()) {
+      fillTypes.put(tsDataType, fill.copy());
+    }
   }
 
   private void parseLimitClause(LimitClauseContext ctx, Operator operator) {
@@ -1480,41 +1514,17 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       }
       // all type use the same fill way
       if (typeClause.ALL() != null) {
-        IFill fill;
-        if (typeClause.previousUntilLastClause() != null) {
-          long preRange;
-          if (typeClause.previousUntilLastClause().DURATION() != null) {
-            preRange =
-                DatetimeUtils.convertDurationStrToLong(
-                    typeClause.previousUntilLastClause().DURATION().getText());
-          } else {
-            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-          }
-          fill = new PreviousFill(preRange, true);
-        } else {
-          long preRange;
-          if (typeClause.previousClause().DURATION() != null) {
-            preRange =
-                DatetimeUtils.convertDurationStrToLong(
-                    typeClause.previousClause().DURATION().getText());
-          } else {
-            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
-          }
-          fill = new PreviousFill(preRange);
-        }
-        for (TSDataType tsDataType : TSDataType.values()) {
-          fillTypes.put(tsDataType, fill.copy());
-        }
+        parseAllTypeClause(typeClause, fillTypes);
         break;
       } else {
-        parseTypeClause(typeClause, fillTypes);
+        parsePrimitiveTypeClause(typeClause, fillTypes);
       }
     }
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
   }
 
-  private void parseTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+  private void parsePrimitiveTypeClause(TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType().getText());
     if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(
