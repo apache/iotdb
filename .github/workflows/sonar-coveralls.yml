@@ -3,7 +3,7 @@
 
 name: Sonar-Coveralls(Ignore this on folk Repos)
 
-on: [push, pull_request_target]
+on: [issues, pull_request_target]
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
