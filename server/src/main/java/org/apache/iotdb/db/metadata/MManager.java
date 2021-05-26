@@ -418,13 +418,17 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      mtree.getStorageGroupPath(path);
+      StorageGroupMNode storageGroupMNode = getStorageGroupNodeByPath(path);
+      storageGroupMNode.setMajorVersion(path.getMajorVersion());
+      storageGroupMNode.setMinorVersion(path.getMinorVersion());
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
       }
       PartialPath storageGroupPath =
           MetaUtils.getStorageGroupPathByLevel(path, config.getDefaultStorageGroupLevel());
+      storageGroupPath.setMajorVersion(path.getMajorVersion());
+      storageGroupPath.setMinorVersion(path.getMinorVersion());
       setStorageGroup(storageGroupPath);
     }
   }
