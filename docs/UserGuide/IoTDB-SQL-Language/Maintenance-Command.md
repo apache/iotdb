@@ -33,8 +33,8 @@ IoTDB> FLUSH root.sg1,root.sg2
 
 Execute Level Compaction and unsequence Compaction task. Currently IoTDB supports the following two types of SQL to manually trigger the compaction process of data files:
 
-* `MERGE` Execute Level Compaction first and then execute unsequence Compaction. In unsequence Compaction, this command will only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
-* `FULL MERGE` Execute Level Compaction first and then execute unsequence Compaction. In unsequence Compaction, this command will rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
+* `MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed very fast by rewriting the overlapped Chunks only, while there is some redundant data on the disk eventually.
+* `FULL MERGE` Execute the level compaction first and then execute the unsequence compaction. In unsequence compaction process, this command is executed slow due to it takes more time to rewrite all data in overlapped files. However, there won't be any redundant data on the disk eventually.
 
 ```
 IoTDB> MERGE

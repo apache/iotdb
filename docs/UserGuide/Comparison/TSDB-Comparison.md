@@ -295,7 +295,7 @@ The data type is *double*, encoding type is *GORILLA*
 
 * Compression:
 
-We use several famous dataset as test. We compare TsFile(the file format of IoTDB) with Parquet, ORC and Csv by their file size after the same dataset is written.
+We test and compare file sizes of TsFile(the file format of IoTDB) and some others famous dataset formats, which are Parquet, ORC and Csv, after the same datasets are written.
 
 The IoTDB version is v0.11.1.
 
@@ -333,13 +333,13 @@ The write throughput (points/second) is:
 <center>Figure 4. Raw data query 1 col time cost(ms) IoTDB v0.11.1</center>
 
 ![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
-<center>Figure 6. Aggregation query time cost(ms) IoTDB v0.11.1</center>
+<center>Figure 5. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
 ![Downsampling query](https://user-images.githubusercontent.com/24886743/118790090-0615e400-b8c8-11eb-93d8-3c7fe1a154a1.png)
-<center>Figure 7. Downsampling query time cost(ms) IoTDB v0.11.1</center>
+<center>Figure 6. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
 ![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
-<center>Figure 8. Latest query time cost(ms) IoTDB v0.11.1</center>
+<center>Figure 7. Latest query time cost(ms) IoTDB v0.11.1</center>
 
 **Compression performance**
 
@@ -348,7 +348,7 @@ The write throughput (points/second) is:
 REDD, TDrive, Geolife, NOAA
 
 ![Data compression](https://user-images.githubusercontent.com/24886743/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
-<center>Figure 9. Data compression IoTDB v0.11.1</center>
+<center>Figure 8. Data compression IoTDB v0.11.1</center>
 
 We can see that IoTDB outperforms others.
 
