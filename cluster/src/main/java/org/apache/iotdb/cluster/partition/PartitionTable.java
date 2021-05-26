@@ -89,8 +89,6 @@ public interface PartitionTable {
    */
   PartitionGroup getHeaderGroup(RaftNode raftNode);
 
-  PartitionGroup getHeaderGroup(Node node);
-
   ByteBuffer serialize();
 
   /**
@@ -106,13 +104,6 @@ public interface PartitionTable {
   List<PartitionGroup> getGlobalGroups();
 
   List<PartitionGroup> calculateGlobalGroups(List<Node> nodeRing);
-
-  /**
-   * Judge whether the data of slot is held by node
-   *
-   * @param node target node
-   */
-  boolean judgeHoldSlot(Node node, int slot);
 
   /** get the last meta log index that modifies the partition table */
   long getLastMetaLogIndex();

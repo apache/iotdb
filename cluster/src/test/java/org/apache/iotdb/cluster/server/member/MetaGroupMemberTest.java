@@ -130,12 +130,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
 import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
 import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -1210,16 +1212,16 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(response.getCheckStatusResponse().isClusterNameEquals());
 
       // cannot add a node due to network failure
-      //      dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
-      //      testMetaMember.setCharacter(LEADER);
-      //      result.set(null);
-      //      testMetaMember.setPartitionTable(partitionTable);
-      //      new Thread(
-      //              () -> {
-      //                await().atLeast(200, TimeUnit.MILLISECONDS);
-      //                dummyResponse.set(Response.RESPONSE_AGREE);
-      //              })
-      //          .start();
+      dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
+      testMetaMember.setCharacter(LEADER);
+      result.set(null);
+      testMetaMember.setPartitionTable(partitionTable);
+      new Thread(
+              () -> {
+                await().atLeast(200, TimeUnit.MILLISECONDS);
+                dummyResponse.set(Response.RESPONSE_AGREE);
+              })
+          .start();
       new MetaAsyncService(testMetaMember)
           .addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();

@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class LogParserTest {
 
@@ -106,12 +107,16 @@ public class LogParserTest {
   }
 
   @Test
-  public void testLogPlan() throws IOException, IllegalPathException, UnknownLogTypeException {
+  public void testLogPlan() {
     AddNodeLog log = new AddNodeLog(TestUtils.seralizePartitionTable, TestUtils.getNode(0));
     log.setMetaLogIndex(1);
-    LogPlan logPlan = new LogPlan(log.serialize());
-    ByteBuffer buffer = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(logPlan));
-    PhysicalPlan plan = PhysicalPlan.Factory.create(buffer);
-    LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+    try {
+      LogPlan logPlan = new LogPlan(log.serialize());
+      ByteBuffer buffer = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(logPlan));
+      PhysicalPlan plan = PhysicalPlan.Factory.create(buffer);
+      LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+    } catch (IllegalPathException | IOException | UnknownLogTypeException e) {
+      fail();
+    }
   }
 }

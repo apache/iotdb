@@ -96,11 +96,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public PartitionGroup getHeaderGroup(Node node) {
-          return null;
-        }
-
-        @Override
         public ByteBuffer serialize() {
           return partitionTableBuffer;
         }
@@ -123,11 +118,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         @Override
         public List<PartitionGroup> calculateGlobalGroups(List<Node> nodeRing) {
           return null;
-        }
-
-        @Override
-        public boolean judgeHoldSlot(Node node, int slot) {
-          return false;
         }
 
         @Override

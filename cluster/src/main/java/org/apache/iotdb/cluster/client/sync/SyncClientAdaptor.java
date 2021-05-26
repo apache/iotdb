@@ -491,7 +491,7 @@ public class SyncClientAdaptor {
         request, new PullSnapshotHandler<>(snapshotRef, client.getNode(), slots, factory));
     synchronized (snapshotRef) {
       if (snapshotRef.get() == null) {
-        snapshotRef.wait();
+        snapshotRef.wait(RaftServer.getReadOperationTimeoutMS());
       }
     }
     return snapshotRef.get();
@@ -529,12 +529,6 @@ public class SyncClientAdaptor {
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
 
     client.onSnapshotApplied(header, raftId, slots, handler);
-
-    synchronized (result) {
-      if (result.get() == null) {
-        result.wait();
-      }
-    }
-    return result.get();
+    return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 }

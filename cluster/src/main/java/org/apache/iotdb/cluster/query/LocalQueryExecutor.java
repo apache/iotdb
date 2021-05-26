@@ -724,7 +724,7 @@ public class LocalQueryExecutor {
             .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
     if (ascending) {
       AggregationExecutor.aggregateOneSeries(
-          new PartialPath(path),
+          path,
           allSensors,
           context,
           timeFilter,
@@ -734,7 +734,7 @@ public class LocalQueryExecutor {
           new SlotTsFileFilter(nodeSlots));
     } else {
       AggregationExecutor.aggregateOneSeries(
-          new PartialPath(path),
+          path,
           allSensors,
           context,
           timeFilter,

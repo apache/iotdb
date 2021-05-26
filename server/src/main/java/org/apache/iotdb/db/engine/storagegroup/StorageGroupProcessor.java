@@ -2639,10 +2639,10 @@ public class StorageGroupProcessor {
     }
 
     File modFileToLoad =
-        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
     if (modFileToLoad.exists()) {
       File targetModFile =
-          fsFactory.getFile(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
       try {
         FileUtils.moveFile(modFileToLoad, targetModFile);
       } catch (IOException e) {

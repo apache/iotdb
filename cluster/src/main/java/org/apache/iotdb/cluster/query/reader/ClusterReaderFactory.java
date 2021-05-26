@@ -1045,7 +1045,7 @@ public class ClusterReaderFactory {
               dataGroupMember,
               ascending,
               requiredSlots);
-      mergeReader.addReader(seriesPointReader, 0);
+      mergeReader.addReader(seriesPointReader, 1);
 
       // add previous holder reader due to in the stage of data migration
       logger.debug(
@@ -1189,7 +1189,7 @@ public class ClusterReaderFactory {
                 dataGroupMember,
                 ascending,
                 requiredSlots);
-        mergeReader.addReader(seriesPointReader, 0);
+        mergeReader.addReader(seriesPointReader, 1);
 
         // add previous holder reader due to in the stage of data migration
         logger.debug(

@@ -205,11 +205,14 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
           }
           Thread.sleep(
               ClusterDescriptor.getInstance().getConfig().getPullSnapshotRetryIntervalMs());
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "{}: Data migration ends, cost {}ms",
+                newMember,
+                (System.currentTimeMillis() - startTime));
+          }
         }
-        logger.debug(
-            "{}: Data migration ends, cost {}ms",
-            newMember,
-            (System.currentTimeMillis() - startTime));
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         finished = true;

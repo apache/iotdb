@@ -207,13 +207,15 @@ public class SlotPartitionTableTest {
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
         localTable.getHeaderGroup(
-            new Node(
-                "localhost",
-                30000 + start,
-                start,
-                40000 + start,
-                Constants.RPC_PORT + start,
-                "localhost"));
+            new RaftNode(
+                new Node(
+                    "localhost",
+                    30000 + start,
+                    start,
+                    40000 + start,
+                    Constants.RPC_PORT + start,
+                    "localhost"),
+                0));
     assertEquals(replica_size, group.size());
     assertEquals(
         new Node(

@@ -73,11 +73,13 @@ public class MetaHeartbeatThread extends HeartbeatThread {
 
   @Override
   void startElection() {
-    //    if (localMetaMember.getThisNode().metaPort != 9003 &&
-    // localMetaMember.getThisNode().metaPort != 9005) {
-    //      return;
-    //    }
     super.startElection();
+
+    // A new raft leader needs to have at least one log in its term for committing logs with older
+    // terms.
+    // In the meta group, log frequency is very low. When the leader is changed whiling changing
+    // membership, it's necessary to process an empty log to make sure that cluster expansion
+    // operation can be carried out in time.
     localMetaMember.getAppendLogThreadPool().submit(() -> localMetaMember.processEmptyContentLog());
   }
 }

@@ -225,11 +225,6 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public PartitionGroup getHeaderGroup(Node node) {
-    return getHeaderGroup(new RaftNode(node, 0));
-  }
-
-  @Override
   public PartitionGroup route(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
       RaftNode raftNode = routeToHeaderByTime(storageGroupName, timestamp);
@@ -566,7 +561,11 @@ public class SlotPartitionTable implements PartitionTable {
     }
   }
 
-  @Override
+  /**
+   * Judge whether the data of slot is held by node
+   *
+   * @param node target node
+   */
   public boolean judgeHoldSlot(Node node, int slot) {
     return getHeaderGroup(slotNodes[slot]).contains(node);
   }

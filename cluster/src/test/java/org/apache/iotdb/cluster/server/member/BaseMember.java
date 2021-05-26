@@ -245,7 +245,8 @@ public class BaseMember {
     newMember.setLeader(raftNode.getNode());
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(
-        getLogManager(partitionTable.getHeaderGroup(TestUtils.getNode(0)), newMember));
+        getLogManager(
+            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;

@@ -742,7 +742,8 @@ public class DataGroupMember extends RaftMember {
            * If this slot is just held by different raft groups in the same node, it should keep the
            * data of slot.
            */
-          if (metaGroupMember.getPartitionTable().judgeHoldSlot(thisNode, slot)) {
+          if (((SlotPartitionTable) metaGroupMember.getPartitionTable())
+              .judgeHoldSlot(thisNode, slot)) {
             return false;
           }
           return slotSet.contains(slot);

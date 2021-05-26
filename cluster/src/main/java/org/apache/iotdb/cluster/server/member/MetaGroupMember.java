@@ -1008,10 +1008,10 @@ public class MetaGroupMember extends RaftMember {
     }
 
     Log log = new EmptyContentLog();
-    log.setCurrLogTerm(getTerm().get());
-    log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
     synchronized (logManager) {
+      log.setCurrLogTerm(getTerm().get());
+      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       logManager.append(log);
     }
 
