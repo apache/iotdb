@@ -46,6 +46,10 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of time series used in SELECT AS
   protected String tsAlias = "";
 
+  private long majorVersion = 0;
+
+  private long minorVersion = 0;
+
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -326,5 +330,21 @@ public class PartialPath extends Path implements Comparable<Path> {
       }
     }
     return fullPath;
+  }
+
+  public long getMajorVersion() {
+    return majorVersion;
+  }
+
+  public void setMajorVersion(long majorVersion) {
+    this.majorVersion = majorVersion;
+  }
+
+  public long getMinorVersion() {
+    return minorVersion;
+  }
+
+  public void setMinorVersion(long minorVersion) {
+    this.minorVersion = minorVersion;
   }
 }

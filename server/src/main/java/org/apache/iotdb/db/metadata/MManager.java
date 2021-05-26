@@ -748,36 +748,40 @@ public class MManager {
    * @param storageGroups list of paths to be deleted. Format: root.node
    */
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
+    for (PartialPath storageGroup : storageGroups) {
+      deleteStorageGroup(storageGroup);
+    }
+  }
+
+  public void deleteStorageGroup(PartialPath storageGroup) throws MetadataException {
     try {
-      for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
-        // clear cached MNode
-        if (!allowToCreateNewSeries
-            && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
-          logger.info("Current series number {} come back to normal level", totalSeriesNumber);
-          allowToCreateNewSeries = true;
-        }
-        mNodeCache.clear();
+      totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
+      // clear cached MNode
+      if (!allowToCreateNewSeries
+          && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+        logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+        allowToCreateNewSeries = true;
+      }
+      mNodeCache.clear();
 
-        // try to delete storage group
-        List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
-        for (MeasurementMNode leafMNode : leafMNodes) {
-          removeFromTagInvertedIndex(leafMNode);
-          // update statistics in schemaDataTypeNumMap
-          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
-        }
+      // try to delete storage group
+      List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
+      for (MeasurementMNode leafMNode : leafMNodes) {
+        removeFromTagInvertedIndex(leafMNode);
+        // update statistics in schemaDataTypeNumMap
+        updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
+      }
 
-        // drop triggers with no exceptions
-        TriggerEngine.drop(leafMNodes);
+      // drop triggers with no exceptions
+      TriggerEngine.drop(leafMNodes);
 
-        if (!config.isEnableMemControl()) {
-          MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
-        }
+      if (!config.isEnableMemControl()) {
+        MemTableManager.getInstance().addOrDeleteStorageGroup(-1);
+      }
 
-        // if success
-        if (!isRecovering) {
-          logWriter.deleteStorageGroup(storageGroup);
-        }
+      // if success
+      if (!isRecovering) {
+        logWriter.deleteStorageGroup(storageGroup);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());

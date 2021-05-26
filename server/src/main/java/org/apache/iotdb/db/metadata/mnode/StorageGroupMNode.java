@@ -35,6 +35,10 @@ public class StorageGroupMNode extends MNode {
 
   private int alignedTimeseriesIndex;
 
+  private long majorVersion = 0;
+
+  private long minorVersion = 0;
+
   public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
@@ -45,6 +49,12 @@ public class StorageGroupMNode extends MNode {
     super(parent, name);
     this.dataTTL = dataTTL;
     this.alignedTimeseriesIndex = alignedTimeseriesIndex;
+  }
+
+  public StorageGroupMNode(MNode parent, String name, long dataTTL, long majorVersion) {
+    this(parent, name, dataTTL);
+    this.majorVersion = majorVersion;
+    this.minorVersion = 0;
   }
 
   public long getDataTTL() {
@@ -81,5 +91,21 @@ public class StorageGroupMNode extends MNode {
         nodeInfo[1],
         Long.parseLong(nodeInfo[2]),
         nodeInfo.length == 4 ? Integer.parseInt(nodeInfo[3]) : 0);
+  }
+
+  public long getMajorVersion() {
+    return majorVersion;
+  }
+
+  public void setMajorVersion(long majorVersion) {
+    this.majorVersion = majorVersion;
+  }
+
+  public long getMinorVersion() {
+    return minorVersion;
+  }
+
+  public void setMinorVersion(long minorVersion) {
+    this.minorVersion = minorVersion;
   }
 }

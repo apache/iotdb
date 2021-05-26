@@ -440,4 +440,18 @@ public abstract class PhysicalPlan {
    * @throws QueryProcessException when the check fails
    */
   public void checkIntegrity() throws QueryProcessException {}
+
+  public void setMajorVersion(long majorVersion) {
+    List<PartialPath> partialPaths = this.getPaths();
+    for (PartialPath partialPath : partialPaths) {
+      partialPath.setMajorVersion(majorVersion);
+    }
+  }
+
+  public void setMinorVersion(long minorVersion) {
+    List<PartialPath> partialPaths = this.getPaths();
+    for (PartialPath partialPath : partialPaths) {
+      partialPath.setMinorVersion(minorVersion);
+    }
+  }
 }

@@ -1428,6 +1428,8 @@ public class PlanExecutor implements IPlanExecutor {
       String measurement = path.getMeasurement();
       if (measurement.contains("(") && measurement.contains(",")) {
         PartialPath devicePath = path.getDevicePath();
+        devicePath.setMajorVersion(path.getMajorVersion());
+        devicePath.setMinorVersion(path.getMinorVersion());
         List<String> measurements = MetaUtils.getMeasurementsInPartialPath(path);
         List<TSDataType> dataTypes = new ArrayList<>();
         List<TSEncoding> encodings = new ArrayList<>();

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -177,7 +178,10 @@ public class CMManager extends MManager {
     cacheLock.writeLock().lock();
     mRemoteMetaCache.removeItem(prefixPath);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(prefixPath);
+    if (checkNodeAndPlanMajorVersion(prefixPath)) {
+      return super.deleteTimeseries(prefixPath);
+    }
+    return null;
   }
 
   @Override
@@ -187,7 +191,12 @@ public class CMManager extends MManager {
       mRemoteMetaCache.removeItem(storageGroup);
     }
     cacheLock.writeLock().unlock();
-    super.deleteStorageGroups(storageGroups);
+
+    for (PartialPath path : storageGroups) {
+      if (checkNodeAndPlanMajorVersion(path)) {
+        super.deleteStorageGroup(path);
+      }
+    }
   }
 
   @Override
@@ -734,6 +743,15 @@ public class CMManager extends MManager {
       logger.error("Failed to infer storage group from deviceId {}", deviceId);
       return false;
     }
+
+    Pair<Long, Long> sgNodeVersion;
+    try {
+      sgNodeVersion = getSgNodeMajorVersion(storageGroupName);
+    } catch (MetadataException e) {
+      logger.error("failed get the major version", e);
+      return false;
+    }
+
     boolean hasVector = false;
     for (String measurementId : insertPlan.getMeasurements()) {
       if (measurementId.contains("(") && measurementId.contains(",")) {
@@ -750,9 +768,27 @@ public class CMManager extends MManager {
     if (unregisteredSeriesList.isEmpty()) {
       return true;
     }
-    logger.debug("Unregisterd series of {} are {}", seriesList, unregisteredSeriesList);
+    logger.debug("Unregistered series of {} are {}", seriesList, unregisteredSeriesList);
 
-    return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
+    return createTimeseries(unregisteredSeriesList, seriesList, insertPlan, sgNodeVersion);
+  }
+
+  /**
+   * @param partialPath the storage group's partialPath
+   * @return the major version and the minor version of the storage group node
+   */
+  private Pair<Long, Long> getSgNodeMajorVersion(PartialPath partialPath) throws MetadataException {
+    StorageGroupMNode node;
+    try {
+      node = getStorageGroupNodeByPath(partialPath);
+    } catch (MetadataException e) {
+      syncMetaLeader();
+      node = getStorageGroupNodeByPath(partialPath);
+    }
+    if (node == null) {
+      throw new MetadataException("get major version failed");
+    }
+    return new Pair(node.getMajorVersion(), node.getMinorVersion());
   }
 
   private boolean createAlignedTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
@@ -806,7 +842,10 @@ public class CMManager extends MManager {
    * compressions of the corresponding data type.
    */
   private boolean createTimeseries(
-      List<String> unregisteredSeriesList, List<String> seriesList, InsertPlan insertPlan)
+      List<String> unregisteredSeriesList,
+      List<String> seriesList,
+      InsertPlan insertPlan,
+      Pair<Long, Long> sgNodeVersion)
       throws IllegalPathException {
     List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -837,6 +876,8 @@ public class CMManager extends MManager {
     plan.setDataTypes(dataTypes);
     plan.setEncodings(encodings);
     plan.setCompressors(compressionTypes);
+    plan.setMajorVersion(sgNodeVersion.left);
+    plan.setMinorVersion(sgNodeVersion.right);
 
     TSStatus result;
     try {
@@ -1978,5 +2019,69 @@ public class CMManager extends MManager {
       }
       return super.getStorageGroupPath(path);
     }
+  }
+
+  @Override
+  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
+    PartialPath path = plan.getDevicePath();
+    if (checkNodeAndPlanMajorVersion(path)) {
+      super.createAlignedTimeSeries(plan);
+    }
+  }
+
+  @Override
+  public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+    PartialPath path = plan.getPath();
+    if (checkNodeAndPlanMajorVersion(path)) {
+      super.createTimeseries(plan);
+    }
+  }
+
+  /**
+   * @param path the partial path
+   * @return true if the sg node major version == the path's major version; false if the sg node
+   *     major version > the path's major version; throw MetadataException if the sg node major
+   *     version < the path's major version.
+   * @throws MetadataException sync meta leader failed
+   */
+  private boolean checkNodeAndPlanMajorVersion(PartialPath path) throws MetadataException {
+    MNode cur = getNodeByPath(path);
+    if (!(cur instanceof StorageGroupMNode)) {
+      // sync the meta leader and get the newest storage groups.
+      syncMetaLeader();
+      cur = getNodeByPath(path);
+      if (!(cur instanceof StorageGroupMNode)) {
+        throw new StorageGroupNotSetException(path.getFullPath());
+      }
+    }
+
+    long nodeMajorVersion = ((StorageGroupMNode) cur).getMajorVersion();
+    if (nodeMajorVersion < path.getMajorVersion()) {
+      syncMetaLeader();
+      cur = getNodeByPath(path);
+      if (!(cur instanceof StorageGroupMNode)) {
+        throw new StorageGroupNotSetException(path.getFullPath());
+      }
+    }
+
+    nodeMajorVersion = ((StorageGroupMNode) cur).getMajorVersion();
+    if (nodeMajorVersion < path.getMajorVersion()) {
+      logger.error(
+          "unknown error occurred when sync the meta leader, the storage group node major version "
+              + "is still smaller than the plan's major version after sync the meta leader");
+      throw new MetadataException("node major version smaller error");
+    }
+
+    if (nodeMajorVersion > path.getMajorVersion()) {
+      // do nothing, skip
+      logger.info(
+          "the node's major version={} is larger than the path's={}, ignore the execution, path={}, storage group={}",
+          nodeMajorVersion,
+          path.getMajorVersion(),
+          path,
+          cur.getFullPath());
+      return false;
+    }
+    return true;
   }
 }
