@@ -33,7 +33,8 @@
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb) 
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/iotdb)
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 # Overview
 
@@ -86,7 +87,7 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set accordingly).
+1. Java >= 1.8 (1.8, 11, and 15 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid "too many open files" error.
 
@@ -99,7 +100,7 @@ IoTDB provides three installation methods, you can refer to the following sugges
 * Using Docker：The path to the dockerfile is https://github.com/apache/iotdb/tree/master/docker/src/main
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
 
 ## Build from source
 
@@ -137,7 +138,7 @@ You can download the source code from:
 git clone https://github.com/apache/iotdb.git
 ```
 
-The default master branch is the dev branch, If you want to use a released version x.x.x:
+The default dev branch is the master branch, If you want to use a released version x.x.x:
 
 ```
 git checkout release/x.x.x
@@ -159,11 +160,12 @@ Using `-P compile-cpp` for compiling cpp client (For more details, read client-c
 
 Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-all-bin.zip**
 
-NOTE: Directories `thrift/target/generated-sources/thrift`,  `thrift-sync/target/generated-sources/thrift`,
-`thrift-cluster/target/generated-sources/thrift`
-and `antlr/target/generated-sources/antlr4` need to be added to sources roots to avoid compilation errors in the IDE.
-In IDEAJ, you just need to right click on the root project name and choose "Maven->Reload Project" after 
-you run `mvn package` successfully.
+**NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
+"`thrift-cluster/target/generated-sources/thrift`"
+and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots to avoid compilation errors in the IDE.**
+
+**In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
+you run `mvn package` successfully.**
 
 ### Configurations
 
@@ -173,7 +175,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Chapter3: Server](http://iotdb.apache.org/UserGuide/Master/Server/Config%20Manual.html).
+For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Appendix/Config-Manual.html).
 
 ## Start
 
@@ -380,6 +382,10 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 ### Wechat Group
 
-* Add friend: tietouqiao, and then we'll invite you to the group.
+* Add friend: `tietouqiao` or `liutaohua001`, and then we'll invite you to the group.
+
+### slack
+
+* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
 see [Join the community](https://github.com/apache/iotdb/issues/1995) for more!

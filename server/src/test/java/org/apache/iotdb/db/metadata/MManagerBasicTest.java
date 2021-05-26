@@ -364,6 +364,7 @@ public class MManagerBasicTest {
   }
 
   @Test
+  @SuppressWarnings("squid:S5783")
   public void testGetAllTimeseriesCount() {
     MManager manager = IoTDB.metaManager;
 

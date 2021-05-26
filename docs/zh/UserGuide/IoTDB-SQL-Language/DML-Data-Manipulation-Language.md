@@ -297,6 +297,20 @@ It costs 0.018s
 
 更多语法请参照[SQL REFERENCE](../Appendix/SQL-Reference.md)。
 
+#### 结果空值过滤
+
+* 如果结果集中，任意一列为null，则过滤掉该行；即获得的结果集不包含任何空值
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```
+
+* 在降采样查询中，如果结果集的某一行所有列都为null，则过滤掉该行；即获得的结果集不包含所有值都为null的行
+
+```
+select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+```
+
 
 #### 聚合函数
 

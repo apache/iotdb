@@ -215,12 +215,15 @@ public class MergeTaskTest extends MergeTest {
             null,
             null,
             true);
+    long count = 0L;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+      for (int t = 0; t < batchData.length(); t++) {
+        assertEquals(batchData.getTimeByIndex(t) + 20000.0, batchData.getDoubleByIndex(t), 0.001);
+        count++;
       }
     }
+    assertEquals(100, count);
     tsFilesReader.close();
   }
 
