@@ -220,4 +220,71 @@ public abstract class Cases {
     Assert.assertEquals(10, next.getFields().get(0).getLongV());
     Assert.assertEquals(10, next.getFields().get(1).getLongV());
   }
+
+  @Test
+  public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
+
+    session.setStorageGroup("root.sg1");
+    session.createTimeseries(
+        "root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries(
+        "root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    insertRecords();
+
+    List<String> suffixPath = new ArrayList<>();
+    List<String> prefixPath = new ArrayList<>();
+
+    suffixPath.add("s1");
+    suffixPath.add("s2");
+    prefixPath.add("root.sg1.d2");
+
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(suffixPath, prefixPath);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+    }
+    Assert.assertEquals(2, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+  private void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d2";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+
+    for (long time = 0; time < 500; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
+    session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+  }
 }
