@@ -28,13 +28,16 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class is used to cache <code>Chunk</code> of <code>ChunkMetaData</code> in IoTDB. The
@@ -49,39 +52,59 @@ public class ChunkCache {
       config.getAllocateMemoryForChunkCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
-  private final LRULinkedHashMap<ChunkMetadata, Chunk> lruCache;
+  private final LoadingCache<ChunkMetadata, Chunk> lruCache;
 
-  private final AtomicLong cacheHitNum = new AtomicLong();
-  private final AtomicLong cacheRequestNum = new AtomicLong();
-
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private ChunkCache() {
     if (CACHE_ENABLE) {
       logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
     lruCache =
-        new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE) {
+        CacheBuilder.newBuilder()
+            .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
+            .weigher(
+                new Weigher<ChunkMetadata, Chunk>() {
 
-          @Override
-          protected long calEntrySize(ChunkMetadata key, Chunk value) {
-            long currentSize;
-            if (count < 10) {
-              currentSize =
-                  RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.sizeOf(value);
-              averageSize = ((averageSize * count) + currentSize) / (++count);
-            } else if (count < 100000) {
-              count++;
-              currentSize = averageSize;
-            } else {
-              averageSize =
-                  RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.sizeOf(value);
-              count = 1;
-              currentSize = averageSize;
-            }
-            return currentSize;
-          }
-        };
+                  int count = 0;
+                  int averageSize = 0;
+
+                  @Override
+                  public int weigh(ChunkMetadata chunkMetadata, Chunk chunk) {
+                    int currentSize;
+                    if (count < 10) {
+                      currentSize =
+                          (int)
+                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                                  + RamUsageEstimator.sizeOf(chunk));
+                      averageSize = ((averageSize * count) + currentSize) / (++count);
+                      entryAverageSize.set(averageSize);
+                    } else if (count < 100000) {
+                      count++;
+                      currentSize = averageSize;
+                    } else {
+                      averageSize =
+                          (int)
+                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                                  + RamUsageEstimator.sizeOf(chunk));
+                      count = 1;
+                      currentSize = averageSize;
+                      entryAverageSize.set(averageSize);
+                    }
+                    return currentSize;
+                  }
+                })
+            .recordStats()
+            .build(
+                new CacheLoader<ChunkMetadata, Chunk>() {
+                  @Override
+                  public Chunk load(ChunkMetadata chunkMetadata) throws Exception {
+                    TsFileSequenceReader reader =
+                        FileReaderManager.getInstance()
+                            .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
+                    return reader.readMemChunk(chunkMetadata);
+                  }
+                });
   }
 
   public static ChunkCache getInstance() {
@@ -105,42 +128,18 @@ public class ChunkCache {
           chunkMetaData.getStatistics());
     }
 
-    cacheRequestNum.incrementAndGet();
-
     Chunk chunk;
-    lock.readLock().lock();
     try {
       chunk = lruCache.get(chunkMetaData);
-    } finally {
-      lock.readLock().unlock();
-    }
-    if (chunk != null) {
-      cacheHitNum.incrementAndGet();
-      printCacheLog(true);
-    } else {
-      printCacheLog(false);
-      TsFileSequenceReader reader =
-          FileReaderManager.getInstance()
-              .get(chunkMetaData.getFilePath(), chunkMetaData.isClosed());
-      try {
-        chunk = reader.readMemChunk(chunkMetaData);
-      } catch (IOException e) {
-        logger.error("something wrong happened while reading {}", reader.getFileName());
-        throw e;
-      }
-      lock.writeLock().lock();
-      try {
-        if (!lruCache.containsKey(chunkMetaData)) {
-          lruCache.put(chunkMetaData, chunk);
-        }
-      } finally {
-        lock.writeLock().unlock();
-      }
+    } catch (ExecutionException e) {
+      logger.error("something wrong happened while loading {}", chunkMetaData);
+      throw new IOException(e);
     }
 
     if (debug) {
       DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
     }
+
     return new Chunk(
         chunk.getHeader(),
         chunk.getData().duplicate(),
@@ -148,61 +147,38 @@ public class ChunkCache {
         chunkMetaData.getStatistics());
   }
 
-  private void printCacheLog(boolean isHit) {
-    if (!logger.isDebugEnabled()) {
-      return;
-    }
-    logger.debug(
-        "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
-        isHit ? "" : "didn't ",
-        cacheRequestNum.get(),
-        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
-  }
-
   public double calculateChunkHitRatio() {
-    if (cacheRequestNum.get() != 0) {
-      return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
-    } else {
-      return 0;
-    }
+    return lruCache.stats().hitRate();
   }
 
-  public long getUsedMemory() {
-    return lruCache.getUsedMemory();
+  public long getEvictionCount() {
+    return lruCache.stats().evictionCount();
   }
 
   public long getMaxMemory() {
-    return lruCache.getMaxMemory();
+    return MEMORY_THRESHOLD_IN_CHUNK_CACHE;
   }
 
-  public double getUsedMemoryProportion() {
-    return lruCache.getUsedMemoryProportion();
+  public double getAverageLoadPenalty() {
+    return lruCache.stats().averageLoadPenalty();
   }
 
   public long getAverageSize() {
-    return lruCache.getAverageSize();
+    return entryAverageSize.get();
   }
 
   /** clear LRUCache. */
   public void clear() {
-    lock.writeLock().lock();
-    if (lruCache != null) {
-      lruCache.clear();
-    }
-    lock.writeLock().unlock();
+    lruCache.cleanUp();
   }
 
   public void remove(ChunkMetadata chunkMetaData) {
-    lock.writeLock().lock();
-    if (chunkMetaData != null) {
-      lruCache.remove(chunkMetaData);
-    }
-    lock.writeLock().unlock();
+    lruCache.invalidate(chunkMetaData);
   }
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.isEmpty();
+    return lruCache.size() == 0;
   }
 
   /** singleton pattern. */

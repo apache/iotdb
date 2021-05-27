@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -32,6 +31,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,14 +42,13 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class is used to cache <code>TimeSeriesMetadata</code> in IoTDB. The caching strategy is
@@ -61,12 +63,9 @@ public class TimeSeriesMetadataCache {
       config.getAllocateMemoryForTimeSeriesMetaDataCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
-  private final LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
+  private final LoadingCache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
-  private final AtomicLong cacheHitNum = new AtomicLong();
-  private final AtomicLong cacheRequestNum = new AtomicLong();
-
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private final AtomicLong entryAverageSize = new AtomicLong(0);
 
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
@@ -78,46 +77,75 @@ public class TimeSeriesMetadataCache {
           "TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
     lruCache =
-        new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(
-            MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE) {
+        CacheBuilder.newBuilder()
+            .maximumWeight(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE)
+            .weigher(
+                new Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
 
-          @Override
-          protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
-            long currentSize;
-            if (count < 10) {
-              currentSize =
-                  RamUsageEstimator.shallowSizeOf(key)
-                      + RamUsageEstimator.sizeOf(key.device)
-                      + RamUsageEstimator.sizeOf(key.measurement)
-                      + RamUsageEstimator.shallowSizeOf(value)
-                      + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                      + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                      + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
-                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                          * value.getChunkMetadataList().size()
-                      + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
-              averageSize = ((averageSize * count) + currentSize) / (++count);
-            } else if (count < 100000) {
-              count++;
-              currentSize = averageSize;
-            } else {
-              averageSize =
-                  RamUsageEstimator.shallowSizeOf(key)
-                      + RamUsageEstimator.sizeOf(key.device)
-                      + RamUsageEstimator.sizeOf(key.measurement)
-                      + RamUsageEstimator.shallowSizeOf(value)
-                      + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                      + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                      + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
-                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                          * value.getChunkMetadataList().size()
-                      + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
-              count = 1;
-              currentSize = averageSize;
-            }
-            return currentSize;
-          }
-        };
+                  int count = 0;
+                  int averageSize = 0;
+
+                  @Override
+                  public int weigh(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
+                    int currentSize;
+                    if (count < 10) {
+                      currentSize =
+                          (int)
+                              (RamUsageEstimator.shallowSizeOf(key)
+                                  + RamUsageEstimator.sizeOf(key.device)
+                                  + RamUsageEstimator.sizeOf(key.measurement)
+                                  + RamUsageEstimator.shallowSizeOf(value)
+                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
+                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                              .calculateRamSize()
+                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                      * value.getChunkMetadataList().size()
+                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
+                      averageSize = ((averageSize * count) + currentSize) / (++count);
+                      entryAverageSize.set(averageSize);
+                    } else if (count < 100000) {
+                      count++;
+                      currentSize = averageSize;
+                    } else {
+                      averageSize =
+                          (int)
+                              (RamUsageEstimator.shallowSizeOf(key)
+                                  + RamUsageEstimator.sizeOf(key.device)
+                                  + RamUsageEstimator.sizeOf(key.measurement)
+                                  + RamUsageEstimator.shallowSizeOf(value)
+                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
+                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                              .calculateRamSize()
+                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                      * value.getChunkMetadataList().size()
+                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
+                      count = 1;
+                      currentSize = averageSize;
+                      entryAverageSize.set(averageSize);
+                    }
+                    return currentSize;
+                  }
+                })
+            .recordStats()
+            .build(
+                new CacheLoader<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
+                  @Override
+                  public TimeseriesMetadata load(TimeSeriesMetadataCacheKey key) throws Exception {
+                    // bloom filter part
+                    TsFileSequenceReader reader =
+                        FileReaderManager.getInstance().get(key.filePath, true);
+                    BloomFilter bloomFilter = reader.readBloomFilter();
+                    if (bloomFilter != null
+                        && !bloomFilter.contains(
+                            key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
+                      return null;
+                    }
+                    return reader.readTimeseriesMetadata(
+                        new Path(key.device, key.measurement), false);
+                  }
+                });
   }
 
   public static TimeSeriesMetadataCache getInstance() {
@@ -143,20 +171,9 @@ public class TimeSeriesMetadataCache {
       return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
     }
 
-    cacheRequestNum.incrementAndGet();
+    TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
 
-    TimeseriesMetadata timeseriesMetadata;
-    lock.readLock().lock();
-    try {
-      timeseriesMetadata = lruCache.get(key);
-    } finally {
-      lock.readLock().unlock();
-    }
-
-    if (timeseriesMetadata != null) {
-      cacheHitNum.incrementAndGet();
-      printCacheLog(true);
-    } else {
+    if (timeseriesMetadata == null) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
@@ -166,16 +183,8 @@ public class TimeSeriesMetadataCache {
       synchronized (
           devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
         // double check
-        lock.readLock().lock();
-        try {
-          timeseriesMetadata = lruCache.get(key);
-        } finally {
-          lock.readLock().unlock();
-        }
-        if (timeseriesMetadata != null) {
-          cacheHitNum.incrementAndGet();
-          printCacheLog(true);
-        } else {
+        timeseriesMetadata = lruCache.getIfPresent(key);
+        if (timeseriesMetadata == null) {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -186,25 +195,17 @@ public class TimeSeriesMetadataCache {
             }
             return null;
           }
-          printCacheLog(false);
           List<TimeseriesMetadata> timeSeriesMetadataList =
               reader.readTimeseriesMetadata(path, allSensors);
           // put TimeSeriesMetadata of all sensors used in this query into cache
-          lock.writeLock().lock();
-          try {
-            timeSeriesMetadataList.forEach(
-                metadata -> {
-                  TimeSeriesMetadataCacheKey k =
-                      new TimeSeriesMetadataCacheKey(
-                          key.filePath, key.device, metadata.getMeasurementId());
-                  if (!lruCache.containsKey(k)) {
-                    lruCache.put(k, metadata);
-                  }
-                });
-            timeseriesMetadata = lruCache.get(key);
-          } finally {
-            lock.writeLock().unlock();
-          }
+          timeSeriesMetadataList.forEach(
+              metadata -> {
+                TimeSeriesMetadataCacheKey k =
+                    new TimeSeriesMetadataCacheKey(
+                        key.filePath, key.device, metadata.getMeasurementId());
+                lruCache.put(k, metadata);
+              });
+          timeseriesMetadata = lruCache.getIfPresent(key);
         }
       }
     }
@@ -246,16 +247,11 @@ public class TimeSeriesMetadataCache {
       return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), subSensorList);
     }
 
-    cacheRequestNum.incrementAndGet();
-
     List<TimeseriesMetadata> res = new ArrayList<>();
 
     getVectorTimeSeriesMetadataListFromCache(key, subSensorList, res);
 
-    if (!res.isEmpty()) {
-      cacheHitNum.incrementAndGet();
-      printCacheLog(true);
-    } else {
+    if (res.isEmpty()) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
@@ -266,10 +262,7 @@ public class TimeSeriesMetadataCache {
           devices.computeIfAbsent(key.device + SEPARATOR + key.filePath, WeakReference::new)) {
         // double check
         getVectorTimeSeriesMetadataListFromCache(key, subSensorList, res);
-        if (!res.isEmpty()) {
-          cacheHitNum.incrementAndGet();
-          printCacheLog(true);
-        } else {
+        if (res.isEmpty()) {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -280,25 +273,21 @@ public class TimeSeriesMetadataCache {
             }
             return Collections.emptyList();
           }
-          printCacheLog(false);
           List<TimeseriesMetadata> timeSeriesMetadataList =
               reader.readTimeseriesMetadata(path, allSensors);
+          Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map = new HashMap<>();
           // put TimeSeriesMetadata of all sensors used in this query into cache
-          lock.writeLock().lock();
-          try {
-            timeSeriesMetadataList.forEach(
-                metadata -> {
-                  TimeSeriesMetadataCacheKey k =
-                      new TimeSeriesMetadataCacheKey(
-                          key.filePath, key.device, metadata.getMeasurementId());
-                  if (!lruCache.containsKey(k)) {
-                    lruCache.put(k, metadata);
-                  }
-                });
-            getVectorTimeSeriesMetadataListFromCache(key, subSensorList, res);
-          } finally {
-            lock.writeLock().unlock();
-          }
+          timeSeriesMetadataList.forEach(
+              metadata -> {
+                TimeSeriesMetadataCacheKey k =
+                    new TimeSeriesMetadataCacheKey(
+                        key.filePath, key.device, metadata.getMeasurementId());
+                lruCache.put(k, metadata);
+                map.put(k, metadata);
+              });
+          // The reason we don't get from cache is in case that
+          // the cache capacity is too small to contains all the sub sensors of this vector
+          getVectorTimeSeriesMetadataListFromMap(key, subSensorList, res, map);
         }
       }
     }
@@ -323,93 +312,85 @@ public class TimeSeriesMetadataCache {
     }
   }
 
-  private void getVectorTimeSeriesMetadataListFromCache(
-      TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
-    lock.readLock().lock();
-    try {
-      TimeseriesMetadata timeseriesMetadata = lruCache.get(key);
-      if (timeseriesMetadata != null) {
-        res.add(timeseriesMetadata);
-        for (String subSensor : subSensorList) {
-          timeseriesMetadata =
-              lruCache.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
-          if (timeseriesMetadata != null) {
-            res.add(timeseriesMetadata);
-          } else {
-            res.clear();
-            break;
-          }
+  private void getVectorTimeSeriesMetadataListFromMap(
+      TimeSeriesMetadataCacheKey key,
+      List<String> subSensorList,
+      List<TimeseriesMetadata> res,
+      Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map) {
+    TimeseriesMetadata timeseriesMetadata = map.get(key);
+    if (timeseriesMetadata != null) {
+      res.add(timeseriesMetadata);
+      for (String subSensor : subSensorList) {
+        timeseriesMetadata =
+            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
+        if (timeseriesMetadata != null) {
+          res.add(timeseriesMetadata);
+        } else {
+          res.clear();
+          break;
         }
       }
-    } finally {
-      lock.readLock().unlock();
     }
   }
 
-  private void printCacheLog(boolean isHit) {
-    if (!logger.isDebugEnabled()) {
-      return;
+  private void getVectorTimeSeriesMetadataListFromCache(
+      TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
+    TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
+    if (timeseriesMetadata != null) {
+      res.add(timeseriesMetadata);
+      for (String subSensor : subSensorList) {
+        timeseriesMetadata =
+            lruCache.getIfPresent(
+                new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
+        if (timeseriesMetadata != null) {
+          res.add(timeseriesMetadata);
+        } else {
+          res.clear();
+          break;
+        }
+      }
     }
-    logger.debug(
-        "[TimeSeriesMetadata cache {}hit] The number of requests for cache is {}, hit rate is {}.",
-        isHit ? "" : "didn't ",
-        cacheRequestNum.get(),
-        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
   }
 
   public double calculateTimeSeriesMetadataHitRatio() {
-    if (cacheRequestNum.get() != 0) {
-      return cacheHitNum.get() * 1.0 / cacheRequestNum.get();
-    } else {
-      return 0;
-    }
+    return lruCache.stats().hitRate();
   }
 
-  public long getUsedMemory() {
-    return lruCache.getUsedMemory();
+  public long getEvictionCount() {
+    return lruCache.stats().evictionCount();
   }
 
   public long getMaxMemory() {
-    return lruCache.getMaxMemory();
+    return MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE;
   }
 
-  public double getUsedMemoryProportion() {
-    return lruCache.getUsedMemoryProportion();
+  public double getAverageLoadPenalty() {
+    return lruCache.stats().averageLoadPenalty();
   }
 
   public long getAverageSize() {
-    return lruCache.getAverageSize();
+    return entryAverageSize.get();
   }
 
   /** clear LRUCache. */
   public void clear() {
-    lock.writeLock().lock();
-    if (lruCache != null) {
-      lruCache.clear();
-    }
-    lock.writeLock().unlock();
+    lruCache.cleanUp();
   }
 
   public void remove(TimeSeriesMetadataCacheKey key) {
-    lock.writeLock().lock();
-    if (key != null) {
-      lruCache.remove(key);
-    }
-    lock.writeLock().unlock();
+    lruCache.invalidate(key);
   }
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.isEmpty();
+    return lruCache.size() == 0;
   }
 
-  public static class TimeSeriesMetadataCacheKey implements Accountable {
+  public static class TimeSeriesMetadataCacheKey {
 
     private final String filePath;
     private final String device;
     private final String measurement;
-
-    private long ramSize;
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
@@ -434,16 +415,6 @@ public class TimeSeriesMetadataCache {
     @Override
     public int hashCode() {
       return Objects.hash(filePath, device, measurement);
-    }
-
-    @Override
-    public void setRamSize(long size) {
-      this.ramSize = size;
-    }
-
-    @Override
-    public long getRamSize() {
-      return ramSize;
     }
   }
 
