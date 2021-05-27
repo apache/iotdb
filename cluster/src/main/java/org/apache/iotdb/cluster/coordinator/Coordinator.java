@@ -214,6 +214,16 @@ public class Coordinator {
               || plan instanceof CreateTimeSeriesPlan
               || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+
+        // no permission to create on any sg, end loop
+        if (plan instanceof CreateMultiTimeSeriesPlan) {
+          CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
+          if (createMultiTimeSeriesPlan.getResults().size()
+              == createMultiTimeSeriesPlan.getPaths().size()) {
+            return forwardMultiSubPlan(planGroupMap, plan);
+          }
+        }
+
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
@@ -304,7 +314,8 @@ public class Coordinator {
   private TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
-    if (planGroupMap.size() == 1) {
+    // need to create substatus for multiPlan
+    if (planGroupMap.size() == 1 && !(plan instanceof CreateMultiTimeSeriesPlan)) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
       if (plan instanceof InsertTabletPlan
@@ -443,7 +454,7 @@ public class Coordinator {
     boolean noFailure = true;
     boolean isBatchFailure = false;
     EndPoint endPoint = null;
-    int totalRowNum = 0;
+    int totalRowNum = parentPlan.getPaths().size();
     // send sub-plans to each belonging data group and collect results
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       tmpStatus = forwardToSingleGroup(entry);
