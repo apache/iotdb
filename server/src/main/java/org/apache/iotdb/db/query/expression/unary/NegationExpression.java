@@ -30,11 +30,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class MinusExpression implements Expression {
+public class NegationExpression implements Expression {
 
   protected Expression expression;
 
-  public MinusExpression(Expression expression) {
+  public NegationExpression(Expression expression) {
     this.expression = expression;
   }
 
@@ -52,7 +52,7 @@ public class MinusExpression implements Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new MinusExpression(resultExpression));
+      resultExpressions.add(new NegationExpression(resultExpression));
     }
   }
 
@@ -62,7 +62,7 @@ public class MinusExpression implements Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new MinusExpression(resultExpression));
+      resultExpressions.add(new NegationExpression(resultExpression));
     }
   }
 
