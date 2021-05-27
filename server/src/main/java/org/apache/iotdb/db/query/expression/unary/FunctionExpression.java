@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -113,12 +111,6 @@ public class FunctionExpression implements Expression {
   }
 
   @Override
-  public TSDataType dataType() {
-    // TODO: the expression type is determined in runtime
-    throw new NotImplementedException();
-  }
-
-  @Override
   public void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
     List<List<Expression>> resultExpressionsForRecursionList = new ArrayList<>();
 
@@ -151,16 +143,6 @@ public class FunctionExpression implements Expression {
     for (Expression expression : expressions) {
       expression.collectPaths(pathSet);
     }
-  }
-
-  public List<TSDataType> getDataTypes() throws MetadataException {
-    if (dataTypes == null) {
-      dataTypes = new ArrayList<>();
-      for (Expression expression : expressions) {
-        dataTypes.add(expression.dataType());
-      }
-    }
-    return dataTypes;
   }
 
   public List<PartialPath> getPaths() {

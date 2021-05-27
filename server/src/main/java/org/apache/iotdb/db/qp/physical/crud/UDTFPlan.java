@@ -26,12 +26,15 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
@@ -152,6 +155,27 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
   }
 
+  public TSDataType getOriginalOutputColumnDataType(int originalOutputColumn) {
+    Expression expression = resultColumns.get(originalOutputColumn).getExpression();
+    // UDF query
+    if (expression instanceof FunctionExpression) {
+      return getExecutorByOriginalOutputColumnIndex(originalOutputColumn)
+          .getConfigurations()
+          .getOutputDataType();
+    }
+    // arithmetic binary query
+    if (expression instanceof BinaryExpression) {
+      return TSDataType.DOUBLE;
+    }
+    // arithmetic negation query
+    if (expression instanceof NegationExpression) {
+      return getDeduplicatedDataTypes()
+          .get(getReaderIndex(((NegationExpression) expression).getExpression().toString()));
+    }
+    // raw query
+    return getDeduplicatedDataTypes().get(getReaderIndex(expression.toString()));
+  }
+
   public UDTFExecutor getExecutorByOriginalOutputColumnIndex(int originalOutputColumn) {
     return originalOutputColumnIndex2Executor.get(originalOutputColumn);
   }
@@ -165,7 +189,12 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   public boolean isUdfColumn(int datasetOutputIndex) {
-    return datasetOutputColumnIndex2UdfColumnName.get(datasetOutputIndex) != null;
+    return resultColumns.get(datasetOutputIndex).getExpression() instanceof FunctionExpression;
+  }
+
+  public boolean isArithmeticColumn(int datasetOutputIndex) {
+    Expression expression = resultColumns.get(datasetOutputIndex).getExpression();
+    return expression instanceof BinaryExpression || expression instanceof NegationExpression;
   }
 
   public int getReaderIndex(String pathName) {

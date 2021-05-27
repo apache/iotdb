@@ -23,7 +23,7 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 public class ArithmeticAdditionTransformer extends ArithmeticBinaryTransformer {
 
-  protected ArithmeticAdditionTransformer(
+  public ArithmeticAdditionTransformer(
       LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
     super(leftPointReader, rightPointReader);
   }

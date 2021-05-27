@@ -24,12 +24,27 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
+import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
+import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
+import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
+import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
+import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.input.InputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticMultiplicationTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticSubtractionTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.RawQueryPointTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
@@ -113,6 +128,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     for (int i = 0; i < size; ++i) {
       if (udtfPlan.isUdfColumn(i)) {
         constructUDFTransformer(i, memoryBudgetForSingleWindowTransformer);
+      } else if (udtfPlan.isArithmeticColumn(i)) {
+        constructArithmeticTransformer(i);
       } else {
         constructRawQueryTransformer(i);
       }
@@ -175,12 +192,61 @@ public abstract class UDTFDataSet extends QueryDataSet {
     return readerIndexes;
   }
 
+  private void constructArithmeticTransformer(int columnIndex) {
+    Expression expression = udtfPlan.getResultColumns().get(columnIndex).getExpression();
+
+    // unary expression
+    if (expression instanceof NegationExpression) {
+      transformers[columnIndex] =
+          new ArithmeticNegationTransformer(
+              constructPointReaderBySeriesName(
+                  ((NegationExpression) expression).getExpression().toString()));
+      return;
+    }
+
+    // binary expression
+    ArithmeticBinaryTransformer transformer;
+    BinaryExpression binaryExpression = (BinaryExpression) expression;
+    if (binaryExpression instanceof AdditionExpression) {
+      transformer =
+          new ArithmeticAdditionTransformer(
+              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
+              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+    } else if (binaryExpression instanceof SubtractionExpression) {
+      transformer =
+          new ArithmeticSubtractionTransformer(
+              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
+              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+    } else if (binaryExpression instanceof MultiplicationExpression) {
+      transformer =
+          new ArithmeticMultiplicationTransformer(
+              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
+              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+    } else if (binaryExpression instanceof DivisionExpression) {
+      transformer =
+          new ArithmeticDivisionTransformer(
+              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
+              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+    } else if (binaryExpression instanceof ModuloExpression) {
+      transformer =
+          new ArithmeticModuloTransformer(
+              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
+              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+    } else {
+      throw new UnsupportedOperationException(binaryExpression.toString());
+    }
+    transformers[columnIndex] = transformer;
+  }
+
   private void constructRawQueryTransformer(int columnIndex) {
     transformers[columnIndex] =
         new RawQueryPointTransformer(
-            inputLayer.constructPointReader(
-                udtfPlan.getReaderIndex(
-                    udtfPlan.getRawQueryColumnNameByDatasetOutputColumnIndex(columnIndex))));
+            constructPointReaderBySeriesName(
+                udtfPlan.getRawQueryColumnNameByDatasetOutputColumnIndex(columnIndex)));
+  }
+
+  private LayerPointReader constructPointReaderBySeriesName(String seriesName) {
+    return inputLayer.constructPointReader(udtfPlan.getReaderIndex(seriesName));
   }
 
   public void finalizeUDFs(long queryId) {
