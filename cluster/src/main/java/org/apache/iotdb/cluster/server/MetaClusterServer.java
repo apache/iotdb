@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.server;
 
+import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
@@ -26,6 +27,7 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -369,5 +371,28 @@ public class MetaClusterServer extends RaftServer
   @Override
   public void handshake(Node sender, AsyncMethodCallback<Void> resultHandler) {
     asyncService.handshake(sender, resultHandler);
+  }
+
+  @Override
+  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+      throws TException {
+    return syncService.appendEntryIndirect(request, subReceivers);
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+    syncService.acknowledgeAppendEntry(ack);
+  }
+
+  @Override
+  public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
+      AsyncMethodCallback<Long> resultHandler) {
+    asyncService.appendEntryIndirect(request, subReceivers, resultHandler);
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack,
+      AsyncMethodCallback<Void> resultHandler) {
+    asyncService.acknowledgeAppendEntry(ack, resultHandler);
   }
 }

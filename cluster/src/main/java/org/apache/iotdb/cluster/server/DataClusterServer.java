@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -962,5 +963,31 @@ public class DataClusterServer extends RaftServer
   public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
     getDataAsyncService(thisNode, resultHandler, hardLinkPath)
         .removeHardLink(hardLinkPath, resultHandler);
+  }
+
+  @Override
+  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+      throws TException {
+    return getDataSyncService(thisNode)
+        .appendEntryIndirect(request, subReceivers);
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+    getDataSyncService(thisNode).acknowledgeAppendEntry(ack);
+  }
+
+  @Override
+  public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
+      AsyncMethodCallback<Long> resultHandler) {
+    getDataAsyncService(thisNode, resultHandler, request)
+        .appendEntryIndirect(request, subReceivers, resultHandler);
+  }
+
+  @Override
+  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack,
+      AsyncMethodCallback<Void> resultHandler) {
+    getDataAsyncService(thisNode, resultHandler, ack)
+        .acknowledgeAppendEntry(ack, resultHandler);
   }
 }
