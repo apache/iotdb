@@ -387,7 +387,7 @@ public class DataGroupMember extends RaftMember {
     if (logger.isDebugEnabled()) {
       logger.debug("{} received a snapshot {}", name, snapshot);
     }
-    snapshot.getDefaultInstaller(this).install(snapshot, -1);
+    snapshot.getDefaultInstaller(this).install(snapshot, -1, false);
   }
 
   /** Send the requested snapshots to the applier node. */
@@ -890,7 +890,7 @@ public class DataGroupMember extends RaftMember {
   public boolean onSnapshotInstalled(List<Integer> slots) {
     if (getMetaGroupMember().getPartitionTable().getAllNodes().contains(thisNode)) {
       getMetaGroupMember()
-          .syncLocalApply(getMetaGroupMember().getPartitionTable().getLastMetaLogIndex());
+          .syncLocalApply(getMetaGroupMember().getPartitionTable().getLastMetaLogIndex(), false);
     }
     if (logger.isDebugEnabled()) {
       logger.debug(

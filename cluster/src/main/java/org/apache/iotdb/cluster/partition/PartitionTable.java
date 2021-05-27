@@ -108,6 +108,9 @@ public interface PartitionTable {
   /** get the last meta log index that modifies the partition table */
   long getLastMetaLogIndex();
 
+  /** set the last meta log index that modifies the partition table */
+  void setLastMetaLogIndex(long index);
+
   /**
    * @param path can be an incomplete path (but should contain a storage group name) e.g., if
    *     "root.sg" is a storage group, then path can not be "root".

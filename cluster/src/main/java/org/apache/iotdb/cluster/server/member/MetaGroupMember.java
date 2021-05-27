@@ -87,6 +87,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -1003,10 +1004,6 @@ public class MetaGroupMember extends RaftMember {
 
   /** Process empty log for leader to commit all previous log. */
   public void processEmptyContentLog() {
-    if (character != NodeCharacter.LEADER) {
-      return;
-    }
-
     Log log = new EmptyContentLog();
 
     synchronized (logManager) {
@@ -1373,7 +1370,7 @@ public class MetaGroupMember extends RaftMember {
   public void receiveSnapshot(SendSnapshotRequest request) throws SnapshotInstallationException {
     MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot();
     snapshot.deserialize(request.snapshotBytes);
-    snapshot.getDefaultInstaller(this).install(snapshot, -1);
+    snapshot.getDefaultInstaller(this).install(snapshot, -1, false);
   }
 
   /**
@@ -1799,7 +1796,7 @@ public class MetaGroupMember extends RaftMember {
     }
     Map<Node, Integer> nodeStatus = new HashMap<>();
     for (Node node : allNodes) {
-      nodeStatus.put(node, thisNode.equals(node) ? 0 : 1);
+      nodeStatus.put(node, thisNode.equals(node) ? Status.LIVE : Status.OFFLINE);
     }
 
     try {
@@ -1816,11 +1813,11 @@ public class MetaGroupMember extends RaftMember {
     }
 
     for (Node node : partitionTable.getAllNodes()) {
-      nodeStatus.putIfAbsent(node, 2);
+      nodeStatus.putIfAbsent(node, Status.JOINING);
     }
     for (Node node : allNodes) {
       if (!partitionTable.getAllNodes().contains(node)) {
-        nodeStatus.put(node, 3);
+        nodeStatus.put(node, Status.LEAVING);
       }
     }
     return nodeStatus;
@@ -1975,10 +1972,9 @@ public class MetaGroupMember extends RaftMember {
     // node removal must be serialized to reduce potential concurrency problem
     synchronized (logManager) {
       // update partition table
-      PartitionTable table = new SlotPartitionTable(thisNode);
-      table.deserialize(partitionTable.serialize());
+      PartitionTable table = new SlotPartitionTable((SlotPartitionTable) partitionTable);
       table.removeNode(target);
-      ((SlotPartitionTable) table).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
+      table.setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       removeNodeLog.setPartitionTable(table.serialize());
       removeNodeLog.setCurrLogTerm(getTerm().get());
@@ -2263,7 +2259,7 @@ public class MetaGroupMember extends RaftMember {
       return groupSlotMap;
     }
     Map<RaftNode, DataGroupMember> headerMap = getDataClusterServer().getHeaderGroupMap();
-    syncLocalApply(getPartitionTable().getLastMetaLogIndex());
+    syncLocalApply(getPartitionTable().getLastMetaLogIndex(), false);
     synchronized (headerMap) {
       for (DataGroupMember dataMember : headerMap.values()) {
         int num = dataMember.getSlotManager().getSloNumInDataMigration();

@@ -169,6 +169,12 @@ public class ClusterConfig {
    */
   private long maxReadLogLag = 1000L;
 
+  /**
+   * When a follower tries to sync log with the leader, sync will fail if the log Lag exceeds
+   * maxSyncLogLag.
+   */
+  private long maxSyncLogLag = 100000L;
+
   private boolean openServerRpcPort = false;
 
   /**
@@ -472,6 +478,14 @@ public class ClusterConfig {
 
   public void setMaxReadLogLag(long maxReadLogLag) {
     this.maxReadLogLag = maxReadLogLag;
+  }
+
+  public long getMaxSyncLogLag() {
+    return maxSyncLogLag;
+  }
+
+  public void setMaxSyncLogLag(long maxSyncLogLag) {
+    this.maxSyncLogLag = maxSyncLogLag;
   }
 
   public String getInternalIp() {

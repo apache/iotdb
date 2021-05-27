@@ -96,21 +96,19 @@ public class DataSourceInfo {
         Long newReaderId = getReaderId(node, byTimestamp, timestamp);
         if (newReaderId != null) {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
-          if (newReaderId >= 0) {
+          if (newReaderId != -1) {
             // register the node so the remote resources can be released
             context.registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
             return true;
-          } else if (newReaderId == -1) {
+          } else {
             // the id being -1 means there is no satisfying data on the remote node, create an
             // empty reader to reduce further communication
             this.isNoClient = true;
             this.isNoData = true;
             return false;
-          } else {
-            logger.debug("change other client for better query performance.");
           }
         }
       } catch (TException | IOException e) {

@@ -107,6 +107,19 @@ public class SlotPartitionTable implements PartitionTable {
     this.thisNode = thisNode;
   }
 
+  public SlotPartitionTable(SlotPartitionTable other) {
+    this.thisNode = other.thisNode;
+    this.totalSlotNumbers = other.totalSlotNumbers;
+    this.lastMetaLogIndex = other.lastMetaLogIndex;
+    this.nodeRing = new ArrayList<>(other.nodeRing);
+    this.nodeSlotMap = new HashMap<>(other.nodeSlotMap);
+    this.slotNodes = new RaftNode[totalSlotNumbers];
+    System.arraycopy(other.slotNodes, 0, this.slotNodes, 0, totalSlotNumbers);
+    this.previousNodeMap = new HashMap<>(previousNodeMap);
+
+    localGroups = getPartitionGroups(thisNode);
+  }
+
   public SlotPartitionTable(Collection<Node> nodes, Node thisNode) {
     this(nodes, thisNode, ClusterConstant.SLOT_NUM);
   }
@@ -586,6 +599,7 @@ public class SlotPartitionTable implements PartitionTable {
     return lastMetaLogIndex;
   }
 
+  @Override
   public void setLastMetaLogIndex(long lastMetaLogIndex) {
     if (logger.isDebugEnabled()) {
       logger.debug("Set last meta log index of partition table to {}", lastMetaLogIndex);

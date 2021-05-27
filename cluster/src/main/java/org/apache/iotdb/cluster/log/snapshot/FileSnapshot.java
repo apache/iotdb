@@ -194,25 +194,34 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     }
 
     @Override
-    public void install(FileSnapshot snapshot, int slot) throws SnapshotInstallationException {
+    public void install(FileSnapshot snapshot, int slot, boolean isDataMigration)
+        throws SnapshotInstallationException {
       try {
         logger.info("Starting to install a snapshot {} into slot[{}]", snapshot, slot);
         installFileSnapshotSchema(snapshot);
         logger.info("Schemas in snapshot are registered");
-        installFileSnapshotFiles(snapshot, slot, false);
+        if (isDataMigration) {
+          SlotStatus status = slotManager.getStatus(slot);
+          if (status == SlotStatus.PULLING) {
+            // as the schemas are set, writes can proceed
+            slotManager.setToPullingWritable(slot);
+            logger.debug("{}: slot {} is now pulling writable", name, slot);
+          }
+        }
+        installFileSnapshotFiles(snapshot, slot, isDataMigration);
       } catch (PullFileException e) {
         throw new SnapshotInstallationException(e);
       }
     }
 
     @Override
-    public void install(Map<Integer, FileSnapshot> snapshotMap)
+    public void install(Map<Integer, FileSnapshot> snapshotMap, boolean isDataMigration)
         throws SnapshotInstallationException {
       logger.info("Starting to install snapshots {}", snapshotMap);
-      installSnapshot(snapshotMap);
+      installSnapshot(snapshotMap, isDataMigration);
     }
 
-    private void installSnapshot(Map<Integer, FileSnapshot> snapshotMap)
+    private void installSnapshot(Map<Integer, FileSnapshot> snapshotMap, boolean isDataMigration)
         throws SnapshotInstallationException {
       // In data migration, meta group member other than new node does not need to synchronize the
       // leader, because data migration must be carried out after meta group applied add/remove node
@@ -220,25 +229,30 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       dataGroupMember
           .getMetaGroupMember()
           .syncLocalApply(
-              dataGroupMember.getMetaGroupMember().getPartitionTable().getLastMetaLogIndex() - 1);
+              dataGroupMember.getMetaGroupMember().getPartitionTable().getLastMetaLogIndex() - 1,
+              false);
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
         FileSnapshot snapshot = integerSnapshotEntry.getValue();
         installFileSnapshotSchema(snapshot);
-        SlotStatus status = slotManager.getStatus(slot);
-        if (status == SlotStatus.PULLING) {
-          // as schemas are set, writes can proceed
-          slotManager.setToPullingWritable(slot, false);
-          logger.debug("{}: slot {} is now pulling writable", name, slot);
+        if (isDataMigration) {
+          SlotStatus status = slotManager.getStatus(slot);
+          if (status == SlotStatus.PULLING) {
+            // as schemas are set, writes can proceed
+            slotManager.setToPullingWritable(slot, false);
+            logger.debug("{}: slot {} is now pulling writable", name, slot);
+          }
         }
       }
-      slotManager.save();
+      if (isDataMigration) {
+        slotManager.save();
+      }
 
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
         FileSnapshot snapshot = integerSnapshotEntry.getValue();
         try {
-          installFileSnapshotFiles(snapshot, slot, true);
+          installFileSnapshotFiles(snapshot, slot, isDataMigration);
         } catch (PullFileException e) {
           throw new SnapshotInstallationException(e);
         }
@@ -397,8 +411,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       // you can see FilePathUtils.splitTsFilePath() method for details.
       PartialPath storageGroupName =
           new PartialPath(FilePathUtils.getLogicalStorageGroupName(resource));
-      File remoteModFile =
-          new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
         StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
         if (resource.isPlanRangeUnique()) {
@@ -411,22 +423,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       } catch (StorageEngineException | LoadFileException e) {
         logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
         return;
-      }
-      if (remoteModFile.exists()) {
-        // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
-        // dir, so we can add a suffix to find the old modification file.
-        File localModFile =
-            new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
-        try {
-          Files.deleteIfExists(localModFile.toPath());
-        } catch (IOException e) {
-          logger.warn("Cannot delete localModFile {}", localModFile, e);
-        }
-        if (!remoteModFile.renameTo(localModFile)) {
-          logger.warn("Cannot rename remoteModFile {}", remoteModFile);
-        }
-        // ModFile will be updated during the next call to `getModFile`
-        resource.setModFile(null);
       }
       resource.setRemote(false);
     }

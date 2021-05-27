@@ -79,6 +79,7 @@ public class StoppedMemberManager {
     removedMemberMap.put(raftNode, dataGroupMember);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
       StringBuilder builder = new StringBuilder(REMOVED);
+      builder.append(";").append(raftNode.raftId);
       for (Node node : dataGroupMember.getAllNodes()) {
         builder.append(";").append(node.toString());
       }
@@ -98,7 +99,7 @@ public class StoppedMemberManager {
   public synchronized void remove(RaftNode raftNode) {
     removedMemberMap.remove(raftNode);
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(stoppedMembersFileName, true))) {
-      writer.write(RESUMED + ";" + raftNode.toString());
+      writer.write(RESUMED + ";" + raftNode.getRaftId() + ";" + raftNode.getNode().toString());
       writer.newLine();
     } catch (IOException e) {
       logger.error("Cannot record resumed member of header {}", raftNode, e);
@@ -143,18 +144,20 @@ public class StoppedMemberManager {
 
   private void parseRemoved(String[] split) {
     PartitionGroup partitionGroup = new PartitionGroup();
-    for (int i = 1; i < split.length; i++) {
+    int raftId = Integer.parseInt(split[1]);
+    partitionGroup.setId(raftId);
+    for (int i = 2; i < split.length; i++) {
       Node node = ClusterUtils.stringToNode(split[i]);
       partitionGroup.add(node);
     }
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
     member.setReadOnly();
-    // TODO CORRECT
-    removedMemberMap.put(new RaftNode(partitionGroup.getHeader(), 0), member);
+    removedMemberMap.put(new RaftNode(partitionGroup.getHeader(), raftId), member);
   }
 
   private void parseResumed(String[] split) {
-    Node header = ClusterUtils.stringToNode(split[1]);
-    removedMemberMap.remove(new RaftNode(header, 0));
+    int raftId = Integer.parseInt(split[1]);
+    Node header = ClusterUtils.stringToNode(split[2]);
+    removedMemberMap.remove(new RaftNode(header, raftId));
   }
 }

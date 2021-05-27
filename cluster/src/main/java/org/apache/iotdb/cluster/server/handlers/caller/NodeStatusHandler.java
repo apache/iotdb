@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -43,7 +44,7 @@ public class NodeStatusHandler implements AsyncMethodCallback<Node> {
       if (response == null) {
         return;
       }
-      nodeStatusMap.put(response, 0);
+      nodeStatusMap.put(response, Status.LIVE);
       // except for this node itself
       if (countResponse.incrementAndGet() == nodeStatusMap.size() - 1) {
         nodeStatusMap.notifyAll();

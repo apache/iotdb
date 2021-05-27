@@ -926,7 +926,7 @@ public abstract class RaftMember {
       tryUpdateCommitIndex(
           response.getTerm(), response.getCommitLogIndex(), response.getCommitLogTerm());
 
-      return syncLocalApply(leaderCommitId);
+      return syncLocalApply(leaderCommitId, true);
     } catch (TException e) {
       logger.error(MSG_NO_LEADER_COMMIT_INDEX, name, leader.get(), e);
     } catch (InterruptedException e) {
@@ -946,18 +946,20 @@ public abstract class RaftMember {
    * sync local applyId to leader commitId
    *
    * @param leaderCommitId leader commit id
+   * @param fastFail if enable, when log differ too much, return false directly.
    * @return true if leaderCommitId <= localAppliedId
    */
-  public boolean syncLocalApply(long leaderCommitId) {
+  public boolean syncLocalApply(long leaderCommitId, boolean fastFail) {
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
-    long localAppliedId = 0;
+    long localAppliedId;
 
-    // If the leader and follower logs differ too much, local query is not allowed
-    if (leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > 1000) {
-      logger.info(
-          "{}: The raft log of this member is too backward to provide service directly.", name);
-      return false;
+    if (fastFail) {
+      if (leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > config.getMaxSyncLogLag()) {
+        logger.info(
+            "{}: The raft log of this member is too backward to provide service directly.", name);
+        return false;
+      }
     }
 
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {

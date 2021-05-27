@@ -538,7 +538,7 @@ public class DataGroupMemberTest extends BaseMember {
     insertPlan.setTime(101);
     processor.insert(insertPlan);
 
-    snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, 0);
+    snapshot.getDefaultInstaller(dataGroupMember).install(snapshot, 0, false);
     assertEquals(2, processor.getSequenceFileTreeSet().size());
     assertEquals(1, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new PartialPath(TestUtils.getTestSg(0)), 0, 0);

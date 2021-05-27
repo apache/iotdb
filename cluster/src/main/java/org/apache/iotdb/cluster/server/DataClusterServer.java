@@ -646,7 +646,7 @@ public class DataClusterServer extends RaftServer
   public void preAddNodeForDataGroup(AddNodeLog log, DataGroupMember targetDataGroupMember) {
 
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1);
+    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1, false);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {
@@ -793,7 +793,7 @@ public class DataClusterServer extends RaftServer
   public void preRemoveNodeForDataGroup(RemoveNodeLog log, DataGroupMember targetDataGroupMember) {
 
     // Make sure the previous add/remove node log has applied
-    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1);
+    metaGroupMember.syncLocalApply(log.getMetaLogIndex() - 1, false);
 
     // Check the validity of the partition table
     if (!metaGroupMember.getPartitionTable().deserialize(log.getPartitionTable())) {

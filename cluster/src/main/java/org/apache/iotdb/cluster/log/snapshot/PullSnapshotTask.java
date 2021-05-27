@@ -133,7 +133,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
         if (result.size() > 0) {
           Snapshot snapshot = result.values().iterator().next();
           SnapshotInstaller installer = snapshot.getDefaultInstaller(newMember);
-          installer.install(result);
+          installer.install(result, true);
         }
         // inform the previous holders that one member has successfully pulled snapshot
         newMember.registerPullSnapshotHint(descriptor);

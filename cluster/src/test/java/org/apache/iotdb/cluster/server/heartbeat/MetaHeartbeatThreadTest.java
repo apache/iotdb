@@ -124,6 +124,9 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         public long getLastMetaLogIndex() {
           return 0;
         }
+
+        @Override
+        public void setLastMetaLogIndex(long index) {}
       };
 
   @Override

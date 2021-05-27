@@ -31,6 +31,11 @@ import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 @Command(name = "status", description = "Print status of all nodes")
 public class Status extends NodeToolCmd {
 
+  public static final int LIVE = 0;
+  public static final int OFFLINE = 1;
+  public static final int JOINING = 2;
+  public static final int LEAVING = 3;
+
   @Override
   public void execute(ClusterMonitorMBean proxy) {
     Map<Node, Integer> statusMap = proxy.getAllNodeStatus();
@@ -43,11 +48,11 @@ public class Status extends NodeToolCmd {
       Node node = entry.getKey();
       Integer statusNum = entry.getValue();
       String status;
-      if (statusNum == 0) {
+      if (statusNum.equals(LIVE)) {
         status = "on";
-      } else if (statusNum == 1) {
+      } else if (statusNum.equals(OFFLINE)) {
         status = "off";
-      } else if (statusNum == 2) {
+      } else if (statusNum.equals(JOINING)) {
         status = "joining";
       } else {
         status = "leaving";

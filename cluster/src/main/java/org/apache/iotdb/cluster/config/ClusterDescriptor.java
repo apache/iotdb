@@ -298,6 +298,10 @@ public class ClusterDescriptor {
         Long.parseLong(
             properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
 
+    config.setMaxSyncLogLag(
+        Long.parseLong(
+            properties.getProperty("max_sync_log_lag", String.valueOf(config.getMaxReadLogLag()))));
+
     config.setMaxClientPerNodePerMember(
         Integer.parseInt(
             properties.getProperty(
