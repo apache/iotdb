@@ -69,6 +69,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -227,6 +228,15 @@ public class Coordinator {
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
+    // no permission or not allowed to create sgs
+    if (plan instanceof CreateMultiTimeSeriesPlan) {
+      CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
+      if (createMultiTimeSeriesPlan.getResults().size()
+          == createMultiTimeSeriesPlan.getPaths().size()) {
+        return forwardMultiSubPlan(new HashMap<>(), plan);
+      }
+    }
+
     // split the plan into sub-plans that each only involve one data group
     Map<PhysicalPlan, PartitionGroup> planGroupMap;
     try {
@@ -243,15 +253,6 @@ public class Coordinator {
               || plan instanceof CreateAlignedTimeSeriesPlan
               || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-
-        // no permission to create on any sg, end loop
-        if (plan instanceof CreateMultiTimeSeriesPlan) {
-          CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
-          if (createMultiTimeSeriesPlan.getResults().size()
-              == createMultiTimeSeriesPlan.getPaths().size()) {
-            return forwardMultiSubPlan(planGroupMap, plan);
-          }
-        }
 
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
