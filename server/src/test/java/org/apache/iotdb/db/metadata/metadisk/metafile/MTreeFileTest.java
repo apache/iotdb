@@ -30,7 +30,7 @@ public class MTreeFileTest {
 
   @Before
   public void setUp() throws IOException {
-    EnvironmentUtils.envSetUp();
+//    EnvironmentUtils.envSetUp();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -45,7 +45,7 @@ public class MTreeFileTest {
     if (file.exists()) {
       file.delete();
     }
-    EnvironmentUtils.cleanEnv();
+//    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -82,6 +82,27 @@ public class MTreeFileTest {
     Assert.assertEquals("m", m.getAlias());
     Assert.assertEquals(1L, m.getCachedLast().getTimestamp());
     Assert.assertEquals("cache", m.getCachedLast().getValue().getBinary().getStringValue());
+  }
+
+  @Test
+  public void testBigMNode() throws IOException{
+    MNode root = new InternalMNode(null, "root");
+    MNode p = new InternalMNode(root, "p");
+    root.addChild("p", p);
+    StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
+    p.addChild("s", s);
+    for(int i=0;i<10000;i++){
+      MeasurementMNode m =
+              new MeasurementMNode(null, "t"+i, new MeasurementSchema("t", TSDataType.TEXT), "m"+i);
+      m.updateCachedLast(
+              new TimeValuePair(1L, TsPrimitiveType.getByType(TSDataType.TEXT, new Binary("cache"))),
+              false,
+              0L);
+      s.addChild("t"+i, m);
+    }
+    mTreeFile.writeRecursively(root);
+    MNode mNode = mTreeFile.read("root.p.s");
+    Assert.assertEquals(10000,mNode.getChildren().size());
   }
 
   @Test

@@ -39,6 +39,17 @@ public class MTreeFile {
 
   private static final int HEADER_LENGTH = 64;
   private static final int NODE_LENGTH = 512 * 2;
+  private static final int NODE_HEADER_LENGTH=17; // bitmap+pre_position+extend_position
+  private static final int NODE_DATA_LENGTH=NODE_LENGTH-NODE_HEADER_LENGTH;
+
+  private static final byte IS_USED_MASK=(byte)0x80;
+
+  private static final byte NODE_TYPE_MASK=(byte)0x70;
+  private static final byte NORMAL_NODE = (byte)0x80;
+  private static final byte ROOT_NODE = (byte) 0x90;
+  private static final byte STORAGE_GROUP_NODE = (byte) 0xA0;
+  private static final byte MEASUREMENT_NODE = (byte) 0xB0;
+  private static final byte EXTENSION_NODE = (byte) 0xC0;
 
   private static final int INTERNAL_MNODE_TYPE = 0;
   private static final int ROOT_MNODE_TYPE = 1;
@@ -186,36 +197,44 @@ public class MTreeFile {
     fileAccess.readBytes(position, buffer);
 
     byte bitmap = buffer.get();
-    if ((bitmap & 0x80) == 0) {
+    if ((bitmap & IS_USED_MASK) == 0) {
       throw new IOException("file corrupted");
     }
-    int type = (bitmap & 0x70) >> 4;
+    int type = (bitmap & NODE_TYPE_MASK) >> 4;
     if (type > 3) {
       throw new IOException("file corrupted");
     }
-    int num = bitmap & 0x0f;
 
     long parentPosition = buffer.getLong();
     long prePosition;
     long extendPosition = buffer.getLong();
 
-    ByteBuffer dataBuffer =
-        ByteBuffer.allocate(1 + num * (nodeLength - 17)); // node type + node data
-    dataBuffer.put((byte) type);
-    dataBuffer.put(buffer);
-    for (int i = 1; i < num; i++) {
-      buffer.clear();
+    List<ByteBuffer> byteBufferList=new LinkedList<>();
+    byteBufferList.add(buffer);
+
+    int num=1;
+    while (extendPosition!=0){
+      buffer=ByteBuffer.allocate(NODE_LENGTH);
       fileAccess.readBytes(extendPosition, buffer);
       bitmap = buffer.get();
-      if ((bitmap & 0x80) == 0) {
+      if ((bitmap & IS_USED_MASK) == 0) {
         throw new IOException("file corrupted");
       }
-      if (((bitmap & 0x70) >> 4) < 4) {
+      if (((bitmap & NODE_TYPE_MASK) >> 4) < 4) {
         // 地址空间对应非扩展节点
         throw new IOException("File corrupted");
       }
       prePosition = buffer.getLong();
       extendPosition = buffer.getLong();
+      byteBufferList.add(buffer);
+      num++;
+    }
+
+    ByteBuffer dataBuffer =
+        ByteBuffer.allocate(1 + num * NODE_DATA_LENGTH); // node type + node data
+    dataBuffer.put((byte) type);
+    for (int i = 0; i < num; i++) {
+      buffer=byteBufferList.get(i);
       dataBuffer.put(buffer);
     }
     dataBuffer.flip();
@@ -445,30 +464,22 @@ public class MTreeFile {
     }
     int mNodeLength = evaluateNodeLength(mNode);
     int bufferNum =
-        (mNodeLength / (nodeLength - 17)) + ((mNodeLength % (nodeLength - 17)) == 0 ? 0 : 1);
-    if (bufferNum > 15) {
-      throw new IOException(
-          "Too large Node, "
-              + mNode.getFullPath()
-              + ", to persist. Node data size "
-              + (mNodeLength + bufferNum * 17)
-              + ", Node children num "
-              + mNode.getChildren().size());
-    }
-    byte bitmap = (byte) bufferNum;
+        (mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
+
+    byte bitmap = 0;
     ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength);
     if (mNode.isStorageGroup()) {
       serializeStorageGroupMNodeData((StorageGroupMNode) mNode, dataBuffer);
-      bitmap = (byte) (0xA0 | bitmap);
+      bitmap = (byte) 0xA0;
     } else if (mNode.isMeasurement()) {
       serializeMeasurementMNodeData((MeasurementMNode) mNode, dataBuffer);
-      bitmap = (byte) (0xB0 | bitmap);
+      bitmap = (byte) 0xB0;
     } else {
       serializeMNodeData(mNode, dataBuffer);
       if (mNode.getName().equals("root")) {
-        bitmap = (byte) (0x90 | bitmap);
+        bitmap = (byte) 0x90;
       } else {
-        bitmap = (byte) (0x80 | bitmap);
+        bitmap = (byte) 0x80;
       }
     }
     return splitBytes(dataBuffer, bufferNum, bitmap, mNode);
@@ -489,13 +500,13 @@ public class MTreeFile {
       buffer = ByteBuffer.allocate(nodeLength);
       result.put(currentPos, buffer);
       if (i > 0) {
-        bitmap = (byte) (0xC0 | (bufferNum - i));
+        bitmap = (byte) 0xC0 ;
       }
       buffer.put(bitmap);
       buffer.putLong(prePos);
       extensionPos = (i == bufferNum - 1) ? 0 : getFreePos();
       buffer.putLong(extensionPos);
-      dataBuffer.limit(Math.min(dataBuffer.position() + nodeLength - 17, dataBuffer.capacity()));
+      dataBuffer.limit(Math.min(dataBuffer.position() + NODE_DATA_LENGTH, dataBuffer.capacity()));
       buffer.put(dataBuffer);
       buffer.position(0);
     }
