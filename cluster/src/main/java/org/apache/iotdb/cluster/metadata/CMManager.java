@@ -591,7 +591,17 @@ public class CMManager extends MManager {
               Collections.singletonList(
                   new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()))));
     } else {
-      storageGroups.addAll(getStorageGroups(plan.getPaths()));
+      // check permission for each sg
+      List<PartialPath> paths = new ArrayList<>();
+      if (plan instanceof CreateMultiTimeSeriesPlan) {
+        CreateMultiTimeSeriesPlan multiPlan = (CreateMultiTimeSeriesPlan) plan;
+        for (int i = 0; i < multiPlan.getPaths().size(); i++) {
+          if (!multiPlan.getResults().containsKey(i)) {
+            paths.add(multiPlan.getPaths().get(i));
+          }
+        }
+      }
+      storageGroups.addAll(getStorageGroups(paths));
     }
 
     // create storage groups
