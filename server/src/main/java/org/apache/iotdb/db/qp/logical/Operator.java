@@ -75,7 +75,6 @@ public abstract class Operator {
   public enum OperatorType {
     FILTER,
     GROUPBYTIME,
-    SELECT,
     NULL,
     INSERT,
     BATCHINSERT,
@@ -85,7 +84,6 @@ public abstract class Operator {
     QUERY,
     AGGREGATION,
     AUTHOR,
-    FROM,
     FUNC,
     LOADDATA,
     METADATA,

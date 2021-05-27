@@ -89,8 +89,6 @@ public class SQLConstant {
   public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
   public static final int IN = SqlBaseLexer.OPERATOR_IN;
 
-  public static final int TOK_SELECT = 21;
-  public static final int TOK_FROM = 22;
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
   public static final int TOK_DELETE = 25;
@@ -216,8 +214,6 @@ public class SQLConstant {
     tokenNames.put(GREATERTHAN, "greaterthan");
     tokenNames.put(IN, "in");
 
-    tokenNames.put(TOK_SELECT, "TOK_SELECT");
-    tokenNames.put(TOK_FROM, "TOK_FROM");
     tokenNames.put(TOK_WHERE, "TOK_WHERE");
     tokenNames.put(TOK_INSERT, "TOK_INSERT");
     tokenNames.put(TOK_DELETE, "TOK_DELETE");

@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/** Removes wildcards (applying memory control and slimit/soffset control) */
 public class WildcardsRemover {
 
   private final int maxDeduplicatedPathNum;
@@ -43,6 +44,8 @@ public class WildcardsRemover {
 
   private int currentOffset = 0;
   private int currentLimit = Integer.MAX_VALUE;
+
+  /** Records the path number that the MManager totally returned. */
   private int consumed = 0;
 
   public WildcardsRemover(QueryOperator queryOperator, int fetchSize) {
