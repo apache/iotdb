@@ -41,6 +41,16 @@ public class QueryOperator extends Operator {
     operatorType = Operator.OperatorType.QUERY;
   }
 
+  public QueryOperator(QueryOperator queryOperator) {
+    this();
+    this.selectComponent = queryOperator.getSelectComponent();
+    this.fromComponent = queryOperator.getFromComponent();
+    this.filterOperator = queryOperator.getFilterOperator();
+    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+    this.props = queryOperator.getProps();
+    this.indexType = queryOperator.getIndexType();
+  }
+
   public SelectComponent getSelectComponent() {
     return selectComponent;
   }

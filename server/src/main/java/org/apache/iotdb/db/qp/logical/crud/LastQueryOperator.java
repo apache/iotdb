@@ -26,13 +26,8 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 public class LastQueryOperator extends QueryOperator {
 
-  public LastQueryOperator() {}
-
   public LastQueryOperator(QueryOperator queryOperator) {
-    this.selectComponent = queryOperator.getSelectComponent();
-    this.fromComponent = queryOperator.getFromComponent();
-    this.filterOperator = queryOperator.getFilterOperator();
-    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+    super(queryOperator);
   }
 
   @Override

@@ -29,13 +29,12 @@ public class AggregationQueryOperator extends QueryOperator {
   public static final String ERROR_MESSAGE1 =
       "Common queries and aggregated queries are not allowed to appear at the same time";
 
-  public AggregationQueryOperator() {}
+  public AggregationQueryOperator() {
+    super();
+  }
 
   public AggregationQueryOperator(QueryOperator queryOperator) {
-    this.selectComponent = queryOperator.getSelectComponent();
-    this.fromComponent = queryOperator.getFromComponent();
-    this.filterOperator = queryOperator.getFilterOperator();
-    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+    super(queryOperator);
   }
 
   @Override
