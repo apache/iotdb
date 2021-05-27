@@ -216,16 +216,11 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-      for (PartialPath sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
-      }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLineNumber(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }

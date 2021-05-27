@@ -516,7 +516,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTotalSeriesNumber() {
+  public void testTotalSeriesNumber() throws Exception {
     MManager manager = IoTDB.metaManager;
 
     try {
@@ -558,6 +558,8 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
+      assertEquals(6, manager.getTotalSeriesNumber());
+      EnvironmentUtils.restartDaemon();
       assertEquals(6, manager.getTotalSeriesNumber());
       manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
       assertEquals(5, manager.getTotalSeriesNumber());
