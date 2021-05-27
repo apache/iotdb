@@ -202,13 +202,13 @@ public class MergeTaskTest extends MergeTest {
         new PartialPath(
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
+                + measurementSchemas[9].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
-            measurementSchemas[0].getType(),
+            measurementSchemas[9].getType(),
             context,
             list,
             new ArrayList<>(),
