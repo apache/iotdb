@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.List;
 
-public class DataAuthOperator extends RootOperator {
+public class DataAuthOperator extends Operator {
 
   private final List<String> users;
 

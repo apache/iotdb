@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.Map;
 
-public class AlterTimeSeriesOperator extends RootOperator {
+public class AlterTimeSeriesOperator extends Operator {
 
   private PartialPath path;
 

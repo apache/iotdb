@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.Set;
 
-public class DeletePartitionOperator extends RootOperator {
+public class DeletePartitionOperator extends Operator {
 
   private PartialPath storageGroupName;
   private Set<Long> partitionIds;

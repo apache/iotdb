@@ -21,12 +21,12 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class CreateTriggerOperator extends RootOperator {
+public class CreateTriggerOperator extends Operator {
 
   private String triggerName;
   private TriggerEvent event;

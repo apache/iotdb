@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.List;
 
-public class DeleteStorageGroupOperator extends RootOperator {
+public class DeleteStorageGroupOperator extends Operator {
 
   private List<PartialPath> deletePathList;
 

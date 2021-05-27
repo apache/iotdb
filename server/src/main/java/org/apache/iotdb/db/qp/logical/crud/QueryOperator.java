@@ -23,11 +23,10 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.RootOperator;
 
 import java.util.Map;
 
-public class QueryOperator extends RootOperator {
+public class QueryOperator extends Operator {
 
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;

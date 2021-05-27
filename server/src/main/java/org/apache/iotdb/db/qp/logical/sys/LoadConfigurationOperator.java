@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class LoadConfigurationOperator extends RootOperator {
+public class LoadConfigurationOperator extends Operator {
 
   LoadConfigurationOperatorType loadConfigurationOperatorType;
 

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class ShowMergeStatusOperator extends RootOperator {
+public class ShowMergeStatusOperator extends Operator {
 
   public ShowMergeStatusOperator(int tokenIntType) {
     super(tokenIntType);

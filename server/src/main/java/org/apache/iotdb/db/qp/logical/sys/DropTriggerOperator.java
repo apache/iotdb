@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class DropTriggerOperator extends RootOperator {
+public class DropTriggerOperator extends Operator {
 
   private String triggerName;
 

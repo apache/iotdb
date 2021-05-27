@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.List;
 
 /** this class deletes whole data and metadata of the timeseries. */
-public class DeleteTimeSeriesOperator extends RootOperator {
+public class DeleteTimeSeriesOperator extends Operator {
 
   private List<PartialPath> deletePathList;
 

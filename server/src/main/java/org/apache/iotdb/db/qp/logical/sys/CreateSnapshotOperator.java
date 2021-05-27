@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class CreateSnapshotOperator extends RootOperator {
+public class CreateSnapshotOperator extends Operator {
 
   public CreateSnapshotOperator(int tokenIntType) {
     super(tokenIntType);
