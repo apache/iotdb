@@ -39,7 +39,6 @@ import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.input.InputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticMultiplicationTransformer;
@@ -205,37 +204,35 @@ public abstract class UDTFDataSet extends QueryDataSet {
     }
 
     // binary expression
-    ArithmeticBinaryTransformer transformer;
     BinaryExpression binaryExpression = (BinaryExpression) expression;
     if (binaryExpression instanceof AdditionExpression) {
-      transformer =
+      transformers[columnIndex] =
           new ArithmeticAdditionTransformer(
               constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
               constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
     } else if (binaryExpression instanceof SubtractionExpression) {
-      transformer =
+      transformers[columnIndex] =
           new ArithmeticSubtractionTransformer(
               constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
               constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
     } else if (binaryExpression instanceof MultiplicationExpression) {
-      transformer =
+      transformers[columnIndex] =
           new ArithmeticMultiplicationTransformer(
               constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
               constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
     } else if (binaryExpression instanceof DivisionExpression) {
-      transformer =
+      transformers[columnIndex] =
           new ArithmeticDivisionTransformer(
               constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
               constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
     } else if (binaryExpression instanceof ModuloExpression) {
-      transformer =
+      transformers[columnIndex] =
           new ArithmeticModuloTransformer(
               constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
               constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
     } else {
       throw new UnsupportedOperationException(binaryExpression.toString());
     }
-    transformers[columnIndex] = transformer;
   }
 
   private void constructRawQueryTransformer(int columnIndex) {
