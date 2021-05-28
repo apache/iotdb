@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.udf.core.transformer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -88,7 +87,7 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
   protected abstract double evaluate(double leftOperand, double rightOperand);
 
   private static double castCurrentValueToDoubleOperand(LayerPointReader layerPointReader)
-      throws IOException {
+      throws IOException, QueryProcessException {
     switch (layerPointReader.getDataType()) {
       case INT32:
         return layerPointReader.currentInt();
@@ -99,7 +98,8 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
       case DOUBLE:
         return layerPointReader.currentDouble();
       default:
-        throw new UnSupportedDataTypeException(layerPointReader.toString());
+        throw new QueryProcessException(
+            "Unsupported data type: " + layerPointReader.getDataType().toString());
     }
   }
 

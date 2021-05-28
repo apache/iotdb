@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.udf.core.transformer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
@@ -54,7 +53,8 @@ public class ArithmeticNegationTransformer extends Transformer {
         cachedDouble = -layerPointReader.currentDouble();
         break;
       default:
-        throw new UnSupportedDataTypeException(layerPointReader.toString());
+        throw new QueryProcessException(
+            "Unsupported data type: " + layerPointReader.getDataType().toString());
     }
     layerPointReader.readyForNext();
     return true;
