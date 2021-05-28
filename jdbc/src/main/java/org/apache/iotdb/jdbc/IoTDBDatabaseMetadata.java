@@ -2215,7 +2215,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       throws SQLException {
     Statement stmt = this.connection.createStatement();
 
-    String sql = "SHOW STORAGE GROUP";
+    String sql = "SHOW timeseries";
     if (catalog != null && catalog.length() > 0) {
       sql = sql + " " + catalog;
     } else if (schemaPattern != null && schemaPattern.length() > 0) {
@@ -2264,13 +2264,16 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
+      System.out.println(rs.getString(1) + "--" + rs.getString(3));
       List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
         Map<String, Object> m = new HashMap<>();
         m.put("type", listType.get(i));
-        if (i < 3) {
+        if (i < 2) {
+          m.put("val", rs.getString(3));
+        } else if (i == 2) {
           m.put("val", rs.getString(1));
-        } else if (i == 4) {
+        } else if (i == 3) {
           m.put("val", "TABLE");
         } else {
           m.put("val", "");
