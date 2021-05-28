@@ -442,7 +442,7 @@ public class SeriesReader {
         !unSeqPageReaders.isEmpty() && orderUtils
             .isOverlapped(firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
-            && mergeReader.currentTimeValuePair().getTimestamp() > firstPageReader.getStatistics()
+            && mergeReader.currentTimeValuePair().getTimestamp() >= firstPageReader.getStatistics()
             .getStartTime()));
   }
 
