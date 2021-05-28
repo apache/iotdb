@@ -140,9 +140,9 @@ public class AggregateResultTest {
   @Test
   public void ExtremeAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult extremeAggrResult1 =
-            AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
     AggregateResult extremeAggrResult2 =
-            AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(SQLConstant.EXTREME, TSDataType.DOUBLE, true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);

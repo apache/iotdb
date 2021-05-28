@@ -135,13 +135,14 @@ public class ExtremeAggrResult extends AggregateResult {
       if (currentValue != null) {
         if (extVal == null) {
           extVal = currentValue;
-        }
-        else {
+        } else {
           Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
           if (absExtVal.compareTo(absCurrentValue) < 0) {
             extVal = currentValue;
-          } else if (absExtVal.compareTo(absCurrentValue) == 0 && extVal.compareTo(currentValue) > 0) {
-            extVal = currentValue; }
+          } else if (absExtVal.compareTo(absCurrentValue) == 0
+              && extVal.compareTo(currentValue) > 0) {
+            extVal = currentValue;
+          }
         }
       }
     }
@@ -157,13 +158,14 @@ public class ExtremeAggrResult extends AggregateResult {
       if (currentValue != null) {
         if (extVal == null) {
           extVal = currentValue;
-        }
-        else {
+        } else {
           Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
           if (absExtVal.compareTo(absCurrentValue) < 0) {
             extVal = currentValue;
-          } else if (absExtVal.compareTo(absCurrentValue) == 0 && extVal.compareTo(currentValue) > 0) {
-            extVal = currentValue; }
+          } else if (absExtVal.compareTo(absCurrentValue) == 0
+              && extVal.compareTo(currentValue) > 0) {
+            extVal = currentValue;
+          }
         }
       }
     }
