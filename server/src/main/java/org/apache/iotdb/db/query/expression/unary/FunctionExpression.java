@@ -25,7 +25,6 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -53,7 +52,6 @@ public class FunctionExpression implements Expression {
    */
   private List<Expression> expressions;
 
-  private List<TSDataType> dataTypes;
   private List<PartialPath> paths;
 
   private String expressionString;

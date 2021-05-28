@@ -126,7 +126,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     transformers = new Transformer[size];
     for (int i = 0; i < size; ++i) {
       if (udtfPlan.isUdfColumn(i)) {
-        constructUDFTransformer(i, memoryBudgetForSingleWindowTransformer);
+        constructUdfTransformer(i, memoryBudgetForSingleWindowTransformer);
       } else if (udtfPlan.isArithmeticColumn(i)) {
         constructArithmeticTransformer(i);
       } else {
@@ -158,11 +158,11 @@ public abstract class UDTFDataSet extends QueryDataSet {
     return UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB / Math.max(windowTransformerCount, 1);
   }
 
-  private void constructUDFTransformer(
+  private void constructUdfTransformer(
       int columnIndex, float memoryBudgetForSingleWindowTransformer)
       throws QueryProcessException, IOException {
     UDTFExecutor executor = udtfPlan.getExecutorByDataSetOutputColumnIndex(columnIndex);
-    int[] readerIndexes = calculateUDFReaderIndexes(executor);
+    int[] readerIndexes = calculateUdfReaderIndexes(executor);
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
       case ROW_BY_ROW:
@@ -182,7 +182,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     }
   }
 
-  private int[] calculateUDFReaderIndexes(UDTFExecutor executor) {
+  private int[] calculateUdfReaderIndexes(UDTFExecutor executor) {
     List<PartialPath> paths = executor.getExpression().getPaths();
     int[] readerIndexes = new int[paths.size()];
     for (int i = 0; i < readerIndexes.length; ++i) {
