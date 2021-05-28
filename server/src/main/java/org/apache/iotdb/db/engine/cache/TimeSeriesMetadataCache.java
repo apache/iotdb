@@ -31,10 +31,10 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.Weigher;
+import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public class TimeSeriesMetadataCache {
           "TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
     lruCache =
-        CacheBuilder.newBuilder()
+        Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE)
             .weigher(
                 new Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
@@ -383,7 +383,7 @@ public class TimeSeriesMetadataCache {
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.size() == 0;
+    return lruCache.estimatedSize() == 0;
   }
 
   public static class TimeSeriesMetadataCacheKey {

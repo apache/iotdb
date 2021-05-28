@@ -28,15 +28,14 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.Weigher;
+import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -61,7 +60,7 @@ public class ChunkCache {
       logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
     lruCache =
-        CacheBuilder.newBuilder()
+        Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
             .weigher(
                 new Weigher<ChunkMetadata, Chunk>() {
@@ -128,13 +127,7 @@ public class ChunkCache {
           chunkMetaData.getStatistics());
     }
 
-    Chunk chunk;
-    try {
-      chunk = lruCache.get(chunkMetaData);
-    } catch (ExecutionException e) {
-      logger.error("something wrong happened while loading {}", chunkMetaData);
-      throw new IOException(e);
-    }
+    Chunk chunk = lruCache.get(chunkMetaData);
 
     if (debug) {
       DEBUG_LOGGER.info("get chunk from cache whose meta data is: " + chunkMetaData);
@@ -178,7 +171,7 @@ public class ChunkCache {
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.size() == 0;
+    return lruCache.estimatedSize() == 0;
   }
 
   /** singleton pattern. */
