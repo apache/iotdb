@@ -128,6 +128,8 @@ public class AggregateResultFactory {
         return new MaxValueAggrResult(dataType);
       case MIN_VALUE:
         return new MinValueAggrResult(dataType);
+      case EXTREME:
+        return new ExtremeAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());
     }

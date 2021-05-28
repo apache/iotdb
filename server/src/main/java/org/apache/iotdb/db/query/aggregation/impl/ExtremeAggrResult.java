@@ -46,7 +46,7 @@ public class ExtremeAggrResult extends AggregateResult {
 
     switch (resultDataType) {
       case DOUBLE:
-        doubleValue = (double) v;
+        doubleValue = (Double) v;
         return Math.abs(doubleValue);
       case FLOAT:
         floatValue = (Float) v;
@@ -62,6 +62,20 @@ public class ExtremeAggrResult extends AggregateResult {
     }
   }
 
+  public Comparable<Object> compareAbsVal(Comparable<Object> minVal, Comparable<Object> maxVal) {
+    Comparable<Object> extVal;
+
+    Comparable<Object> absMaxVal = (Comparable<Object>) getAbsValue(maxVal);
+    Comparable<Object> absMinVal = (Comparable<Object>) getAbsValue(minVal);
+
+    if (absMaxVal.compareTo(absMinVal) >= 0) {
+      extVal = maxVal;
+    } else {
+      extVal = minVal;
+    }
+    return extVal;
+  }
+
   @Override
   public Object getResult() {
     return hasCandidateResult() ? getValue() : null;
@@ -70,7 +84,10 @@ public class ExtremeAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
-    updateResult(maxVal);
+    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
+
+    Comparable<Object> extVal = compareAbsVal(minVal, maxVal);
+    updateResult(extVal);
   }
 
   @Override
@@ -80,41 +97,77 @@ public class ExtremeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
-    Comparable<Object> maxVal = null;
+    Comparable<Object> extVal = null;
 
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
-      if (maxVal == null || maxVal.compareTo(dataInThisPage.currentValue()) < 0) {
-        maxVal = (Comparable<Object>) dataInThisPage.currentValue();
+      Comparable<Object> currentValue = (Comparable<Object>) dataInThisPage.currentValue();
+      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+
+      if (extVal == null) {
+        extVal = currentValue;
+      } else {
+        Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
+        if (absExtVal.compareTo(absCurrentValue) < 0) {
+          extVal = currentValue;
+        } else if (absExtVal.compareTo(absCurrentValue) == 0) {
+          if (extVal.compareTo(currentValue) > 0) {
+            extVal = currentValue;
+          }
+        }
       }
+
       dataInThisPage.next();
     }
-    updateResult(maxVal);
+    updateResult(extVal);
   }
 
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
-    Comparable<Object> maxVal = null;
+    Comparable<Object> extVal = null;
+
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
-        maxVal = (Comparable<Object>) values[i];
+      Comparable<Object> currentValue = (Comparable<Object>) values[i];
+      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+      if (currentValue != null) {
+        if (extVal == null) {
+          extVal = currentValue;
+        }
+        else {
+          Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
+          if (absExtVal.compareTo(absCurrentValue) < 0) {
+            extVal = currentValue;
+          } else if (absExtVal.compareTo(absCurrentValue) == 0 && extVal.compareTo(currentValue) > 0) {
+            extVal = currentValue; }
+        }
       }
     }
-    updateResult(maxVal);
+    updateResult(extVal);
   }
 
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
-    Comparable<Object> maxVal = null;
+    Comparable<Object> extVal = null;
     for (int i = 0; i < length; i++) {
-      if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
-        maxVal = (Comparable<Object>) values[i];
+      Comparable<Object> currentValue = (Comparable<Object>) values[i];
+      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+      if (currentValue != null) {
+        if (extVal == null) {
+          extVal = currentValue;
+        }
+        else {
+          Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
+          if (absExtVal.compareTo(absCurrentValue) < 0) {
+            extVal = currentValue;
+          } else if (absExtVal.compareTo(absCurrentValue) == 0 && extVal.compareTo(currentValue) > 0) {
+            extVal = currentValue; }
+        }
       }
     }
-    updateResult(maxVal);
+    updateResult(extVal);
   }
 
   @Override
