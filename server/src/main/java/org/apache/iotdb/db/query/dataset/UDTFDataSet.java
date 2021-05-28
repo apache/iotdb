@@ -192,7 +192,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private void constructArithmeticTransformer(int columnIndex) {
-    Expression expression = udtfPlan.getResultColumns().get(columnIndex).getExpression();
+    Expression expression =
+        udtfPlan.getResultColumnByDatasetOutputIndex(columnIndex).getExpression();
 
     // unary expression
     if (expression instanceof NegationExpression) {
