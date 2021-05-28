@@ -374,6 +374,7 @@ public class TimeSeriesMetadataCache {
 
   /** clear LRUCache. */
   public void clear() {
+    lruCache.invalidateAll();
     lruCache.cleanUp();
   }
 

@@ -98,10 +98,15 @@ public class ChunkCache {
                 new CacheLoader<ChunkMetadata, Chunk>() {
                   @Override
                   public Chunk load(ChunkMetadata chunkMetadata) throws Exception {
-                    TsFileSequenceReader reader =
-                        FileReaderManager.getInstance()
-                            .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
-                    return reader.readMemChunk(chunkMetadata);
+                    try {
+                      TsFileSequenceReader reader =
+                          FileReaderManager.getInstance()
+                              .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
+                      return reader.readMemChunk(chunkMetadata);
+                    } catch (IOException e) {
+                      logger.error("Something wrong happened in reading {}", chunkMetadata, e);
+                      throw e;
+                    }
                   }
                 });
   }
@@ -162,6 +167,7 @@ public class ChunkCache {
 
   /** clear LRUCache. */
   public void clear() {
+    lruCache.invalidateAll();
     lruCache.cleanUp();
   }
 
