@@ -220,6 +220,10 @@ public class MManager {
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
           TimeUnit.SECONDS);
     }
+
+    if (config.isMetadataDiskBased()) {
+      MTreeType = MTREE_DISK_BASED;
+    }
   }
 
   /** we should not use this function in other place, but only in IoTDB class */

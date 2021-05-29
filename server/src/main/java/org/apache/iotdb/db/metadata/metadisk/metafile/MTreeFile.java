@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -30,7 +31,8 @@ import java.util.*;
 public class MTreeFile {
 
   private static final int HEADER_LENGTH = 64;
-  private static final int NODE_LENGTH = 512 * 2;
+  private static final int NODE_LENGTH =
+      IoTDBDescriptor.getInstance().getConfig().getMetaFileNodeLength();
   private static final int NODE_HEADER_LENGTH = 17; // bitmap+pre_position+extend_position
   private static final int NODE_DATA_LENGTH = NODE_LENGTH - NODE_HEADER_LENGTH;
 
@@ -73,7 +75,7 @@ public class MTreeFile {
 
   private void initMetaFileHeader() throws IOException {
     headerLength = HEADER_LENGTH;
-    nodeLength = NODE_LENGTH;
+    nodeLength = (short) NODE_LENGTH;
     rootPosition = HEADER_LENGTH;
     firstStorageGroupPosition = 0;
     firstTimeseriesPosition = 0;
