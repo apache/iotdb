@@ -187,11 +187,11 @@ public class CompactionUtils {
     }
     // wait for limit write
     if (chunkWriter.getCurrentChunkSize() == 0) {
-      MergeManager
-          .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+      MergeManager.mergeRateLimiterAcquire(
+          compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     } else {
-      MergeManager
-          .mergeRateLimiterAcquire(compactionRateLimiter, chunkWriter.getCurrentChunkSize());
+      MergeManager.mergeRateLimiterAcquire(
+          compactionRateLimiter, chunkWriter.getCurrentChunkSize());
     }
     chunkWriter.writeToFileWriter(writer);
   }

@@ -19,29 +19,22 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter;
 
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 
+import java.util.List;
+
 public interface QueryHeavyHitters {
 
-  /**
-   * accept time series path list to estimate query frequency
-   */
+  /** accept time series path list to estimate query frequency */
   void acceptQuerySeriesList(List<PartialPath> queryPaths);
 
-  /**
-   * accept time series path to estimate query frequency
-   */
+  /** accept time series path to estimate query frequency */
   void acceptQuerySeries(PartialPath queryPath);
 
-  /**
-   * obtain the time series with the highest query frequency
-   */
+  /** obtain the time series with the highest query frequency */
   List<PartialPath> getTopCompactionSeries(PartialPath sgName) throws MetadataException;
 
-  /**
-   * clear the hitter
-   */
+  /** clear the hitter */
   void clear();
 }

@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters;
 
+import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.PartialPath;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -33,19 +41,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.Set;
-import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters {
 
   private static final Logger logger = LoggerFactory.getLogger(HashMapHitter.class);
   private Map<PartialPath, Integer> counter = new HashMap<>();
-  private PriorityQueue<Entry<PartialPath, Integer>> topHeap = new PriorityQueue<>(
-      (o1, o2) -> o1.getValue() - o2.getValue());
+  private PriorityQueue<Entry<PartialPath, Integer>> topHeap =
+      new PriorityQueue<>((o1, o2) -> o1.getValue() - o2.getValue());
 
   public HashMapHitter(int maxHitterNum) {
     super(maxHitterNum);
@@ -105,8 +107,10 @@ public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters {
    * @param outputPath dump file name
    */
   private void dumpMap(File outputPath) {
-    try (BufferedWriter csvWriter = new BufferedWriter(
-        new OutputStreamWriter(new FileOutputStream(outputPath), StandardCharsets.UTF_8), 1024)) {
+    try (BufferedWriter csvWriter =
+        new BufferedWriter(
+            new OutputStreamWriter(new FileOutputStream(outputPath), StandardCharsets.UTF_8),
+            1024)) {
       File parent = outputPath.getParentFile();
       if (parent != null && !parent.exists()) {
         parent.mkdirs();

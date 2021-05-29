@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.space.saving;
 
 import com.google.common.base.Preconditions;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,16 +31,17 @@ import java.util.stream.Collectors;
  * An implementation of the StreamSummaryImpl algorithm described in <i>Efficient Computation of
  * Frequent and Top-k Elements in Data Streams</i>.
  *
- * This data structure as outlined in the research paper is a O(1) insert for keeping track of top k
- * frequent items in an possibly infinite stream. The top k elements can be then retrieved in O(k)
+ * <p>This data structure as outlined in the research paper is a O(1) insert for keeping track of
+ * top k frequent items in an possibly infinite stream. The top k elements can be then retrieved in
+ * O(k)
  *
- * Analysis:
+ * <p>Analysis:
+ *
  * <ul>
- *    <li>Smallest counter value is at most epsilon * N , where N is items seen in the stream</li>
- *    <li>True count of an uncounted item is between 0 and min</li>
- *    <li>Any item whose true true count is greater than epsilon * N is stored</li>
+ *   <li>Smallest counter value is at most epsilon * N , where N is items seen in the stream
+ *   <li>True count of an uncounted item is between 0 and min
+ *   <li>Any item whose true true count is greater than epsilon * N is stored
  * </ul>
- *
  */
 public class StreamSummary<T> {
 
@@ -49,16 +51,12 @@ public class StreamSummary<T> {
    */
   private final int capacity;
 
-  /**
-   * The number of items seen in the stream
-   */
+  /** The number of items seen in the stream */
   private final LongAdder n = new LongAdder();
 
   private Map<T, Counter<T>> cache = new HashMap<>();
 
-  /**
-   * The sorted buckets of the different counters that exist. It is sorted in decreasing order.
-   */
+  /** The sorted buckets of the different counters that exist. It is sorted in decreasing order. */
   private DoubleLinkedList<Bucket<T>> buckets = new DoubleLinkedList<>();
 
   /**
@@ -80,9 +78,7 @@ public class StreamSummary<T> {
     buckets.insertBeginning(node);
   }
 
-  /**
-   * Returns the max capacity for this datastructure
-   */
+  /** Returns the max capacity for this datastructure */
   public int getCapacity() {
     return capacity;
   }
@@ -103,8 +99,7 @@ public class StreamSummary<T> {
    * @param increment The amount to increment
    */
   public void offer(T item, long increment) {
-    Preconditions
-        .checkState(cache.size() <= capacity, "Capacity of the cache should be bounded.");
+    Preconditions.checkState(cache.size() <= capacity, "Capacity of the cache should be bounded.");
     n.increment();
     if (cache.containsKey(item)) {
       Counter<T> counter = cache.get(item);
@@ -112,14 +107,15 @@ public class StreamSummary<T> {
     } else {
       Counter<T> minElement = buckets.getTail().getItem().getChildren().getFirst();
       long originalMinValue = minElement.getValue();
-      //remove old from cache
+      // remove old from cache
       if (cache.containsKey(minElement.getItem())) {
         cache.remove(minElement.getItem());
       }
       cache.put(item, minElement);
       minElement.setItem(item);
       incrementCounter(minElement);
-      //if we aren't full on capacity yet, we don't need to add error since we have seen every item so far
+      // if we aren't full on capacity yet, we don't need to add error since we have seen every item
+      // so far
       if (cache.size() <= capacity) {
         minElement.setError(originalMinValue);
       }
@@ -141,13 +137,13 @@ public class StreamSummary<T> {
    * The error range for an item in the top k is epsilon * N where N is the total items processed
    */
   public List<Counter<T>> getTopK(int k) {
-    return buckets.stream().flatMap(b -> b.getChildren().stream())
-        .limit(k).collect(Collectors.toList());
+    return buckets.stream()
+        .flatMap(b -> b.getChildren().stream())
+        .limit(k)
+        .collect(Collectors.toList());
   }
 
-  /**
-   * Helper method that is outlined in the research paper above.
-   */
+  /** Helper method that is outlined in the research paper above. */
   private void incrementCounter(Counter<T> counter) {
     DoubleLinkedList.Node<Bucket<T>> bucket = counter.getBucket();
     DoubleLinkedList.Node<Bucket<T>> bucketNext = bucket.getPrev();
@@ -157,8 +153,8 @@ public class StreamSummary<T> {
       bucketNext.getItem().getChildren().addLast(counter);
       counter.setBucket(bucketNext);
     } else {
-      DoubleLinkedList.Node<Bucket<T>> bucketNew = new DoubleLinkedList.Node<>(
-          new Bucket<T>(counter.getValue()));
+      DoubleLinkedList.Node<Bucket<T>> bucketNew =
+          new DoubleLinkedList.Node<>(new Bucket<T>(counter.getValue()));
       bucketNew.getItem().getChildren().addLast(counter);
       buckets.insertBefore(bucket, bucketNew);
       counter.setBucket(bucketNew);
@@ -168,5 +164,4 @@ public class StreamSummary<T> {
       buckets.remove(bucket);
     }
   }
-
 }

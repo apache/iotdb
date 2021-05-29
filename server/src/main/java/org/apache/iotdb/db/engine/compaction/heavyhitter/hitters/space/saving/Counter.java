@@ -31,14 +31,10 @@ import com.google.common.base.Preconditions;
  */
 public class Counter<T> {
 
-  /**
-   * The current value of the counter
-   */
+  /** The current value of the counter */
   private long value;
 
-  /**
-   * The current error of the value. Minus this from the counter to get the "true counter"
-   */
+  /** The current error of the value. Minus this from the counter to get the "true counter" */
   private long error;
 
   /**
@@ -47,14 +43,10 @@ public class Counter<T> {
    */
   private DoubleLinkedList.Node<Bucket<T>> bucket;
 
-  /**
-   * The item we are counting
-   */
+  /** The item we are counting */
   private T item;
 
-  /**
-   * Constructor that initializes value & error to 0
-   */
+  /** Constructor that initializes value & error to 0 */
   Counter(DoubleLinkedList.Node<Bucket<T>> bucket) {
     this.bucket = Preconditions.checkNotNull(bucket);
     this.value = 0;
@@ -107,10 +99,10 @@ public class Counter<T> {
       return false;
     }
     Counter<?> counter = (Counter<?>) o;
-    return value == counter.value &&
-        error == counter.error &&
-        Objects.equal(bucket, counter.bucket) &&
-        Objects.equal(item, counter.item);
+    return value == counter.value
+        && error == counter.error
+        && Objects.equal(bucket, counter.bucket)
+        && Objects.equal(item, counter.item);
   }
 
   @Override

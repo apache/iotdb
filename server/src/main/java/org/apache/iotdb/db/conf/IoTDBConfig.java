@@ -317,7 +317,7 @@ public class IoTDBConfig {
   private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
 
   /** Query hitter strategy */
-  private QueryHitterStrategy queryHitterStrategy = QueryHitterStrategy.DEFAULT_STRATEGY;
+  private QueryHitterStrategy queryHitterStrategy = QueryHitterStrategy.SPACE_SAVING_STRATEGY;
 
   /** max query paths hitter contains */
   private int maxHitterNum = 5000;
@@ -1483,8 +1483,7 @@ public class IoTDBConfig {
     return queryHitterStrategy;
   }
 
-  public void setQueryHitterStrategy(
-      QueryHitterStrategy queryHitterStrategy) {
+  public void setQueryHitterStrategy(QueryHitterStrategy queryHitterStrategy) {
     this.queryHitterStrategy = queryHitterStrategy;
   }
 

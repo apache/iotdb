@@ -599,8 +599,10 @@ public class PhysicalGenerator {
       deduplicate(queryPlan);
       // estimate time series' query frequency
       if (queryPlan instanceof RawDataQueryPlan) {
-        QueryHitterManager.getInstance().submitTask(QueryHitterManager.getInstance().new HitterTask(
-            ((RawDataQueryPlan) queryPlan).getDeduplicatedPaths()));
+        QueryHitterManager.getInstance()
+            .submitTask(
+                QueryHitterManager.getInstance()
+                .new HitterTask(((RawDataQueryPlan) queryPlan).getDeduplicatedPaths()));
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

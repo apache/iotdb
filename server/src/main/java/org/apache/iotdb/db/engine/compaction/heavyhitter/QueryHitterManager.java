@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter;
 
-import java.util.List;
-import java.util.concurrent.ExecutorService;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,13 +29,16 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+
 public class QueryHitterManager implements IService {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(QueryHitterManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(QueryHitterManager.class);
   private static final QueryHitterManager INSTANCE = new QueryHitterManager();
   private ExecutorService pool;
   private QueryHeavyHitters queryHeavyHitters;
@@ -65,8 +66,7 @@ public class QueryHitterManager implements IService {
   @Override
   public void start() throws StartupException {
     if (pool == null) {
-      pool = IoTDBThreadPoolFactory.newScheduledThreadPool(
-          1, ThreadName.HITTER_SERVICE.getName());
+      pool = IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.HITTER_SERVICE.getName());
     }
     if (queryHeavyHitters == null) {
       queryHeavyHitters = loadQueryHitters();
@@ -83,9 +83,7 @@ public class QueryHitterManager implements IService {
         try {
           Thread.sleep(200);
         } catch (InterruptedException e) {
-          logger.error(
-              "QueryHitterManager {} shutdown",
-              ThreadName.HITTER_SERVICE.getName(), e);
+          logger.error("QueryHitterManager {} shutdown", ThreadName.HITTER_SERVICE.getName(), e);
           Thread.currentThread().interrupt();
         }
         timeMillis += 200;
@@ -121,5 +119,4 @@ public class QueryHitterManager implements IService {
       getQueryHitter().acceptQuerySeriesList(queryPaths);
     }
   }
-
 }

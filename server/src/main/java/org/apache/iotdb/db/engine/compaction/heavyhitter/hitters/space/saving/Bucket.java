@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.space.saving;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
+
 import java.util.LinkedList;
 
 /**
@@ -73,8 +74,7 @@ class Bucket<T> {
       return false;
     }
     Bucket<?> bucket = (Bucket<?>) o;
-    return value == bucket.value &&
-        Objects.equal(children, bucket.children);
+    return value == bucket.value && Objects.equal(children, bucket.children);
   }
 
   @Override

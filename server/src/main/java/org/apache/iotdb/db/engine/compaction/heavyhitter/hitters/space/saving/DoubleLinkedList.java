@@ -30,9 +30,7 @@ import java.util.stream.StreamSupport;
  */
 public class DoubleLinkedList<T> implements Iterable<T> {
 
-  /**
-   * The node class used by this double linked list class
-   */
+  /** The node class used by this double linked list class */
   public static class Node<T> {
 
     private Node next;
@@ -56,19 +54,13 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     }
   }
 
-  /**
-   * Pointer to the head of the linked list
-   */
+  /** Pointer to the head of the linked list */
   private Node<T> head;
 
-  /**
-   * Pointer to the tail of the linked list
-   */
+  /** Pointer to the tail of the linked list */
   private Node<T> tail;
 
-  /**
-   * Constructor
-   */
+  /** Constructor */
   public DoubleLinkedList() {
     this.head = null;
     this.tail = null;
@@ -97,9 +89,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     return head;
   }
 
-  /**
-   * Insert newNode after node
-   */
+  /** Insert newNode after node */
   public synchronized void insertAfter(Node node, Node newNode) {
     newNode.prev = node;
     newNode.next = node.next;
@@ -111,9 +101,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     node.next = newNode;
   }
 
-  /**
-   * Insert newNode before node
-   */
+  /** Insert newNode before node */
   public synchronized void insertBefore(Node node, Node newNode) {
     newNode.prev = node.prev;
     newNode.next = node;
@@ -125,9 +113,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     node.prev = newNode;
   }
 
-  /**
-   * Insert newNode as the new head
-   */
+  /** Insert newNode as the new head */
   public synchronized void insertBeginning(Node newNode) {
     if (head == null) {
       head = newNode;
@@ -139,9 +125,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     }
   }
 
-  /**
-   * Insert newNode as the new tail
-   */
+  /** Insert newNode as the new tail */
   public synchronized void insertEnd(Node newNode) {
     if (tail == null) {
       insertBeginning(newNode);
@@ -150,9 +134,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
     }
   }
 
-  /**
-   * Remove node from the linked list
-   */
+  /** Remove node from the linked list */
   public synchronized void remove(Node node) {
     if (node.prev == null) {
       head = node.next;
@@ -185,9 +167,7 @@ public class DoubleLinkedList<T> implements Iterable<T> {
         return temp.getItem();
       }
 
-      public void remove() {
-      }
+      public void remove() {}
     };
   }
-
 }

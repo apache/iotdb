@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter;
 
-public enum  QueryHitterStrategy {
+public enum QueryHitterStrategy {
   // test query hitter
   DEFAULT_STRATEGY,
   // HashMap hitter
   HASH_STRATEGY,
   // Space Saving hitter
   SPACE_SAVING_STRATEGY
-
 }

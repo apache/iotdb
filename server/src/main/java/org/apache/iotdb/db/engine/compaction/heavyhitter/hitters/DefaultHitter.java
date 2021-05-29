@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters;
 
-import java.util.List;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * default query hitter, return first device's time series for hitter compaction
- */
+import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/** default query hitter, return first device's time series for hitter compaction */
 public class DefaultHitter implements QueryHeavyHitters {
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultHitter.class);
@@ -64,8 +64,7 @@ public class DefaultHitter implements QueryHeavyHitters {
   public List<PartialPath> getTopCompactionSeries(PartialPath sgName) throws MetadataException {
     hitterLock.writeLock().lock();
     try {
-      List<PartialPath> unmergedSeries =
-          MManager.getInstance().getAllTimeseriesPath(sgName);
+      List<PartialPath> unmergedSeries = MManager.getInstance().getAllTimeseriesPath(sgName);
       List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
       if (devicePaths.size() > 0) {
         String deviceName = devicePaths.get(0).get(0).getDevice();

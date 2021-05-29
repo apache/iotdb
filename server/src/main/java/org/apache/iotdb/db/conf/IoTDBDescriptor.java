@@ -345,23 +345,20 @@ public class IoTDBDescriptor {
 
       conf.setQueryHitterStrategy(
           QueryHitterStrategy.valueOf(
-              properties.getProperty("query_hitter_strategy",
-                conf.getQueryHitterStrategy().toString())));
+              properties.getProperty(
+                  "query_hitter_strategy", conf.getQueryHitterStrategy().toString())));
 
       conf.setMaxHitterNum(
           Integer.parseInt(
-              properties.getProperty("max_hitter_num",
-                Integer.toString(conf.getMaxHitterNum()))));
+              properties.getProperty("max_hitter_num", Integer.toString(conf.getMaxHitterNum()))));
 
       conf.setSizeRatio(
           Integer.parseInt(
-              properties.getProperty("size_ratio",
-                Integer.toString(conf.getSizeRatio()))));
+              properties.getProperty("size_ratio", Integer.toString(conf.getSizeRatio()))));
 
       conf.setCounterRatio(
           Integer.parseInt(
-              properties.getProperty("counter_ratio",
-                  Integer.toString(conf.getCounterRatio()))));
+              properties.getProperty("counter_ratio", Integer.toString(conf.getCounterRatio()))));
 
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
