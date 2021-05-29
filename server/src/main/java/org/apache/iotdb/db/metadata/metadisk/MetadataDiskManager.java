@@ -136,7 +136,7 @@ public class MetadataDiskManager implements MetadataAccess {
         return null;
       }
       if (result.isLoaded()) {
-        if(result.isLockedInMemory()){
+        if (result.isLockedInMemory()) {
           return result;
         }
         if (result.isCached()) {
@@ -149,7 +149,7 @@ public class MetadataDiskManager implements MetadataAccess {
         }
       } else {
         result = getMNodeFromDisk(result.getPersistenceInfo());
-        result=parent.addChild(result);
+        result = parent.addChild(result);
         if (result.isMeasurement()) {
           MeasurementMNode measurementMNode = (MeasurementMNode) result;
           if (measurementMNode.getAlias() != null) {
@@ -183,7 +183,7 @@ public class MetadataDiskManager implements MetadataAccess {
       }
       if (!result.isLoaded()) {
         result = getMNodeFromDisk(result.getPersistenceInfo());
-        result=parent.addChild(result);
+        result = parent.addChild(result);
         if (result.isMeasurement()) {
           MeasurementMNode measurementMNode = (MeasurementMNode) result;
           if (measurementMNode.getAlias() != null) {
@@ -366,7 +366,7 @@ public class MetadataDiskManager implements MetadataAccess {
       child = mNode.getChild(childName);
       if (!child.isLoaded()) {
         child = getMNodeFromDisk(child.getPersistenceInfo());
-        mNode.addChild(childName,child);
+        mNode.addChild(childName, child);
       }
       deleteChildRecursively(child);
     }
@@ -523,10 +523,10 @@ public class MetadataDiskManager implements MetadataAccess {
     writeLock.lock();
     try {
       cacheStrategy.clear();
-      root=new InternalMNode(null,IoTDBConstant.PATH_ROOT);
+      root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
       cacheStrategy.lockMNode(root);
-      cacheStrategy.setModified(root,false);
-      if(metaFile!=null){
+      cacheStrategy.setModified(root, false);
+      if (metaFile != null) {
         metaFile.close();
       }
       metaFile = null;

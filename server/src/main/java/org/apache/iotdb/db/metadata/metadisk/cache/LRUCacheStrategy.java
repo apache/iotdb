@@ -198,7 +198,7 @@ public class LRUCacheStrategy implements CacheStrategy {
     if (entry == null) {
       return;
     }
-    if(isInCacheList(entry)){
+    if (isInCacheList(entry)) {
       removeOne(entry);
     }
     mNode.setCacheEntry(null);

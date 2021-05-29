@@ -23,9 +23,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SlottedFile implements SlottedFileAccess {
 
@@ -39,10 +36,6 @@ public class SlottedFile implements SlottedFileAccess {
   private final int blockScale;
   private final int blockSize;
   private final long blockMask;
-
-  private final ReadWriteLock readWriteLock=new ReentrantReadWriteLock();
-  private final Lock readLock=readWriteLock.readLock();
-  private final Lock writeLock=readWriteLock.writeLock();
 
   public SlottedFile(String filepath, int headerLength, int blockSize) throws IOException {
     File metaFile = new File(filepath);
@@ -75,7 +68,7 @@ public class SlottedFile implements SlottedFileAccess {
   @Override
   public synchronized ByteBuffer readHeader() throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(headerLength);
-    fileRead(0,buffer);
+    fileRead(0, buffer);
     buffer.flip();
     return buffer;
   }
@@ -85,7 +78,7 @@ public class SlottedFile implements SlottedFileAccess {
     if (buffer.limit() - buffer.position() != headerLength) {
       throw new IOException("wrong format header");
     }
-    fileWrite(0,buffer);
+    fileWrite(0, buffer);
   }
 
   @Override
@@ -97,7 +90,7 @@ public class SlottedFile implements SlottedFileAccess {
 
   @Override
   public void readBytes(long position, ByteBuffer byteBuffer) throws IOException {
-    ByteBuffer blockBuffer=ByteBuffer.wrap(blockData);
+    ByteBuffer blockBuffer = ByteBuffer.wrap(blockData);
     synchronized (blockData) {
       long endPosition = position + (byteBuffer.limit() - byteBuffer.position());
 
@@ -112,7 +105,7 @@ public class SlottedFile implements SlottedFileAccess {
         blockBuffer.position(0);
         blockBuffer.limit(blockSize);
         // read data from file
-        fileRead(currentBlockPosition,blockBuffer);
+        fileRead(currentBlockPosition, blockBuffer);
       }
 
       // read data from blockBuffer to buffer
@@ -127,7 +120,7 @@ public class SlottedFile implements SlottedFileAccess {
         currentBlockPosition += blockSize;
         blockBuffer.position(0);
         blockBuffer.limit(blockSize);
-        fileRead(currentBlockPosition,blockBuffer);
+        fileRead(currentBlockPosition, blockBuffer);
 
         // read the rest target data to buffer
         blockBuffer.position(0);
@@ -146,7 +139,7 @@ public class SlottedFile implements SlottedFileAccess {
       if (currentBlockPosition != -1 // initial state, empty blockBuffer
           && position >= currentBlockPosition
           && position < currentBlockPosition + blockSize) {
-        ByteBuffer blockBuffer=ByteBuffer.wrap(blockData);
+        ByteBuffer blockBuffer = ByteBuffer.wrap(blockData);
         // update the blockBuffer to the updated data
         blockBuffer.position((int) (position - currentBlockPosition));
 
@@ -162,16 +155,16 @@ public class SlottedFile implements SlottedFileAccess {
         byteBuffer.reset();
         byteBuffer.limit(limit);
       }
-      fileWrite(position,byteBuffer);
+      fileWrite(position, byteBuffer);
     }
   }
 
-  private void fileRead(long position, ByteBuffer byteBuffer) throws IOException{
+  private void fileRead(long position, ByteBuffer byteBuffer) throws IOException {
     channel.position(position);
     channel.read(byteBuffer);
   }
 
-  private void fileWrite(long position, ByteBuffer byteBuffer) throws IOException{
+  private void fileWrite(long position, ByteBuffer byteBuffer) throws IOException {
     channel.position(position);
     while (byteBuffer.hasRemaining()) {
       channel.write(byteBuffer);

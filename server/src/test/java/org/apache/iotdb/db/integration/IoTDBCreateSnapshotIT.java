@@ -64,7 +64,7 @@ public class IoTDBCreateSnapshotIT {
 
   @Test
   public void createSnapshotTest() throws ClassNotFoundException {
-    if(IoTDB.metaManager.getMTreeType()!=MTREE_MEMORY_BASED){
+    if (IoTDB.metaManager.getMTreeType() != MTREE_MEMORY_BASED) {
       return;
     }
     Class.forName(Config.JDBC_DRIVER_NAME);

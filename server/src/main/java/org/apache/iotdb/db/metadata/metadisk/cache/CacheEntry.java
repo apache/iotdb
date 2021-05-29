@@ -38,8 +38,8 @@ public class CacheEntry {
     mNode.setCacheEntry(this);
   }
 
-  public void setMNode(MNode mNode){
-    value=mNode;
+  public void setMNode(MNode mNode) {
+    value = mNode;
   }
 
   CacheEntry getPre() {

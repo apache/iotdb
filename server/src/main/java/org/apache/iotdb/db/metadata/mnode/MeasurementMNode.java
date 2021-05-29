@@ -155,12 +155,13 @@ public class MeasurementMNode extends InternalMNode {
     return result;
   }
 
-  public boolean equals(Object o){
-    if(!(o instanceof MeasurementMNode)){
+  public boolean equals(Object o) {
+    if (!(o instanceof MeasurementMNode)) {
       return false;
     }
-    MeasurementMNode measurementMNode=(MeasurementMNode)o;
-    return getFullPath().equals(measurementMNode.getFullPath())&&schema.equals(measurementMNode.getSchema());
+    MeasurementMNode measurementMNode = (MeasurementMNode) o;
+    return getFullPath().equals(measurementMNode.getFullPath())
+        && schema.equals(measurementMNode.getSchema());
   }
 
   /**

@@ -659,6 +659,15 @@ public class IoTDBConfig {
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
 
+  /** the node length of metafile */
+  private int metaFileNodeLength = 1024;
+
+  /** the cache size of mtree_disk_based */
+  private int metaDiskMNodeCacheSize = 300000;
+
+  /** the work mode of mmanager */
+  private boolean metadataDiskBased = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2121,5 +2130,29 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public int getMetaFileNodeLength() {
+    return metaFileNodeLength;
+  }
+
+  public void setMetaFileNodeLength(int metaFileNodeLength) {
+    this.metaFileNodeLength = metaFileNodeLength;
+  }
+
+  public int getMetaDiskMNodeCacheSize() {
+    return metaDiskMNodeCacheSize;
+  }
+
+  public void setMetaDiskMNodeCacheSize(int metaDiskMNodeCacheSize) {
+    this.metaDiskMNodeCacheSize = metaDiskMNodeCacheSize;
+  }
+
+  public boolean isMetadataDiskBased() {
+    return metadataDiskBased;
+  }
+
+  public void setMetadataDiskBased(boolean metadataDiskBased) {
+    this.metadataDiskBased = metadataDiskBased;
   }
 }

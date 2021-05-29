@@ -554,7 +554,8 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException {
+  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+      throws MetadataException {
     return getNodeByPathWithStorageGroupCheck(path);
   }
 

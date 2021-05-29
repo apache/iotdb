@@ -383,7 +383,7 @@ public class InternalMNode implements MNode {
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {
     this.cacheEntry = cacheEntry;
-    if(cacheEntry!=null){
+    if (cacheEntry != null) {
       cacheEntry.setMNode(this);
     }
   }

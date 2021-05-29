@@ -31,19 +31,19 @@ public class MTreeFile {
 
   private static final int HEADER_LENGTH = 64;
   private static final int NODE_LENGTH = 512 * 2;
-  private static final int NODE_HEADER_LENGTH=17; // bitmap+pre_position+extend_position
-  private static final int NODE_DATA_LENGTH=NODE_LENGTH-NODE_HEADER_LENGTH;
+  private static final int NODE_HEADER_LENGTH = 17; // bitmap+pre_position+extend_position
+  private static final int NODE_DATA_LENGTH = NODE_LENGTH - NODE_HEADER_LENGTH;
 
-  private static final byte IS_USED_MASK=(byte)0x80;
+  private static final byte IS_USED_MASK = (byte) 0x80;
 
-  private static final byte NODE_TYPE_MASK=(byte)0xF0;
-  private static final byte INTERNAL_NODE = (byte)0x80;
+  private static final byte NODE_TYPE_MASK = (byte) 0xF0;
+  private static final byte INTERNAL_NODE = (byte) 0x80;
   private static final byte ROOT_NODE = (byte) 0x90;
   private static final byte STORAGE_GROUP_NODE = (byte) 0xA0;
   private static final byte MEASUREMENT_NODE = (byte) 0xB0;
   private static final byte EXTENSION_NODE = (byte) 0xC0;
 
-  private final MNodeSerializer mNodeSerializer=new MNodePersistenceSerializer();
+  private final MNodeSerializer mNodeSerializer = new MNodePersistenceSerializer();
   private final SlottedFileAccess fileAccess;
 
   private int headerLength;
@@ -147,8 +147,8 @@ public class MTreeFile {
 
   public MNode read(PersistenceInfo persistenceInfo) throws IOException {
     long position = persistenceInfo.getPosition();
-    Pair<Byte,ByteBuffer> mNodeData=readBytesFromFile(position);
-    byte nodeType=mNodeData.left;
+    Pair<Byte, ByteBuffer> mNodeData = readBytesFromFile(position);
+    byte nodeType = mNodeData.left;
     ByteBuffer dataBuffer = mNodeData.right;
     MNode mNode;
     switch (nodeType) {
@@ -157,7 +157,7 @@ public class MTreeFile {
         break;
       case ROOT_NODE: // root
         mNode = mNodeSerializer.deserializeInternalMNode(dataBuffer);
-        if(!mNode.getName().equals(IoTDBConstant.PATH_ROOT)){
+        if (!mNode.getName().equals(IoTDBConstant.PATH_ROOT)) {
           throw new IOException("file corrupted");
         }
         break;
@@ -175,7 +175,7 @@ public class MTreeFile {
     return mNode;
   }
 
-  private Pair<Byte,ByteBuffer> readBytesFromFile(long position) throws IOException {
+  private Pair<Byte, ByteBuffer> readBytesFromFile(long position) throws IOException {
     if (position < headerLength) {
       throw new IOException("wrong node position");
     }
@@ -187,8 +187,8 @@ public class MTreeFile {
     if ((bitmap & IS_USED_MASK) == 0) {
       throw new IOException("file corrupted");
     }
-    byte nodeType=(byte) (bitmap & NODE_TYPE_MASK);
-    if(nodeType>MEASUREMENT_NODE){
+    byte nodeType = (byte) (bitmap & NODE_TYPE_MASK);
+    if (nodeType > MEASUREMENT_NODE) {
       throw new IOException("file corrupted");
     }
 
@@ -196,19 +196,19 @@ public class MTreeFile {
     long prePosition;
     long extendPosition = buffer.getLong();
 
-    int mNodeLength=buffer.getInt()+4;// length + data
-    int num=(mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
-    ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength-4);
+    int mNodeLength = buffer.getInt() + 4; // length + data
+    int num = (mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
+    ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength - 4);
     buffer.limit(Math.min(buffer.position() + dataBuffer.remaining(), buffer.limit()));
     dataBuffer.put(buffer);
-    for(int i=1;i<num;i++){
+    for (int i = 1; i < num; i++) {
       buffer.clear();
       fileAccess.readBytes(extendPosition, buffer);
       bitmap = buffer.get();
       if ((bitmap & IS_USED_MASK) == 0) {
         throw new IOException("file corrupted");
       }
-      if (((byte)(bitmap & NODE_TYPE_MASK)) != EXTENSION_NODE) {
+      if (((byte) (bitmap & NODE_TYPE_MASK)) != EXTENSION_NODE) {
         // 地址空间对应非扩展节点
         throw new IOException("File corrupted");
       }
@@ -219,7 +219,7 @@ public class MTreeFile {
     }
     dataBuffer.flip();
 
-    return new Pair<>(nodeType,dataBuffer);
+    return new Pair<>(nodeType, dataBuffer);
   }
 
   public void write(MNode mNode) throws IOException {
@@ -241,13 +241,13 @@ public class MTreeFile {
     byte bitmap;
     ByteBuffer dataBuffer;
     if (mNode.isStorageGroup()) {
-      dataBuffer=mNodeSerializer.serializeStorageGroupMNode((StorageGroupMNode) mNode);
+      dataBuffer = mNodeSerializer.serializeStorageGroupMNode((StorageGroupMNode) mNode);
       bitmap = STORAGE_GROUP_NODE;
     } else if (mNode.isMeasurement()) {
-      dataBuffer=mNodeSerializer.serializeMeasurementMNode((MeasurementMNode) mNode);
+      dataBuffer = mNodeSerializer.serializeMeasurementMNode((MeasurementMNode) mNode);
       bitmap = MEASUREMENT_NODE;
     } else {
-      dataBuffer=mNodeSerializer.serializeInternalMNode((InternalMNode) mNode);
+      dataBuffer = mNodeSerializer.serializeInternalMNode((InternalMNode) mNode);
       if (mNode.getName().equals("root")) {
         bitmap = ROOT_NODE;
       } else {
@@ -255,11 +255,11 @@ public class MTreeFile {
       }
     }
 
-    long position=mNode.getPersistenceInfo().getPosition();
+    long position = mNode.getPersistenceInfo().getPosition();
     MNode parent = mNode.getParent();
     long parentPosition =
-            (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
-    writeBytesToFile(dataBuffer, bitmap, position,parentPosition);
+        (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
+    writeBytesToFile(dataBuffer, bitmap, position, parentPosition);
   }
 
   public void writeRecursively(MNode mNode) throws IOException {
@@ -271,22 +271,25 @@ public class MTreeFile {
 
   private void writeBytesToFile(
       ByteBuffer dataBuffer, byte bitmap, long position, long parentPosition) throws IOException {
-    int mNodeDataLength=dataBuffer.remaining();
+    int mNodeDataLength = dataBuffer.remaining();
     int mNodeLength = mNodeDataLength + 4; // length + data
     int bufferNum =
-            (mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
-    int dataBufferEnd=dataBuffer.limit();
+        (mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
+    int dataBufferEnd = dataBuffer.limit();
 
     ByteBuffer buffer = ByteBuffer.allocate(nodeLength);
     long currentPos = position;
-    long prePos=parentPosition;
+    long prePos = parentPosition;
     long extensionPos = (bufferNum == 1) ? 0 : getFreePos();
 
     buffer.put(bitmap);
     buffer.putLong(prePos);
     buffer.putLong(extensionPos);
     buffer.putInt(mNodeDataLength); // put mNode data length
-    dataBuffer.limit(Math.min(dataBuffer.position() + NODE_DATA_LENGTH - 4, dataBufferEnd)); // current buffer already put an int, 4B
+    dataBuffer.limit(
+        Math.min(
+            dataBuffer.position() + NODE_DATA_LENGTH - 4,
+            dataBufferEnd)); // current buffer already put an int, 4B
     buffer.put(dataBuffer);
     buffer.flip();
     if (currentPos < headerLength) {
@@ -294,7 +297,7 @@ public class MTreeFile {
     }
     fileAccess.writeBytes(currentPos, buffer);
 
-    bitmap=EXTENSION_NODE;
+    bitmap = EXTENSION_NODE;
     for (int i = 1; i < bufferNum; i++) {
       buffer.clear();
       prePos = currentPos;

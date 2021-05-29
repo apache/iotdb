@@ -269,13 +269,15 @@ public class MTreeDiskBased implements MTreeInterface {
               cur,
               nodeNames[i],
               new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()),true);
+                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()),
+              true);
         } else {
-          metadataDiskManager.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]),true);
+          metadataDiskManager.addChild(
+              cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]), true);
         }
         cur = metadataDiskManager.getChild(cur, nodeNames[i]);
-      }else {
-        cur = metadataDiskManager.getChild(cur, nodeNames[i],true);
+      } else {
+        cur = metadataDiskManager.getChild(cur, nodeNames[i], true);
       }
     }
     unlockMNodePath(cur.getParent());
@@ -514,7 +516,8 @@ public class MTreeDiskBased implements MTreeInterface {
   }
 
   @Override
-  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException {
+  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+      throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(rootName)) {
       throw new IllegalPathException(path.getFullPath());
@@ -522,14 +525,14 @@ public class MTreeDiskBased implements MTreeInterface {
     boolean storageGroupChecked = false;
     MNode cur = metadataDiskManager.getRoot();
     for (int i = 1; i < nodes.length; i++) {
-      if(!cur.hasChild(nodes[i])){
+      if (!cur.hasChild(nodes[i])) {
         unlockMNodePath(cur);
         if (!storageGroupChecked) {
           throw new StorageGroupNotSetException(path.getFullPath());
         }
         throw new PathNotExistException(path.getFullPath());
       }
-      cur = metadataDiskManager.getChild(cur, nodes[i],true);
+      cur = metadataDiskManager.getChild(cur, nodes[i], true);
       if (cur.isStorageGroup()) {
         storageGroupChecked = true;
       }

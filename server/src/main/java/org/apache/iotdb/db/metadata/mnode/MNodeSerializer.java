@@ -4,34 +4,33 @@ import java.nio.ByteBuffer;
 
 public interface MNodeSerializer {
 
-    int INTERNAL_MNODE=0;
-    int STORAGE_GROUP_MNODE=1;
-    int MEASUREMENT_MNODE=2;
+  int INTERNAL_MNODE = 0;
+  int STORAGE_GROUP_MNODE = 1;
+  int MEASUREMENT_MNODE = 2;
 
-    ByteBuffer serializeMNode(MNode mNode);
+  ByteBuffer serializeMNode(MNode mNode);
 
-    void serializeMNode(MNode mNode, ByteBuffer dataBuffer);
+  void serializeMNode(MNode mNode, ByteBuffer dataBuffer);
 
-    MNode deserializeMNode(ByteBuffer dataBuffer, int type);
+  MNode deserializeMNode(ByteBuffer dataBuffer, int type);
 
-    ByteBuffer serializeInternalMNode(InternalMNode mNode);
+  ByteBuffer serializeInternalMNode(InternalMNode mNode);
 
-    void serializeInternalMNode(InternalMNode mNode,ByteBuffer dataBuffer);
+  void serializeInternalMNode(InternalMNode mNode, ByteBuffer dataBuffer);
 
-    InternalMNode deserializeInternalMNode(ByteBuffer dataBuffer);
+  InternalMNode deserializeInternalMNode(ByteBuffer dataBuffer);
 
-    ByteBuffer serializeStorageGroupMNode(StorageGroupMNode mNode);
+  ByteBuffer serializeStorageGroupMNode(StorageGroupMNode mNode);
 
-    void serializeStorageGroupMNode(StorageGroupMNode mNode,ByteBuffer dataBuffer);
+  void serializeStorageGroupMNode(StorageGroupMNode mNode, ByteBuffer dataBuffer);
 
-    StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer dataBuffer);
+  StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer dataBuffer);
 
-    ByteBuffer serializeMeasurementMNode(MeasurementMNode mNode);
+  ByteBuffer serializeMeasurementMNode(MeasurementMNode mNode);
 
-    void serializeMeasurementMNode(MeasurementMNode mNode,ByteBuffer dataBuffer);
+  void serializeMeasurementMNode(MeasurementMNode mNode, ByteBuffer dataBuffer);
 
-    MeasurementMNode deserializeMeasurementMNode(ByteBuffer dataBuffer);
+  MeasurementMNode deserializeMeasurementMNode(ByteBuffer dataBuffer);
 
-    int evaluateMNodeLength(MNode mNode);
-
+  int evaluateMNodeLength(MNode mNode);
 }

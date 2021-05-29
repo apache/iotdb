@@ -4,7 +4,6 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -30,7 +29,7 @@ public class MTreeFileTest {
 
   @Before
   public void setUp() throws IOException {
-//    EnvironmentUtils.envSetUp();
+    //    EnvironmentUtils.envSetUp();
     File file = new File(MTREE_FILEPATH);
     if (file.exists()) {
       file.delete();
@@ -45,7 +44,7 @@ public class MTreeFileTest {
     if (file.exists()) {
       file.delete();
     }
-//    EnvironmentUtils.cleanEnv();
+    //    EnvironmentUtils.cleanEnv();
   }
 
   @Test
@@ -85,24 +84,24 @@ public class MTreeFileTest {
   }
 
   @Test
-  public void testBigMNode() throws IOException{
+  public void testBigMNode() throws IOException {
     MNode root = new InternalMNode(null, "root");
     MNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
-    for(int i=0;i<10000;i++){
+    for (int i = 0; i < 10000; i++) {
       MeasurementMNode m =
-              new MeasurementMNode(null, "t"+i, new MeasurementSchema("t", TSDataType.TEXT), "m"+i);
+          new MeasurementMNode(null, "t" + i, new MeasurementSchema("t", TSDataType.TEXT), "m" + i);
       m.updateCachedLast(
-              new TimeValuePair(1L, TsPrimitiveType.getByType(TSDataType.TEXT, new Binary("cache"))),
-              false,
-              0L);
-      s.addChild("t"+i, m);
+          new TimeValuePair(1L, TsPrimitiveType.getByType(TSDataType.TEXT, new Binary("cache"))),
+          false,
+          0L);
+      s.addChild("t" + i, m);
     }
     mTreeFile.writeRecursively(root);
     MNode mNode = mTreeFile.read("root.p.s");
-    Assert.assertEquals(10000,mNode.getChildren().size());
+    Assert.assertEquals(10000, mNode.getChildren().size());
   }
 
   @Test

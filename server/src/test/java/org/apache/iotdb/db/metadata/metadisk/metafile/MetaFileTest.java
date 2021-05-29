@@ -156,19 +156,19 @@ public class MetaFileTest {
 
   @Test
   public void testIOPerformance() throws IOException {
-    int sgNum=1;
+    int sgNum = 1;
     int deviceNum = 10;
     int schemaNum = 10000;
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
     MNode root = new InternalMNode(null, "root");
-    String s,d, t;
+    String s, d, t;
     StorageGroupMNode sg;
     MNode device;
     MeasurementMNode m;
-    for(int k=0;k<sgNum;k++){
-      s="sg"+k;
+    for (int k = 0; k < sgNum; k++) {
+      s = "sg" + k;
       sg = new StorageGroupMNode(root, s, 1000);
       root.addChild(s, sg);
       for (int i = 0; i < deviceNum; i++) {
@@ -190,11 +190,11 @@ public class MetaFileTest {
     endTime = System.currentTimeMillis();
     System.out.println("MTree persistence time: " + (endTime - startTime) + "ms.");
 
-    PersistenceInfo persistenceInfo=root.getPersistenceInfo();
-    root=null;
-    sg=null;
-    device=null;
-    m=null;
+    PersistenceInfo persistenceInfo = root.getPersistenceInfo();
+    root = null;
+    sg = null;
+    device = null;
+    m = null;
     startTime = System.currentTimeMillis();
     System.gc();
     endTime = System.currentTimeMillis();

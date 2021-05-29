@@ -158,7 +158,7 @@ public class MManager {
 
   private byte MTreeType = MTREE_DISK_BASED;
 
-  public byte getMTreeType(){
+  public byte getMTreeType() {
     return MTreeType;
   }
 
@@ -418,9 +418,9 @@ public class MManager {
             continue;
           }
           tagIndex
-                  .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-                  .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-                  .add(leafMNode);
+              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
+              .add(leafMNode);
         }
       }
 
@@ -1090,27 +1090,29 @@ public class MManager {
    */
   public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
-    MNode node = getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel,false);
+    MNode node =
+        getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel, false);
     node = processMNodeForExternChildrenCheck(node);
     return node;
   }
 
   private MNode getDeviceNodeWithAutoCreateWithoutReturnProcess(
-      PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked) throws MetadataException {
+      PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked)
+      throws MetadataException {
     MNode node;
     boolean shouldSetStorageGroup;
-    if(MTreeType==MTREE_DISK_BASED&&isLocked){
+    if (MTreeType == MTREE_DISK_BASED && isLocked) {
       try {
         return mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
-      }catch (MetadataException e){
-        if(e instanceof  PathNotExistException){
+      } catch (MetadataException e) {
+        if (e instanceof PathNotExistException) {
           if (!autoCreateSchema) {
             throw e;
           }
         }
         shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
       }
-    }else {
+    } else {
       try {
         return getMNodeFromCache(path);
       } catch (CacheException e) {
@@ -1127,14 +1129,14 @@ public class MManager {
         setStorageGroup(storageGroupPath);
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if(!isLocked){
+      if (!isLocked) {
         unlockNode(node);
       }
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if(!isLocked){
+      if (!isLocked) {
         unlockNode(node);
       }
       return node;
@@ -1266,22 +1268,22 @@ public class MManager {
   }
 
   // used for MeasurementMNode change to keep tagIndex updated when MTreeDiskBased
-  private void updateToTagIndex(MeasurementMNode node) throws MetadataException{
-    if (MTreeType==MTREE_MEMORY_BASED||node.getOffset() < 0) {
+  private void updateToTagIndex(MeasurementMNode node) throws MetadataException {
+    if (MTreeType == MTREE_MEMORY_BASED || node.getOffset() < 0) {
       return;
     }
-    Map<String, String> tagMap=null;
+    Map<String, String> tagMap = null;
     try {
       tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
-    }catch (IOException e){
+    } catch (IOException e) {
       throw new MetadataException(e);
     }
     if (tagMap != null) {
       Set<MeasurementMNode> set;
       for (Entry<String, String> entry : tagMap.entrySet()) {
         if (tagIndex.containsKey(entry.getKey())
-                && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
-          set=tagIndex.get(entry.getKey()).get(entry.getValue());
+            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
+          set = tagIndex.get(entry.getKey()).get(entry.getValue());
           set.remove(node);
           set.add(node);
         }
@@ -1946,7 +1948,10 @@ public class MManager {
     // 1. get device node
     MNode deviceMNode =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(
-            deviceId, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel(),true);
+            deviceId,
+            config.isAutoCreateSchemaEnabled(),
+            config.getDefaultStorageGroupLevel(),
+            true);
     try {
       // 2. get schema of each measurement
       // if do not has measurement
@@ -1986,13 +1991,13 @@ public class MManager {
 
           if (measurementMNode.getSchema().getType() != insertDataType) {
             logger.warn(
-                    "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-                    measurementList[i],
-                    insertDataType,
-                    measurementMNode.getSchema().getType());
+                "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                measurementList[i],
+                insertDataType,
+                measurementMNode.getSchema().getType());
             DataTypeMismatchException mismatchException =
-                    new DataTypeMismatchException(
-                            measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+                new DataTypeMismatchException(
+                    measurementList[i], insertDataType, measurementMNode.getSchema().getType());
             if (!config.isEnablePartialInsert()) {
               throw mismatchException;
             } else {
@@ -2009,10 +2014,10 @@ public class MManager {
 
         } catch (MetadataException e) {
           logger.warn(
-                  "meet error when check {}.{}, message: {}",
-                  deviceId,
-                  measurementList[i],
-                  e.getMessage());
+              "meet error when check {}.{}, message: {}",
+              deviceId,
+              measurementList[i],
+              e.getMessage());
           if (config.isEnablePartialInsert()) {
             // mark failed measurement
             plan.markFailedMeasurementInsertion(i, e);
@@ -2021,7 +2026,7 @@ public class MManager {
           }
         }
       }
-    }finally {
+    } finally {
       mtree.unlockMNode(deviceMNode);
     }
     return deviceMNode;

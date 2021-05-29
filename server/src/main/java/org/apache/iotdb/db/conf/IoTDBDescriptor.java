@@ -703,6 +703,19 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
 
+      conf.setMetaFileNodeLength(
+          Integer.parseInt(
+              properties.getProperty("metafile_node_length", conf.getMetaFileNodeLength() + "")));
+
+      conf.setMetaDiskMNodeCacheSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "meta_disk_node_cache_size", conf.getMetaDiskMNodeCacheSize() + "")));
+
+      conf.setMetadataDiskBased(
+          Boolean.parseBoolean(
+              properties.getProperty("metadata_disk_based", conf.isMetadataDiskBased() + "")));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
