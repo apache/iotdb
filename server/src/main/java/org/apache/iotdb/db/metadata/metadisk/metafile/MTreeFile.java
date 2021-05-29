@@ -196,7 +196,7 @@ public class MTreeFile {
     long prePosition;
     long extendPosition = buffer.getLong();
 
-    int mNodeLength=buffer.getInt()+4;
+    int mNodeLength=buffer.getInt()+4;// length + data
     int num=(mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
     ByteBuffer dataBuffer = ByteBuffer.allocate(mNodeLength-4);
     buffer.limit(Math.min(buffer.position() + dataBuffer.remaining(), buffer.limit()));
@@ -230,24 +230,6 @@ public class MTreeFile {
       return;
     }
 
-    Pair<Byte,ByteBuffer> mNodeData=serializeMNode(mNode);
-    byte bitmap=mNodeData.left;
-    ByteBuffer dataBuffer = mNodeData.right;
-    long position=mNode.getPersistenceInfo().getPosition();
-    MNode parent = mNode.getParent();
-    long parentPosition =
-            (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
-    writeBytesToFile(dataBuffer, bitmap, position,parentPosition);
-  }
-
-  public void writeRecursively(MNode mNode) throws IOException {
-    for (MNode child : mNode.getChildren().values()) {
-      writeRecursively(child);
-    }
-    write(mNode);
-  }
-
-  private Pair<Byte,ByteBuffer> serializeMNode(MNode mNode) throws IOException {
     if (mNode.getPersistenceInfo() == null) {
       if (mNode.getName().equals("root")) {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
@@ -272,27 +254,51 @@ public class MTreeFile {
         bitmap = INTERNAL_NODE;
       }
     }
-    return new Pair<>(bitmap,dataBuffer);
+
+    long position=mNode.getPersistenceInfo().getPosition();
+    MNode parent = mNode.getParent();
+    long parentPosition =
+            (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
+    writeBytesToFile(dataBuffer, bitmap, position,parentPosition);
+  }
+
+  public void writeRecursively(MNode mNode) throws IOException {
+    for (MNode child : mNode.getChildren().values()) {
+      writeRecursively(child);
+    }
+    write(mNode);
   }
 
   private void writeBytesToFile(
       ByteBuffer dataBuffer, byte bitmap, long position, long parentPosition) throws IOException {
-    int mNodeLength = dataBuffer.remaining();
+    int mNodeDataLength=dataBuffer.remaining();
+    int mNodeLength = mNodeDataLength + 4; // length + data
     int bufferNum =
             (mNodeLength / NODE_DATA_LENGTH) + ((mNodeLength % NODE_DATA_LENGTH) == 0 ? 0 : 1);
     int dataBufferEnd=dataBuffer.limit();
 
     ByteBuffer buffer = ByteBuffer.allocate(nodeLength);
-    long currentPos = parentPosition;
-    long prePos;
-    long extensionPos = position;
-    for (int i = 0; i < bufferNum; i++) {
+    long currentPos = position;
+    long prePos=parentPosition;
+    long extensionPos = (bufferNum == 1) ? 0 : getFreePos();
+
+    buffer.put(bitmap);
+    buffer.putLong(prePos);
+    buffer.putLong(extensionPos);
+    buffer.putInt(mNodeDataLength); // put mNode data length
+    dataBuffer.limit(Math.min(dataBuffer.position() + NODE_DATA_LENGTH - 4, dataBufferEnd)); // current buffer already put an int, 4B
+    buffer.put(dataBuffer);
+    buffer.flip();
+    if (currentPos < headerLength) {
+      throw new IOException("illegal position for node");
+    }
+    fileAccess.writeBytes(currentPos, buffer);
+
+    bitmap=EXTENSION_NODE;
+    for (int i = 1; i < bufferNum; i++) {
       buffer.clear();
       prePos = currentPos;
       currentPos = extensionPos;
-      if (i > 0) {
-        bitmap = EXTENSION_NODE ;
-      }
       buffer.put(bitmap);
       buffer.putLong(prePos);
       extensionPos = (i == bufferNum - 1) ? 0 : getFreePos();

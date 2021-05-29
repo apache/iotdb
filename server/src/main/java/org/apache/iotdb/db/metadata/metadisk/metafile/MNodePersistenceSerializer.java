@@ -18,19 +18,54 @@ import java.util.Map;
 
 public class MNodePersistenceSerializer implements MNodeSerializer{
 
-    // serialize MNode to length+data bytes
+    @Override
+    public ByteBuffer serializeMNode(MNode mNode) {
+        ByteBuffer dataBuffer=ByteBuffer.allocate(evaluateMNodeLength(mNode));
+        serializeMNode(mNode,dataBuffer);
+        return dataBuffer;
+    }
+
+    @Override
+    public void serializeMNode(MNode mNode, ByteBuffer dataBuffer) {
+        if(mNode.isStorageGroup()){
+            serializeStorageGroupMNode((StorageGroupMNode) mNode,dataBuffer);
+        }else if(mNode.isMeasurement()){
+            serializeMeasurementMNode((MeasurementMNode) mNode,dataBuffer);
+        }else {
+            serializeInternalMNode((InternalMNode) mNode,dataBuffer);
+        }
+    }
+
+    @Override
+    public MNode deserializeMNode(ByteBuffer dataBuffer, int type) {
+        switch (type){
+            case INTERNAL_MNODE:
+                return deserializeInternalMNode(dataBuffer);
+            case STORAGE_GROUP_MNODE:
+                return deserializeStorageGroupMNode(dataBuffer);
+            case MEASUREMENT_MNODE:
+                return deserializeMeasurementMNode(dataBuffer);
+            default:
+                return null;
+        }
+    }
+
+    @Override
     public ByteBuffer serializeInternalMNode(InternalMNode mNode) {
-        int length= evaluateMNodeLength(mNode);
-        ByteBuffer dataBuffer=ByteBuffer.allocate(length+4);
-        dataBuffer.putInt(length);
+        ByteBuffer dataBuffer=ByteBuffer.allocate(evaluateMNodeLength(mNode));
+        serializeInternalMNode(mNode,dataBuffer);
+        return dataBuffer;
+    }
+
+    @Override
+    public void serializeInternalMNode(InternalMNode mNode, ByteBuffer dataBuffer) {
         ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
         serializeChildren(mNode.getChildren(), dataBuffer);
         serializeChildren(mNode.getAliasChildren(), dataBuffer);
         dataBuffer.flip();
-        return dataBuffer;
     }
 
-    // deserialize MNode from data bytes, length should already be read
+    @Override
     public InternalMNode deserializeInternalMNode(ByteBuffer dataBuffer){
         InternalMNode mNode=new InternalMNode(null,null);
         mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
@@ -38,18 +73,23 @@ public class MNodePersistenceSerializer implements MNodeSerializer{
         return mNode;
     }
 
+    @Override
     public ByteBuffer serializeStorageGroupMNode(StorageGroupMNode mNode) {
-        int length= evaluateMNodeLength(mNode);
-        ByteBuffer dataBuffer=ByteBuffer.allocate(length+4);
-        dataBuffer.putInt(length);
+        ByteBuffer dataBuffer=ByteBuffer.allocate(evaluateMNodeLength(mNode));
+        serializeStorageGroupMNode(mNode,dataBuffer);
+        return dataBuffer;
+    }
+
+    @Override
+    public void serializeStorageGroupMNode(StorageGroupMNode mNode, ByteBuffer dataBuffer) {
         ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
         dataBuffer.putLong(mNode.getDataTTL());
         serializeChildren(mNode.getChildren(), dataBuffer);
         serializeChildren(mNode.getAliasChildren(), dataBuffer);
         dataBuffer.flip();
-        return dataBuffer;
     }
 
+    @Override
     public StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer dataBuffer){
         StorageGroupMNode mNode=new StorageGroupMNode(null,null,0);
         mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
@@ -58,10 +98,15 @@ public class MNodePersistenceSerializer implements MNodeSerializer{
         return mNode;
     }
 
+    @Override
     public ByteBuffer serializeMeasurementMNode(MeasurementMNode mNode) {
-        int length= evaluateMNodeLength(mNode);
-        ByteBuffer dataBuffer=ByteBuffer.allocate(length+4);
-        dataBuffer.putInt(length);
+        ByteBuffer dataBuffer=ByteBuffer.allocate(evaluateMNodeLength(mNode));
+        serializeMeasurementMNode(mNode,dataBuffer);
+        return dataBuffer;
+    }
+
+    @Override
+    public void serializeMeasurementMNode(MeasurementMNode mNode, ByteBuffer dataBuffer) {
         ReadWriteIOUtils.writeVar(mNode.getName(), dataBuffer);
         ReadWriteIOUtils.writeVar(mNode.getAlias() == null ? "" : mNode.getAlias(), dataBuffer);
         dataBuffer.putLong(mNode.getOffset());
@@ -70,9 +115,9 @@ public class MNodePersistenceSerializer implements MNodeSerializer{
         serializeChildren(mNode.getChildren(), dataBuffer);
         serializeChildren(mNode.getAliasChildren(), dataBuffer);
         dataBuffer.flip();
-        return dataBuffer;
     }
 
+    @Override
     public MeasurementMNode deserializeMeasurementMNode(ByteBuffer dataBuffer){
         MeasurementMNode mNode = new MeasurementMNode(null, null, null, null);
         mNode.setName(ReadWriteIOUtils.readVarIntString(dataBuffer));
@@ -218,6 +263,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer{
         }
     }
 
+    @Override
     public int evaluateMNodeLength(MNode mNode) {
         int length = 0;
         length +=
