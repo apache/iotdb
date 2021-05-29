@@ -36,7 +36,12 @@ public interface QueryHeavyHitters {
   void acceptQuerySeries(PartialPath queryPath);
 
   /**
-   * obtain the time series with the highest query revenue
+   * obtain the time series with the highest query frequency
    */
   List<PartialPath> getTopCompactionSeries(PartialPath sgName) throws MetadataException;
+
+  /**
+   * clear the hitter
+   */
+  void clear();
 }

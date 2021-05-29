@@ -23,6 +23,8 @@ public enum  QueryHitterStrategy {
   // test query hitter
   DEFAULT_STRATEGY,
   // HashMap hitter
-  HASH_STRATEGY
+  HASH_STRATEGY,
+  // Space Saving hitter
+  SPACE_SAVING_STRATEGY
 
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.DefaultHitter;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.HashMapHitter;
+import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.SpaceSavingHitter;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IService;
@@ -53,6 +54,8 @@ public class QueryHitterManager implements IService {
     switch (IoTDBDescriptor.getInstance().getConfig().getQueryHitterStrategy()) {
       case HASH_STRATEGY:
         return new HashMapHitter(IoTDBDescriptor.getInstance().getConfig().getMaxHitterNum());
+      case SPACE_SAVING_STRATEGY:
+        return new SpaceSavingHitter(IoTDBDescriptor.getInstance().getConfig().getMaxHitterNum());
       case DEFAULT_STRATEGY:
       default:
         return new DefaultHitter(IoTDBDescriptor.getInstance().getConfig().getMaxHitterNum());
@@ -82,8 +85,7 @@ public class QueryHitterManager implements IService {
         } catch (InterruptedException e) {
           logger.error(
               "QueryHitterManager {} shutdown",
-              ThreadName.HITTER_SERVICE.getName(),
-              e);
+              ThreadName.HITTER_SERVICE.getName(), e);
           Thread.currentThread().interrupt();
         }
         timeMillis += 200;

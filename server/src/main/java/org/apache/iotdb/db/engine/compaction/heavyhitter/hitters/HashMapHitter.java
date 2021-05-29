@@ -25,19 +25,27 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.PriorityQueue;
+import java.util.Set;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters  {
+public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters {
 
   private static final Logger logger = LoggerFactory.getLogger(HashMapHitter.class);
   private Map<PartialPath, Integer> counter = new HashMap<>();
+  private PriorityQueue<Entry<PartialPath, Integer>> topHeap = new PriorityQueue<>(
+      (o1, o2) -> o1.getValue() - o2.getValue());
 
   public HashMapHitter(int maxHitterNum) {
     super(maxHitterNum);
@@ -45,20 +53,58 @@ public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters  {
 
   @Override
   public void acceptQuerySeries(PartialPath queryPath) {
+    if (queryPath == null) {
+      return;
+    }
     counter.put(queryPath, counter.getOrDefault(queryPath, 0) + 1);
   }
 
   @Override
   public List<PartialPath> getTopCompactionSeries(PartialPath sgName) throws MetadataException {
-    return null;
+    hitterLock.writeLock().lock();
+    try {
+      List<PartialPath> ret = new ArrayList<>();
+      for (Entry<PartialPath, Integer> entry : counter.entrySet()) {
+        if (topHeap.size() < maxHitterNum) {
+          topHeap.add(entry);
+          continue;
+        }
+        int min = topHeap.peek().getValue();
+        if (entry.getValue() > min) {
+          topHeap.poll();
+          topHeap.add(entry);
+        }
+      }
+      Set<PartialPath> sgPaths = new HashSet<>(MManager.getInstance().getAllTimeseriesPath(sgName));
+      while (!topHeap.isEmpty()) {
+        PartialPath path = topHeap.poll().getKey();
+        if (sgPaths.contains(path)) {
+          ret.add(path);
+        }
+      }
+      topHeap.clear();
+      return ret;
+    } finally {
+      hitterLock.writeLock().unlock();
+    }
+  }
+
+  @Override
+  public void clear() {
+    hitterLock.writeLock().lock();
+    try {
+      counter.clear();
+    } finally {
+      hitterLock.writeLock().unlock();
+    }
   }
 
   /**
-   * used to persist query frequency
+   * only for test, used to persist query frequency
    *
    * @param outputPath dump file name
    */
-  public void dumpMapToFile(File outputPath) {
+  private void dumpMap(File outputPath) {
     try (BufferedWriter csvWriter = new BufferedWriter(
         new OutputStreamWriter(new FileOutputStream(outputPath), StandardCharsets.UTF_8), 1024)) {
       File parent = outputPath.getParentFile();
@@ -73,7 +119,7 @@ public class HashMapHitter extends DefaultHitter implements QueryHeavyHitters  {
       }
       csvWriter.flush();
     } catch (IOException e) {
-      logger.error("dump map frequency failed, error: {}", e.getMessage(), e);
+      logger.error("dump map failed, error: {}", e.getMessage(), e);
     }
   }
 }

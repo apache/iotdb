@@ -36,21 +36,22 @@ import org.slf4j.LoggerFactory;
 public class DefaultHitter implements QueryHeavyHitters {
 
   private static final Logger logger = LoggerFactory.getLogger(DefaultHitter.class);
-  protected final ReadWriteLock queryHitterLock = new ReentrantReadWriteLock();
+  protected final ReadWriteLock hitterLock = new ReentrantReadWriteLock();
+  protected final int maxHitterNum;
 
   public DefaultHitter(int maxHitterNum) {
-
+    this.maxHitterNum = maxHitterNum;
   }
 
   @Override
   public void acceptQuerySeriesList(List<PartialPath> queryPaths) {
-    queryHitterLock.writeLock().lock();
+    hitterLock.writeLock().lock();
     try {
       for (PartialPath path : queryPaths) {
         acceptQuerySeries(path);
       }
     } finally {
-      queryHitterLock.writeLock().unlock();
+      hitterLock.writeLock().unlock();
     }
   }
 
@@ -61,14 +62,24 @@ public class DefaultHitter implements QueryHeavyHitters {
 
   @Override
   public List<PartialPath> getTopCompactionSeries(PartialPath sgName) throws MetadataException {
-    List<PartialPath> unmergedSeries =
-        MManager.getInstance().getAllTimeseriesPath(sgName);
-    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    if (devicePaths.size() > 0) {
-      String deviceName = devicePaths.get(0).get(0).getDevice();
-      logger.info("default hitter, top compaction device:{}", deviceName);
-      return devicePaths.get(0);
+    hitterLock.writeLock().lock();
+    try {
+      List<PartialPath> unmergedSeries =
+          MManager.getInstance().getAllTimeseriesPath(sgName);
+      List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+      if (devicePaths.size() > 0) {
+        String deviceName = devicePaths.get(0).get(0).getDevice();
+        logger.info("default hitter, top compaction device:{}", deviceName);
+        return devicePaths.get(0);
+      }
+      return null;
+    } finally {
+      hitterLock.writeLock().unlock();
     }
-    return null;
+  }
+
+  @Override
+  public void clear() {
+    // do nothing
   }
 }
