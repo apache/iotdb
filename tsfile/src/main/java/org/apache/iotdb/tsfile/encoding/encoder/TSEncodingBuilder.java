@@ -303,12 +303,10 @@ public abstract class TSEncodingBuilder {
 
     @Override
     public Encoder getEncoder(TSDataType type) {
-      switch (type) {
-        case TEXT:
-          return new DictionaryEncoder();
-        default:
-          throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+      if (type == TSDataType.TEXT) {
+        return new DictionaryEncoder();
       }
+      throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
     }
 
     @Override
