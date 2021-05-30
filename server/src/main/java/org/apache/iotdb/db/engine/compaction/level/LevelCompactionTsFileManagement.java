@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.level;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
@@ -437,6 +438,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
         File target = new File(targetFile);
         if (deviceSet.isEmpty()) {
+          if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
+              == CompactionStrategy.HITTER_LEVEL_COMPACTION) {
+            if (new File(sourceFileList.get(0)).exists()) {
+              TsFileResource targetTsFileResource = getRecoverTsFileResource(targetFile, isSeq);
+              targetTsFileResource.remove();
+              return;
+            }
+          }
           // if not in compaction, just delete the target file
           if (target.exists()) {
             Files.delete(target.toPath());

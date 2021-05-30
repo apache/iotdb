@@ -338,7 +338,7 @@ public class CompactionUtils {
         }
 
         for (String sensor : allSensors) {
-          if (!unmergedPathSet.contains(device.concat(sensor))) {
+          if (!unmergedPathSet.contains(device.concat(".").concat(sensor))) {
             continue;
           }
           if (sensor.compareTo(lastSensor) <= 0) {
@@ -444,7 +444,8 @@ public class CompactionUtils {
             tsReader.readChunkMetadataInDevice(device);
         for (Entry<String, List<ChunkMetadata>> chunkMetadataListInDevice :
             chunkMetadataInDevice.entrySet()) {
-          if (!unmergedPathSet.contains(device.concat(chunkMetadataListInDevice.getKey()))) {
+          if (!unmergedPathSet.contains(
+              device.concat(".").concat(chunkMetadataListInDevice.getKey()))) {
             chunkMetadataList.addAll(chunkMetadataListInDevice.getValue());
           }
         }
