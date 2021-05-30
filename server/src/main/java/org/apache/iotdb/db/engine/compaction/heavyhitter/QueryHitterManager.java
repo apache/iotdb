@@ -78,7 +78,7 @@ public class QueryHitterManager implements IService {
   public void stop() {
     if (pool != null) {
       long startTime = System.currentTimeMillis();
-      while (!pool.isTerminated() || !pool.isTerminated()) {
+      while (!pool.isTerminated()) {
         int timeMillis = 0;
         try {
           Thread.sleep(200);
