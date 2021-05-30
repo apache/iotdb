@@ -613,11 +613,12 @@ public class PhysicalGenerator {
 
       // estimate time series' query frequency
       if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-          == CompactionStrategy.HITTER_LEVEL_COMPACTION && queryPlan instanceof RawDataQueryPlan) {
+              == CompactionStrategy.HITTER_LEVEL_COMPACTION
+          && queryPlan instanceof RawDataQueryPlan) {
         QueryHitterManager.getInstance()
             .submitTask(
                 QueryHitterManager.getInstance()
-                    .new HitterTask(((RawDataQueryPlan) queryPlan).getDeduplicatedPaths()));
+                .new HitterTask(((RawDataQueryPlan) queryPlan).getDeduplicatedPaths()));
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

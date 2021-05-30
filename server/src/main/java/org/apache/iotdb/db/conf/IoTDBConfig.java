@@ -322,9 +322,6 @@ public class IoTDBConfig {
   /** max query paths hitter contains */
   private int maxHitterNum = 5000;
 
-  /** size ratio of the hitter level merge */
-  private int sizeRatio = 2;
-
   /** Counter ratio of the query hitter */
   private int counterRatio = 2;
 
@@ -1511,14 +1508,6 @@ public class IoTDBConfig {
 
   public void setMaxHitterNum(int maxHitterNum) {
     this.maxHitterNum = maxHitterNum;
-  }
-
-  public int getSizeRatio() {
-    return sizeRatio;
-  }
-
-  public void setSizeRatio(int sizeRatio) {
-    this.sizeRatio = sizeRatio;
   }
 
   public int getCounterRatio() {

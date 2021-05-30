@@ -362,7 +362,7 @@ public class CompactionUtils {
                 sensorReaderChunkMetadataListEntry =
                     new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
             if (!sequence) {
-              writeByDeserializeMerge(
+              writeByDeserializePageMerge(
                   device,
                   compactionWriteRateLimiter,
                   sensorReaderChunkMetadataListEntry,
@@ -371,20 +371,42 @@ public class CompactionUtils {
                   modificationCache,
                   modifications);
             } else {
+              boolean isChunkEnoughLarge = true;
               boolean isPageEnoughLarge = true;
               for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
                 for (ChunkMetadata chunkMetadata : chunkMetadatas) {
-                  if (chunkMetadata.getNumOfPoints() < MERGE_PAGE_POINT_NUM) {
+                  if (chunkMetadata.getNumOfPoints()
+                      < IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getMergePagePointNumberThreshold()) {
                     isPageEnoughLarge = false;
-                    break;
+                  }
+                  if (chunkMetadata.getNumOfPoints()
+                      < IoTDBDescriptor.getInstance()
+                          .getConfig()
+                          .getMergeChunkPointNumberThreshold()) {
+                    isChunkEnoughLarge = false;
                   }
                 }
               }
-              if (isPageEnoughLarge) {
+              // if a chunk is large enough, it's page must be large enough too
+              if (isChunkEnoughLarge) {
                 logger.debug(
-                    "{} [Hitter Compaction] page enough large, use append merge", storageGroup);
+                    "{} [Hitter Compaction] chunk enough large, use append chunk merge",
+                    storageGroup);
                 // append page in chunks, so we do not have to deserialize a chunk
-                writeByAppendMerge(
+                writeByAppendChunkMerge(
+                    device,
+                    compactionWriteRateLimiter,
+                    sensorReaderChunkMetadataListEntry,
+                    targetResource,
+                    writer);
+              } else if (isPageEnoughLarge) {
+                logger.debug(
+                    "{} [Hitter Compaction] page enough large, use append page merge",
+                    storageGroup);
+                // append page in chunks, so we do not have to deserialize a chunk
+                writeByAppendPageMerge(
                     device,
                     compactionWriteRateLimiter,
                     sensorReaderChunkMetadataListEntry,
@@ -392,9 +414,10 @@ public class CompactionUtils {
                     writer);
               } else {
                 logger.debug(
-                    "{} [Hitter Compaction] page too small, use deserialize merge", storageGroup);
+                    "{} [Hitter Compaction] page too small, use deserialize page merge",
+                    storageGroup);
                 // we have to deserialize chunks to merge pages
-                writeByDeserializeMerge(
+                writeByDeserializePageMerge(
                     device,
                     compactionWriteRateLimiter,
                     sensorReaderChunkMetadataListEntry,

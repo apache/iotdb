@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.heavyhitter;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
@@ -46,7 +45,6 @@ public class HitterLevelCompactionTsFileManagement extends LevelCompactionTsFile
 
   private static final Logger logger =
       LoggerFactory.getLogger(HitterLevelCompactionTsFileManagement.class);
-  private final int sizeRatio = IoTDBDescriptor.getInstance().getConfig().getSizeRatio();
 
   public HitterLevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -54,24 +52,30 @@ public class HitterLevelCompactionTsFileManagement extends LevelCompactionTsFile
 
   @Override
   protected void merge(long timePartition) {
-    merge(forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
-    if (enableUnseqCompaction && unseqLevelNum <= 1 && forkedUnSequenceTsFileResources.size() > 0) {
+    isMergeExecutedInCurrentTask =
+        merge(
+            forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
+    if (enableUnseqCompaction
+        && unseqLevelNum <= 1
+        && forkedUnSequenceTsFileResources.get(0).size() > 0) {
+      isMergeExecutedInCurrentTask = true;
       merge(
           isForceFullMerge,
           getTsFileListByTimePartition(true, timePartition),
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
-      merge(
-          forkedUnSequenceTsFileResources,
-          false,
-          timePartition,
-          unseqLevelNum,
-          unseqFileNumInEachLevel);
+      isMergeExecutedInCurrentTask =
+          merge(
+              forkedUnSequenceTsFileResources,
+              false,
+              timePartition,
+              unseqLevelNum,
+              unseqFileNumInEachLevel);
     }
   }
 
-  private void merge(
+  private boolean merge(
       List<List<TsFileResource>> mergeResources,
       boolean sequence,
       long timePartition,
@@ -82,18 +86,23 @@ public class HitterLevelCompactionTsFileManagement extends LevelCompactionTsFile
       try {
         Thread.sleep(200);
       } catch (InterruptedException e) {
-        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        logger.error("{} [Hitter Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();
-        return;
+        return false;
       }
     }
     isSeqMerging = true;
     long startTimeMillis = System.currentTimeMillis();
+    // whether execute merge chunk in the loop below
+    boolean isMergeExecutedInCurrentTask = false;
     CompactionLogger compactionLogger = null;
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
-        if (mergeResources.get(i).size() >= currMaxFileNumInEachLevel) {
+        List<TsFileResource> currLevelTsFileResource = mergeResources.get(i);
+        if (currLevelTsFileResource.size() >= currMaxFileNumInEachLevel) {
+          // just merge part of the file
+          isMergeExecutedInCurrentTask = true;
           // level is numbered from 0
           if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
             // do not merge current unseq file level to upper level and just merge all of them to
@@ -114,7 +123,8 @@ public class HitterLevelCompactionTsFileManagement extends LevelCompactionTsFile
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
-            List<TsFileResource> toMergeTsFiles = mergeResources.get(i);
+            List<TsFileResource> toMergeTsFiles =
+                mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
             logger.info(
                 "{} [Hitter Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName,
@@ -199,5 +209,6 @@ public class HitterLevelCompactionTsFileManagement extends LevelCompactionTsFile
           sequence,
           System.currentTimeMillis() - startTimeMillis);
     }
+    return isMergeExecutedInCurrentTask;
   }
 }

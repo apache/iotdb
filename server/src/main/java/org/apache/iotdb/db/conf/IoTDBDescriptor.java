@@ -364,10 +364,6 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("max_hitter_num", Integer.toString(conf.getMaxHitterNum()))));
 
-      conf.setSizeRatio(
-          Integer.parseInt(
-              properties.getProperty("size_ratio", Integer.toString(conf.getSizeRatio()))));
-
       conf.setCounterRatio(
           Integer.parseInt(
               properties.getProperty("counter_ratio", Integer.toString(conf.getCounterRatio()))));

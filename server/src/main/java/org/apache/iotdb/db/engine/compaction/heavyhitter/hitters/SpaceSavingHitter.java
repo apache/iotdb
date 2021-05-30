@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.heavyhitter.hitters;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.space.saving.Counter;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.space.saving.StreamSummary;
@@ -20,10 +21,11 @@ public class SpaceSavingHitter extends DefaultHitter implements QueryHeavyHitter
 
   private static final Logger logger = LoggerFactory.getLogger(SpaceSavingHitter.class);
   private StreamSummary<PartialPath> streamSummary;
+  private int counterRatio = IoTDBDescriptor.getInstance().getConfig().getCounterRatio();
 
   public SpaceSavingHitter(int maxHitterNum) {
     super(maxHitterNum);
-    double error = 1.0 / (maxHitterNum * 1.25);
+    double error = 1.0 / (maxHitterNum * counterRatio);
     streamSummary = new StreamSummary<>(error);
   }
 
@@ -57,7 +59,7 @@ public class SpaceSavingHitter extends DefaultHitter implements QueryHeavyHitter
   public void clear() {
     hitterLock.writeLock().lock();
     try {
-      double error = 1.0 / (maxHitterNum * 1.25);
+      double error = 1.0 / (maxHitterNum * counterRatio);
       streamSummary = new StreamSummary<>(error);
     } finally {
       hitterLock.writeLock().unlock();
