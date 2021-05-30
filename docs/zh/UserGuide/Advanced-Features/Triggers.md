@@ -585,6 +585,116 @@ for (int i = 0; i < 100; ++i) {
 
 
 
+#### AlertManagerSink
+
+触发器可以使用`AlertManagerSink` 向 AlertManager 发送消息。
+
+`AlertManagerConfiguration` 的构造需传入 AlertManager 的发送告警的 endpoint。
+```java
+AlertManagerConfiguration(String endpoint);
+```
+
+`AlertManagerEvent` 提供三种构造函数：
+```java
+AlertManagerEvent(String alertname);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String, String> annotations);
+```
+其中：
+* `alertname` 是必传参数，用于标识一个 `alert`，`alertname` 字段可用于 `AlertManager` 发送告警时的分组和消重。
+* `extraLabels` 可选传，在后台与 `alertname` 组合成 `labels` 一起标识一个 `alert`，可用于 `AlertManager` 发送告警时的分组和消重。
+* `annotations` 可选传，它的 value 值可使用 Go 语言模板风格的 
+    ```
+    {{.<label_key>}}
+    ```
+    它在最终生成消息时会被替换为 `labels[<label_key>]`。
+* `labels` 和 `annotations` 会被解析成 json 字符串发送给 `AlertManager`：
+```json
+{
+    "labels": {
+      "alertname": "<requiredAlertName>",
+      "<labelname>": "<labelvalue>",
+      ...
+    },
+    "annotations": {
+      "<labelname>": "<labelvalue>",
+      ...
+    }
+}
+```
+
+调用  `AlertManagerHandler` 的 `onEvent(AlertManagerEvent event)` 方法发送一个告警。
+
+
+
+**使用示例 1：**
+
+只传 `alertname`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test0";
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+ 
+
+**使用示例 2：**
+
+传入 `alertname` 和 `extraLabels`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test1";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName, extraLabels);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**使用示例 3：**
+
+传入 `alertname`， `extraLabels` 和 `annotations` 。
+
+最终 `description` 字段的值会被解析为 `test2: root.ln.wt01.wf01.temperature is 100.0`。
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test2";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+final HashMap<String, String> annotations = new HashMap<>();
+annotations.put("summary", "high temperature");
+annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+
+alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
+```
+
+
+
 ## 完整的Maven示例项目
 
 如果您使用[Maven](http://search.maven.org/)，可以参考我们编写的示例项目**trigger-example**。

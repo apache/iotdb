@@ -81,6 +81,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -230,13 +231,14 @@ public class CMManager extends MManager {
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
           for (String subSensorId : measurementSchema.getValueMeasurementIdList()) {
-            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode);
+            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode, false);
           }
           cacheMeta(
               new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),
-              measurementMNode);
+              measurementMNode,
+              true);
         } else {
-          cacheMeta(path, measurementMNode);
+          cacheMeta(path, measurementMNode, true);
         }
         return measurementMNode.getDataType(path.getMeasurement());
       } else {
@@ -262,6 +264,20 @@ public class CMManager extends MManager {
   @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
+  }
+
+  /**
+   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
+   * we don't change it.
+   */
+  @Override
+  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
+    MeasurementMNode node = getMeasurementMNode(partialPath);
+    if (node.getSchema() instanceof MeasurementSchema) {
+      return partialPath;
+    } else {
+      return toVectorPath(partialPath, node.getName());
+    }
   }
 
   private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
@@ -290,7 +306,7 @@ public class CMManager extends MManager {
           MeasurementMNode measurementMNode =
               new MeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
-          cacheMeta(fullPath, measurementMNode);
+          cacheMeta(fullPath, measurementMNode, true);
           node = measurementMNode;
         } else {
           throw e;
@@ -370,13 +386,20 @@ public class CMManager extends MManager {
       // take care, the pulled schema's measurement Id is only series name
       MeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
-      cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode);
+      cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode, true);
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
   }
 
+  /*
+  do not set FullPath for Vector subSensor
+   */
   @Override
-  public void cacheMeta(PartialPath seriesPath, MeasurementMNode measurementMNode) {
+  public void cacheMeta(
+      PartialPath seriesPath, MeasurementMNode measurementMNode, boolean needSetFullPath) {
+    if (needSetFullPath) {
+      measurementMNode.setFullPath(seriesPath.getFullPath());
+    }
     cacheLock.writeLock().lock();
     mRemoteMetaCache.put(seriesPath, measurementMNode);
     cacheLock.writeLock().unlock();
@@ -1626,7 +1649,11 @@ public class CMManager extends MManager {
     // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
     // not combinable
     if (offset != 0) {
-      plan.setLimit(0);
+      if (limit > Integer.MAX_VALUE - offset) {
+        plan.setLimit(0);
+      } else {
+        plan.setLimit(limit + offset);
+      }
       plan.setOffset(0);
     }
 
@@ -1670,7 +1697,11 @@ public class CMManager extends MManager {
     // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
     // not combinable
     if (offset != 0) {
-      plan.setLimit(0);
+      if (limit > Integer.MAX_VALUE - offset) {
+        plan.setLimit(0);
+      } else {
+        plan.setLimit(limit + offset);
+      }
       plan.setOffset(0);
     }
 

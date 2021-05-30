@@ -21,7 +21,7 @@ package org.apache.iotdb.db.auth.authorizer;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -191,16 +191,14 @@ public class LocalFileAuthorizerTest {
     authorizer.createRole(roleName);
     authorizer.grantRoleToUser(roleName, user.getName());
     authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
     authorizer.grantPrivilegeToRole(roleName, nodeName, 3);
 
     // a user can get all role permissions.
     Set<Integer> permissions = authorizer.getPrivileges(user.getName(), nodeName);
-    assertEquals(3, permissions.size());
+    assertEquals(2, permissions.size());
     assertTrue(permissions.contains(1));
-    assertTrue(permissions.contains(2));
     assertTrue(permissions.contains(3));
-    assertFalse(permissions.contains(4));
+    assertFalse(permissions.contains(2));
 
     try {
       authorizer.grantRoleToUser(roleName, user.getName());
@@ -256,7 +254,7 @@ public class LocalFileAuthorizerTest {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(IoTDBConstant.ADMIN_NAME, userList.get(0));
+    assertEquals(IoTDBDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {

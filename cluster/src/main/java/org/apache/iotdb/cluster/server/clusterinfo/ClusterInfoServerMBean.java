@@ -17,21 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.server.clusterinfo;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
-
-import java.util.List;
-
-public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
-
-  @Override
-  protected Pair<List<PartialPath>, Integer> removeWildcard(PartialPath path, int limit, int offset)
-      throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
-  }
-}
+public interface ClusterInfoServerMBean {}

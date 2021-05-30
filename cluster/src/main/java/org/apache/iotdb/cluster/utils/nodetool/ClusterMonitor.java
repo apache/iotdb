@@ -52,6 +52,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
+  private ClusterMonitor() {}
+
   @Override
   public void start() throws StartupException {
     try {

@@ -20,13 +20,16 @@ on:
   # allow manually run the action:
   workflow_dispatch:
 
+env:
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+
 jobs:
   win:
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11, 15]
+        java: [8, 11, 16]
           # to reduce the CI time cost; we split the whole CI to 3 parts:
           # modules except the server and the cluster:
           #   -Diotdb.skip.test=true -Dcluster.skip.test=true

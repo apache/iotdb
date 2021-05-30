@@ -408,7 +408,7 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setString(int parameterIndex, String x) {
-    this.parameters.put(parameterIndex, "'" + x.replace("'", "\\'") + "'");
+    this.parameters.put(parameterIndex, x);
   }
 
   @Override

@@ -20,11 +20,13 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_NOT;
@@ -41,7 +43,10 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
    */
   @Override
   public FilterOperator optimize(FilterOperator filter) throws LogicalOperatorException {
-    return removeNot(filter);
+    Set<PartialPath> pathSet = filter.getPathSet();
+    FilterOperator optimizedFilterOperator = removeNot(filter);
+    optimizedFilterOperator.setPathSet(pathSet);
+    return optimizedFilterOperator;
   }
 
   private FilterOperator removeNot(FilterOperator filter) throws LogicalOperatorException {

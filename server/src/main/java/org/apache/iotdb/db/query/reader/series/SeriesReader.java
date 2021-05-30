@@ -34,7 +34,6 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -125,6 +124,7 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
+    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
@@ -168,6 +168,7 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
+    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;
@@ -207,7 +208,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -268,7 +269,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -429,7 +430,7 @@ public class SeriesReader {
       return true;
     }
 
-    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page
+    // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
     // readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
@@ -935,7 +936,7 @@ public class SeriesReader {
   }
 
   protected void unpackSeqTsFileResource() throws IOException {
-    TimeseriesMetadata timeseriesMetadata =
+    ITimeSeriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
             orderUtils.getNextSeqFileResource(seqFileResource, true),
             seriesPath,
@@ -949,7 +950,7 @@ public class SeriesReader {
   }
 
   protected void unpackUnseqTsFileResource() throws IOException {
-    TimeseriesMetadata timeseriesMetadata =
+    ITimeSeriesMetadata timeseriesMetadata =
         FileLoaderUtils.loadTimeSeriesMetadata(
             unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {

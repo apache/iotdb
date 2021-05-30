@@ -77,14 +77,6 @@ public interface ITimeIndex {
   long calculateRamSize();
 
   /**
-   * Calculate file index ram increment when insert data in TsFileProcessor
-   *
-   * @param deviceToBeChecked device to be checked
-   * @return ramIncrement
-   */
-  long estimateRamIncrement(String deviceToBeChecked);
-
-  /**
    * get time partition
    *
    * @param tsFilePath tsFile absolute path
