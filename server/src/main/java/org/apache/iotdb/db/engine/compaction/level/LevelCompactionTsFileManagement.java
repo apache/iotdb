@@ -64,26 +64,26 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private static final Logger logger =
       LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
 
-  private final int seqLevelNum =
+  protected final int seqLevelNum =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum(), 1);
-  private final int seqFileNumInEachLevel =
+  protected final int seqFileNumInEachLevel =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel(), 1);
-  private final int unseqLevelNum =
+  protected final int unseqLevelNum =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum(), 1);
-  private final int unseqFileNumInEachLevel =
+  protected final int unseqFileNumInEachLevel =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel(), 1);
 
-  private final boolean enableUnseqCompaction =
+  protected final boolean enableUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
 
   // First map is partition list; Second list is level list; Third list is file list in level;
-  private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =
+  protected final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =
       new HashMap<>();
-  private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new HashMap<>();
-  private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
-  private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
+  protected final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new HashMap<>();
+  protected final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
+  protected final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
+  protected final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
+  protected final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -120,7 +120,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
+  protected void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
@@ -129,7 +129,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInList(
+  protected void deleteLevelFilesInList(
       long timePartitionId, Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
     logger.debug("{} [compaction] merge starts to delete file list", storageGroupName);
     if (sequence) {
@@ -147,7 +147,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFile(TsFileResource seqFile) {
+  protected void deleteLevelFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
       ChunkCache.getInstance().clear();
@@ -539,7 +539,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
+  protected void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
     if (isSeq) {
       for (int level = 0; level < sequenceTsFileResources.get(timePartition).size(); level++) {
         SortedSet<TsFileResource> currLevelMergeFile =
@@ -578,7 +578,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void forkTsFileList(
+  protected void forkTsFileList(
       List<List<TsFileResource>> forkedTsFileResources,
       List rawTsFileResources,
       int currMaxLevel,
@@ -742,7 +742,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private List<SortedSet<TsFileResource>> newSequenceTsFileResources(Long k) {
+  protected List<SortedSet<TsFileResource>> newSequenceTsFileResources(Long k) {
     List<SortedSet<TsFileResource>> newSequenceTsFileResources = new ArrayList<>();
     for (int i = 0; i < seqLevelNum; i++) {
       newSequenceTsFileResources.add(
@@ -764,7 +764,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return newSequenceTsFileResources;
   }
 
-  private List<List<TsFileResource>> newUnSequenceTsFileResources(Long k) {
+  protected List<List<TsFileResource>> newUnSequenceTsFileResources(Long k) {
     List<List<TsFileResource>> newUnSequenceTsFileResources = new ArrayList<>();
     for (int i = 0; i < unseqLevelNum; i++) {
       newUnSequenceTsFileResources.add(new ArrayList<>());
@@ -780,7 +780,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     return Integer.parseInt(mergeLevelStr);
   }
 
-  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
+  protected TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
       throws IOException {
     if (isSeq) {
       for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
@@ -799,7 +799,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     throw new IOException();
   }
 
-  private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
+  protected TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
     if (isSeq) {
       for (List<SortedSet<TsFileResource>> tsFileResourcesWithLevel :
           sequenceTsFileResources.values()) {
@@ -830,7 +830,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   /** restore the files back to the status before the compaction task is submitted */
-  private void restoreCompaction() {
+  protected void restoreCompaction() {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);

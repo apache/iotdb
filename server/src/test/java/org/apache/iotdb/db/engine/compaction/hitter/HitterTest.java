@@ -1,11 +1,5 @@
 package org.apache.iotdb.db.engine.compaction.hitter;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.QueryHeavyHitters;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.HashMapHitter;
 import org.apache.iotdb.db.engine.compaction.heavyhitter.hitters.SpaceSavingHitter;
@@ -20,10 +14,18 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class HitterTest {
 
@@ -64,8 +66,8 @@ public class HitterTest {
     }
     // construct query paths
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      PartialPath devicePath = new PartialPath(
-          deviceIds[0] + "." + measurementSchema.getMeasurementId());
+      PartialPath devicePath =
+          new PartialPath(deviceIds[0] + "." + measurementSchema.getMeasurementId());
       queryPaths.add(devicePath);
     }
   }
