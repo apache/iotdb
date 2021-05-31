@@ -220,4 +220,61 @@ public abstract class Cases {
     Assert.assertEquals(10, next.getFields().get(0).getLongV());
     Assert.assertEquals(10, next.getFields().get(1).getLongV());
   }
+
+  // test https://issues.apache.org/jira/browse/IOTDB-1407
+  @Test
+  public void showTimeseriesTagsTest() throws SQLException {
+    String createTimeSeries1 =
+        "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+    String createTimeSeries2 =
+        "create timeseries root.ln.wf01.wt2 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+    writeStatement.execute(createTimeSeries1);
+    writeStatement.execute(createTimeSeries2);
+    // try to read data on each node. select .*
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      resultSet.close();
+    }
+
+    // try to read data on each node. select from parent series
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01 where tag1=v1");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      resultSet.close();
+    }
+
+    // try to read data on each node. select from one series
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt1 where tag1=v1");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(1, cnt);
+      resultSet.close();
+    }
+
+    // try to read data on each node. select from root
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet = readStatement.executeQuery("SHOW TIMESERIES root where tag1=v1");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(2, cnt);
+      resultSet.close();
+    }
+  }
 }
