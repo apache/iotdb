@@ -241,8 +241,13 @@ public class InsertTabletPlanTest {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("test_vector1");
+    schemaNames.add("test_vector2");
+    schemaNames.add("s6");
+
     return new CreateTemplatePlan(
-        "template1", measurementList, dataTypesList, encodingList, compressionTypes);
+        "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
   }
 
   @Test

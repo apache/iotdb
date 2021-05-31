@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -37,14 +35,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class Template {
-  private static final AtomicLong increasingId = new AtomicLong();
+  private String name;
 
-  String name;
-
-  Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
+  private Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
 
   public Template(CreateTemplatePlan plan) {
     name = plan.getName();
@@ -67,7 +62,7 @@ public class Template {
 
         curSchema =
             new VectorMeasurementSchema(
-                IoTDBConstant.ALIGN_TIMESERIES_PREFIX + "#" + increasingId.getAndIncrement(),
+                plan.getSchemaNames().get(i),
                 measurementsArray,
                 typeArray,
                 encodingArray,
@@ -112,11 +107,6 @@ public class Template {
 
   public boolean isCompatible(PartialPath path) {
     return !schemaMap.containsKey(path.getMeasurement());
-  }
-
-  @TestOnly
-  public static void clear() {
-    increasingId.set(0);
   }
 
   public List<MeasurementMNode> getMeasurementMNode() {

@@ -320,7 +320,6 @@ public class MManager {
   public void clear() {
     try {
       templateMap.clear();
-      Template.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();

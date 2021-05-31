@@ -932,8 +932,12 @@ public class MManagerBasicTest {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+    schemaNames.add("test_vector");
+
     return new CreateTemplatePlan(
-        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
   @Test
@@ -968,15 +972,21 @@ public class MManagerBasicTest {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+    schemaNames.add("test_vector");
+
     CreateTemplatePlan plan1 =
         new CreateTemplatePlan(
             "template1",
+            new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
             new ArrayList<>(dataTypeList),
             new ArrayList<>(encodingList),
             new ArrayList<>(compressionTypes));
 
     measurementList.add(Collections.singletonList("s12"));
+    schemaNames.add("s12");
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     compressionTypes.add(CompressionType.SNAPPY);
@@ -984,6 +994,7 @@ public class MManagerBasicTest {
     CreateTemplatePlan plan2 =
         new CreateTemplatePlan(
             "template2",
+            new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
             new ArrayList<>(dataTypeList),
             new ArrayList<>(encodingList),
@@ -1002,6 +1013,7 @@ public class MManagerBasicTest {
     CreateTemplatePlan plan3 =
         new CreateTemplatePlan(
             "template3",
+            new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
             new ArrayList<>(dataTypeList),
             new ArrayList<>(encodingList),
@@ -1023,6 +1035,7 @@ public class MManagerBasicTest {
     CreateTemplatePlan plan4 =
         new CreateTemplatePlan(
             "template4",
+            new ArrayList<>(schemaNames),
             new ArrayList<>(measurementList),
             new ArrayList<>(dataTypeList),
             new ArrayList<>(encodingList),
@@ -1195,9 +1208,18 @@ public class MManagerBasicTest {
       compressionTypes.add(compressionType);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("test_vector");
+
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
-            "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
     MManager manager = IoTDB.metaManager;
     try {
       manager.createDeviceTemplate(plan);

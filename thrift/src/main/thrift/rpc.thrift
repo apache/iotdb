@@ -309,19 +309,20 @@ struct ServerProperties {
   3: required string timestampPrecision;
 }
 
-struct TSSetDeviceTemplateReq {
+struct TSSetSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
   3: required string prefixPath
 }
 
-struct TSCreateDeviceTemplateReq {
+struct TSCreateSchemaTemplateReq {
   1: required i64 sessionId
   2: required string name
-  3: required list<list<string>> measurements
-  4: required list<list<i32>> dataTypes
-  5: required list<list<i32>> encodings
-  6: required list<i32> compressors
+  3: required list<string> schemaNames
+  4: required list<list<string>> measurements
+  5: required list<list<i32>> dataTypes
+  6: required list<list<i32>> encodings
+  7: required list<i32> compressors
 }
 
 service TSIService {
@@ -397,7 +398,7 @@ service TSIService {
 
   i64 requestStatementId(1:i64 sessionId);
 
-  TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);
+  TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
 
-  TSStatus setDeviceTemplate(1:TSSetDeviceTemplateReq req);
+  TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 }

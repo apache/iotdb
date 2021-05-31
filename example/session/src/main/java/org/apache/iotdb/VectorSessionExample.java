@@ -204,9 +204,12 @@ public class VectorSessionExample {
     List<CompressionType> compressionTypeList = new ArrayList<>();
     compressionTypeList.add(CompressionType.SNAPPY);
 
-    session.createDeviceTemplate(
-        "template1", measurementList, dataTypeList, encodingList, compressionTypeList);
-    session.setDeviceTemplate("template1", "root.sg_1");
+    List<String> schemaList = new ArrayList<>();
+    schemaList.add("test_vector");
+
+    session.createSchemaTemplate(
+        "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
+    session.setSchemaTemplate("template1", "root.sg_1");
   }
 
   /** Method 1 for insert tablet with aligned timeseries */

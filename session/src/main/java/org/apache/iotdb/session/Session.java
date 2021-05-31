@@ -24,8 +24,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -36,7 +36,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1625,14 +1625,16 @@ public class Session {
     return sortedBitMap;
   }
 
-  public void setDeviceTemplate(String templateName, String prefixPath)
+  public void setSchemaTemplate(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSSetDeviceTemplateReq request = getTSSetDeviceTemplateReq(templateName, prefixPath);
-    defaultSessionConnection.setDeviceTemplate(request);
+    TSSetSchemaTemplateReq request = getTSSetSchemaTemplateReq(templateName, prefixPath);
+    defaultSessionConnection.setSchemaTemplate(request);
   }
 
   /**
    * @param name template name
+   * @param schemaNames list of schema names, if this measurement is vector, name it. if this
+   *     measurement is not vector, keep this name as same as measurement's name
    * @param measurements List of measurements, if it is a single measurement, just put it's name
    *     into a list and add to measurements if it is a vector measurement, put all measurements of
    *     the vector into a list and add to measurements
@@ -1646,33 +1648,37 @@ public class Session {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  public void createDeviceTemplate(
+  public void createSchemaTemplate(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateDeviceTemplateReq request =
-        getTSCreateDeviceTemplateReq(name, measurements, dataTypes, encodings, compressors);
-    defaultSessionConnection.createDeviceTemplate(request);
+    TSCreateSchemaTemplateReq request =
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
   }
 
-  private TSSetDeviceTemplateReq getTSSetDeviceTemplateReq(String templateName, String prefixPath) {
-    TSSetDeviceTemplateReq request = new TSSetDeviceTemplateReq();
+  private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
+    TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
     request.setPrefixPath(prefixPath);
     return request;
   }
 
-  private TSCreateDeviceTemplateReq getTSCreateDeviceTemplateReq(
+  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors) {
-    TSCreateDeviceTemplateReq request = new TSCreateDeviceTemplateReq();
+    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
     request.setName(name);
+    request.setSchemaNames(schemaNames);
     request.setMeasurements(measurements);
 
     List<List<Integer>> requestType = new ArrayList<>();
