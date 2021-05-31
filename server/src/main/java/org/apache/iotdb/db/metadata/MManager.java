@@ -418,9 +418,7 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      StorageGroupMNode storageGroupMNode = getStorageGroupNodeByPath(path);
-      storageGroupMNode.setMajorVersion(path.getMajorVersion());
-      storageGroupMNode.setMinorVersion(path.getMinorVersion());
+      updateStorageGroup(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -739,6 +737,21 @@ public class MManager {
         MemTableManager.getInstance().addOrDeleteStorageGroup(1);
       }
       if (!isRecovering) {
+        logWriter.setStorageGroup(storageGroup);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    }
+  }
+
+  public void updateStorageGroup(PartialPath storageGroup) throws MetadataException {
+    try {
+      mtree.updateStorageGroupVersion(storageGroup);
+      if (!config.isEnableMemControl()) {
+        MemTableManager.getInstance().addOrDeleteStorageGroup(1);
+      }
+      if (!isRecovering) {
+        // TODO how to set the type of update storage group plan when restart and replay the logs
         logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
