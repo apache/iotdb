@@ -1692,7 +1692,8 @@ public class CMManager extends MManager {
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
 
     List<PartitionGroup> globalGroups = new ArrayList<>();
-    if (IoTDBConstant.PATH_ROOT.equals(plan.getPath().getFullPath())) {
+    if (IoTDBConstant.PATH_ROOT.equals(plan.getPath().getFullPath())
+        || plan.getPath().getFullPath().contains(IoTDBConstant.PATH_WILDCARD)) {
       globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     } else {
       PartitionGroup partitionGroup =
@@ -1725,7 +1726,7 @@ public class CMManager extends MManager {
               () -> {
                 try {
                   showTimeseries(group, plan, resultSet, context);
-                } catch (CheckConsistencyException e) {
+                } catch (CheckConsistencyException | MetadataException e) {
                   logger.error("Cannot get show timeseries result of {} from {}", plan, group);
                 }
                 return null;
