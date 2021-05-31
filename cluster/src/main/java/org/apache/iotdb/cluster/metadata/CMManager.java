@@ -1690,7 +1690,15 @@ public class CMManager extends MManager {
     ExecutorService pool =
         new ThreadPoolExecutor(
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
-    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    List<PartitionGroup> globalGroups = new ArrayList<>();
+    if (IoTDBConstant.PATH_ROOT.equals(plan.getPath().getFullPath())) {
+      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    } else {
+      PartitionGroup partitionGroup =
+          metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
+      globalGroups.add(partitionGroup);
+    }
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
     int offset = plan.getOffset();

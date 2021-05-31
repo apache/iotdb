@@ -273,4 +273,15 @@ public class TestAsyncDataClient extends AsyncDataClient {
                     .previousFill(request, resultHandler))
         .start();
   }
+
+  @Override
+  public void getAllMeasurementSchema(
+      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
+    new Thread(
+            () ->
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .getAllMeasurementSchema(header, planBinary, resultHandler))
+        .start();
+  }
 }
