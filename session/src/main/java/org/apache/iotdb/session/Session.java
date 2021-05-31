@@ -685,6 +685,30 @@ public class Session {
     }
   }
 
+  private void removeBrokenSessionConnection(String deviceId) {
+    // remove the cached broken leader session
+    if (enableCacheLeader) {
+      EndPoint endPoint = deviceIdToEndpoint.remove(deviceId);
+      removeBrokenSessionConnection(endPoint);
+    }
+    // TODO how to deal with the defaultSessionConnection? maybe we can mark the session as broken,
+    //  however, it still needs the upper called layer to switch the connect node.
+  }
+
+  private void removeBrokenSessionConnection(EndPoint endPoint) {
+    // remove the cached broken leader session
+    if (enableCacheLeader) {
+      for (Map.Entry<String, EndPoint> entry : deviceIdToEndpoint.entrySet()) {
+        if (endPoint.equals(entry.getValue())) {
+          deviceIdToEndpoint.remove(entry.getKey());
+        }
+      }
+      endPointToSessionConnection.remove(endPoint);
+    }
+    // TODO how to deal with the defaultSessionConnection? maybe we can mark the session as broken,
+    //  however, it still needs the upper called layer to switch the connect node.
+  }
+
   private void handleMetaRedirection(String storageGroup, RedirectException e)
       throws IoTDBConnectionException {
     if (enableCacheLeader) {
@@ -1096,6 +1120,10 @@ public class Session {
         handleRedirection(entry.getKey(), e.getEndPoint());
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // remove the broken session
+        removeBrokenSessionConnection(entry.getKey());
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
@@ -1257,6 +1285,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
+    Map<SessionConnection, EndPoint> sessionConnectionEndPointMap = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
       endPoint = deviceIdToEndpoint.get(entry.getKey());
       if (endPoint != null) {
@@ -1264,6 +1293,7 @@ public class Session {
       } else {
         connection = defaultSessionConnection;
       }
+      sessionConnectionEndPointMap.putIfAbsent(connection, endPoint);
       TSInsertTabletsReq request =
           tabletGroup.computeIfAbsent(connection, k -> new TSInsertTabletsReq());
       updateTSInsertTabletsReq(request, entry.getValue(), sorted);
@@ -1280,6 +1310,9 @@ public class Session {
         }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        removeBrokenSessionConnection(sessionConnectionEndPointMap.get(entry.getKey()));
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
