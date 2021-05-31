@@ -198,14 +198,15 @@ public class TimeSeriesMetadataCache {
           List<TimeseriesMetadata> timeSeriesMetadataList =
               reader.readTimeseriesMetadata(path, allSensors);
           // put TimeSeriesMetadata of all sensors used in this query into cache
-          timeSeriesMetadataList.forEach(
-              metadata -> {
-                TimeSeriesMetadataCacheKey k =
-                    new TimeSeriesMetadataCacheKey(
-                        key.filePath, key.device, metadata.getMeasurementId());
-                lruCache.put(k, metadata);
-              });
-          timeseriesMetadata = lruCache.getIfPresent(key);
+          for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
+            TimeSeriesMetadataCacheKey k =
+                new TimeSeriesMetadataCacheKey(
+                    key.filePath, key.device, metadata.getMeasurementId());
+            lruCache.put(k, metadata);
+            if (metadata.getMeasurementId().equals(key.measurement)) {
+              timeseriesMetadata = metadata;
+            }
+          }
         }
       }
     }
