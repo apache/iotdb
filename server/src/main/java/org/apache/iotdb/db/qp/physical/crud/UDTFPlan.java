@@ -19,19 +19,30 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.udf.core.context.UDFContext;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -52,18 +63,62 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void constructUdfExecutors(List<UDFContext> udfContexts) {
-    for (int i = 0; i < udfContexts.size(); ++i) {
-      UDFContext context = udfContexts.get(i);
-      if (context == null) {
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
+    // sort paths by device, to accelerate the metadata read process
+    List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < resultColumns.size(); i++) {
+      for (PartialPath path : resultColumns.get(i).collectPaths()) {
+        indexedPaths.add(new Pair<>(path, i));
+      }
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
+    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+    Set<String> columnForReaderSet = new HashSet<>();
+    Set<String> columnForDisplaySet = new HashSet<>();
+
+    for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
+      PartialPath originalPath = indexedPath.left;
+      Integer originalIndex = indexedPath.right;
+
+      boolean isUdf =
+          !(resultColumns.get(originalIndex).getExpression() instanceof TimeSeriesOperand);
+
+      String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
+      if (!columnForReaderSet.contains(columnForReader)) {
+        addDeduplicatedPaths(originalPath);
+        addDeduplicatedDataTypes(
+            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
+        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
+        columnForReaderSet.add(columnForReader);
+      }
+
+      String columnForDisplay = getColumnForDisplay(columnForReader, originalIndex);
+      if (!columnForDisplaySet.contains(columnForDisplay)) {
+        addPathToIndex(columnForDisplay, getPathToIndex().size());
+        if (isUdf) {
+          addUdfOutputColumn(columnForDisplay);
+        } else {
+          addRawQueryOutputColumn(columnForDisplay);
+        }
+        columnForDisplaySet.add(columnForDisplay);
+      }
+    }
+
+    setPathNameToReaderIndex(pathNameToReaderIndex);
+  }
+
+  @Override
+  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
+    for (int i = 0; i < resultColumns.size(); ++i) {
+      Expression expression = resultColumns.get(i).getExpression();
+      if (!(expression instanceof FunctionExpression)) {
         continue;
       }
 
-      String columnName = context.getColumnName();
-      if (!columnName2Executor.containsKey(columnName)) {
-        UDTFExecutor executor = new UDTFExecutor(context, zoneId);
-        columnName2Executor.put(columnName, executor);
-      }
+      String columnName = expression.toString();
+      columnName2Executor.computeIfAbsent(
+          columnName, k -> new UDTFExecutor((FunctionExpression) expression, zoneId));
       originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));
     }
   }
@@ -129,14 +184,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
     this.pathNameToReaderIndex = pathNameToReaderIndex;
-  }
-
-  @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex) {
-    if (paths.get(pathIndex) == null) {
-      return this.getExecutorByOriginalOutputColumnIndex(pathIndex).getContext().getColumnName();
-    }
-    return columnForReader;
   }
 
   @Override

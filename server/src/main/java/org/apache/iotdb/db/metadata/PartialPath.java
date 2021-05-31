@@ -43,8 +43,6 @@ public class PartialPath extends Path implements Comparable<Path> {
   protected String[] nodes;
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   protected String measurementAlias = "";
-  // alias of time series used in SELECT AS
-  protected String tsAlias = "";
 
   private long majorVersion = 0;
 
@@ -239,18 +237,6 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   public boolean isMeasurementAliasExists() {
     return measurementAlias != null && !measurementAlias.isEmpty();
-  }
-
-  public String getTsAlias() {
-    return tsAlias;
-  }
-
-  public void setTsAlias(String tsAlias) {
-    this.tsAlias = tsAlias;
-  }
-
-  public boolean isTsAliasExists() {
-    return tsAlias != null && !tsAlias.isEmpty();
   }
 
   @Override

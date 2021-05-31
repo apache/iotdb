@@ -18,10 +18,21 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -31,13 +42,15 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import java.time.ZoneId;
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 
 /** LogicalGenerator. */
 public class LogicalGenerator {
 
-  public LogicalGenerator() {}
-
-  public Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
@@ -67,4 +80,48 @@ public class LogicalGenerator {
     }
     return ioTDBSqlVisitor.visit(tree);
   }
+
+  public static Operator generate(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
+      throws IllegalPathException {
+    // construct query operator and set its global time filter
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+
+    // iterate the path list and add it to from operator
+    for (String p : rawDataQueryReq.getPaths()) {
+      PartialPath path = new PartialPath(p);
+      fromOp.addPrefixTablePath(path);
+    }
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+
+    // set time filter operator
+    FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
+    PartialPath timePath = new PartialPath(TIME);
+    filterOp.setSinglePath(timePath);
+    Set<PartialPath> pathSet = new HashSet<>();
+    pathSet.add(timePath);
+    filterOp.setIsSingle(true);
+    filterOp.setPathSet(pathSet);
+
+    BasicFunctionOperator left =
+        new BasicFunctionOperator(
+            SQLConstant.GREATERTHANOREQUALTO,
+            timePath,
+            Long.toString(rawDataQueryReq.getStartTime()));
+    BasicFunctionOperator right =
+        new BasicFunctionOperator(
+            SQLConstant.LESSTHAN, timePath, Long.toString(rawDataQueryReq.getEndTime()));
+    filterOp.addChildOperator(left);
+    filterOp.addChildOperator(right);
+
+    queryOp.setFilterOperator(filterOp);
+
+    return queryOp;
+  }
+
+  private LogicalGenerator() {}
 }
