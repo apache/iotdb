@@ -55,7 +55,7 @@ public abstract class ArithmeticBinaryTransformer extends Transformer {
 
   /**
    * finds the smallest, unconsumed timestamp that exists in both {@code leftPointReader} and {@code
-   * rightPointReader} and then cache it in {@code cachedTime}.
+   * rightPointReader} and then caches the timestamp in {@code cachedTime}.
    *
    * @return true if there has a timestamp that meets the requirements
    */
