@@ -304,6 +304,9 @@ public class CompactionUtils {
           if (sensorChunkMetadataListMap.size() <= 0) {
             if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
               sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
+              for (String sensor : sensorChunkMetadataListMap.keySet()) {
+                logger.error("chunkMetadataListIterator get measurement:{}", device + "." + sensor);
+              }
               chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
             } else {
               continue;
