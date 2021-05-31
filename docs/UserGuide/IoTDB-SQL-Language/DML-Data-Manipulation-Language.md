@@ -407,6 +407,8 @@ Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
 
 Output data type: `DOUBLE`
 
+Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+
 ##### Example
 
 ```sql
