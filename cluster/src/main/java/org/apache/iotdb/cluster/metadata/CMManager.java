@@ -1692,13 +1692,13 @@ public class CMManager extends MManager {
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
 
     List<PartitionGroup> globalGroups = new ArrayList<>();
-    if (IoTDBConstant.PATH_ROOT.equals(plan.getPath().getFullPath())
-        || plan.getPath().getFullPath().contains(IoTDBConstant.PATH_WILDCARD)) {
-      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-    } else {
+    try {
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
       globalGroups.add(partitionGroup);
+    } catch (MetadataException e) {
+      // if the path location is not find, obtain the path location from all groups.
+      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     }
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
