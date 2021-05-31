@@ -1780,7 +1780,7 @@ public class TSServiceImpl implements TSIService.Iface {
         return createTimeseries(
             new TSCreateTimeseriesReq(
                 req.sessionId,
-                req.devicePath + "." + req.measurements.get(0),
+                req.prefixPath + "." + req.measurements.get(0),
                 req.dataTypes.get(0),
                 req.encodings.get(0),
                 req.compressor));
@@ -1790,7 +1790,7 @@ public class TSServiceImpl implements TSIService.Iface {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
             currSessionId.get(),
-            req.getDevicePath(),
+            req.getPrefixPath(),
             req.getMeasurements());
       }
 
@@ -1805,7 +1805,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
-              new PartialPath(req.devicePath),
+              new PartialPath(req.prefixPath),
               req.measurements,
               dataTypes,
               encodings,

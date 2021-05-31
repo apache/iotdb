@@ -33,18 +33,9 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  private int alignedTimeseriesIndex;
-
   public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.alignedTimeseriesIndex = 0;
-  }
-
-  public StorageGroupMNode(MNode parent, String name, long dataTTL, int alignedTimeseriesIndex) {
-    super(parent, name);
-    this.dataTTL = dataTTL;
-    this.alignedTimeseriesIndex = alignedTimeseriesIndex;
   }
 
   public long getDataTTL() {
@@ -55,14 +46,6 @@ public class StorageGroupMNode extends MNode {
     this.dataTTL = dataTTL;
   }
 
-  public int getAlignedTimeseriesIndex() {
-    return alignedTimeseriesIndex;
-  }
-
-  public void addAlignedTimeseriesIndex() {
-    this.alignedTimeseriesIndex++;
-  }
-
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
@@ -71,15 +54,10 @@ public class StorageGroupMNode extends MNode {
   }
 
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
-    return new StorageGroupMNode(
-        null, plan.getName(), plan.getDataTTL(), plan.getAlignedTimeseriesIndex());
+    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
   }
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(
-        null,
-        nodeInfo[1],
-        Long.parseLong(nodeInfo[2]),
-        nodeInfo.length == 4 ? Integer.parseInt(nodeInfo[3]) : 0);
+    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

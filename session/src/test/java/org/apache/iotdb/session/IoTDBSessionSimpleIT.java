@@ -382,6 +382,7 @@ public class IoTDBSessionSimpleIT {
     schemaList.add(new MeasurementSchema("s0", TSDataType.INT64));
     schemaList.add(
         new VectorMeasurementSchema(
+            "vector",
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
     schemaList.add(new MeasurementSchema("s4", TSDataType.INT32));

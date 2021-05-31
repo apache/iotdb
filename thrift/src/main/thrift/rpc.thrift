@@ -273,7 +273,7 @@ struct TSCreateTimeseriesReq {
 
 struct TSCreateAlignedTimeseriesReq {
   1: required i64 sessionId
-  2: required string devicePath
+  2: required string prefixPath
   3: required list<string> measurements
   4: required list<i32> dataTypes
   5: required list<i32> encodings

@@ -165,7 +165,7 @@ public class ClusterPlanRouter {
 
   private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
-    PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getDevicePath(), 0);
+    PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getPrefixPath(), 0);
     return Collections.singletonMap(plan, partitionGroup);
   }
 

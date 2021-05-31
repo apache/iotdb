@@ -314,7 +314,7 @@ public class MTree implements Serializable {
     boolean hasSetStorageGroup = false;
     StorageGroupMNode storageGroupMNode = null;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
-    for (int i = 1; i < deviceNodeNames.length; i++) {
+    for (int i = 1; i < deviceNodeNames.length - 1; i++) {
       String nodeName = deviceNodeNames[i];
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
@@ -328,12 +328,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
-    int alignedTimeseriesIndex = 0;
-    if (storageGroupMNode != null) {
-      alignedTimeseriesIndex = storageGroupMNode.getAlignedTimeseriesIndex();
-      storageGroupMNode.addAlignedTimeseriesIndex();
-    }
-    String leafName = IoTDBConstant.ALIGN_TIMESERIES_PREFIX + alignedTimeseriesIndex;
+    String leafName = deviceNodeNames[deviceNodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized

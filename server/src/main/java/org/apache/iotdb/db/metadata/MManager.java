@@ -538,7 +538,7 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     try {
-      PartialPath devicePath = plan.getDevicePath();
+      PartialPath devicePath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
       int alignedSize = measurements.size();
       List<TSDataType> dataTypes = plan.getDataTypes();

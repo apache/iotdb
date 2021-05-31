@@ -49,20 +49,21 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    createTemplate();
-    insertTabletWithAlignedTimeseriesMethod1();
-    insertTabletWithAlignedTimeseriesMethod2();
-
-    insertNullableTabletWithAlignedTimeseries();
-    selectTest();
-    selectWithValueFilterTest();
-
-    selectWithGroupByTest();
-    selectWithLastTest();
-
-    selectWithAggregationTest();
-
-    selectWithAlignByDeviceTest();
+    createAlignedTimeseries();
+    //    createTemplate();
+    //    insertTabletWithAlignedTimeseriesMethod1();
+    //    insertTabletWithAlignedTimeseriesMethod2();
+    //
+    //    insertNullableTabletWithAlignedTimeseries();
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //
+    //    selectWithGroupByTest();
+    //    selectWithLastTest();
+    //
+    //    selectWithAggregationTest();
+    //
+    //    selectWithAlignByDeviceTest();
 
     session.close();
   }
@@ -178,6 +179,23 @@ public class VectorSessionExample {
     dataSet.closeOperationHandle();
   }
 
+  private static void createAlignedTimeseries()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<String> measurements = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      measurements.add("s" + i);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    session.createAlignedTimeseries(
+        ROOT_SG1_D1 + ".vector", measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+  }
+
   // be sure template is coordinate with tablet
   private static void createTemplate()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -220,7 +238,9 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     long timestamp = System.currentTimeMillis();
@@ -260,7 +280,9 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
     long[] timestamps = tablet.timestamps;
@@ -297,7 +319,9 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
 

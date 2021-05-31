@@ -378,7 +378,7 @@ public class Session {
   }
 
   public void createAlignedTimeseries(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -387,19 +387,19 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            devicePath, measurements, dataTypes, encodings, compressor, measurementAliasList);
+            prefixPath, measurements, dataTypes, encodings, compressor, measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
   private TSCreateAlignedTimeseriesReq getTSCreateAlignedTimeseriesReq(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       CompressionType compressor,
       List<String> measurementAliasList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
-    request.setDevicePath(devicePath);
+    request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));

@@ -78,7 +78,8 @@ public class VectorMeasurementSchema
     this.compressor = compressionType.serialize();
   }
 
-  public VectorMeasurementSchema(String[] measurements, TSDataType[] types) {
+  public VectorMeasurementSchema(String measurementId, String[] measurements, TSDataType[] types) {
+    this.vectorMeausurementId = measurementId;
     this.measurementsToIndexMap = new HashMap<>();
     for (int i = 0; i < measurements.length; i++) {
       measurementsToIndexMap.put(measurements[i], i);
@@ -352,7 +353,7 @@ public class VectorMeasurementSchema
   @Override
   public String toString() {
     StringContainer sc = new StringContainer("");
-    sc.addTail(vectorMeausurementId);
+    sc.addTail(vectorMeausurementId, ",");
     // string is not in real order
     for (Map.Entry<String, Integer> entry : measurementsToIndexMap.entrySet()) {
       sc.addTail(
