@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -33,47 +34,28 @@ import java.nio.ByteBuffer;
 
 public class ExtremeAggrResult extends AggregateResult {
 
+  // timestamp of current value
+  protected long timestamp = Long.MIN_VALUE;
+
   public ExtremeAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.EXTREME);
     reset();
   }
 
   public Object getAbsValue(Object v) {
-    double doubleValue;
-    float floatValue;
-    int intValue;
-    long longValue;
 
     switch (resultDataType) {
       case DOUBLE:
-        doubleValue = (Double) v;
-        return Math.abs(doubleValue);
+        return Math.abs((Double) v);
       case FLOAT:
-        floatValue = (Float) v;
-        return Math.abs(floatValue);
+        return Math.abs((Float) v);
       case INT32:
-        intValue = (Integer) v;
-        return Math.abs(intValue);
+        return Math.abs((Integer) v);
       case INT64:
-        longValue = (Long) v;
-        return Math.abs(longValue);
+        return Math.abs((Long) v);
       default:
         throw new UnSupportedDataTypeException(String.valueOf(resultDataType));
     }
-  }
-
-  public Comparable<Object> compareAbsVal(Comparable<Object> minVal, Comparable<Object> maxVal) {
-    Comparable<Object> extVal;
-
-    Comparable<Object> absMaxVal = (Comparable<Object>) getAbsValue(maxVal);
-    Comparable<Object> absMinVal = (Comparable<Object>) getAbsValue(minVal);
-
-    if (absMaxVal.compareTo(absMinVal) >= 0) {
-      extVal = maxVal;
-    } else {
-      extVal = minVal;
-    }
-    return extVal;
   }
 
   @Override
@@ -86,7 +68,10 @@ public class ExtremeAggrResult extends AggregateResult {
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
 
-    Comparable<Object> extVal = compareAbsVal(minVal, maxVal);
+    Comparable<Object> absMaxVal = (Comparable<Object>) getAbsValue(maxVal);
+    Comparable<Object> absMinVal = (Comparable<Object>) getAbsValue(minVal);
+
+    Comparable<Object> extVal = absMaxVal.compareTo(absMinVal) >= 0 ? maxVal : minVal;
     updateResult(extVal);
   }
 
@@ -102,6 +87,7 @@ public class ExtremeAggrResult extends AggregateResult {
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
+
       Comparable<Object> currentValue = (Comparable<Object>) dataInThisPage.currentValue();
       Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
 
@@ -111,10 +97,9 @@ public class ExtremeAggrResult extends AggregateResult {
         Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
         if (absExtVal.compareTo(absCurrentValue) < 0) {
           extVal = currentValue;
-        } else if (absExtVal.compareTo(absCurrentValue) == 0) {
-          if (extVal.compareTo(currentValue) > 0) {
-            extVal = currentValue;
-          }
+        } else if (absExtVal.compareTo(absCurrentValue) == 0
+            && extVal.compareTo(currentValue) < 0) {
+          extVal = currentValue;
         }
       }
 
@@ -131,8 +116,9 @@ public class ExtremeAggrResult extends AggregateResult {
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
       Comparable<Object> currentValue = (Comparable<Object>) values[i];
-      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+
       if (currentValue != null) {
+        Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
         if (extVal == null) {
           extVal = currentValue;
         } else {
@@ -140,7 +126,7 @@ public class ExtremeAggrResult extends AggregateResult {
           if (absExtVal.compareTo(absCurrentValue) < 0) {
             extVal = currentValue;
           } else if (absExtVal.compareTo(absCurrentValue) == 0
-              && extVal.compareTo(currentValue) > 0) {
+              && extVal.compareTo(currentValue) < 0) {
             extVal = currentValue;
           }
         }
@@ -154,8 +140,9 @@ public class ExtremeAggrResult extends AggregateResult {
     Comparable<Object> extVal = null;
     for (int i = 0; i < length; i++) {
       Comparable<Object> currentValue = (Comparable<Object>) values[i];
-      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+
       if (currentValue != null) {
+        Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
         if (extVal == null) {
           extVal = currentValue;
         } else {
@@ -163,7 +150,7 @@ public class ExtremeAggrResult extends AggregateResult {
           if (absExtVal.compareTo(absCurrentValue) < 0) {
             extVal = currentValue;
           } else if (absExtVal.compareTo(absCurrentValue) == 0
-              && extVal.compareTo(currentValue) > 0) {
+              && extVal.compareTo(currentValue) < 0) {
             extVal = currentValue;
           }
         }
@@ -183,10 +170,14 @@ public class ExtremeAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {}
+  protected void deserializeSpecificFields(ByteBuffer buffer) {
+    timestamp = buffer.getLong();
+  }
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) {}
+  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(timestamp, outputStream);
+  }
 
   private void updateResult(Comparable<Object> extVal) {
     if (extVal == null) {
@@ -201,10 +192,9 @@ public class ExtremeAggrResult extends AggregateResult {
       setValue(extVal);
     } else if (absExtVal.compareTo(absCandidateResult) > 0) {
       setValue(extVal);
-    } else if (absExtVal.compareTo(absCandidateResult) == 0) {
-      if (extVal.compareTo(candidateResult) > 0) {
-        setValue(extVal);
-      }
+    } else if (absExtVal.compareTo(absCandidateResult) == 0
+        && extVal.compareTo(candidateResult) > 0) {
+      setValue(extVal);
     }
   }
 }
