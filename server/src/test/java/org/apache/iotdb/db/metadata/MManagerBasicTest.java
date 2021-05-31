@@ -938,6 +938,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplateCompatibility() throws MetadataException {
+    // FIXME Add name for vector in template
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
