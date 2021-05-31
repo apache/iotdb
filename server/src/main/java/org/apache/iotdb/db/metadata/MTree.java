@@ -260,7 +260,7 @@ public class MTree implements Serializable {
       // double check
       if (sgNode != null && sgNode.getMajorVersion() != path.getMajorVersion()) {
         // skip
-        throw new MetadataException("storage group node major version chenged");
+        throw new MetadataException("storage group node major version changed");
       }
 
       MNode child = cur.getChild(leafName);
@@ -549,7 +549,7 @@ public class MTree implements Serializable {
         if (temp == null) {
           throw new StorageGroupNotSetException(path.getFullPath());
         } else if (temp instanceof StorageGroupMNode) {
-          long nodeMajorVersion = ((StorageGroupMNode) temp).getMinorVersion();
+          long nodeMajorVersion = ((StorageGroupMNode) temp).getMajorVersion();
           // double check, if the node's major version do not equals the plan's major version,
           // skip the operation.
           if (nodeMajorVersion != path.getMajorVersion()) {

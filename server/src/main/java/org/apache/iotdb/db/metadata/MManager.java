@@ -418,7 +418,7 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      updateStorageGroup(path);
+      checkAndUpdateStorageGroupVersion(path);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
@@ -744,12 +744,9 @@ public class MManager {
     }
   }
 
-  public void updateStorageGroup(PartialPath storageGroup) throws MetadataException {
+  public void checkAndUpdateStorageGroupVersion(PartialPath storageGroup) throws MetadataException {
     try {
       mtree.updateStorageGroupVersion(storageGroup);
-      if (!config.isEnableMemControl()) {
-        MemTableManager.getInstance().addOrDeleteStorageGroup(1);
-      }
       if (!isRecovering) {
         // TODO how to set the type of update storage group plan when restart and replay the logs
         logWriter.setStorageGroup(storageGroup);
