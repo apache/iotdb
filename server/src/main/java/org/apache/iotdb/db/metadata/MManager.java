@@ -413,7 +413,8 @@ public class MManager {
 
   private void ensureStorageGroup(PartialPath path) throws MetadataException {
     try {
-      checkAndUpdateStorageGroupVersion(path);
+      PartialPath storageGroupPath = getStorageGroupPath(path);
+      checkAndUpdateStorageGroupVersion(storageGroupPath);
     } catch (StorageGroupNotSetException e) {
       if (!config.isAutoCreateSchemaEnabled()) {
         throw e;
