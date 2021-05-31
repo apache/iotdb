@@ -568,6 +568,118 @@ for (int i = 0; i < 100; ++i) {
 
 
 
+#### AlertManagerSink
+
+In a trigger, you can use `AlertManagerSink` to send messages to AlertManager。
+
+You need to specify the endpoint to send alerts of your AlertManager when constructing
+`AlertManagerConfiguration` 
+
+```java
+AlertManagerConfiguration(String endpoint);
+```
+
+`AlertManagerEvent` offers three types of constructors：
+```java
+AlertManagerEvent(String alertname);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels);
+AlertManagerEvent(String alertname, Map<String, String> extraLabels, Map<String, String> annotations);
+```
+
+* `alertname` is a required parameter to identify an `alert`. The `alertname` field can be used for grouping and deduplication when the `AlertManager` sends an alert.
+* `extraLabels` is optional. In the backend, it is combined with `alertname` to form `labels` to identify an `alert`, which can be used for grouping and deduplication when `AlertManager` sends alarms.
+* `annotations` is optional, and its value can use Go style template 
+    ```
+    {{.<label_key>}}
+    ```
+    It will be replaced with `labels[<label_key>]` when the message is finally generated.
+* `labels` and `annotations` will be parsed into json string and sent to `AlertManager`:
+```json
+{
+    "labels": {
+      "alertname": "<requiredAlertName>",
+      "<labelname>": "<labelvalue>",
+      ...
+    },
+    "annotations": {
+      "<labelname>": "<labelvalue>",
+      ...
+    }
+}
+```
+
+Call the `onEvent(AlertManagerEvent event)` method of `AlertManagerHandler` to send an alert.
+
+
+
+**Example 1:**
+
+Only pass `alertname`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test0";
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**Example 2：**
+
+Pass `alertname` and `extraLabels`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test1";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+AlertManagerEvent alertManagerEvent = new AlertManagerEvent(alertName, extraLabels);
+
+alertManagerHandler.onEvent(alertManagerEvent);
+```
+
+
+
+**Example 3：**
+
+Pass `alertname`， `extraLabels` 和 `annotations`.
+
+The final value of the `description` field will be parsed as `test2: root.ln.wt01.wf01.temperature is 100.0`.
+
+```java
+AlertManagerHandler alertManagerHandler = new AlertManagerHandler();
+
+alertManagerHandler.open(new AlertManagerConfiguration("http://127.0.0.1:9093/api/v1/alerts"));
+
+final String alertName = "test2";
+
+final HashMap<String, String> extraLabels = new HashMap<>();
+extraLabels.put("severity", "critical");
+extraLabels.put("series", "root.ln.wt01.wf01.temperature");
+extraLabels.put("value", String.valueOf(100.0));
+
+final HashMap<String, String> annotations = new HashMap<>();
+annotations.put("summary", "high temperature");
+annotations.put("description", "{{.alertname}}: {{.series}} is {{.value}}");
+
+alertManagerHandler.onEvent(new AlertManagerEvent(alertName, extraLabels, annotations));
+```
+
+
+
 ## Maven Project Example
 
 If you use [Maven](http://search.maven.org/), you can refer to our sample project **trigger-example**.

@@ -353,6 +353,10 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
+  }
+
   public Template getUpperTemplate() {
     MNode cur = this;
     while (cur != null) {

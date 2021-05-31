@@ -115,12 +115,8 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
       return Types.TIMESTAMP;
     }
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
-    String columnType;
-    if (!ignoreTimestamp) {
-      columnType = columnTypeList.get(column - 2);
-    } else {
-      columnType = columnTypeList.get(column - 1);
-    }
+    String columnType = columnTypeList.get(column - 1);
+
     switch (columnType.toUpperCase()) {
       case "BOOLEAN":
         return Types.BOOLEAN;

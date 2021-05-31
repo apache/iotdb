@@ -608,7 +608,7 @@ var config = {
 						title: 'Cluster Setup',
 						children: [
 							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							//['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
 					},
 					{
@@ -1403,7 +1403,7 @@ var config = {
 						title: '集群搭建',
 						children: [
 							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							//['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
 					{
@@ -1554,6 +1554,12 @@ var config = {
 							['Appendix/Config-Manual','附录1: 配置参数'],
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
 							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					},
+					{
+						title: '时间序列数据库比较',
+						children: [
+							['Comparison/TSDB-Comparison','比较']
 						]
 					}
 				],

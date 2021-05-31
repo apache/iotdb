@@ -181,7 +181,11 @@ public class ServerArgument {
   private int getCpuRateForLinux() {
     try {
       long[] c0 = readLinuxCpu();
-      Thread.sleep(CPUTIME);
+      try {
+        Thread.sleep(CPUTIME);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
       long[] c1 = readLinuxCpu();
       if (c0 != null && c1 != null) {
         long idleCpuTime = c1[0] - c0[0];
@@ -207,7 +211,11 @@ public class ServerArgument {
               + "\\system32\\wbem\\wmic.exe process get Caption,CommandLine,"
               + "KernelModeTime,ReadOperationCount,ThreadCount,UserModeTime,WriteOperationCount";
       long[] c0 = readWinCpu(Runtime.getRuntime().exec(procCmd));
-      Thread.sleep(CPUTIME);
+      try {
+        Thread.sleep(CPUTIME);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
       long[] c1 = readWinCpu(Runtime.getRuntime().exec(procCmd));
       if (c0 != null && c1 != null) {
         long idletime = c1[0] - c0[0];

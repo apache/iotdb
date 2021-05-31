@@ -101,16 +101,10 @@ public class LastQueryExecutor {
       if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
+
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).isTsAliasExists()) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
-        } else {
-          if (selectedSeries.get(i).isMeasurementAliasExists()) {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
-          } else {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
-          }
-        }
+        pathField.setBinaryV(
+            new Binary(lastQueryPlan.getResultColumns().get(i).getResultColumnName()));
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
@@ -152,7 +146,13 @@ public class LastQueryExecutor {
     List<TSDataType> nonCachedDataTypes = new ArrayList<>();
     List<Pair<Boolean, TimeValuePair>> resultContainer =
         readLastPairsFromCache(
-            seriesPaths, dataTypes, filter, cacheAccessors, nonCachedPaths, nonCachedDataTypes);
+            seriesPaths,
+            dataTypes,
+            filter,
+            cacheAccessors,
+            nonCachedPaths,
+            nonCachedDataTypes,
+            context.isDebug());
     if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
@@ -189,10 +189,12 @@ public class LastQueryExecutor {
           resultContainer.get(i).left = true;
           if (CACHE_ENABLED) {
             cacheAccessors.get(i).write(resultContainer.get(i).right);
-            DEBUG_LOGGER.info(
-                "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
-                seriesPaths,
-                resultContainer.get(i).right.getTimestamp());
+            if (context.isDebug()) {
+              DEBUG_LOGGER.info(
+                  "[LastQueryExecutor] Update last cache for path: {} with timestamp: {}",
+                  seriesPaths,
+                  resultContainer.get(i).right.getTimestamp());
+            }
           }
         }
       }
@@ -206,7 +208,8 @@ public class LastQueryExecutor {
       Filter filter,
       List<LastCacheAccessor> cacheAccessors,
       List<PartialPath> restPaths,
-      List<TSDataType> restDataType) {
+      List<TSDataType> restDataType,
+      boolean debugOn) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
@@ -227,16 +230,20 @@ public class LastQueryExecutor {
         restDataType.add(dataTypes.get(i));
       } else if (!satisfyFilter(filter, tvPair)) {
         resultContainer.add(new Pair<>(true, null));
-        DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
-            seriesPaths.get(i),
-            tvPair.getTimestamp());
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       } else {
         resultContainer.add(new Pair<>(true, tvPair));
-        DEBUG_LOGGER.info(
-            "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
-            seriesPaths.get(i),
-            tvPair.getTimestamp());
+        if (debugOn) {
+          DEBUG_LOGGER.info(
+              "[LastQueryExecutor] Last cache hit for path: {} with timestamp: {}",
+              seriesPaths.get(i),
+              tvPair.getTimestamp());
+        }
       }
     }
     return resultContainer;

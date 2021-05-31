@@ -71,6 +71,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -247,16 +248,11 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-      for (PartialPath sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
-      }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -749,7 +745,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
+        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -1190,7 +1186,7 @@ public class MManager {
   }
 
   /**
-   * transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector otherwise,
+   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
    * we don't change it.
    */
   public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
@@ -1198,11 +1194,16 @@ public class MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      List<PartialPath> subSensorsPathList = new ArrayList<>();
-      subSensorsPathList.add(partialPath);
-      return new VectorPartialPath(
-          partialPath.getDevice() + "." + node.getName(), subSensorsPathList);
+      return toVectorPath(partialPath, node.getName());
     }
+  }
+
+  /** Convert the PartialPath to VectorPartialPath. */
+  protected VectorPartialPath toVectorPath(PartialPath partialPath, String name)
+      throws MetadataException {
+    List<PartialPath> subSensorsPathList = new ArrayList<>();
+    subSensorsPathList.add(partialPath);
+    return new VectorPartialPath(partialPath.getDevice() + "." + name, subSensorsPathList);
   }
 
   /**
@@ -1278,9 +1279,6 @@ public class MManager {
         indexMap.put(partialPath.getFullPath(), index);
         if (partialPath.isMeasurementAliasExists()) {
           indexMap.put(partialPath.getFullPathWithAlias(), index);
-        }
-        if (partialPath.isTsAliasExists()) {
-          indexMap.put(partialPath.getTsAlias(), index);
         }
         i++;
       }
@@ -2054,7 +2052,8 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheMeta(PartialPath path, MeasurementMNode measurementMNode) {
+  public void cacheMeta(
+      PartialPath path, MeasurementMNode measurementMNode, boolean needSetFullPath) {
     // do nothing
   }
 
@@ -2190,9 +2189,8 @@ public class MManager {
                   Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
               if (measurements.size() == 1) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurement), plan.getDataTypes()[loc++]);
+                    deviceId.concatNode(measurement), plan.getDataTypes()[loc]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
-
               } else {
                 int curLoc = loc;
                 List<TSDataType> dataTypes = new ArrayList<>();
@@ -2215,7 +2213,8 @@ public class MManager {
 
         // check type is match
         boolean mismatch = false;
-        TSDataType insertDataType = null;
+        TSDataType insertDataType;
+        DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
             for (int j = 0; j < measurementList[i].split(",").length; j++) {
@@ -2227,26 +2226,46 @@ public class MManager {
               }
               if (dataTypeInNode != insertDataType) {
                 mismatch = true;
-                insertDataType = dataTypeInNode;
+                logger.warn(
+                    "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
+                    measurementMNode.getSchema().getValueMeasurementIdList().get(j),
+                    measurementList[i],
+                    insertDataType,
+                    dataTypeInNode);
+                mismatchException =
+                    new DataTypeMismatchException(
+                        measurementList[i], insertDataType, dataTypeInNode);
                 break;
               }
               loc++;
             }
           } else {
-            insertDataType = measurementMNode.getSchema().getType();
+            if (plan instanceof InsertRowPlan) {
+              if (!((InsertRowPlan) plan).isNeedInferType()) {
+                // only when InsertRowPlan's values is object[], we should check type
+                insertDataType = getTypeInLoc(plan, loc);
+              } else {
+                insertDataType = measurementMNode.getSchema().getType();
+              }
+            } else {
+              insertDataType = getTypeInLoc(plan, loc);
+            }
             mismatch = measurementMNode.getSchema().getType() != insertDataType;
+            if (mismatch) {
+              logger.warn(
+                  "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
+                  measurementList[i],
+                  insertDataType,
+                  measurementMNode.getSchema().getType());
+              mismatchException =
+                  new DataTypeMismatchException(
+                      measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+            }
+            loc++;
           }
         }
 
         if (mismatch) {
-          logger.warn(
-              "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
-              measurementList[i],
-              insertDataType,
-              measurementMNode.getSchema().getType());
-          DataTypeMismatchException mismatchException =
-              new DataTypeMismatchException(
-                  measurementList[i], insertDataType, measurementMNode.getSchema().getType());
           if (!config.isEnablePartialInsert()) {
             throw mismatchException;
           } else {
@@ -2276,6 +2295,23 @@ public class MManager {
     }
 
     return deviceMNode.left;
+  }
+
+  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   public MNode getMNode(MNode deviceMNode, String measurementName) {
@@ -2445,5 +2481,9 @@ public class MManager {
 
   private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
     getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+  }
+
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
   }
 }
