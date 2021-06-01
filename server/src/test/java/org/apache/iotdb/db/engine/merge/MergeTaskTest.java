@@ -79,11 +79,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -123,11 +122,10 @@ public class MergeTaskTest extends MergeTest {
             (k, v, l) -> {
               assertEquals(499, k.get(2).getEndTime("root.mergeTest.device1"));
             },
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
   }
 
   @Test
@@ -177,11 +175,10 @@ public class MergeTaskTest extends MergeTest {
             (k, v, l) -> {
               assertEquals(49, k.get(0).getEndTime("root.mergeTest.device1"));
             },
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
   }
 
   @Test
@@ -191,11 +188,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             true,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -235,11 +231,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -275,11 +270,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources.subList(0, 1)),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -319,11 +313,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources.subList(5, 6)),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -359,11 +352,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(seqResources, unseqResources.subList(0, 5)),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -424,11 +416,10 @@ public class MergeTaskTest extends MergeTest {
                 e.printStackTrace();
               }
             },
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -474,11 +465,10 @@ public class MergeTaskTest extends MergeTest {
             new MergeResource(testSeqResources, testUnseqResource),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -540,11 +530,10 @@ public class MergeTaskTest extends MergeTest {
             (k, v, l) -> {
               assertEquals(99, k.get(0).getEndTime("root.mergeTest.device1"));
             },
-            "test",
             false,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
   }
 
   private void prepareFileWithLastSensor(

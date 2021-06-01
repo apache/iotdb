@@ -253,7 +253,7 @@ public class MergeManager implements IService, MergeManagerMBean {
   private void mergeAll() {
     try {
       StorageEngine.getInstance()
-          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isFullMerge());
     } catch (StorageEngineException e) {
       logger.error("Cannot perform a global merge because", e);
     }

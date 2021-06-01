@@ -519,7 +519,7 @@ public class IoTDBConfig {
    * despite how much they are overflowed). This may increase merge overhead depending on how much
    * the SeqFiles are overflowed.
    */
-  private boolean forceFullMerge = true;
+  private boolean fullMerge = true;
 
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
@@ -1404,12 +1404,12 @@ public class IoTDBConfig {
     this.enablePartialInsert = enablePartialInsert;
   }
 
-  public boolean isForceFullMerge() {
-    return forceFullMerge;
+  public boolean isFullMerge() {
+    return fullMerge;
   }
 
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
+  void setFullMerge(boolean fullMerge) {
+    this.fullMerge = fullMerge;
   }
 
   public int getCompactionThreadNum() {

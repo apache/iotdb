@@ -610,7 +610,7 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    processor.merge(IoTDBDescriptor.getInstance().getConfig().isFullMerge());
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }

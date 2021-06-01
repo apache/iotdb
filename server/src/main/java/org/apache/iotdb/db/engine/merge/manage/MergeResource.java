@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -91,23 +92,24 @@ public class MergeResource {
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
 
-  public void clear() throws IOException {
-    for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
-      sequenceReader.close();
-    }
-    for (RestorableTsFileIOWriter writer : fileWriterCache.values()) {
-      writer.close();
-    }
-
-    fileReaderCache.clear();
-    fileWriterCache.clear();
-    modificationCache.clear();
-    measurementSchemaMap.clear();
-    chunkWriterCache.clear();
-  }
-
   public IMeasurementSchema getSchema(PartialPath path) {
     return measurementSchemaMap.get(path);
+  }
+
+  /**
+   * startMerging() is called after selecting files
+   *
+   * do not cache metadata until true candidates are chosen, or too much metadata will be
+   * cached during selection
+   */
+  public void startMerging() {
+    cacheDeviceMeta = true;
+    for (TsFileResource tsFileResource : seqFiles) {
+      tsFileResource.setMerging(true);
+    }
+    for (TsFileResource tsFileResource : unseqFiles) {
+      tsFileResource.setMerging(true);
+    }
   }
 
   /**
@@ -289,5 +291,21 @@ public class MergeResource {
 
   public Map<String, Pair<Long, Long>> getStartEndTime(TsFileResource tsFileResource) {
     return startEndTimeCache.getOrDefault(tsFileResource, new HashMap<>());
+  }
+
+  @TestOnly
+  public void clear() throws IOException {
+    for (TsFileSequenceReader sequenceReader : fileReaderCache.values()) {
+      sequenceReader.close();
+    }
+    for (RestorableTsFileIOWriter writer : fileWriterCache.values()) {
+      writer.close();
+    }
+
+    fileReaderCache.clear();
+    fileWriterCache.clear();
+    modificationCache.clear();
+    measurementSchemaMap.clear();
+    chunkWriterCache.clear();
   }
 }

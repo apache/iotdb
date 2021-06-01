@@ -78,6 +78,7 @@ public class LogAnalyzer {
 
   private Status status;
 
+  // MERGE TODO: add two methods: List<String> getSeqTsFiles()  List<String> getUnseqTsFiles()
   public LogAnalyzer(
       MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
@@ -102,10 +103,11 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<PartialPath> storageGroupPaths =
+        // get all timeseries in this storage group
+        List<PartialPath> timeseriesPaths =
             IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
-        unmergedPaths.addAll(storageGroupPaths);
+        unmergedPaths.addAll(timeseriesPaths);
 
         analyzeMergedSeries(bufferedReader, unmergedPaths);
 
@@ -120,6 +122,7 @@ public class LogAnalyzer {
       return;
     }
     long startTime = System.currentTimeMillis();
+    //
     List<TsFileResource> mergeSeqFiles = new ArrayList<>();
     while ((currLine = bufferedReader.readLine()) != null) {
       if (STR_UNSEQ_FILES.equals(currLine)) {

@@ -64,7 +64,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private static final Logger logger =
       LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
 
-  private final int seqLevelNum =
+  private final int totalSeqLevelNum =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum(), 1);
   private final int seqFileNumInEachLevel =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel(), 1);
@@ -267,7 +267,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       long timePartitionId = tsFileResource.getTimePartition();
       int level = getMergeLevel(tsFileResource.getTsFile());
       if (sequence) {
-        if (level <= seqLevelNum - 1) {
+        if (level <= totalSeqLevelNum - 1) {
           // current file has normal level
           sequenceTsFileResources
               .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources)
@@ -277,7 +277,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // current file has too high level
           sequenceTsFileResources
               .computeIfAbsent(timePartitionId, this::newSequenceTsFileResources)
-              .get(seqLevelNum - 1)
+              .get(totalSeqLevelNum - 1)
               .add(tsFileResource);
         }
       } else {
@@ -397,7 +397,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       if (sequence) {
         for (List<SortedSet<TsFileResource>> partitionSequenceTsFileResource :
             sequenceTsFileResources.values()) {
-          for (int i = seqLevelNum - 1; i >= 0; i--) {
+          for (int i = totalSeqLevelNum - 1; i >= 0; i--) {
             result += partitionSequenceTsFileResource.get(i).size();
           }
         }
@@ -564,7 +564,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       forkTsFileList(
           forkedSequenceTsFileResources,
           sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-          seqLevelNum);
+          totalSeqLevelNum);
       // we have to copy all unseq file
       forkTsFileList(
           forkedUnSequenceTsFileResources,
@@ -594,47 +594,28 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
-    isMergeExecutedInCurrentTask =
-        merge(
-            forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
-    if (enableUnseqCompaction
-        && unseqLevelNum <= 1
-        && forkedUnSequenceTsFileResources.get(0).size() > 0) {
-      isMergeExecutedInCurrentTask = true;
-      merge(
-          isForceFullMerge,
-          getTsFileListByTimePartition(true, timePartition),
-          forkedUnSequenceTsFileResources.get(0),
-          Long.MAX_VALUE);
-    } else {
-      isMergeExecutedInCurrentTask =
-          merge(
-              forkedUnSequenceTsFileResources,
-              false,
-              timePartition,
-              unseqLevelNum,
-              unseqFileNumInEachLevel);
+    // do unseq compaction if has an unseq file in max unseq level
+    if (enableUnseqCompaction && forkedUnSequenceTsFileResources.get(unseqLevelNum - 1).size() > 0) {
+      doUnseqMerge(isForceFullMerge, getTsFileListByTimePartition(true, timePartition),
+          forkedUnSequenceTsFileResources.get(unseqLevelNum - 1));
     }
+
+    doLevelCompaction(forkedSequenceTsFileResources, true, timePartition, totalSeqLevelNum,
+        seqFileNumInEachLevel);
+
+    doLevelCompaction(forkedUnSequenceTsFileResources, false, timePartition, unseqLevelNum,
+        unseqFileNumInEachLevel);
+
   }
 
-  @SuppressWarnings("squid:S3776")
-  private boolean merge(
-      List<List<TsFileResource>> mergeResources,
+  @SuppressWarnings("squid:S3776") //MERGE TODO: move to a LevelCompactionExecutor
+  private boolean doLevelCompaction(
+      List<List<TsFileResource>> mergeResources, // each level is a List<TsFileResource>
       boolean sequence,
       long timePartition,
       int currMaxLevel,
       int currMaxFileNumInEachLevel) {
     // wait until unseq merge has finished
-    while (isUnseqMerging) {
-      try {
-        Thread.sleep(200);
-      } catch (InterruptedException e) {
-        logger.error("{} [Compaction] shutdown", storageGroupName, e);
-        Thread.currentThread().interrupt();
-        return false;
-      }
-    }
-    isSeqMerging = true;
     long startTimeMillis = System.currentTimeMillis();
     // whether execute merge chunk in the loop below
     boolean isMergeExecutedInCurrentTask = false;
@@ -646,83 +627,72 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         if (currMaxFileNumInEachLevel <= currLevelTsFileResource.size()) {
           // just merge part of the file
           isMergeExecutedInCurrentTask = true;
-          // level is numbered from 0
-          if (enableUnseqCompaction && !sequence && i == currMaxLevel - 2) {
-            // do not merge current unseq file level to upper level and just merge all of them to
-            // seq file
-            isSeqMerging = false;
-            merge(
-                isForceFullMerge,
-                getTsFileListByTimePartition(true, timePartition),
-                mergeResources.get(i),
-                Long.MAX_VALUE);
-          } else {
-            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
-            // log source file list and target file for recover
-            for (TsFileResource mergeResource : mergeResources.get(i)) {
-              compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
-            }
-            File newLevelFile =
-                TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
-            compactionLogger.logSequence(sequence);
-            compactionLogger.logFile(TARGET_NAME, newLevelFile);
-            List<TsFileResource> toMergeTsFiles =
-                mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
-            logger.info(
-                "{} [Compaction] merge level-{}'s {} TsFiles to next level",
-                storageGroupName,
-                i,
-                toMergeTsFiles.size());
-            for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.info(
-                  "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
-            }
-
-            TsFileResource newResource = new TsFileResource(newLevelFile);
-            List<Modification> modifications = new ArrayList<>();
-            // merge, read from source files and write to target file
-            CompactionUtils.merge(
-                newResource,
-                toMergeTsFiles,
-                storageGroupName,
-                compactionLogger,
-                new HashSet<>(),
-                sequence,
-                modifications);
-            logger.info(
-                "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
-                storageGroupName,
-                i,
-                toMergeTsFiles.size());
-            writeLock();
-            try {
-              if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException(
-                    String.format("%s [Compaction] abort", storageGroupName));
-              }
-
-              if (sequence) {
-                sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
-              } else {
-                unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
-              }
-              deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
-              if (mergeResources.size() > i + 1) {
-                mergeResources.get(i + 1).add(newResource);
-              }
-            } finally {
-              writeUnlock();
-            }
-            deleteLevelFilesInDisk(toMergeTsFiles);
-            renameLevelFilesMods(modifications, toMergeTsFiles, newResource);
-            compactionLogger.close();
-            File logFile =
-                FSFactoryProducer.getFSFactory()
-                    .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
-            if (logFile.exists()) {
-              Files.delete(logFile.toPath());
-            }
+          compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
+          // log source file list and target file for recover
+          for (TsFileResource mergeResource : mergeResources.get(i)) {
+            compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
           }
+          File newLevelFile =
+              TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
+          compactionLogger.logSequence(sequence);
+          compactionLogger.logFile(TARGET_NAME, newLevelFile);
+          List<TsFileResource> toMergeTsFiles =
+              mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
+          logger.info(
+              "{} [Compaction] merge level-{}'s {} TsFiles to next level",
+              storageGroupName,
+              i,
+              toMergeTsFiles.size());
+          for (TsFileResource toMergeTsFile : toMergeTsFiles) {
+            logger.info(
+                "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
+          }
+
+          TsFileResource newResource = new TsFileResource(newLevelFile);
+          List<Modification> modifications = new ArrayList<>();
+          // merge, read from source files and write to target file
+          CompactionUtils.merge(
+              newResource,
+              toMergeTsFiles,
+              storageGroupName,
+              compactionLogger,
+              new HashSet<>(),
+              sequence,
+              modifications);
+          logger.info(
+              "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
+              storageGroupName,
+              i,
+              toMergeTsFiles.size());
+          writeLock();
+          try {
+            if (Thread.currentThread().isInterrupted()) {
+              throw new InterruptedException(
+                  String.format("%s [Compaction] abort", storageGroupName));
+            }
+
+            if (sequence) {
+              sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+            } else {
+              unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+            }
+            deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
+            if (mergeResources.size() > i + 1) {
+              mergeResources.get(i + 1).add(newResource);
+            }
+          } finally {
+            writeUnlock();
+          }
+          deleteLevelFilesInDisk(toMergeTsFiles);
+          renameLevelFilesMods(modifications, toMergeTsFiles, newResource);
+          compactionLogger.close();
+          File logFile =
+              FSFactoryProducer.getFSFactory()
+                  .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
+          if (logFile.exists()) {
+            Files.delete(logFile.toPath());
+          }
+          break;
         }
       }
     } catch (Exception e) {
@@ -736,7 +706,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       restoreCompaction();
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
-      isSeqMerging = false;
       // reset the merge working state to false
       logger.info(
           "{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
@@ -749,7 +718,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   private List<SortedSet<TsFileResource>> newSequenceTsFileResources(Long k) {
     List<SortedSet<TsFileResource>> newSequenceTsFileResources = new ArrayList<>();
-    for (int i = 0; i < seqLevelNum; i++) {
+    for (int i = 0; i < totalSeqLevelNum; i++) {
       newSequenceTsFileResources.add(
           new TreeSet<>(
               (o1, o2) -> {

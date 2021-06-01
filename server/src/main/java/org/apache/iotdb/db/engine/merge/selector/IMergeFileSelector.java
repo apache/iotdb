@@ -29,6 +29,10 @@ import java.util.List;
  */
 public interface IMergeFileSelector {
 
+  /**
+   * @return seqFileList, unseqFileList
+   * @throws MergeException
+   */
   List[] select() throws MergeException;
 
   int getConcurrentMergeNum();

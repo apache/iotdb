@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -174,8 +174,8 @@ public class StorageGroupProcessor {
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-  /** compactionMergeWorking is used to wait for last compaction to be done. */
-  private volatile boolean compactionMergeWorking = false;
+  /** isCompactionWorking is used to wait for last compaction to be done. */
+  private volatile boolean isCompactionWorking = false;
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -446,33 +446,37 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
-      String taskName =
+      String unseqMergeTaskName =
           logicalStorageGroupName + "-" + virtualStorageGroupId + "-" + System.currentTimeMillis();
       File mergingMods =
           SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICATION_FILE_NAME);
       if (mergingMods.exists()) {
         this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
+
+      // MERGE TODO: only pass the tsfileManagement into RecoverMergeTask
       RecoverMergeTask recoverMergeTask =
           new RecoverMergeTask(
               new ArrayList<>(tsFileManagement.getTsFileList(true)),
               tsFileManagement.getTsFileList(false),
               storageGroupSysDir.getPath(),
               tsFileManagement::mergeEndAction,
-              taskName,
-              IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
+              unseqMergeTaskName,
+              IoTDBDescriptor.getInstance().getConfig().isFullMerge(),
               logicalStorageGroupName + "-" + virtualStorageGroupId);
       logger.info(
           "{} - {} a RecoverMergeTask {} starts...",
           logicalStorageGroupName,
           virtualStorageGroupId,
-          taskName);
+          unseqMergeTaskName);
       recoverMergeTask.recoverMerge(
           IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-      recoverCompaction();
+
+      // MERGE TODO: move unseqMergeRecover into TsFileManagement.CompactionRecoverTask()
+      recoverLevelCompaction();
       for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -511,27 +515,25 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()
-        && seqTsFileResources.size() > 0) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
-        executeCompaction(
-            timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+        executeCompaction(timePartitionId, IoTDBDescriptor.getInstance().getConfig().isFullMerge());
       }
     }
   }
 
-  private void recoverCompaction() {
-    if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
-      compactionMergeWorking = true;
+  private void recoverLevelCompaction() {
+    if (!CompactionTaskManager.getInstance().isTerminated()) {
+      isCompactionWorking = true;
       logger.info(
           "{} - {} submit a compaction recover merge task",
           logicalStorageGroupName,
           virtualStorageGroupId);
       try {
-        CompactionMergeTaskPoolManager.getInstance()
+        CompactionTaskManager.getInstance()
             .submitTask(
                 logicalStorageGroupName,
-                tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
+                tsFileManagement.new LevelCompactionRecoverTask(this::closeCompactionMergeCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionMergeCallBack(false, 0);
         logger.error(
@@ -1971,20 +1973,20 @@ public class StorageGroupProcessor {
 
     executeCompaction(
         tsFileProcessor.getTimeRangeId(),
-        IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+        IoTDBDescriptor.getInstance().getConfig().isFullMerge());
   }
 
   private void executeCompaction(long timePartition, boolean fullMerge) {
-    if (!compactionMergeWorking && !CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
-      compactionMergeWorking = true;
+    if (!isCompactionWorking && !CompactionTaskManager.getInstance().isTerminated()) {
+      isCompactionWorking = true;
       logger.info(
           "{} submit a compaction merge task",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       try {
         // fork and filter current tsfile, then commit then to compaction merge
         tsFileManagement.forkCurrentFileList(timePartition);
-        tsFileManagement.setForceFullMerge(fullMerge);
-        CompactionMergeTaskPoolManager.getInstance()
+        tsFileManagement.setFullMerge(fullMerge);
+        CompactionTaskManager.getInstance()
             .submitTask(
                 logicalStorageGroupName,
                 tsFileManagement
@@ -2007,9 +2009,9 @@ public class StorageGroupProcessor {
   private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
     if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       executeCompaction(
-          timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+          timePartitionId, IoTDBDescriptor.getInstance().getConfig().isFullMerge());
     } else {
-      this.compactionMergeWorking = false;
+      this.isCompactionWorking = false;
     }
   }
 
@@ -2842,7 +2844,7 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       // abort ongoing comapctions and merges
-      CompactionMergeTaskPoolManager.getInstance().abortCompaction(logicalStorageGroupName);
+      CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
       MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet());

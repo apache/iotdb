@@ -99,17 +99,8 @@ public class MergeManagerTest extends MergeTest {
     private String progress = "0";
 
     public FakedMainMergeTask(int serialNum) {
-      super(null, null, null, null, false, 0, null);
+      super(null, null, null, false, 0, null);
       this.serialNum = serialNum;
-    }
-
-    @Override
-    public Void call() {
-      while (!Thread.currentThread().isInterrupted()) {
-        // wait until interrupt
-      }
-      progress = "1";
-      return null;
     }
 
     @Override

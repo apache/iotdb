@@ -53,6 +53,7 @@ public class RecoverMergeTask extends MergeTask {
 
   private LogAnalyzer analyzer;
 
+  // MERGE TODO: get seqFiles and unseqFiles to be recovered from merge.log)
   public RecoverMergeTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,

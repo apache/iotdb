@@ -46,17 +46,17 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
-/** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
-public class CompactionMergeTaskPoolManager implements IService {
+/** CompactionTaskManager provides a ThreadPool to queue and run all compaction tasks. */
+public class CompactionTaskManager implements IService {
 
   private static final Logger logger =
-      LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
-  private static final CompactionMergeTaskPoolManager INSTANCE =
-      new CompactionMergeTaskPoolManager();
+      LoggerFactory.getLogger(CompactionTaskManager.class);
+  private static final CompactionTaskManager INSTANCE =
+      new CompactionTaskManager();
   private ExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
 
-  public static CompactionMergeTaskPoolManager getInstance() {
+  public static CompactionTaskManager getInstance() {
     return INSTANCE;
   }
 

@@ -479,10 +479,10 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "merge_interval_sec", Long.toString(conf.getMergeIntervalSec()))));
-      conf.setForceFullMerge(
+      conf.setFullMerge(
           Boolean.parseBoolean(
               properties.getProperty(
-                  "force_full_merge", Boolean.toString(conf.isForceFullMerge()))));
+                  "force_full_merge", Boolean.toString(conf.isFullMerge()))));
       conf.setCompactionThreadNum(
           Integer.parseInt(
               properties.getProperty(

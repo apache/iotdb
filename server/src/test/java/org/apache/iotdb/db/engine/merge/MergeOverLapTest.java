@@ -185,11 +185,10 @@ public class MergeOverLapTest extends MergeTest {
             new MergeResource(seqResources, unseqResources),
             tempSGDir.getPath(),
             (k, v, l) -> {},
-            "test",
             true,
             1,
             MERGE_TEST_SG);
-    mergeTask.call();
+    mergeTask.doMerge();
 
     QueryContext context = new QueryContext();
     PartialPath path =
