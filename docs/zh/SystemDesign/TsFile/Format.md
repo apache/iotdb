@@ -44,7 +44,7 @@
   - 5: TEXT (`String`)
 - **编码类型**
   - 0: PLAIN
-  - 1: PLAIN_DICTIONARY
+  - 1: DICTIONARY
   - 2: RLE
   - 3: DIFF
   - 4: TS_2DIFF
