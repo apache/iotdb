@@ -248,16 +248,11 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-      for (PartialPath sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
-      }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLogNum(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
@@ -1284,9 +1279,6 @@ public class MManager {
         indexMap.put(partialPath.getFullPath(), index);
         if (partialPath.isMeasurementAliasExists()) {
           indexMap.put(partialPath.getFullPathWithAlias(), index);
-        }
-        if (partialPath.isTsAliasExists()) {
-          indexMap.put(partialPath.getTsAlias(), index);
         }
         i++;
       }

@@ -223,7 +223,10 @@ public class IoTDBUDFManagementIT {
       statement.execute("create function aVg as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("expecting ID"));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("the given function name conflicts with the built-in function name"));
     }
   }
 
@@ -237,7 +240,10 @@ public class IoTDBUDFManagementIT {
           "create function MAX_VALUE as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("expecting ID"));
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("the given function name conflicts with the built-in function name"));
     }
   }
 

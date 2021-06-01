@@ -248,6 +248,7 @@ public class MergeMultiChunkTask {
       return;
     }
 
+    // need the max sensor in lexicographic order
     String lastSensor = getMaxSensor(currMergingPaths);
     String currSensor = null;
     Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();

@@ -113,11 +113,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    String columnForReader = super.getColumnForReaderFromPath(path, pathIndex);
-    if (!path.isTsAliasExists()) {
-      columnForReader = this.getAggregations().get(pathIndex) + "(" + columnForReader + ")";
-    }
-    return columnForReader;
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   @Override

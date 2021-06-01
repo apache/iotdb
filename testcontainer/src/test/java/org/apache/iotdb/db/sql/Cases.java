@@ -134,6 +134,31 @@ public abstract class Cases {
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
     }
+
+    // test dictionary encoding
+    writeStatement.execute(
+        "create timeseries root.ln.wf01.wt01.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(250, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(300, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Singapore\")",
+          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Shanghai\")"
+        };
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+
+    String[] results = new String[] {"Nanjing", "Nanjing", "Singapore", "Shanghai"};
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt01");
+      int i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt01.city"));
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
   }
 
   // test https://issues.apache.org/jira/browse/IOTDB-1266

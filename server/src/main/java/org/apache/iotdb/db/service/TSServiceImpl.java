@@ -82,6 +82,8 @@ import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -1019,27 +1021,18 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   // wide means not align by device
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void getWideQueryHeaders(
       QueryPlan plan, List<String> respColumns, List<String> columnTypes)
       throws TException, MetadataException {
-    // Restore column header of aggregate to func(column_name), only
-    // support single aggregate function for now
+    List<ResultColumn> resultColumns = plan.getResultColumns();
     List<PartialPath> paths = plan.getPaths();
     List<TSDataType> seriesTypes = new ArrayList<>();
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
-        for (PartialPath path : paths) {
-          String column;
-          if (path.isTsAliasExists()) {
-            column = path.getTsAlias();
-          } else {
-            column =
-                path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
-          }
-          respColumns.add(column);
-          seriesTypes.add(getSeriesTypeByPath(path));
+        for (int i = 0; i < resultColumns.size(); ++i) {
+          respColumns.add(resultColumns.get(i).getResultColumnName());
+          seriesTypes.add(getSeriesTypeByPath(paths.get(i)));
         }
         break;
       case AGGREGATION:
@@ -1051,18 +1044,8 @@ public class TSServiceImpl implements TSIService.Iface {
             aggregations.add(aggregations.get(0));
           }
         }
-        for (int i = 0; i < paths.size(); i++) {
-          PartialPath path = paths.get(i);
-          String column;
-          if (path.isTsAliasExists()) {
-            column = path.getTsAlias();
-          } else {
-            column =
-                path.isMeasurementAliasExists()
-                    ? aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")"
-                    : aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")";
-          }
-          respColumns.add(column);
+        for (ResultColumn resultColumn : resultColumns) {
+          respColumns.add(resultColumn.getResultColumnName());
         }
         seriesTypes = getSeriesTypesByPaths(paths, aggregations);
         break;
@@ -1070,15 +1053,9 @@ public class TSServiceImpl implements TSIService.Iface {
         seriesTypes = new ArrayList<>();
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
-          respColumns.add(
-              paths.get(i) != null
-                  ? paths.get(i).getFullPath()
-                  : udtfPlan
-                      .getExecutorByOriginalOutputColumnIndex(i)
-                      .getContext()
-                      .getColumnName());
+          respColumns.add(resultColumns.get(i).getResultColumnName());
           seriesTypes.add(
-              paths.get(i) != null
+              resultColumns.get(i).getExpression() instanceof TimeSeriesOperand
                   ? udtfPlan.getDataTypes().get(i)
                   : udtfPlan
                       .getExecutorByOriginalOutputColumnIndex(i)
