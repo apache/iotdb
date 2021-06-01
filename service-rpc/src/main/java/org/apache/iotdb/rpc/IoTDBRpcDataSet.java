@@ -50,7 +50,7 @@ public class IoTDBRpcDataSet {
   public boolean isClosed = false;
   public TSIService.Iface client;
   public List<String> columnNameList; // no deduplication
-  public List<TSDataType> columnTypeList; // no deduplication
+  public List<String> columnTypeList; // no deduplication
   public Map<String, Integer>
       columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
@@ -105,7 +105,7 @@ public class IoTDBRpcDataSet {
     this.columnTypeList = new ArrayList<>();
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
-      this.columnTypeList.add(TSDataType.INT64);
+      this.columnTypeList.add(String.valueOf(TSDataType.INT64));
     }
     // deduplicate and map
     this.columnOrdinalMap = new HashMap<>();
@@ -122,7 +122,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
-        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
           columnOrdinalMap.put(name, index + START_INDEX);
@@ -135,7 +135,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
-        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
