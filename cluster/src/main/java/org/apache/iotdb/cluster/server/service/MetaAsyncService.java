@@ -226,6 +226,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     removeNodeLogBuffer.get();
     RemoveNodeLog removeNodeLog = new RemoveNodeLog();
     removeNodeLog.deserialize(removeNodeLogBuffer);
+    metaGroupMember.getPartitionTable().deserialize(removeNodeLog.getPartitionTable());
     metaGroupMember.applyRemoveNode(removeNodeLog);
     resultHandler.onComplete(null);
   }

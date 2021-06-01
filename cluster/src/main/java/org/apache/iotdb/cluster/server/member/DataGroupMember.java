@@ -31,8 +31,10 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -83,6 +85,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -668,7 +671,18 @@ public class DataGroupMember extends RaftMember {
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
       try {
-        getLocalExecutor().processNonQuery(plan);
+        if (plan instanceof LogPlan) {
+          Log log;
+          try {
+            log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+          } catch (UnknownLogTypeException e) {
+            logger.error("Can not parse LogPlan {}", plan, e);
+            return StatusUtils.PARSE_LOG_ERROR;
+          }
+          handleChangeMembershipLogWithoutRaft(log);
+        } else {
+          getLocalExecutor().processNonQuery(plan);
+        }
         return StatusUtils.OK;
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
@@ -697,6 +711,28 @@ public class DataGroupMember extends RaftMember {
       Timer.Statistic.DATA_GROUP_MEMBER_WAIT_LEADER.calOperationCostTimeFromStart(startTime);
 
       return executeNonQueryPlanWithKnownLeader(plan);
+    }
+  }
+
+  private void handleChangeMembershipLogWithoutRaft(Log log) {
+    if (log instanceof AddNodeLog) {
+      if (!metaGroupMember
+          .getPartitionTable()
+          .deserialize(((AddNodeLog) log).getPartitionTable())) {
+        return;
+      }
+      preAddNode(((AddNodeLog) log).getNewNode());
+      setAndSaveLastAppliedPartitionTableVersion(((AddNodeLog) log).getMetaLogIndex());
+    } else if (log instanceof RemoveNodeLog) {
+      if (!metaGroupMember
+          .getPartitionTable()
+          .deserialize(((RemoveNodeLog) log).getPartitionTable())) {
+        return;
+      }
+      preRemoveNode(((RemoveNodeLog) log).getRemovedNode());
+      setAndSaveLastAppliedPartitionTableVersion(((RemoveNodeLog) log).getMetaLogIndex());
+    } else {
+      logger.error("Unsupported log: {}", log);
     }
   }
 
