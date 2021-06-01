@@ -374,7 +374,7 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 * 添加好友 `tietouqiao` 或者 `liutaohua001`，我们会邀请您进群
 
-### slack
+### Slack
 
 * https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
