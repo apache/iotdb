@@ -685,7 +685,7 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
-          // update if there are unSeqPageReaders are unpacked
+          // update if there are unpacked unSeqPageReaders
           timeValuePair = mergeReader.currentTimeValuePair();
 
           // from now, the unsequence reader is all unpacked, so we don't need to consider it
