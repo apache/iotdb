@@ -540,6 +540,7 @@ public class IoTDBConfigCheck {
           if (partition.listFiles().length == 0) {
             try {
               Files.delete(partition.toPath());
+              logger.error("   ");
             } catch (IOException e) {
               logger.error("Delete {} failed", partition);
             }
