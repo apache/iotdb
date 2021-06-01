@@ -74,6 +74,6 @@ public class ClusterPlanner extends Planner {
     // optimize the logical operator
     operator = logicalOptimize(operator, lastDataQueryReq.fetchSize);
     // from logical operator to physical plan
-    return new PhysicalGenerator().transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
+    return new ClusterPhysicalGenerator().transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
   }
 }
