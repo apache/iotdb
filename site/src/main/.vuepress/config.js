@@ -1555,6 +1555,12 @@ var config = {
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
 							['Appendix/Status-Codes','附录3: 状态码']
 						]
+					},
+					{
+						title: '时间序列数据库比较',
+						children: [
+							['Comparison/TSDB-Comparison','比较']
+						]
 					}
 				],
 				'/zh/SystemDesign/': [

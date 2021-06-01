@@ -33,6 +33,7 @@
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 # 简介
 IoTDB (Internet of Things Database) 是一个时序数据的数据管理系统，可以为用户提供数据收集、存储和分析等特定的服务。IoTDB由于其轻量级的结构、高性能和可用的特性，以及与Hadoop和Spark生态的无缝集成，满足了工业IoTDB领域中海量数据存储、高吞吐量数据写入和复杂数据分析的需求。
@@ -371,6 +372,10 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 
 ### Wechat Group
 
-* 添加好友 tietouqiao，我们会邀请您进群
+* 添加好友 `tietouqiao` 或者 `liutaohua001`，我们会邀请您进群
+
+### Slack
+
+* https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
 获取更多内容，请查看 [加入社区](https://github.com/apache/iotdb/issues/1995) 
