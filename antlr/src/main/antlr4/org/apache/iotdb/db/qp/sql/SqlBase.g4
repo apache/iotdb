@@ -638,7 +638,7 @@ dateExpression
     ;
 
 encoding
-    : PLAIN | PLAIN_DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
+    : PLAIN | DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
     ;
 
 realLiteral
@@ -864,8 +864,8 @@ PLAIN
     : P L A I N
     ;
 
-PLAIN_DICTIONARY
-    : P L A I N '_' D I C T I O N A R Y
+DICTIONARY
+    : D I C T I O N A R Y
     ;
 
 RLE
@@ -883,7 +883,6 @@ TS_2DIFF
 GORILLA
     : G O R I L L A
     ;
-
 
 REGULAR
     : R E G U L A R
