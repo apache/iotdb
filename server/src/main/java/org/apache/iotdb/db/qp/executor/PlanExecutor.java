@@ -917,6 +917,9 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws QueryProcessException {
+    if (insertRowsOfOneDevicePlan.getRowPlans().length == 0) {
+      return;
+    }
     try {
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
         plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
@@ -973,6 +976,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    if (insertTabletPlan.getRowCount() == 0) {
+      return;
+    }
     try {
       insertTabletPlan
           .setMeasurementMNodes(new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
