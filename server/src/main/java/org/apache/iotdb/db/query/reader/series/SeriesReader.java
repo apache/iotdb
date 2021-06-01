@@ -617,6 +617,9 @@ public class SeriesReader {
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
 
+          // update if there are unSeqPageReaders are unpacked
+          timeValuePair = mergeReader.currentTimeValuePair();
+
           if (firstPageReader != null) {
             if ((orderUtils.getAscending() && timeValuePair.getTimestamp() > firstPageReader
                 .getStatistics().getEndTime()) || (!orderUtils.getAscending()
