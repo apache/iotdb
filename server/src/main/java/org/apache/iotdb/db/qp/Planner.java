@@ -151,7 +151,7 @@ public class Planner {
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
 
     selectOp.setLastQuery();
-    selectOp.addSelectPath(new PartialPath(""));
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
 
     for (String p : paths) {
       PartialPath path = new PartialPath(p);
