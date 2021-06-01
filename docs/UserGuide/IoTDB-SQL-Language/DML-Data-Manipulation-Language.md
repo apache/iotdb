@@ -1535,7 +1535,7 @@ IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
-## Delete Time Partition (experimental)
+### Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
 ```
