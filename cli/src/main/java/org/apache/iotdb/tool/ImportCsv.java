@@ -102,9 +102,7 @@ public class ImportCsv extends AbstractCsvTool {
     return options;
   }
 
-  /**
-   * Data from csv To tsfile.
-   */
+  /** Data from csv To tsfile. */
   @SuppressWarnings("squid:S1135")
   private static void loadDataFromCSV(File file) {
     int fileLine;
@@ -116,8 +114,8 @@ public class ImportCsv extends AbstractCsvTool {
     }
     System.out.println("Start to import data from: " + file.getName());
     try (BufferedReader br =
-        new BufferedReader(
-            new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+            new BufferedReader(
+                new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
         ProgressBar pb = new ProgressBar("Import from: " + file.getName(), fileLine)) {
       pb.setExtraMessage("Importing...");
       String header = br.readLine();

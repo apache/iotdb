@@ -1222,9 +1222,9 @@ public class PlanExecutor implements IPlanExecutor {
       } catch (QueryProcessException e) {
         plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
-    }
-    if (!plan.getResults().isEmpty()) {
-      throw new BatchProcessException(plan.getFailingStatus());
+      if (!plan.getResults().isEmpty()) {
+        throw new BatchProcessException(plan.getFailingStatus());
+      }
     }
   }
 
