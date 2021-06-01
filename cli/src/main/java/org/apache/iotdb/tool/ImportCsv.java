@@ -33,8 +33,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -57,8 +55,6 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FILE_ARGS = "f";
   private static final String FILE_NAME = "file or folder";
   private static final String FILE_SUFFIX = "csv";
-  private static final Logger logger = LoggerFactory.getLogger(ImportCsv.class);
-  private static final String TIME_TYPE = "It isn't a {} time type";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
   private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
@@ -167,7 +163,16 @@ public class ImportCsv extends AbstractCsvTool {
           measurementsList.add(devicesToMeasurements.get(device));
         }
         if (lineNumber % 10000 == 0) {
-          session.insertRecords(devices, times, measurementsList, valuesList);
+          try {
+            session.insertRecords(devices, times, measurementsList, valuesList);
+          } catch (StatementExecutionException e) {
+            if (e.getMessage().contains("failed to insert measurements")) {
+              System.out.println("Meet error when insert csv because " + e.getMessage());
+              System.out.println("Continue inserting... ");
+            } else {
+              throw e;
+            }
+          }
           pb.stepTo(lineNumber + 1L);
           devices = new ArrayList<>();
           times = new ArrayList<>();
@@ -176,7 +181,16 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
       // TODO change it to insertTablet, now is slow
-      session.insertRecords(devices, times, measurementsList, valuesList);
+      try {
+        session.insertRecords(devices, times, measurementsList, valuesList);
+      } catch (StatementExecutionException e) {
+        if (e.getMessage().contains("failed to insert measurements")) {
+          System.out.println("Meet error when insert csv because " + e.getMessage());
+          System.out.println("Continue inserting... ");
+        } else {
+          throw e;
+        }
+      }
       System.out.println("Insert csv successfully!");
       pb.stepTo(fileLine);
     } catch (FileNotFoundException e) {
@@ -249,9 +263,6 @@ public class ImportCsv extends AbstractCsvTool {
   }
 
   private static SimpleDateFormat formatterInit(String time) {
-    SimpleDateFormat format1 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-    SimpleDateFormat format2 = new SimpleDateFormat("yyy-MM-dd HH:mm:ss");
-    SimpleDateFormat format3 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 
     try {
       Long.parseLong(time);
@@ -260,25 +271,14 @@ public class ImportCsv extends AbstractCsvTool {
       // do nothing
     }
 
-    try {
-      format1.parse(time).getTime();
-      return format1;
-    } catch (java.text.ParseException ignored) {
-      // do nothing
-    }
-
-    try {
-      format2.parse(time).getTime();
-      return format2;
-    } catch (java.text.ParseException ignored) {
-      // do nothing
-    }
-
-    try {
-      format3.parse(time).getTime();
-      return format3;
-    } catch (java.text.ParseException ignored) {
-      // do nothing
+    for (String timeFormat : STRING_TIME_FORMAT) {
+      SimpleDateFormat format = new SimpleDateFormat(timeFormat);
+      try {
+        format.parse(time).getTime();
+        return format;
+      } catch (java.text.ParseException ignored) {
+        // do nothing
+      }
     }
     return null;
   }
@@ -424,35 +424,21 @@ public class ImportCsv extends AbstractCsvTool {
 
   public static String[] splitCsvLine(String path) {
     List<String> nodes = new ArrayList<>();
-    startIndex = 0;
-    for (i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == ',') {
-        nodes.add(path.substring(startIndex, i));
-        startIndex = i + 1;
-      } else if (path.charAt(i) == '"') {
-        nextNode(path, nodes, '"');
+    int start = 0;
+    boolean singleQuotes = false;
+    boolean doubleQuotes = false;
+    // split by comma if the comma is followed by an even number of quotes
+    for (int i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == '\"') {
+        doubleQuotes = !doubleQuotes; // toggle state
       } else if (path.charAt(i) == '\'') {
-        nextNode(path, nodes, '\'');
+        singleQuotes = !singleQuotes;
+      } else if (path.charAt(i) == ',' && (!singleQuotes && !doubleQuotes)) {
+        nodes.add(path.substring(start, i));
+        start = i + 1;
       }
     }
-    if (startIndex <= path.length() - 1) {
-      nodes.add(path.substring(startIndex));
-    }
+    nodes.add(path.substring(start));
     return nodes.toArray(new String[0]);
-  }
-
-  public static void nextNode(String path, List<String> nodes, char enclose) {
-    int endIndex = path.indexOf(enclose, i + 1);
-    // if a double quotes with escape character
-    while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-      endIndex = path.indexOf(enclose, endIndex + 1);
-    }
-    if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
-      nodes.add(path.substring(startIndex + 1, endIndex));
-      i = endIndex + 1;
-      startIndex = endIndex + 2;
-    } else {
-      throw new IllegalArgumentException("Illegal csv line" + path);
-    }
   }
 }

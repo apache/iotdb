@@ -195,6 +195,16 @@ public class MergeMultiChunkTask {
     mergeLogger.logTSEnd();
   }
 
+  private String getMaxSensor(List<PartialPath> sensors) {
+    String maxSensor = sensors.get(0).getMeasurement();
+    for (int i = 1; i < sensors.size(); i++) {
+      if (maxSensor.compareTo(sensors.get(i).getMeasurement()) < 0) {
+        maxSensor = sensors.get(i).getMeasurement();
+      }
+    }
+    return maxSensor;
+  }
+
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -238,7 +248,8 @@ public class MergeMultiChunkTask {
       return;
     }
 
-    String lastSensor = currMergingPaths.get(currMergingPaths.size() - 1).getMeasurement();
+    // need the max sensor in lexicographic order
+    String lastSensor = getMaxSensor(currMergingPaths);
     String currSensor = null;
     Map<String, List<ChunkMetadata>> measurementChunkMetadataListMap = new TreeMap<>();
     // find all sensor to merge in order, if exceed, then break
@@ -455,7 +466,6 @@ public class MergeMultiChunkTask {
       IChunkWriter chunkWriter,
       TsFileResource currFile)
       throws IOException {
-
     int unclosedChunkPoint = lastUnclosedChunkPoint;
     boolean chunkModified =
         (currMeta.getDeleteIntervalList() != null && !currMeta.getDeleteIntervalList().isEmpty());

@@ -338,7 +338,9 @@ public class TsFileProcessor {
     int columnIndex = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       // for aligned timeseries
-      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (insertTabletPlan.getMeasurementMNodes()[i] != null
+          && insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType()
+              == TSDataType.VECTOR) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];

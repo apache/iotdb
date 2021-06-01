@@ -19,7 +19,7 @@
 
 -->
 
-# 一、工作流程
+# 工作流程
 
 ## 主要链接
 
@@ -47,7 +47,7 @@ Wiki 文档管理：https://cwiki.apache.org/confluence/display/IOTDB/Home
 * commits@iotdb.apache.org (任何代码改动都会通知到此处。该邮件列表邮件数量十分多，请注意。)
 * reviews@iotdb.apache.org (任何代码审阅意见都会通知到此处。该邮件列表邮件数量十分多，请注意。)
 
-## 新功能、Bug 反馈、改进等
+## 新功能、Bug反馈、改进等
 
 所有希望 IoTDB 做的功能或修的 bug，都可以在 Jira 上提 issue
 
@@ -79,7 +79,7 @@ IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 
 注意事项：
 
-* Markdown 中的图片可上传至 https://github.com/thulab/iotdb/issues/543 获得 url
+* Markdown 中的图片可上传至 https://github.com/apache/iotdb-bin-resources 获得 url
 
 ## 代码格式化
 
@@ -108,7 +108,7 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 * 根据其他人的审阅意见进行修改，继续更新，直到合并
 * 关闭 jira issue
 
-# 二、IoTDB 调试方式
+# IoTDB调试方式
 
 ## 导入代码
 
@@ -142,16 +142,16 @@ import -> Maven -> Existing Maven Projects
 
 
 
-## 常见编译错误
+# 常见编译错误
 
-1. 无法下载 thrift-* 等文件, 例如 `Could not get content
-org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe`
-
+无法下载 thrift-* 等文件, 例如 `Could not get content
+org.apache.maven.wagon.TransferFailedException: Transfer failed for https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu`
 这一般是网络问题，这时候需要手动下载上述文件：
 
-* 根据以下网址手动下载上述文件;
-  * https://github.com/jt2594838/mvn-thrift-compiler/blob/master/thrift_0.12.0_0.13.0_mac.exe
-  * https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe
-* 将该文件拷贝到thrift/target/tools/目录下
-* 重新执行maven的编译命令
+  * 根据以下网址手动下载上述文件;
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-MacOS
+      * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu
+  
+ * 将该文件拷贝到thrift/target/tools/目录下 
+ * 重新执行maven的编译命令
 

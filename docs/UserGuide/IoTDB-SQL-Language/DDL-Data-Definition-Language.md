@@ -41,7 +41,7 @@ It is worth noting that when the path itself or the parent/child layer of the pa
 IoTDB> set storage group to root.ln.wf01
 Msg: 300: root.ln has already been set to storage group.
 ```
-The LayerName of storage group can only be characters, numbers and underscores. 
+The LayerName of storage group can only be characters, numbers, underscores and hyphens. 
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 

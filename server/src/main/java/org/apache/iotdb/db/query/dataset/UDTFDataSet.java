@@ -163,7 +163,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private int[] calculateReaderIndexes(UDTFExecutor executor) {
-    List<PartialPath> paths = executor.getContext().getPaths();
+    List<PartialPath> paths = executor.getExpression().getPaths();
     int[] readerIndexes = new int[paths.size()];
     for (int i = 0; i < readerIndexes.length; ++i) {
       readerIndexes[i] = udtfPlan.getReaderIndex(paths.get(i).getFullPath());

@@ -54,6 +54,7 @@ public class IoTDBStatement implements Statement {
   private ResultSet resultSet = null;
   private IoTDBConnection connection;
   private int fetchSize;
+  private int maxRows = 0;
 
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
@@ -249,7 +250,11 @@ public class IoTDBStatement implements Statement {
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout((long) queryTimeout * 1000);
     TSExecuteStatementResp execResp = client.executeStatement(execReq);
     try {
@@ -388,7 +393,11 @@ public class IoTDBStatement implements Statement {
   private ResultSet executeQuerySQL(String sql, long timeoutInMS) throws TException, SQLException {
     isCancelled = false;
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, stmtId);
-    execReq.setFetchSize(fetchSize);
+    int rows = fetchSize;
+    if (maxRows != 0 && fetchSize > maxRows) {
+      rows = maxRows;
+    }
+    execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
@@ -583,18 +592,21 @@ public class IoTDBStatement implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
-    throw new SQLException("Not support getMaxRows");
+    return this.maxRows;
   }
 
   @Override
   public void setMaxRows(int num) throws SQLException {
-    throw new SQLException(
-        "Not support getMaxRows" + ". Please use the LIMIT clause in a query instead.");
+    checkConnection("setMaxRows");
+    if (num <= 0) {
+      throw new SQLException(String.format("maxRows %d must be > 0!", num));
+    }
+    this.maxRows = num;
   }
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new SQLException("Not support getMoreResults");
+    return false;
   }
 
   @Override

@@ -56,7 +56,7 @@ public class IoTDBConfig {
   private static final String ID_MATCHER =
       "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
@@ -322,6 +322,12 @@ public class IoTDBConfig {
   private boolean enableUnseqCompaction = true;
 
   /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
+   * automatically after finish one compaction task
+   */
+  private boolean enableContinuousCompaction = true;
+
+  /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
    * When the num of files in one level exceeds this, the files in this level will merge to one and
    * put to upper level.
@@ -340,6 +346,14 @@ public class IoTDBConfig {
 
   /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of unseq level. */
   private int unseqLevelNum = 1;
+
+  /**
+   * Works when compaction_strategy is LEVEL_COMPACTION. The max open file num in each unseq
+   * compaction task. We use the unseq file num as the open file num # This parameters have to be
+   * much smaller than the permitted max open file num of each process controlled by operator
+   * system(65535 in most system).
+   */
+  private int maxOpenFileNumInEachUnseqCompaction = 2000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -505,7 +519,7 @@ public class IoTDBConfig {
    * despite how much they are overflowed). This may increase merge overhead depending on how much
    * the SeqFiles are overflowed.
    */
-  private boolean forceFullMerge = false;
+  private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
@@ -616,7 +630,7 @@ public class IoTDBConfig {
   private boolean enablePartialInsert = true;
 
   // Open ID Secret
-  private String openIdProviderUrl = null;
+  private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
@@ -668,6 +682,10 @@ public class IoTDBConfig {
 
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
+
+  private String adminName = "root";
+
+  private String adminPassword = "root";
 
   public IoTDBConfig() {
     // empty constructor
@@ -1474,6 +1492,14 @@ public class IoTDBConfig {
     this.enableUnseqCompaction = enableUnseqCompaction;
   }
 
+  public boolean isEnableContinuousCompaction() {
+    return enableContinuousCompaction;
+  }
+
+  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
+    this.enableContinuousCompaction = enableContinuousCompaction;
+  }
+
   public int getSeqFileNumInEachLevel() {
     return seqFileNumInEachLevel;
   }
@@ -1504,6 +1530,14 @@ public class IoTDBConfig {
 
   public void setUnseqLevelNum(int unseqLevelNum) {
     this.unseqLevelNum = unseqLevelNum;
+  }
+
+  public int getMaxOpenFileNumInEachUnseqCompaction() {
+    return maxOpenFileNumInEachUnseqCompaction;
+  }
+
+  public void setMaxOpenFileNumInEachUnseqCompaction(int maxOpenFileNumInEachUnseqCompaction) {
+    this.maxOpenFileNumInEachUnseqCompaction = maxOpenFileNumInEachUnseqCompaction;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -2131,5 +2165,21 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public String getAdminName() {
+    return adminName;
+  }
+
+  public void setAdminName(String adminName) {
+    this.adminName = adminName;
+  }
+
+  public String getAdminPassword() {
+    return adminPassword;
+  }
+
+  public void setAdminPassword(String adminPassword) {
+    this.adminPassword = adminPassword;
   }
 }

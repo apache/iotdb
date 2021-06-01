@@ -406,3 +406,101 @@ void createDeviceTemplate
 
 ```
 
+### Cluster information related APIs (only works in the cluster mode)
+
+Cluster information related APIs allow users get the cluster info like where a storage group will be 
+partitioned to, the status of each node in the cluster.
+
+To use the APIs, add dependency in your pom file:
+
+```xml
+<dependencies>
+    <dependency>
+      <groupId>org.apache.iotdb</groupId>
+      <artifactId>iotdb-thrift-cluster</artifactId>
+      <version>0.13.0-SNAPSHOT</version>
+    </dependency>
+</dependencies>
+```
+
+How to open a connection:
+
+```java
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
+import org.apache.iotdb.rpc.RpcTransportFactory;
+
+    public class CluserInfoClient {
+      TTransport transport;
+      ClusterInfoService.Client client;
+      public void connect() {
+          transport =
+              RpcTransportFactory.INSTANCE.getTransport(
+                  new TSocket(
+                      // the RPC address
+                      IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                      // the RPC port
+                      ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
+          try {
+            transport.open();
+          } catch (TTransportException e) {
+            Assert.fail(e.getMessage());
+          }
+          //get the client
+          client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
+       }
+      public void close() {
+        transport.close();
+      }  
+    }
+```
+
+APIs in `ClusterInfoService.Client`:
+
+
+* Get the physical hash ring of the cluster:
+
+```java
+list<Node> getRing();
+```
+
+* Get data partition information of input path and time range:
+
+```java 
+    /**
+     * @param path input path (should contains a Storage group name as its prefix)
+     * @return the data partition info. If the time range only covers one data partition, the the size
+     * of the list is one.
+     */
+    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+```
+
+* Get metadata partition information of input path:
+```java  
+    /**
+     * @param path input path (should contains a Storage group name as its prefix)
+     * @return metadata partition information
+     */
+    list<Node> getMetaPartition(1:string path);
+```
+
+* Get the status (alive or not) of all nodes:
+```java
+    /**
+     * @return key: node, value: live or not
+     */
+    map<Node, bool> getAllNodeStatus();
+```
+
+* get the raft group info (voteFor, term, etc..) of the connected node
+  (Notice that this API is rarely used by users):
+```java  
+    /**
+     * @return A multi-line string with each line representing the total time consumption, invocation
+     *     number, and average time consumption.
+     */
+    string getInstrumentingInfo();
+```
+
