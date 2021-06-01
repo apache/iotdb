@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
-import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;

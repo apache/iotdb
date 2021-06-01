@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -69,8 +69,8 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionChunkCache() throws IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource tsFileResource = seqResources.get(1);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
     List<Path> paths = reader.getAllPaths();
@@ -90,11 +90,11 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();

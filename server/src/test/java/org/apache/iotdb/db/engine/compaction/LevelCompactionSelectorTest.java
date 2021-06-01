@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -60,17 +60,17 @@ public class LevelCompactionSelectorTest extends LevelCompactionTest {
   /** just compaction once */
   @Test
   public void testCompactionSelector() throws NoSuchFieldException, IllegalAccessException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     Field fieldForkedSequenceTsFileResources =
-        LevelCompactionTsFileManagement.class.getDeclaredField("forkedSequenceTsFileResources");
+        LevelCompactionExecutor.class.getDeclaredField("forkedSequenceTsFileResources");
     fieldForkedSequenceTsFileResources.setAccessible(true);
     List<TsFileResource> forkedSequenceTsFileResources =
         (List<TsFileResource>)
-            fieldForkedSequenceTsFileResources.get(levelCompactionTsFileManagement);
+            fieldForkedSequenceTsFileResources.get(levelCompactionExecutor);
     assertEquals(2, forkedSequenceTsFileResources.size());
   }
 }

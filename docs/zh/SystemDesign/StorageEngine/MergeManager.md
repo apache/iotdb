@@ -47,25 +47,25 @@
 
 ## 相关代码
 
-* org.apache.iotdb.db.engine.merge.BaseFileSelector
+* org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.BaseFileSelector
 
     文件选择过程的基类，规定了选择文件的基本框架，及在不同情况下计算文件内存消耗的方法，所有自定义的文件选择策略均需继承此类
     
-* org.apache.iotdb.db.engine.merge.IRecoverMergeTask
+* org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.IRecoverMergeTask
   
     recover 过程的接口类，规定了 recoverMerge 接口，所有自定义的merge恢复策略均需继承此类
 
 此外，每一个自定义的MergeTask均需继承Callable\<void\>接口，以保证可以被回调
 
-* org.apache.iotdb.db.engine.merge.manage.MergeContext
+* org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeContext
 
     Merge 过程中的公用上下文类
 
-* org.apache.iotdb.db.engine.merge.manage.MergeManager
+* org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeManager
 
     Merge 过程中的线程池类，管理了多个 merge task 的运行
 
-* org.apache.iotdb.db.engine.merge.manage.MergeResource
+* org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeResource
 
     Merge 过程中的资源类，负责管理 merge 过程中的 files,readers,writers,measurementSchemas,modifications 等资源
 

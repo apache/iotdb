@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -63,8 +63,8 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionMods() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource sourceTsFileResource = seqResources.get(0);
     TsFileResource targetTsFileResource = seqResources.get(1);
     List<Modification> filterModifications = new ArrayList<>();
@@ -80,7 +80,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
     }
     List<TsFileResource> sourceTsFileResources = new ArrayList<>();
     sourceTsFileResources.add(sourceTsFileResource);
-    levelCompactionTsFileManagement.renameLevelFilesMods(
+    levelCompactionExecutor.renameLevelFilesMods(
         filterModifications, sourceTsFileResources, targetTsFileResource);
     try (ModificationFile targetModificationFile =
         new ModificationFile(targetTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
@@ -96,8 +96,8 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
    */
   @Test
   public void testCompactionModsByOffset() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource sourceTsFileResource = seqResources.get(0);
     TsFileResource targetTsFileResource = seqResources.get(1);
     List<Modification> filterModifications = new ArrayList<>();
@@ -123,7 +123,7 @@ public class LevelCompactionModsTest extends LevelCompactionTest {
     }
     List<TsFileResource> sourceTsFileResources = new ArrayList<>();
     sourceTsFileResources.add(sourceTsFileResource);
-    levelCompactionTsFileManagement.renameLevelFilesMods(
+    levelCompactionExecutor.renameLevelFilesMods(
         filterModifications, sourceTsFileResources, targetTsFileResource);
     try (ModificationFile targetModificationFile =
         new ModificationFile(targetTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {

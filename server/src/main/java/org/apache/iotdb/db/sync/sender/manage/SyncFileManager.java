@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.sync.sender.manage;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IoTDB;

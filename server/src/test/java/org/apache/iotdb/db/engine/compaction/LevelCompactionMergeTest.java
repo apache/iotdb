@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -76,13 +76,13 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   /** just compaction once */
   @Test
   public void testCompactionMergeOnce() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -100,7 +100,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            levelCompactionExecutor.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -120,13 +120,13 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -144,7 +144,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            levelCompactionExecutor.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -172,8 +172,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource forthSeqTsFileResource = seqResources.get(3);
     PartialPath path =
         new PartialPath(
@@ -187,11 +187,11 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
           new Deletion(path, forthSeqTsFileResource.getTsFileSize() / 10, 300, 310);
       sourceModificationFile.write(modification);
     }
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -204,7 +204,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            levelCompactionExecutor.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -217,7 +217,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     }
     assertEquals(489, count);
 
-    List<TsFileResource> tsFileResourceList = levelCompactionTsFileManagement.getTsFileList(true);
+    List<TsFileResource> tsFileResourceList = levelCompactionExecutor.getTsFileList(true);
     for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.getModFile().remove();
       tsFileResource.remove();
@@ -232,13 +232,13 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(1);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -246,7 +246,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
       // wait
     }
     TsFileResource newTsFileResource =
-        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+        levelCompactionExecutor.getTsFileListByTimePartition(true, 0).get(0);
     TsFileSequenceReader tsFileSequenceReader =
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
@@ -269,13 +269,13 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -283,7 +283,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
       // wait
     }
     TsFileResource newTsFileResource =
-        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+        levelCompactionExecutor.getTsFileListByTimePartition(true, 0).get(0);
     TsFileSequenceReader tsFileSequenceReader =
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =

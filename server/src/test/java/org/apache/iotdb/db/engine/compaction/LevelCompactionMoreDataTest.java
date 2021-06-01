@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -194,13 +194,13 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
   // test file compaction larger than 1024 sensor
   @Test
   public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
@@ -218,7 +218,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
             path,
             measurementSchemas[2688].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            levelCompactionExecutor.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,

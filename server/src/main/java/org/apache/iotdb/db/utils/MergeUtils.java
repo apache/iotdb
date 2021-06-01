@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;

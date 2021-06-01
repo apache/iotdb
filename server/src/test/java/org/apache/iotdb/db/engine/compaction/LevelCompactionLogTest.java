@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -35,7 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.junit.Assert.assertFalse;
 
 public class LevelCompactionLogTest extends LevelCompactionTest {
@@ -60,13 +60,13 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionLog() {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    LevelCompactionExecutor levelCompactionExecutor =
+        new LevelCompactionExecutor(COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionExecutor.addAll(seqResources, true);
+    levelCompactionExecutor.addAll(unseqResources, false);
+    levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
+        levelCompactionExecutor
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
