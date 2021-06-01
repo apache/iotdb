@@ -384,7 +384,7 @@ see [Frequent Questions when Compiling the Source Code](https://iotdb.apache.org
 
 * Add friend: `tietouqiao` or `liutaohua001`, and then we'll invite you to the group.
 
-### slack
+### Slack
 
 * https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg
 
