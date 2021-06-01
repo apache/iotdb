@@ -42,7 +42,7 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: IT/UT Test
         # we do not compile client-cpp for saving time, it is tested in client.yml
-        run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage
+        run: mvn -B clean post-integration-test -Dtest.port.closed=true -Pcode-coverage -P '!testcontainer'
       - name: Code Coverage (Coveralls)
         if: ${{ success() }}
         run: |
@@ -64,6 +64,7 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -Dsonar.pullrequest.branch=$BRANCH_NAME \
+          -Dsonar.pullrequest.branch=$GITHUB_HEAD_REF \
+          -Dsonar.pullrequest.base=$GITHUB_BASE_REF \
           -Dsonar.pullrequest.key=$PR_NUMBER \
           -DskipTests -pl '!distribution' -am
