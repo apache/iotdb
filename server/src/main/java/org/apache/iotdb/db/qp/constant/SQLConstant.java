@@ -61,7 +61,7 @@ public class SQLConstant {
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
 
-  public static final String EXTREME = "ext";
+  public static final String EXT = "ext";
 
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
@@ -81,7 +81,7 @@ public class SQLConstant {
               MAX_TIME,
               MIN_VALUE,
               MAX_VALUE,
-              EXTREME,
+              EXT,
               FIRST_VALUE,
               LAST_VALUE,
               COUNT,

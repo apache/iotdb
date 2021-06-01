@@ -58,6 +58,23 @@ public class ExtremeAggrResult extends AggregateResult {
     }
   }
 
+  public Comparable<Object> getExtremeValue(
+      Comparable<Object> extVal, Comparable<Object> currentValue) {
+    if (currentValue != null) {
+      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
+      if (extVal == null) {
+        extVal = currentValue;
+      } else {
+        Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
+        if (absExtVal.compareTo(absCurrentValue) < 0
+            || (absExtVal.compareTo(absCurrentValue) == 0 && extVal.compareTo(currentValue) < 0)) {
+          extVal = currentValue;
+        }
+      }
+    }
+    return extVal;
+  }
+
   @Override
   public Object getResult() {
     return hasCandidateResult() ? getValue() : null;
@@ -88,21 +105,7 @@ public class ExtremeAggrResult extends AggregateResult {
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
 
-      Comparable<Object> currentValue = (Comparable<Object>) dataInThisPage.currentValue();
-      Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
-
-      if (extVal == null) {
-        extVal = currentValue;
-      } else {
-        Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
-        if (absExtVal.compareTo(absCurrentValue) < 0) {
-          extVal = currentValue;
-        } else if (absExtVal.compareTo(absCurrentValue) == 0
-            && extVal.compareTo(currentValue) < 0) {
-          extVal = currentValue;
-        }
-      }
-
+      extVal = getExtremeValue(extVal, (Comparable<Object>) dataInThisPage.currentValue());
       dataInThisPage.next();
     }
     updateResult(extVal);
@@ -115,22 +118,7 @@ public class ExtremeAggrResult extends AggregateResult {
 
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Comparable<Object> currentValue = (Comparable<Object>) values[i];
-
-      if (currentValue != null) {
-        Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
-        if (extVal == null) {
-          extVal = currentValue;
-        } else {
-          Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
-          if (absExtVal.compareTo(absCurrentValue) < 0) {
-            extVal = currentValue;
-          } else if (absExtVal.compareTo(absCurrentValue) == 0
-              && extVal.compareTo(currentValue) < 0) {
-            extVal = currentValue;
-          }
-        }
-      }
+      extVal = getExtremeValue(extVal, (Comparable<Object>) values[i]);
     }
     updateResult(extVal);
   }
@@ -139,22 +127,7 @@ public class ExtremeAggrResult extends AggregateResult {
   public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
     Comparable<Object> extVal = null;
     for (int i = 0; i < length; i++) {
-      Comparable<Object> currentValue = (Comparable<Object>) values[i];
-
-      if (currentValue != null) {
-        Comparable<Object> absCurrentValue = (Comparable<Object>) getAbsValue(currentValue);
-        if (extVal == null) {
-          extVal = currentValue;
-        } else {
-          Comparable<Object> absExtVal = (Comparable<Object>) getAbsValue(extVal);
-          if (absExtVal.compareTo(absCurrentValue) < 0) {
-            extVal = currentValue;
-          } else if (absExtVal.compareTo(absCurrentValue) == 0
-              && extVal.compareTo(currentValue) < 0) {
-            extVal = currentValue;
-          }
-        }
-      }
+      extVal = getExtremeValue(extVal, (Comparable<Object>) values[i]);
     }
     updateResult(extVal);
   }
@@ -188,12 +161,10 @@ public class ExtremeAggrResult extends AggregateResult {
     Comparable<Object> candidateResult = (Comparable<Object>) getValue();
     Comparable<Object> absCandidateResult = (Comparable<Object>) getAbsValue(getValue());
 
-    if (!hasCandidateResult()) {
-      setValue(extVal);
-    } else if (absExtVal.compareTo(absCandidateResult) > 0) {
-      setValue(extVal);
-    } else if (absExtVal.compareTo(absCandidateResult) == 0
-        && extVal.compareTo(candidateResult) > 0) {
+    if (!hasCandidateResult()
+        || (absExtVal.compareTo(absCandidateResult) > 0
+            || (absExtVal.compareTo(absCandidateResult) == 0
+                && extVal.compareTo(candidateResult) > 0))) {
       setValue(extVal);
     }
   }

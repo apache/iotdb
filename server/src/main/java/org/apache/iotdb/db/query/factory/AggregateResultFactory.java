@@ -51,7 +51,7 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
-      case SQLConstant.EXTREME:
+      case SQLConstant.EXT:
         return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
@@ -86,7 +86,7 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
-      case SQLConstant.EXTREME:
+      case SQLConstant.EXT:
         return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();

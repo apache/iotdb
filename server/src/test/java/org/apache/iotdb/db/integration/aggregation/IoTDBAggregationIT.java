@@ -704,7 +704,7 @@ public class IoTDBAggregationIT {
 
       boolean hasResultSet =
           statement.execute(
-              "SELECT ext(s0) " + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000");
+              "SELECT ext(s0) FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
