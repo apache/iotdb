@@ -178,7 +178,7 @@ public class CMManager extends MManager {
     cacheLock.writeLock().lock();
     mRemoteMetaCache.removeItem(prefixPath);
     cacheLock.writeLock().unlock();
-    if (checkNodeAndPlanMajorVersion(prefixPath)) {
+    if (checkSgNodeAndPlanMajorVersion(prefixPath)) {
       return super.deleteTimeseries(prefixPath);
     }
     return null;
@@ -193,7 +193,7 @@ public class CMManager extends MManager {
     cacheLock.writeLock().unlock();
 
     for (PartialPath path : storageGroups) {
-      if (checkNodeAndPlanMajorVersion(path)) {
+      if (checkSgNodeAndPlanMajorVersion(path)) {
         super.deleteStorageGroup(path);
       }
     }
@@ -2024,7 +2024,7 @@ public class CMManager extends MManager {
   @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     PartialPath path = plan.getDevicePath();
-    if (checkNodeAndPlanMajorVersion(path)) {
+    if (checkSgNodeAndPlanMajorVersion(path)) {
       super.createAlignedTimeSeries(plan);
     }
   }
@@ -2032,7 +2032,7 @@ public class CMManager extends MManager {
   @Override
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     PartialPath path = plan.getPath();
-    if (checkNodeAndPlanMajorVersion(path)) {
+    if (checkSgNodeAndPlanMajorVersion(path)) {
       super.createTimeseries(plan);
     }
   }
@@ -2044,27 +2044,22 @@ public class CMManager extends MManager {
    *     version < the path's major version.
    * @throws MetadataException sync meta leader failed
    */
-  private boolean checkNodeAndPlanMajorVersion(PartialPath path) throws MetadataException {
-    MNode cur = getNodeByPath(path);
-    if (!(cur instanceof StorageGroupMNode)) {
-      // sync the meta leader and get the newest storage groups.
+  private boolean checkSgNodeAndPlanMajorVersion(PartialPath path) throws MetadataException {
+    StorageGroupMNode node = null;
+    try {
+      node = getStorageGroupNodeByPath(path);
+    } catch (StorageGroupNotSetException e) {
       syncMetaLeader();
-      cur = getNodeByPath(path);
-      if (!(cur instanceof StorageGroupMNode)) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      }
+      node = getStorageGroupNodeByPath(path);
     }
 
-    long nodeMajorVersion = ((StorageGroupMNode) cur).getMajorVersion();
+    long nodeMajorVersion = node.getMajorVersion();
     if (nodeMajorVersion < path.getMajorVersion()) {
       syncMetaLeader();
-      cur = getNodeByPath(path);
-      if (!(cur instanceof StorageGroupMNode)) {
-        throw new StorageGroupNotSetException(path.getFullPath());
-      }
+      node = getStorageGroupNodeByPath(path);
     }
 
-    nodeMajorVersion = ((StorageGroupMNode) cur).getMajorVersion();
+    nodeMajorVersion = node.getMajorVersion();
     if (nodeMajorVersion < path.getMajorVersion()) {
       logger.error(
           "unknown error occurred when sync the meta leader, the storage group node major version "
@@ -2079,7 +2074,7 @@ public class CMManager extends MManager {
           nodeMajorVersion,
           path.getMajorVersion(),
           path,
-          cur.getFullPath());
+          node.getFullPath());
       return false;
     }
     return true;
