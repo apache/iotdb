@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.no;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.InnerSpaceCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class NoCompactionTsFileManagement extends InnerSpaceCompactionExecutor {
   private static final Logger logger = LoggerFactory.getLogger(LevelCompactionExecutor.class);

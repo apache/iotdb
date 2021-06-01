@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.recover;
 
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeResource;
 import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.task.MergeTask;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;

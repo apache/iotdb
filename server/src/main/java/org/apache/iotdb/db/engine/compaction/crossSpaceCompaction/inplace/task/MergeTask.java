@@ -98,7 +98,6 @@ public class MergeTask {
     this.storageGroupName = storageGroupName;
   }
 
-
   private void abort() throws IOException {
     states = States.ABORTED;
     cleanUp(false);

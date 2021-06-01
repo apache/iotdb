@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils;
 
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.UNSEQUENCE_NAME;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -32,6 +27,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.UNSEQUENCE_NAME;
 
 public class CompactionLogAnalyzer {
 

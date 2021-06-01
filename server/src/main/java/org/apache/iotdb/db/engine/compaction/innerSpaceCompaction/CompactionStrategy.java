@@ -27,7 +27,8 @@ public enum CompactionStrategy {
   LEVEL_COMPACTION,
   NO_COMPACTION;
 
-  public InnerSpaceCompactionExecutor getInnerSpaceCompactionExecutor(TsFileManagement tsFileManagement) {
+  public InnerSpaceCompactionExecutor getInnerSpaceCompactionExecutor(
+      TsFileManagement tsFileManagement) {
     switch (this) {
       case LEVEL_COMPACTION:
         return new LevelCompactionExecutor(tsFileManagement);

@@ -19,14 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Iterator;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level.LevelCompactionExecutor;
@@ -34,9 +26,19 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class LevelCompactionExecutorTest extends LevelCompactionTest {
 
@@ -102,13 +104,10 @@ public class LevelCompactionExecutorTest extends LevelCompactionTest {
             false));
     assertFalse(levelCompactionExecutor.isEmpty(true));
     assertFalse(levelCompactionExecutor.isEmpty(false));
-    levelCompactionExecutor.remove(
-        levelCompactionExecutor.getTsFileList(true).get(0), true);
-    levelCompactionExecutor.remove(
-        levelCompactionExecutor.getTsFileList(false).get(0), false);
+    levelCompactionExecutor.remove(levelCompactionExecutor.getTsFileList(true).get(0), true);
+    levelCompactionExecutor.remove(levelCompactionExecutor.getTsFileList(false).get(0), false);
     assertEquals(5, levelCompactionExecutor.getTsFileList(true).size());
-    levelCompactionExecutor.removeAll(
-        levelCompactionExecutor.getTsFileList(false), false);
+    levelCompactionExecutor.removeAll(levelCompactionExecutor.getTsFileList(false), false);
     assertEquals(0, levelCompactionExecutor.getTsFileList(false).size());
     long count = 0;
     Iterator<TsFileResource> iterator = levelCompactionExecutor.getIterator(true);
@@ -117,8 +116,7 @@ public class LevelCompactionExecutorTest extends LevelCompactionTest {
       count++;
     }
     assertEquals(5, count);
-    levelCompactionExecutor.removeAll(
-        levelCompactionExecutor.getTsFileList(true), true);
+    levelCompactionExecutor.removeAll(levelCompactionExecutor.getTsFileList(true), true);
     assertEquals(0, levelCompactionExecutor.getTsFileList(true).size());
     assertTrue(levelCompactionExecutor.isEmpty(true));
     assertTrue(levelCompactionExecutor.isEmpty(false));
@@ -165,8 +163,7 @@ public class LevelCompactionExecutorTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(seqResources, false);
     assertEquals(6, levelCompactionExecutor.getTsFileList(true).size());
 
-    Iterator<TsFileResource> tsFileResourceIterator =
-        levelCompactionExecutor.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator = levelCompactionExecutor.getIterator(true);
     tsFileResourceIterator.next();
     try {
       tsFileResourceIterator.remove();
@@ -214,8 +211,7 @@ public class LevelCompactionExecutorTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     levelCompactionExecutor.add(tsFileResource3, true);
-    Iterator<TsFileResource> tsFileResourceIterator2 =
-        levelCompactionExecutor.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator2 = levelCompactionExecutor.getIterator(true);
     int count = 0;
     while (tsFileResourceIterator2.hasNext()) {
       count++;

@@ -82,8 +82,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(unseqResources, false);
     levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionExecutor
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        levelCompactionExecutor.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
     while (compactionMergeWorking) {
@@ -126,8 +125,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(unseqResources, false);
     levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionExecutor
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        levelCompactionExecutor.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
     while (compactionMergeWorking) {
@@ -191,8 +189,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(unseqResources, false);
     levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionExecutor
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        levelCompactionExecutor.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
     while (compactionMergeWorking) {
@@ -238,8 +235,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(unseqResources, false);
     levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionExecutor
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        levelCompactionExecutor.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
     while (compactionMergeWorking) {
@@ -275,8 +271,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionExecutor.addAll(unseqResources, false);
     levelCompactionExecutor.forkCurrentFileList(0);
     CompactionMergeTask compactionMergeTask =
-        levelCompactionExecutor
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        levelCompactionExecutor.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
     compactionMergeTask.call();
     while (compactionMergeWorking) {

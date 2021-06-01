@@ -1,12 +1,13 @@
 package org.apache.iotdb.db.engine.compaction;
 
-import java.util.List;
-import java.util.concurrent.Callable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.CrossSpaceCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.InnerSpaceCompactionExecutor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.util.List;
+import java.util.concurrent.Callable;
 
 public class CompactionScheduler {
   private final int unseqLevelNum =
@@ -85,8 +86,7 @@ public class CompactionScheduler {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
-    public CompactionRecoverTask(
-        CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 

@@ -49,10 +49,8 @@ import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.C
 /** CompactionTaskManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
 
-  private static final Logger logger =
-      LoggerFactory.getLogger(CompactionTaskManager.class);
-  private static final CompactionTaskManager INSTANCE =
-      new CompactionTaskManager();
+  private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
+  private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
   private ExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
 

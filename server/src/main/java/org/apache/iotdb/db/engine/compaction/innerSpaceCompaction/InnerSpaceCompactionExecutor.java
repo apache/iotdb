@@ -1,8 +1,9 @@
 package org.apache.iotdb.db.engine.compaction.innerSpaceCompaction;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.util.List;
 
 public abstract class InnerSpaceCompactionExecutor {
 

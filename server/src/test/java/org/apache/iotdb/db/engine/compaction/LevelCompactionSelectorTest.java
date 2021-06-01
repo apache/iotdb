@@ -69,8 +69,7 @@ public class LevelCompactionSelectorTest extends LevelCompactionTest {
         LevelCompactionExecutor.class.getDeclaredField("forkedSequenceTsFileResources");
     fieldForkedSequenceTsFileResources.setAccessible(true);
     List<TsFileResource> forkedSequenceTsFileResources =
-        (List<TsFileResource>)
-            fieldForkedSequenceTsFileResources.get(levelCompactionExecutor);
+        (List<TsFileResource>) fieldForkedSequenceTsFileResources.get(levelCompactionExecutor);
     assertEquals(2, forkedSequenceTsFileResources.size());
   }
 }

@@ -99,8 +99,8 @@ public class MergeResource {
   /**
    * startMerging() is called after selecting files
    *
-   * do not cache metadata until true candidates are chosen, or too much metadata will be
-   * cached during selection
+   * <p>do not cache metadata until true candidates are chosen, or too much metadata will be cached
+   * during selection
    */
   public void startMerging() {
     cacheDeviceMeta = true;

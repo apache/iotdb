@@ -61,8 +61,7 @@ public class RecoverMergeTask extends MergeTask {
       MergeCallback callback,
       boolean fullMerge,
       String storageGroupName) {
-    super(
-        seqFiles, unseqFiles, storageGroupSysDir, callback, fullMerge, storageGroupName);
+    super(seqFiles, unseqFiles, storageGroupSysDir, callback, fullMerge, storageGroupName);
   }
 
   public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {

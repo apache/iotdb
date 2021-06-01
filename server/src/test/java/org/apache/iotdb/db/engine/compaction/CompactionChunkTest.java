@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
