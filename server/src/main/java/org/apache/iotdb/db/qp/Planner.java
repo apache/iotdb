@@ -143,8 +143,7 @@ public class Planner {
   /** convert last data query to physical plan directly */
   public PhysicalPlan lastDataQueryReqToPhysicalPlan(TSLastDataQueryReq req, ZoneId zoneId)
       throws QueryProcessException, IllegalPathException {
-    List<String> suffixPath = req.getSuffixPath();
-    List<String> prefixPath = req.getPrefixPath();
+    List<String> paths = req.getPaths();
     long time = req.getTime();
 
     SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
@@ -152,12 +151,9 @@ public class Planner {
     QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
 
     selectOp.setLastQuery();
+    selectOp.addSelectPath(new PartialPath(""));
 
-    for (String p : suffixPath) {
-      PartialPath path = new PartialPath(p);
-      selectOp.addSelectPath(path);
-    }
-    for (String p : prefixPath) {
+    for (String p : paths) {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
@@ -172,7 +168,7 @@ public class Planner {
     queryOp.setFilterOperator(basicFunctionOperator);
 
     int maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+    Operator op = logicalOptimize(queryOp, maxDeduplicatedPathNum);
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(op, req.fetchSize);

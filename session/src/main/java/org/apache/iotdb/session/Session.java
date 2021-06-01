@@ -590,25 +590,22 @@ public class Session {
   }
 
   /**
-   * only: select last status from root.ln.wf01.wt01 where time >= 1621326244168; must satisfy
-   * <PrefixPath> + <suffixPath> = <TimeSeries>
+   * only: select last status from root.ln.d1.s1 where time >= 1621326244168;
    *
-   * @param suffixPath the timeSeries suffix. eg. root.ln.wf01.wt01
-   * @param prefixPath the timeSeries prefix. eg. status
+   * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
    * @param LastTime get the last data, whose timestamp greater than or equal LastTime eg.
    *     1621326244168
    */
-  public SessionDataSet executeLastDataQuery(
-      List<String> suffixPath, List<String> prefixPath, long LastTime)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(suffixPath, prefixPath, LastTime);
+      return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(suffixPath, prefixPath, LastTime);
+          return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -622,13 +619,12 @@ public class Session {
   /**
    * query eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
    *
-   * @param suffixPath the timeSeries suffix. eg. root.ln.wf01.wt01
-   * @param prefixPath the timeSeries prefix. eg. status
+   * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
    */
-  public SessionDataSet executeLastDataQuery(List<String> suffixPath, List<String> prefixPath)
+  public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(suffixPath, prefixPath, time);
+    return executeLastDataQuery(paths, time);
   }
 
   /**

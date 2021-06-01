@@ -293,12 +293,11 @@ struct TSRawDataQueryReq {
 
 struct TSLastDataQueryReq {
   1: required i64 sessionId
-  2: required list<string> suffixPath
-  3: required list<string> prefixPath
-  4: optional i32 fetchSize
-  5: required i64 time
-  6: required i64 statementId
-  7: optional bool enableRedirectQuery;
+  2: required list<string> paths
+  3: optional i32 fetchSize
+  4: required i64 time
+  5: required i64 statementId
+  6: optional bool enableRedirectQuery;
 }
 
 struct TSCreateMultiTimeseriesReq {

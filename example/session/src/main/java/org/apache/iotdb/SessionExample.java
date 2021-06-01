@@ -579,13 +579,11 @@ public class SessionExample {
   }
 
   private static void lastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
-    List<String> suffixPath = new ArrayList<>();
-    List<String> prefixPath = new ArrayList<>();
-    suffixPath.add("s3");
-    suffixPath.add("s4");
-    suffixPath.add("s5");
-    prefixPath.add("root.sg1.d1");
-    SessionDataSet sessionDataSet = session.executeLastDataQuery(suffixPath, prefixPath, 3);
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3);
     System.out.println(sessionDataSet.getColumnNames());
     sessionDataSet.setFetchSize(1024);
     while (sessionDataSet.hasNext()) {

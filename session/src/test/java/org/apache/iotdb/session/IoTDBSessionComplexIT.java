@@ -609,21 +609,21 @@ public class IoTDBSessionComplexIT {
   }
 
   private void lastDataQuery() throws StatementExecutionException, IoTDBConnectionException {
-    List<String> suffixPath = new ArrayList<>();
-    List<String> prefixPath = new ArrayList<>();
+    List<String> paths = new ArrayList<>();
 
-    suffixPath.add("s1");
-    suffixPath.add("s2");
-    prefixPath.add("root.sg1.d2");
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d2.s1");
 
-    SessionDataSet sessionDataSet = session.executeLastDataQuery(suffixPath, prefixPath);
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;
     while (sessionDataSet.hasNext()) {
       count++;
+      List<Field> fields = sessionDataSet.next().getFields();
+      Assert.assertEquals("[root.sg1.d2.s1, 1]", fields.toString());
     }
-    Assert.assertEquals(2, count);
+    Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
   }
 

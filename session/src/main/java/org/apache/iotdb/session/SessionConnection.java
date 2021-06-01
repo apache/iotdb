@@ -395,11 +395,10 @@ public class SessionConnection {
         execResp.isIgnoreTimeStamp());
   }
 
-  protected SessionDataSet executeLastDataQuery(
-      List<String> suffixPath, List<String> prefixPath, long time)
+  protected SessionDataSet executeLastDataQuery(List<String> paths, long time)
       throws StatementExecutionException, IoTDBConnectionException, RedirectException {
     TSLastDataQueryReq tsLastDataQueryReq =
-        new TSLastDataQueryReq(sessionId, suffixPath, prefixPath, time, statementId);
+        new TSLastDataQueryReq(sessionId, paths, time, statementId);
     tsLastDataQueryReq.setFetchSize(session.fetchSize);
     tsLastDataQueryReq.setEnableRedirectQuery(enableRedirect);
     TSExecuteStatementResp tsExecuteStatementResp;
