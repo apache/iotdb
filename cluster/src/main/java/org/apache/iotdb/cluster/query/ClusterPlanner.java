@@ -26,6 +26,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
@@ -59,5 +61,19 @@ public class ClusterPlanner extends Planner {
     // from logical operator to physical plan
     return new ClusterPhysicalGenerator()
         .transformToPhysicalPlan(operator, rawDataQueryReq.fetchSize);
+  }
+
+  @Override
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
+      throws QueryProcessException, IllegalPathException {
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, lastDataQueryReq.fetchSize);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
   }
 }

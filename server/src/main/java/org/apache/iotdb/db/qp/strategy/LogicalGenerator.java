@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import org.antlr.v4.runtime.CharStream;
@@ -119,6 +120,34 @@ public class LogicalGenerator {
     filterOp.addChildOperator(right);
 
     queryOp.setFilterOperator(filterOp);
+
+    return queryOp;
+  }
+
+  public static Operator generate(TSLastDataQueryReq req, ZoneId zoneId)
+      throws IllegalPathException {
+    // construct query operator and set its global time filter
+    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
+    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+
+    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
+    selectOp.markAsLastQuery();
+
+    for (String p : req.getPaths()) {
+      PartialPath path = new PartialPath(p);
+      fromOp.addPrefixTablePath(path);
+    }
+
+    queryOp.setSelectOperator(selectOp);
+    queryOp.setFromOperator(fromOp);
+
+    PartialPath timePath = new PartialPath(TIME);
+
+    BasicFunctionOperator basicFunctionOperator =
+        new BasicFunctionOperator(
+            SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(req.getTime()));
+    queryOp.setFilterOperator(basicFunctionOperator);
 
     return queryOp;
   }

@@ -77,37 +77,17 @@ public class Planner {
   }
 
   /** convert last data query to physical plan directly */
-  public PhysicalPlan lastDataQueryReqToPhysicalPlan(TSLastDataQueryReq req, ZoneId zoneId)
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
       throws QueryProcessException, IllegalPathException {
-    List<String> paths = req.getPaths();
-    long time = req.getTime();
-
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-
-    selectOp.setLastQuery();
-    selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
-
-    for (String p : paths) {
-      PartialPath path = new PartialPath(p);
-      fromOp.addPrefixTablePath(path);
-    }
-
-    queryOp.setSelectOperator(selectOp);
-    queryOp.setFromOperator(fromOp);
-
-    PartialPath timePath = new PartialPath(TIME);
-
-    BasicFunctionOperator basicFunctionOperator =
-        new BasicFunctionOperator(SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(time));
-    queryOp.setFilterOperator(basicFunctionOperator);
-
-    int maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    Operator op = logicalOptimize(queryOp, maxDeduplicatedPathNum);
-
-    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(op, req.fetchSize);
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, lastDataQueryReq.fetchSize);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
   }
 
   /**
