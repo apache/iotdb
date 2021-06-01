@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UpdateStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -369,6 +370,10 @@ public class MManager {
       case SET_STORAGE_GROUP:
         SetStorageGroupPlan setStorageGroupPlan = (SetStorageGroupPlan) plan;
         setStorageGroup(setStorageGroupPlan.getPath());
+        break;
+      case UPDATE_STORAGE_GROUP:
+        UpdateStorageGroupPlan updateStorageGroupPlan = (UpdateStorageGroupPlan) plan;
+        checkAndUpdateStorageGroupVersion(updateStorageGroupPlan.getPath());
         break;
       case DELETE_STORAGE_GROUP:
         DeleteStorageGroupPlan deleteStorageGroupPlan = (DeleteStorageGroupPlan) plan;
