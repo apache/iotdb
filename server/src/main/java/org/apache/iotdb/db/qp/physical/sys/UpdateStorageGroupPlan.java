@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import java.io.DataOutputStream;
@@ -30,19 +31,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class SetStorageGroupPlan extends PhysicalPlan {
+public class UpdateStorageGroupPlan extends PhysicalPlan {
 
   private PartialPath path;
 
-  public SetStorageGroupPlan() {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  public UpdateStorageGroupPlan() {
+    super(false, OperatorType.UPDATE_STORAGE_GROUP);
   }
 
-  public SetStorageGroupPlan(PartialPath path) {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+  public UpdateStorageGroupPlan(PartialPath path) {
+    super(false, Operator.OperatorType.UPDATE_STORAGE_GROUP);
     this.path = path;
     this.majorVersion = path.getMajorVersion();
-    this.minorVersion = 0;
+    this.minorVersion = path.getMinorVersion();
   }
 
   public PartialPath getPath() {
@@ -60,7 +61,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    stream.write((byte) PhysicalPlanType.UPDATE_STORAGE_GROUP.ordinal());
     putString(stream, path.getFullPath());
     stream.writeLong(index);
     stream.writeLong(majorVersion);
@@ -69,7 +70,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
+    buffer.put((byte) PhysicalPlanType.UPDATE_STORAGE_GROUP.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);
     buffer.putLong(majorVersion);
@@ -88,7 +89,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "SetStorageGroupPlan{"
+    return "UpdateStorageGroupPlan{"
         + " path="
         + path
         + ", majorVersion="
@@ -107,7 +108,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
       return false;
     }
 
-    SetStorageGroupPlan that = (SetStorageGroupPlan) o;
+    UpdateStorageGroupPlan that = (UpdateStorageGroupPlan) o;
 
     if (majorVersion != that.majorVersion) {
       return false;

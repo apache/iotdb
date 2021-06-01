@@ -75,6 +75,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
+    this.majorVersion = path.getMajorVersion();
+    this.minorVersion = path.getMinorVersion();
   }
 
   public PartialPath getPath() {
@@ -205,6 +207,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     }
 
     stream.writeLong(index);
+    stream.writeLong(majorVersion);
+    stream.writeLong(minorVersion);
   }
 
   @Override
@@ -251,6 +255,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     }
 
     buffer.putLong(index);
+
+    buffer.putLong(majorVersion);
+    buffer.putLong(minorVersion);
   }
 
   @Override
@@ -285,6 +292,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     }
 
     this.index = buffer.getLong();
+
+    this.majorVersion = buffer.getLong();
+    this.minorVersion = buffer.getLong();
+    path.setMajorVersion(majorVersion);
+    path.setMinorVersion(minorVersion);
   }
 
   @Override
@@ -301,11 +313,14 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor
-        && tagOffset == that.tagOffset;
+        && tagOffset == that.tagOffset
+        && majorVersion == that.majorVersion
+        && minorVersion == that.minorVersion;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, dataType, encoding, compressor, tagOffset);
+    return Objects.hash(
+        path, dataType, encoding, compressor, tagOffset, majorVersion, minorVersion);
   }
 }

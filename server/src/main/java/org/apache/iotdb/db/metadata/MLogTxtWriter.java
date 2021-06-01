@@ -166,6 +166,14 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
+  public void updateStorageGroup(String storageGroup) throws IOException {
+    String outputStr =
+        MetadataOperationType.UPDATE_STORAGE_GROUP + "," + storageGroup + LINE_SEPARATOR;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
   public void deleteStorageGroup(String storageGroup) throws IOException {
     String outputStr =
         MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup + LINE_SEPARATOR;

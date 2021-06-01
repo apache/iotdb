@@ -57,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UpdateStorageGroupPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -85,6 +86,9 @@ public abstract class PhysicalPlan {
   protected long index;
 
   private boolean debug;
+
+  protected long majorVersion;
+  protected long minorVersion;
 
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
@@ -368,6 +372,9 @@ public abstract class PhysicalPlan {
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           break;
+        case UPDATE_STORAGE_GROUP:
+          plan = new UpdateStorageGroupPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -422,7 +429,8 @@ public abstract class PhysicalPlan {
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
-    STOP_TRIGGER
+    STOP_TRIGGER,
+    UPDATE_STORAGE_GROUP
   }
 
   public long getIndex() {

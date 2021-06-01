@@ -161,6 +161,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
 
     for (PartialPath path : paths) {
       putString(stream, path.getFullPath());
+      stream.writeLong(path.getMajorVersion());
+      stream.writeLong(path.getMinorVersion());
     }
 
     for (TSDataType dataType : dataTypes) {
@@ -219,6 +221,8 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
 
     for (PartialPath path : paths) {
       putString(buffer, path.getFullPath());
+      buffer.putLong(path.getMajorVersion());
+      buffer.putLong(path.getMinorVersion());
     }
 
     for (TSDataType dataType : dataTypes) {
@@ -274,7 +278,10 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     int dataTypeSize = buffer.getInt();
     paths = new ArrayList<>(totalSize);
     for (int i = 0; i < totalSize; i++) {
-      paths.add(new PartialPath(readString(buffer)));
+      PartialPath partialPath = new PartialPath(readString(buffer));
+      partialPath.setMajorVersion(buffer.getLong());
+      partialPath.setMinorVersion(buffer.getLong());
+      paths.add(partialPath);
     }
     dataTypes = new ArrayList<>(totalSize);
     for (int i = 0; i < dataTypeSize; i++) {
@@ -324,12 +331,14 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     return Objects.equals(paths, that.paths)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
-        && Objects.equals(compressors, that.compressors);
+        && Objects.equals(compressors, that.compressors)
+        && Objects.equals(majorVersion, that.majorVersion)
+        && Objects.equals(minorVersion, that.minorVersion);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(paths, dataTypes, encodings, compressors);
+    return Objects.hash(paths, dataTypes, encodings, compressors, majorVersion, minorVersion);
   }
 
   @Override

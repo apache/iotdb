@@ -30,21 +30,33 @@ import java.util.List;
 import java.util.Objects;
 
 public class StorageGroupMNodePlan extends MNodePlan {
+
   private long dataTTL;
 
   private int alignedTimeseriesIndex;
+
+  private long majorVersion;
+
+  private long minorVersion;
 
   public StorageGroupMNodePlan() {
     super(false, Operator.OperatorType.STORAGE_GROUP_MNODE);
   }
 
   public StorageGroupMNodePlan(
-      String name, long dataTTL, int childSize, int alignedTimeseriesIndex) {
+      String name,
+      long dataTTL,
+      int childSize,
+      int alignedTimeseriesIndex,
+      long majorVersion,
+      long minorVersion) {
     super(false, Operator.OperatorType.STORAGE_GROUP_MNODE);
     this.name = name;
     this.dataTTL = dataTTL;
     this.childSize = childSize;
     this.alignedTimeseriesIndex = alignedTimeseriesIndex;
+    this.majorVersion = majorVersion;
+    this.minorVersion = minorVersion;
   }
 
   @Override
@@ -75,6 +87,8 @@ public class StorageGroupMNodePlan extends MNodePlan {
     buffer.putLong(dataTTL);
     buffer.putInt(childSize);
     buffer.putInt(alignedTimeseriesIndex);
+    buffer.putLong(majorVersion);
+    buffer.putLong(minorVersion);
 
     buffer.putLong(index);
   }
@@ -86,6 +100,8 @@ public class StorageGroupMNodePlan extends MNodePlan {
     stream.writeLong(dataTTL);
     stream.writeInt(childSize);
     stream.writeInt(alignedTimeseriesIndex);
+    stream.writeLong(majorVersion);
+    stream.writeLong(minorVersion);
 
     stream.writeLong(index);
   }
@@ -95,24 +111,33 @@ public class StorageGroupMNodePlan extends MNodePlan {
     name = readString(buffer);
     dataTTL = buffer.getLong();
     childSize = buffer.getInt();
-    if (buffer.hasRemaining()) {
-      alignedTimeseriesIndex = buffer.getInt();
-    } else {
-      alignedTimeseriesIndex = 0;
-    }
+    alignedTimeseriesIndex = buffer.getInt();
+    majorVersion = buffer.getLong();
+    minorVersion = buffer.getLong();
+
     index = buffer.getLong();
   }
 
   @Override
   public String toString() {
-    return "StorageGroupMNode{"
-        + name
-        + ","
+    return "StorageGroupMNodePlan{"
+        + " dataTTL="
         + dataTTL
-        + ","
-        + childSize
-        + ","
+        + ", alignedTimeseriesIndex="
         + alignedTimeseriesIndex
+        + ", majorVersion="
+        + majorVersion
+        + ", minorVersion="
+        + minorVersion
+        + ", name='"
+        + name
+        + '\''
+        + ", childSize="
+        + childSize
+        + ", canBeSplit="
+        + canBeSplit
+        + ", index="
+        + index
         + "}";
   }
 
@@ -129,6 +154,24 @@ public class StorageGroupMNodePlan extends MNodePlan {
         && Objects.equals(dataTTL, that.dataTTL)
         && Objects.equals(childSize, that.childSize)
         && Objects.equals(alignedTimeseriesIndex, that.alignedTimeseriesIndex);
+  }
+
+  public long getMajorVersion() {
+    return majorVersion;
+  }
+
+  @Override
+  public void setMajorVersion(long majorVersion) {
+    this.majorVersion = majorVersion;
+  }
+
+  public long getMinorVersion() {
+    return minorVersion;
+  }
+
+  @Override
+  public void setMinorVersion(long minorVersion) {
+    this.minorVersion = minorVersion;
   }
 
   @Override

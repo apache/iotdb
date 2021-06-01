@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UpdateStorageGroupPlan;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -172,6 +173,10 @@ public class MLogParser {
             break;
           case SET_STORAGE_GROUP:
             mLogTxtWriter.setStorageGroup(((SetStorageGroupPlan) plan).getPath().getFullPath());
+            break;
+          case UPDATE_STORAGE_GROUP:
+            mLogTxtWriter.updateStorageGroup(
+                ((UpdateStorageGroupPlan) plan).getPath().getFullPath());
             break;
           case DELETE_STORAGE_GROUP:
             for (PartialPath partialPath : plan.getPaths()) {

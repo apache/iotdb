@@ -744,8 +744,7 @@ public class MManager {
     try {
       mtree.updateStorageGroupVersion(storageGroup);
       if (!isRecovering) {
-        // TODO how to set the type of update storage group plan when restart and replay the logs
-        logWriter.setStorageGroup(storageGroup);
+        logWriter.updateStorageGroup(storageGroup);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());

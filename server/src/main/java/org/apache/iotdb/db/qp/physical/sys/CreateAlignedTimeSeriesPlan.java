@@ -69,6 +69,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.compressor = compressor;
     this.aliasList = aliasList;
     this.canBeSplit = false;
+    this.majorVersion = devicePath.getMajorVersion();
+    this.minorVersion = devicePath.getMinorVersion();
   }
 
   public PartialPath getDevicePath() {
@@ -168,6 +170,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
       stream.write(0);
     }
     stream.writeLong(index);
+    stream.writeLong(majorVersion);
+    stream.writeLong(minorVersion);
   }
 
   @Override
@@ -200,6 +204,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
 
     buffer.putLong(index);
+    buffer.putLong(majorVersion);
+    buffer.putLong(minorVersion);
   }
 
   @Override
@@ -233,6 +239,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     }
 
     this.index = buffer.getLong();
+    this.majorVersion = buffer.getLong();
+    this.minorVersion = buffer.getLong();
   }
 
   @Override
@@ -249,11 +257,14 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
         && Objects.equals(measurements, that.measurements)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
-        && compressor == that.compressor;
+        && compressor == that.compressor
+        && majorVersion == that.majorVersion
+        && minorVersion == that.minorVersion;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(devicePath, measurements, dataTypes, encodings, compressor);
+    return Objects.hash(
+        devicePath, measurements, dataTypes, encodings, compressor, majorVersion, minorVersion);
   }
 }

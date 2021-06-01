@@ -57,6 +57,18 @@ public class StorageGroupMNode extends MNode {
     this.minorVersion = 0;
   }
 
+  public StorageGroupMNode(
+      MNode parent,
+      String name,
+      long dataTTL,
+      int alignedTimeseriesIndex,
+      long majorVersion,
+      long minorVersion) {
+    this(parent, name, dataTTL, alignedTimeseriesIndex);
+    this.majorVersion = majorVersion;
+    this.minorVersion = minorVersion;
+  }
+
   public long getDataTTL() {
     return dataTTL;
   }
@@ -82,7 +94,12 @@ public class StorageGroupMNode extends MNode {
 
   public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
     return new StorageGroupMNode(
-        null, plan.getName(), plan.getDataTTL(), plan.getAlignedTimeseriesIndex());
+        null,
+        plan.getName(),
+        plan.getDataTTL(),
+        plan.getAlignedTimeseriesIndex(),
+        plan.getMajorVersion(),
+        plan.getMinorVersion());
   }
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
