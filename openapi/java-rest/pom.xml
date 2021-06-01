@@ -79,7 +79,7 @@
                         <extensions>true</extensions>
                         <configuration>
                             <protoSourceRoot>${project.basedir}/src/main/proto</protoSourceRoot>
-                            <protocArtifact>com.google.protobuf:protoc:3.2.0:exe:${os.detected.classifier}</protocArtifact>
+                            <protocArtifact>com.google.protobuf:protoc:3.5.1:exe:${os.detected.classifier}</protocArtifact>
                         </configuration>
                         <executions>
                             <execution>
