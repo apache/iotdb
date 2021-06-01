@@ -23,6 +23,7 @@ on:
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
   PR_NUMBER: ${{ github.event.number }}
+  BRANCH_NAME: $GITHUB_REF
 
 jobs:
   ubuntu:
