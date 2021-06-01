@@ -1543,12 +1543,22 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           currSessionId.get(),
-          req.getDeviceId(),
+          req.getPrefixPath(),
           req.getTimestamp());
 
+      PartialPath deviceId;
+      String vectorId;
+      if (req.isVector) {
+        deviceId = new PartialPath(req.getPrefixPath()).getDevicePath();
+        vectorId = new PartialPath(req.getPrefixPath()).getMeasurement();
+      } else {
+        deviceId = new PartialPath(req.getPrefixPath());
+        vectorId = null;
+      }
       InsertRowPlan plan =
           new InsertRowPlan(
-              new PartialPath(req.getDeviceId()),
+              deviceId,
+              vectorId,
               req.getTimestamp(),
               req.getMeasurements().toArray(new String[0]),
               req.values);
@@ -1621,8 +1631,14 @@ public class TSServiceImpl implements TSIService.Iface {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      InsertTabletPlan insertTabletPlan =
-          new InsertTabletPlan(new PartialPath(req.deviceId), req.measurements);
+      InsertTabletPlan insertTabletPlan;
+      PartialPath prefixPath = new PartialPath(req.getPrefixPath());
+      if (req.isVector) {
+        insertTabletPlan = new InsertTabletPlan(prefixPath.getDevicePath(), req.measurements);
+        insertTabletPlan.setVectorId(prefixPath.getMeasurement());
+      } else {
+        insertTabletPlan = new InsertTabletPlan(prefixPath, req.measurements);
+      }
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(

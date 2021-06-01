@@ -38,6 +38,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -601,11 +602,23 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      boolean isVector,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values));
+        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isVector);
     insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // not vector by default
+    insertRecord(deviceId, time, measurements, types, false, values);
   }
 
   private void insertRecord(String deviceId, TSInsertRecordReq request)
@@ -713,9 +726,24 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      List<Object> values,
+      boolean isVector)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, isVector);
+    insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    // not vector by default
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     insertRecord(deviceId, request);
   }
 
@@ -724,15 +752,17 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      List<Object> values)
+      List<Object> values,
+      boolean isVector)
       throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setDeviceId(deviceId);
+    request.setPrefixPath(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
     ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
     putValues(types, values, buffer);
     request.setValues(buffer);
+    request.setIsVector(isVector);
     return request;
   }
 
@@ -1123,24 +1153,29 @@ public class Session {
     }
 
     TSInsertTabletReq request = new TSInsertTabletReq();
-    request.setDeviceId(tablet.deviceId);
+
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
       if (measurementSchema instanceof MeasurementSchema) {
+        request.setPrefixPath(tablet.deviceId);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
+        request.setIsVector(false);
       } else {
-        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
-        StringBuilder measurement = new StringBuilder("(");
-        for (int i = 0; i < measurementsSize; i++) {
-          measurement.append(measurementSchema.getValueMeasurementIdList().get(i));
-          if (i != measurementsSize - 1) {
-            measurement.append(",");
-          } else {
-            measurement.append(")");
+        if (tablet.getSchemas().size() > 1) {
+          if (request.isVector) {
+            throw new BatchExecutionException(
+                "One tablet should only contain one aligned timeseries!");
           }
+        }
+        request.setPrefixPath(
+            tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());
+        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+        for (int i = 0; i < measurementsSize; i++) {
+          request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
           request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
         }
-        request.addToMeasurements(measurement.toString());
+        request.setIsVector(true);
+        break;
       }
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
@@ -1343,7 +1378,8 @@ public class Session {
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     defaultSessionConnection.testInsertRecord(request);
   }
 

@@ -117,27 +117,27 @@ public abstract class AbstractMemTable implements IMemTable {
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (int i = 0; i < measurementMNodes.length; i++) {
-
-      if (measurementMNodes[i] != null
-          && measurementMNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+    for (MeasurementMNode measurementMNode : measurementMNodes) {
+      if (measurementMNode != null && measurementMNode.getSchema().getType() == TSDataType.VECTOR) {
         // write vector
         Object[] vectorValue =
-            new Object[measurementMNodes[i].getSchema().getValueTSDataTypeList().size()];
+            new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
         for (int j = 0; j < vectorValue.length; j++) {
           vectorValue[j] = values[columnIndex];
           columnIndex++;
         }
         memSize +=
             MemUtils.getVectorRecordSize(
-                measurementMNodes[i].getSchema().getValueTSDataTypeList(),
+                measurementMNode.getSchema().getValueTSDataTypeList(),
                 vectorValue,
                 disableMemControl);
         write(
             insertRowPlan.getDeviceId().getFullPath(),
-            measurementMNodes[i].getSchema(),
+            measurementMNode.getSchema(),
             insertRowPlan.getTime(),
             vectorValue);
+        // because only one vector is in this plan
+        break;
       } else {
         if (values[columnIndex] == null) {
           columnIndex++;
@@ -145,11 +145,11 @@ public abstract class AbstractMemTable implements IMemTable {
         }
         memSize +=
             MemUtils.getRecordSize(
-                measurementMNodes[i].getSchema().getType(), values[columnIndex], disableMemControl);
+                measurementMNode.getSchema().getType(), values[columnIndex], disableMemControl);
 
         write(
             insertRowPlan.getDeviceId().getFullPath(),
-            measurementMNodes[i].getSchema(),
+            measurementMNode.getSchema(),
             insertRowPlan.getTime(),
             values[columnIndex]);
         columnIndex++;

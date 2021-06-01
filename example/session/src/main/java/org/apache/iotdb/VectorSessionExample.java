@@ -49,13 +49,14 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    createAlignedTimeseries();
-    //    createTemplate();
+    //    createAlignedTimeseries();
+    //        createTemplate();
     //    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
-    //
+
+    //    insertAlignedRecord();
     //    insertNullableTabletWithAlignedTimeseries();
-    //    selectTest();
+    selectTest();
     //    selectWithValueFilterTest();
     //
     //    selectWithGroupByTest();
@@ -360,5 +361,25 @@ public class VectorSessionExample {
     }
 
     session.executeNonQueryStatement("flush");
+  }
+
+  private static void insertAlignedRecord()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT32);
+    types.add(TSDataType.INT64);
+
+    for (long time = 0; time < 100; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2);
+      values.add(3L);
+      session.insertRecord(ROOT_SG1_D1 + ".vector", time, measurements, types, values, true);
+    }
   }
 }

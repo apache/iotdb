@@ -515,7 +515,7 @@ public class MManager {
   }
 
   public void createAlignedTimeSeries(
-      PartialPath devicePath,
+      PartialPath prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -523,7 +523,7 @@ public class MManager {
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            devicePath, measurements, dataTypes, encodings, compressor, null));
+            prefixPath, measurements, dataTypes, encodings, compressor, null));
   }
 
   /**
@@ -538,21 +538,20 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     try {
-      PartialPath devicePath = plan.getPrefixPath();
+      PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
-      int alignedSize = measurements.size();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
 
-      for (int i = 0; i < alignedSize; i++) {
+      for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
 
-      ensureStorageGroup(devicePath);
+      ensureStorageGroup(prefixPath);
 
       // create time series in MTree
       mtree.createAlignedTimeseries(
-          devicePath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+          prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
@@ -1139,7 +1138,7 @@ public class MManager {
    * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
    *
    * @param device device path
-   * @param measurement measurement name, could start with "$#$"
+   * @param measurement measurement name, could be vector name
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
@@ -2148,6 +2147,7 @@ public class MManager {
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     PartialPath deviceId = plan.getDeviceId();
+    String vectorId = plan.getVectorId(); // could be null for not aligned timeseries
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -2160,19 +2160,11 @@ public class MManager {
     // 2. get schema of each measurement
     // if do not have measurement
     MeasurementMNode measurementMNode;
-    int loc = 0;
-
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-        boolean isVector = false;
-        String firstMeasurementOfVector = null;
-        if (measurement.contains("(") && measurement.contains(",")) {
-          isVector = true;
-          firstMeasurementOfVector = measurement.replace("(", "").replace(")", "").split(",")[0];
-        }
 
-        MNode child = getMNode(deviceMNode.left, isVector ? firstMeasurementOfVector : measurement);
+        MNode child = getMNode(deviceMNode.left, vectorId != null ? vectorId : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
@@ -2184,22 +2176,15 @@ public class MManager {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-              List<String> measurements =
-                  Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
-              if (measurements.size() == 1) {
-                internalCreateTimeseries(
-                    deviceId.concatNode(measurement), plan.getDataTypes()[loc]);
+              if (plan.getVectorId() == null) {
+                internalCreateTimeseries(deviceId.concatNode(measurement), plan.getDataTypes()[i]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
               } else {
-                int curLoc = loc;
-                List<TSDataType> dataTypes = new ArrayList<>();
-                for (int j = 0; j < measurements.size(); j++) {
-                  dataTypes.add(plan.getDataTypes()[curLoc]);
-                  curLoc++;
-                }
-                internalAlignedCreateTimeseries(deviceId, measurements, dataTypes);
-                measurementMNode =
-                    (MeasurementMNode) deviceMNode.left.getChild(measurements.get(0));
+                internalAlignedCreateTimeseries(
+                    new PartialPath(deviceId.getFullPath(), vectorId),
+                    Arrays.asList(measurementList),
+                    Arrays.asList(plan.getDataTypes()));
+                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(plan.getVectorId());
               }
             } else {
               throw new MetadataException(
@@ -2215,39 +2200,34 @@ public class MManager {
         TSDataType insertDataType;
         DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
-            for (int j = 0; j < measurementList[i].split(",").length; j++) {
-              TSDataType dataTypeInNode =
-                  measurementMNode.getSchema().getValueTSDataTypeList().get(j);
-              insertDataType = plan.getDataTypes()[loc];
-              if (insertDataType == null) {
-                insertDataType = dataTypeInNode;
-              }
-              if (dataTypeInNode != insertDataType) {
-                mismatch = true;
-                logger.warn(
-                    "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
-                    measurementMNode.getSchema().getValueMeasurementIdList().get(j),
-                    measurementList[i],
-                    insertDataType,
-                    dataTypeInNode);
-                mismatchException =
-                    new DataTypeMismatchException(
-                        measurementList[i], insertDataType, dataTypeInNode);
-                break;
-              }
-              loc++;
+          if (plan.getVectorId() != null) {
+            TSDataType dataTypeInNode =
+                measurementMNode.getSchema().getValueTSDataTypeList().get(i);
+            insertDataType = plan.getDataTypes()[i];
+            if (insertDataType == null) {
+              insertDataType = dataTypeInNode;
+            }
+            if (dataTypeInNode != insertDataType) {
+              mismatch = true;
+              logger.warn(
+                  "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
+                  measurementMNode.getSchema().getValueMeasurementIdList().get(i),
+                  measurementList[i],
+                  insertDataType,
+                  dataTypeInNode);
+              mismatchException =
+                  new DataTypeMismatchException(measurementList[i], insertDataType, dataTypeInNode);
             }
           } else {
             if (plan instanceof InsertRowPlan) {
               if (!((InsertRowPlan) plan).isNeedInferType()) {
                 // only when InsertRowPlan's values is object[], we should check type
-                insertDataType = getTypeInLoc(plan, loc);
+                insertDataType = getTypeInLoc(plan, i);
               } else {
                 insertDataType = measurementMNode.getSchema().getType();
               }
             } else {
-              insertDataType = getTypeInLoc(plan, loc);
+              insertDataType = getTypeInLoc(plan, i);
             }
             mismatch = measurementMNode.getSchema().getType() != insertDataType;
             if (mismatch) {
@@ -2260,7 +2240,6 @@ public class MManager {
                   new DataTypeMismatchException(
                       measurementList[i], insertDataType, measurementMNode.getSchema().getType());
             }
-            loc++;
           }
         }
 
@@ -2364,14 +2343,14 @@ public class MManager {
 
   /** create aligned timeseries ignoring PathAlreadyExistException */
   private void internalAlignedCreateTimeseries(
-      PartialPath devicePath, List<String> measurements, List<TSDataType> dataTypes)
+      PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
     List<TSEncoding> encodings = new ArrayList<>();
     for (TSDataType dataType : dataTypes) {
       encodings.add(getDefaultEncoding(dataType));
     }
     createAlignedTimeSeries(
-        devicePath,
+        prefixPath,
         measurements,
         dataTypes,
         encodings,

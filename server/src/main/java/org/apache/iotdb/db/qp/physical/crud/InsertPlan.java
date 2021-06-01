@@ -33,6 +33,7 @@ import java.util.List;
 public abstract class InsertPlan extends PhysicalPlan {
 
   protected PartialPath deviceId;
+  protected String vectorId;
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
@@ -55,6 +56,14 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public void setDeviceId(PartialPath deviceId) {
     this.deviceId = deviceId;
+  }
+
+  public String getVectorId() {
+    return vectorId;
+  }
+
+  public void setVectorId(String vectorId) {
+    this.vectorId = vectorId;
   }
 
   public String[] getMeasurements() {

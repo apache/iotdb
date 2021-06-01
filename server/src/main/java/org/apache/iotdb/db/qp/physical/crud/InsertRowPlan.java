@@ -94,12 +94,32 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = true;
   }
 
+  /** should be deprecated after insertRecords() and insertRowsOfOneDevice() support vector */
   public InsertRowPlan(
       PartialPath deviceId, long insertTime, String[] measurementList, ByteBuffer values)
       throws QueryProcessException {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.dataTypes = new TSDataType[measurementList.length];
+    this.values = new Object[measurementList.length];
+    this.fillValues(values);
+    isNeedInferType = false;
+  }
+
+  /** for vector */
+  public InsertRowPlan(
+      PartialPath deviceId,
+      String vectorId,
+      long insertTime,
+      String[] measurementList,
+      ByteBuffer values)
+      throws QueryProcessException {
+    super(Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.vectorId = vectorId;
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[measurementList.length];
     this.values = new Object[measurementList.length];

@@ -312,13 +312,11 @@ public class MTree implements Serializable {
     }
     MNode cur = root;
     boolean hasSetStorageGroup = false;
-    StorageGroupMNode storageGroupMNode = null;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
     for (int i = 1; i < deviceNodeNames.length - 1; i++) {
       String nodeName = deviceNodeNames[i];
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
-        storageGroupMNode = (StorageGroupMNode) cur;
       }
       if (!cur.hasChild(nodeName)) {
         if (!hasSetStorageGroup) {

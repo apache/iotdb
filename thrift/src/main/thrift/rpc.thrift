@@ -194,10 +194,11 @@ struct TSSetTimeZoneReq {
 // for session
 struct TSInsertRecordReq {
   1: required i64 sessionId
-  2: required string deviceId
+  2: required string prefixPath
   3: required list<string> measurements
   4: required binary values
   5: required i64 timestamp
+  6: optional bool isVector
 }
 
 struct TSInsertStringRecordReq {
@@ -210,12 +211,13 @@ struct TSInsertStringRecordReq {
 
 struct TSInsertTabletReq {
   1: required i64 sessionId
-  2: required string deviceId
+  2: required string prefixPath
   3: required list<string> measurements
   4: required binary values
   5: required binary timestamps
   6: required list<i32> types
   7: required i32 size
+  8: optional bool isVector
 }
 
 struct TSInsertTabletsReq {
