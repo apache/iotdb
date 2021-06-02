@@ -360,14 +360,14 @@ public class IoTDBPreparedStatementTest {
     ps.setObject(4, 123234345, Types.BIGINT);
     ps.setObject(5, 123.423f, Types.FLOAT);
     ps.setObject(6, -1323.0, Types.DOUBLE);
-    ps.setObject(7, "abc", Types.VARCHAR);
+    ps.setObject(7, "\"abc\"", Types.VARCHAR);
     ps.execute();
 
     ArgumentCaptor<TSExecuteStatementReq> argument =
         ArgumentCaptor.forClass(TSExecuteStatementReq.class);
     verify(client).executeStatement(argument.capture());
     assertEquals(
-        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,'abc')",
+        "INSERT INTO root.ln.wf01.wt02(time,a,b,c,d,e,f) VALUES(2020-01-01T10:10:10,false,123,123234345,123.423,-1323.0,\"abc\")",
         argument.getValue().getStatement());
   }
 }
