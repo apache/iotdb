@@ -22,6 +22,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
+import org.apache.iotdb.db.engine.compaction.CompactionManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -737,9 +738,7 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
-    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
-      virtualStorageGroupManager.mergeAll(isFullMerge);
-    }
+    CompactionManager.getInstance().mergeAll(isFullMerge);
   }
 
   /**

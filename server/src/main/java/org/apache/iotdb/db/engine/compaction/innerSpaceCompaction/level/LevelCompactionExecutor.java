@@ -19,6 +19,19 @@
 
 package org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.level;
 
+import static org.apache.iotdb.db.engine.compaction.TsFileManagement.getMergeLevel;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.TARGET_NAME;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.InnerSpaceCompactionExecutor;
@@ -31,23 +44,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.iotdb.db.engine.compaction.TsFileManagement.getMergeLevel;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.utils.CompactionLogger.TARGET_NAME;
 
 /** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
 public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
@@ -97,7 +95,7 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                tsFileManagement.storageGroupDir,
+                tsFileManagement.storageGroupSysDir,
                 tsFileManagement.storageGroupName + COMPACTION_LOG_NAME);
     try {
       if (logFile.exists()) {
@@ -138,7 +136,7 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
           writer.close();
           CompactionLogger compactionLogger =
               new CompactionLogger(
-                  tsFileManagement.storageGroupDir, tsFileManagement.storageGroupName);
+                  tsFileManagement.storageGroupSysDir, tsFileManagement.storageGroupName);
           List<Modification> modifications = new ArrayList<>();
           CompactionUtils.merge(
               targetResource,
@@ -203,7 +201,7 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
           // just merge part of the file
           compactionLogger =
               new CompactionLogger(
-                  tsFileManagement.storageGroupDir, tsFileManagement.storageGroupName);
+                  tsFileManagement.storageGroupSysDir, tsFileManagement.storageGroupName);
           // log source file list and target file for recover
           for (TsFileResource mergeResource : mergeResources.get(i)) {
             compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
@@ -263,7 +261,7 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
           File logFile =
               FSFactoryProducer.getFSFactory()
                   .getFile(
-                      tsFileManagement.storageGroupDir,
+                      tsFileManagement.storageGroupSysDir,
                       tsFileManagement.storageGroupName + COMPACTION_LOG_NAME);
           if (logFile.exists()) {
             Files.delete(logFile.toPath());
@@ -298,7 +296,7 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(
-                tsFileManagement.storageGroupDir,
+                tsFileManagement.storageGroupSysDir,
                 tsFileManagement.storageGroupName + COMPACTION_LOG_NAME);
     try {
       if (logFile.exists()) {

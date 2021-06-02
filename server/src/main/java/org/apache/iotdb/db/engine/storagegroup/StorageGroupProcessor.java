@@ -18,18 +18,45 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.CrossSpaceCompactionExecutor;
-import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.InplaceCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.innerSpaceCompaction.InnerSpaceCompactionExecutor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -83,42 +110,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.crossSpaceCompaction.inplace.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -205,7 +198,7 @@ public class StorageGroupProcessor {
    * with timestamp less than or equals to the device's latestFlushedTime should go into an
    * unsequential file.
    */
-  private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
+  public Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
 
   /** used to record the latest flush time while upgrading and inserting */
   private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice =
@@ -222,8 +215,7 @@ public class StorageGroupProcessor {
   private String logicalStorageGroupName;
   private File storageGroupSysDir;
   // manage seqFileList and unSeqFileList
-  private TsFileManagement tsFileManagement;
-  private CompactionScheduler compactionScheduler;
+  public TsFileManagement tsFileManagement;
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
@@ -392,6 +384,10 @@ public class StorageGroupProcessor {
     recover();
   }
 
+  public Map<Long, Map<String, Long>> getPartitionLatestFlushedTimeForEachDevice() {
+    return partitionLatestFlushedTimeForEachDevice;
+  }
+
   public String getLogicalStorageGroupName() {
     return logicalStorageGroupName;
   }
@@ -446,24 +442,6 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
-      // recover compaction
-      File mergingMods =
-          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICATION_FILE_NAME);
-      if (mergingMods.exists()) {
-        this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
-      }
-      CrossSpaceCompactionExecutor crossSpaceCompactionExecutor =
-          new InplaceCompactionExecutor(tsFileManagement);
-      InnerSpaceCompactionExecutor innerSpaceCompactionExecutor =
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getCompactionStrategy()
-              .getInnerSpaceCompactionExecutor(tsFileManagement);
-      compactionScheduler =
-          new CompactionScheduler(
-              tsFileManagement, crossSpaceCompactionExecutor, innerSpaceCompactionExecutor);
-      recoverLevelCompaction();
-
       for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -502,38 +480,8 @@ public class StorageGroupProcessor {
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      for (long timePartitionId : timePartitionIdVersionControllerMap.keySet()) {
-        executeCompaction(timePartitionId, IoTDBDescriptor.getInstance().getConfig().isFullMerge());
-      }
-    }
-  }
-
-  private void recoverLevelCompaction() {
-    if (!CompactionTaskManager.getInstance().isTerminated()) {
-      isCompactionWorking = true;
-      logger.info(
-          "{} - {} submit a compaction recover merge task",
-          logicalStorageGroupName,
-          virtualStorageGroupId);
-      try {
-        CompactionTaskManager.getInstance()
-            .submitTask(
-                logicalStorageGroupName,
-                compactionScheduler.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
-      } catch (RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
-        logger.error(
-            "{} - {} compaction submit task failed",
-            logicalStorageGroupName,
-            virtualStorageGroupId,
-            e);
-      }
-    } else {
-      logger.error(
-          "{} compaction pool not started ,recover failed",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
-    }
+    CompactionManager.getInstance()
+        .init(logicalStorageGroupName, tsFileManagement, this);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
@@ -1958,47 +1906,12 @@ public class StorageGroupProcessor {
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
 
-    executeCompaction(
-        tsFileProcessor.getTimeRangeId(), IoTDBDescriptor.getInstance().getConfig().isFullMerge());
-  }
-
-  private void executeCompaction(long timePartition, boolean fullMerge) {
-    if (!isCompactionWorking && !CompactionTaskManager.getInstance().isTerminated()) {
-      isCompactionWorking = true;
-      logger.info(
-          "{} submit a compaction merge task",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
-      try {
-        // fork and filter current tsfile, then commit then to compaction merge
-        Pair<List<List<TsFileResource>>, List<List<TsFileResource>>> tsFileListPair =
-            tsFileManagement.forkCurrentFileList(timePartition);
-        CompactionTaskManager.getInstance()
-            .submitTask(
-                logicalStorageGroupName,
-                compactionScheduler
-                .new CompactionMergeTask(
-                    timePartition,
-                    tsFileListPair.left,
-                    tsFileListPair.right,
-                    fullMerge,
-                    this::closeCompactionMergeCallBack));
-      } catch (RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack();
-        logger.error(
-            "{} compaction submit task failed",
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
-            e);
-      }
-    } else {
-      logger.info(
-          "{} last compaction merge task is working, skip current merge",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
-    }
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack() {
-    this.isCompactionWorking = false;
+    CompactionManager.getInstance()
+        .startCompaction(
+            logicalStorageGroupName,
+            tsFileProcessor.getTimeRangeId(),
+            IoTDBDescriptor.getInstance().getConfig().isFullMerge(),
+            tsFileManagement);
   }
 
   /**
@@ -2096,17 +2009,6 @@ public class StorageGroupProcessor {
       }
     }
     resources.clear();
-  }
-
-  public void merge(boolean isFullMerge) {
-    writeLock();
-    try {
-      for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
-        executeCompaction(timePartitionId, isFullMerge);
-      }
-    } finally {
-      writeUnlock();
-    }
   }
 
   /**
@@ -2830,7 +2732,7 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       // abort ongoing comapctions and merges
-      CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
+      CompactionManager.getInstance().abortCompaction(logicalStorageGroupName);
       MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet());
@@ -2969,7 +2871,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface CloseCompactionMergeCallBack {
 
-    void call();
+    void call(String storageGroupName);
   }
 
   @FunctionalInterface

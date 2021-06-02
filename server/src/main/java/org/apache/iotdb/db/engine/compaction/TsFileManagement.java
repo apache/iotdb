@@ -19,16 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,15 +35,20 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TsFileManagement {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileManagement.class);
   public String storageGroupName;
-  public String storageGroupDir;
+  public String storageGroupSysDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
@@ -75,45 +72,9 @@ public class TsFileManagement {
   private final int unseqLevelNum =
       Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum(), 1);
 
-  public TsFileManagement(String storageGroupName, String storageGroupDir) {
+  public TsFileManagement(String storageGroupName, String storageGroupSysDir) {
     this.storageGroupName = storageGroupName;
-    this.storageGroupDir = storageGroupDir;
-  }
-
-  public Pair<List<List<TsFileResource>>, List<List<TsFileResource>>> forkCurrentFileList(
-      long timePartition) {
-    readLock();
-    List<List<TsFileResource>> forkedSeqTsFileResources = new ArrayList<>();
-    List<List<TsFileResource>> forkedUnseqTsFileResources = new ArrayList<>();
-    try {
-      forkTsFileList(
-          forkedSeqTsFileResources,
-          sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
-          seqLevelNum);
-      forkTsFileList(
-          forkedUnseqTsFileResources,
-          unSequenceTsFileResources.computeIfAbsent(
-              timePartition, this::newUnSequenceTsFileResources),
-          unseqLevelNum);
-      return new Pair<>(forkedSeqTsFileResources, forkedUnseqTsFileResources);
-    } finally {
-      readUnLock();
-    }
-  }
-
-  private void forkTsFileList(
-      List<List<TsFileResource>> forkedTsFileResources, List rawTsFileResources, int currMaxLevel) {
-    for (int i = 0; i < currMaxLevel; i++) {
-      List<TsFileResource> forkedLevelTsFileResources = new ArrayList<>();
-      Collection<TsFileResource> levelRawTsFileResources =
-          (Collection<TsFileResource>) rawTsFileResources.get(i);
-      for (TsFileResource tsFileResource : levelRawTsFileResources) {
-        if (tsFileResource.isClosed()) {
-          forkedLevelTsFileResources.add(tsFileResource);
-        }
-      }
-      forkedTsFileResources.add(forkedLevelTsFileResources);
-    }
+    this.storageGroupSysDir = storageGroupSysDir;
   }
 
   /**

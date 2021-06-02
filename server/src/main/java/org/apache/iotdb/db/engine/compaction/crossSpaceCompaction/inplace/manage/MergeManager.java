@@ -143,13 +143,6 @@ public class MergeManager implements IService, MergeManagerMBean {
           new MergeThreadPool(
               threadNum * chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
-      if (mergeInterval > 0) {
-        timedMergeThreadPool =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(
-            this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
-      }
 
       taskCleanerThreadPool =
           Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
@@ -248,14 +241,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public ServiceType getID() {
     return ServiceType.MERGE_SERVICE;
-  }
-
-  private void mergeAll() {
-    try {
-      StorageEngine.getInstance().mergeAll(IoTDBDescriptor.getInstance().getConfig().isFullMerge());
-    } catch (StorageEngineException e) {
-      logger.error("Cannot perform a global merge because", e);
-    }
   }
 
   /**
