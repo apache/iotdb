@@ -113,13 +113,14 @@ public class IoTDBOverlappedPageIT {
 
       String sql =
           "select s0 from root.vehicle.d0 where time >= 1 and time <= 110 AND root.vehicle.d0.s0 > 110";
-      ResultSet resultSet = statement.executeQuery(sql);
-      int cnt = 0;
-      while (resultSet.next()) {
-        String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
-        Assert.assertEquals(res[cnt], ans);
-        cnt++;
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
+          Assert.assertEquals(res[cnt], ans);
+          cnt++;
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
