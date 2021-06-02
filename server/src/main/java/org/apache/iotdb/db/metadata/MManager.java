@@ -18,6 +18,34 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -83,38 +111,8 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -2169,7 +2167,7 @@ public class MManager {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
           throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
-        } else if ((measurementMNode = findTemplate(deviceMNode, measurement)) != null) {
+        } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
           // empty
         } else {
           if (!config.isAutoCreateSchemaEnabled()) {
@@ -2296,15 +2294,14 @@ public class MManager {
     return deviceMNode.getChild(measurementName);
   }
 
-  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
+  private MeasurementMNode findTemplate(
+      Pair<MNode, Template> deviceMNode, String measurement, String vectorId)
       throws MetadataException {
     if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> curTemplateMap = deviceMNode.right.getSchemaMap();
-      List<String> measurements =
-          Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
 
-      String firstMeasurement = measurements.get(0);
-      IMeasurementSchema schema = curTemplateMap.get(firstMeasurement);
+      String schemaName = vectorId != null ? vectorId : measurement;
+      IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.left.isUseTemplate()) {
         deviceMNode.left.setUseTemplate(true);
         try {
@@ -2316,13 +2313,9 @@ public class MManager {
 
       if (schema != null) {
         if (schema instanceof MeasurementSchema) {
-          return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
+          return new MeasurementMNode(deviceMNode.left, measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(
-              deviceMNode.left,
-              deviceMNode.right.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
-              schema,
-              null);
+          return new MeasurementMNode(deviceMNode.left, vectorId, schema, null);
         }
       }
       return null;

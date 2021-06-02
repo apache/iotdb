@@ -19,6 +19,9 @@
 
 package org.apache.iotdb;
 
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -30,10 +33,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.List;
 
 @SuppressWarnings("squid:S106")
 public class VectorSessionExample {
@@ -49,14 +48,12 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    createAlignedTimeseries();
-    //        createTemplate();
-    //    insertTabletWithAlignedTimeseriesMethod1();
+    // createTemplate();
+    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
-
-    //    insertAlignedRecord();
+    //
     //    insertNullableTabletWithAlignedTimeseries();
-    selectTest();
+    //    selectTest();
     //    selectWithValueFilterTest();
     //
     //    selectWithGroupByTest();

@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -26,15 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class Template {
   private String name;
@@ -78,14 +76,13 @@ public class Template {
                 plan.getCompressors().get(i));
       }
 
-      for (String path : plan.getMeasurements().get(i)) {
-        if (schemaMap.containsKey(path)) {
-          throw new IllegalArgumentException(
-              "Duplicate measurement name in create template plan. Name is :" + path);
-        }
-
-        schemaMap.put(path, curSchema);
+      String path = plan.getSchemaNames().get(i);
+      if (schemaMap.containsKey(path)) {
+        throw new IllegalArgumentException(
+            "Duplicate measurement name in create template plan. Name is :" + path);
       }
+
+      schemaMap.put(path, curSchema);
     }
   }
 
