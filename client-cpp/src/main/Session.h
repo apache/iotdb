@@ -448,7 +448,7 @@ public:
     std::string toString()
     {
         char buf[111];
-        sprintf(buf,"%lld",timestamp);
+        sprintf(buf,"%ld",timestamp);
         std::string ret = buf;
         for (int i = 0; i < fields.size(); i++)
         {
@@ -469,7 +469,7 @@ public:
                 }
                 case TSDataType::INT64: {
                     char buf[111];
-                    sprintf(buf,"%lld",fields[i].longV);
+                    sprintf(buf,"%ld",fields[i].longV);
                     ret.append(buf);
                     break;
                 }

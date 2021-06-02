@@ -36,7 +36,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public abstract class Cases {
@@ -188,6 +192,7 @@ public abstract class Cases {
   @Test
   public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
     List<List<String>> measurementList = new ArrayList<>();
+    List<String> schemaNames = new ArrayList<>();
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     List<CompressionType> compressionTypes = new ArrayList<>();
@@ -204,17 +209,24 @@ public abstract class Cases {
               encodings.add(TSEncoding.RLE);
               compressionTypes.add(CompressionType.SNAPPY);
             });
+    schemaNames.add("schema");
     encodingList.add(encodings);
     dataTypeList.add(dataTypes);
     measurementList.add(Arrays.asList(vectorMeasurements));
 
-    session.createDeviceTemplate(
-        "testcontainer", measurementList, dataTypeList, encodingList, compressionTypes);
+    session.createSchemaTemplate(
+        "testcontainer",
+        schemaNames,
+        measurementList,
+        dataTypeList,
+        encodingList,
+        compressionTypes);
     session.setStorageGroup("root.template");
-    session.setDeviceTemplate("testcontainer", "root.template");
+    session.setSchemaTemplate("testcontainer", "root.template");
 
     VectorMeasurementSchema vectorMeasurementSchema =
-        new VectorMeasurementSchema(vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
+        new VectorMeasurementSchema(
+            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
 
     Tablet tablet = new Tablet("root.template.device1", Arrays.asList(vectorMeasurementSchema));
     for (int i = 0; i < 10; i++) {
