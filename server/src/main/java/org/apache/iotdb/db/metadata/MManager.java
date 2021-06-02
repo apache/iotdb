@@ -442,7 +442,6 @@ public class MManager {
     try {
       PartialPath path = plan.getPath();
       SchemaUtils.checkDataTypeWithEncoding(plan.getDataType(), plan.getEncoding());
-
       ensureStorageGroup(path);
 
       TSDataType type = plan.getDataType();
@@ -489,7 +488,6 @@ public class MManager {
         logWriter.createTimeseries(plan);
       }
       leafMNode.setOffset(offset);
-
     } catch (IOException e) {
       throw new MetadataException(e);
     }

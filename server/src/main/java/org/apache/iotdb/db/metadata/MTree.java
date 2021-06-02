@@ -555,6 +555,7 @@ public class MTree implements Serializable {
           if (nodeMajorVersion != path.getMajorVersion()) {
             return;
           }
+
           ((StorageGroupMNode) temp).setMinorVersion(path.getMinorVersion());
           return;
         }

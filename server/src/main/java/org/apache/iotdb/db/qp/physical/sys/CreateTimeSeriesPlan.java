@@ -154,8 +154,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   @Override
   public String toString() {
     return String.format(
-        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
-        path, dataType, encoding, compressor, tagOffset);
+        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s, majorVersion: %s, minorVersion: %s",
+        path, dataType, encoding, compressor, tagOffset, majorVersion, minorVersion);
   }
 
   @Override

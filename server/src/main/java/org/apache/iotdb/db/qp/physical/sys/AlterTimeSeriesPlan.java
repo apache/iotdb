@@ -219,4 +219,27 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     return Objects.hash(
         path, alias, alterType, alterMap, attributesMap, tagsMap, majorVersion, minorVersion);
   }
+
+  @Override
+  public String toString() {
+    return "AlterTimeSeriesPlan{"
+        + " path="
+        + path
+        + ", alterType="
+        + alterType
+        + ", alterMap="
+        + alterMap
+        + ", alias='"
+        + alias
+        + '\''
+        + ", tagsMap="
+        + tagsMap
+        + ", attributesMap="
+        + attributesMap
+        + ", majorVersion="
+        + majorVersion
+        + ", minorVersion="
+        + minorVersion
+        + "}";
+  }
 }
