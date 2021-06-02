@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -1420,6 +1421,40 @@ public class MManagerBasicTest {
 
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGetStorageGroupNodeByPath() {
+    MManager manager = IoTDB.metaManager;
+    PartialPath partialPath = null;
+
+    try {
+      partialPath = new PartialPath("root.ln.sg1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.setStorageGroup(partialPath);
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      partialPath = new PartialPath("root.ln.sg2.device1.sensor1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.getStorageGroupNodeByPath(partialPath);
+    } catch (StorageGroupNotSetException e) {
+      Assert.assertEquals(
+          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          e.getMessage());
+    } catch (MetadataException e) {
       fail(e.getMessage());
     }
   }
