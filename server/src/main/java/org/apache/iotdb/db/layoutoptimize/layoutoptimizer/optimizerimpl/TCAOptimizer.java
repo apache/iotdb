@@ -52,7 +52,6 @@ public class TCAOptimizer extends LayoutOptimizer {
     Random random = new Random();
     double curCost = oriCost;
     double newCost = 0;
-    double compressionRatio = CompressionRatio.getInstance().getRatio();
     for (int i = 0;
         i < maxIteration && System.currentTimeMillis() - startTime < maxTime;
         i++, temperature *= (1 - coolingRate)) {
