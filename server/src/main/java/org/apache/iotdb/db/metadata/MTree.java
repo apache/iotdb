@@ -18,6 +18,38 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,42 +88,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -730,11 +728,6 @@ public class MTree implements Serializable {
         }
 
         String realName = nodes[i];
-        if (path instanceof VectorPartialPath) {
-          VectorPartialPath vectorPartialPath = (VectorPartialPath) path;
-          realName = vectorPartialPath.getSubSensorsPathList().get(0).getMeasurement();
-        }
-
         IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1310,14 +1303,19 @@ public class MTree implements Serializable {
                   schema,
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
-              String firstNode = schema.getValueMeasurementIdList().get(0);
-              addVectorMeasurementSchema(
-                  new MeasurementMNode(node, firstNode, schema, null),
-                  timeseriesSchemaList,
-                  needLast,
-                  queryContext,
-                  schema,
-                  nodeReg);
+              VectorMeasurementSchema vectorMeasurementSchema = (VectorMeasurementSchema) schema;
+              if (Pattern.matches(
+                  nodeReg.replace("*", ".*"), vectorMeasurementSchema.getMeasurementId())) {
+                String firstNode = schema.getValueMeasurementIdList().get(0);
+                addVectorMeasurementSchemaForTemplate(
+                    new MeasurementMNode(node, firstNode, schema, null),
+                    timeseriesSchemaList,
+                    needLast,
+                    queryContext,
+                    schema,
+                    MetaUtils.getNodeRegByIdx(idx + 1, nodes),
+                    vectorMeasurementSchema.getMeasurementId());
+              }
             }
           }
         }
@@ -1363,6 +1361,37 @@ public class MTree implements Serializable {
         continue;
       }
       PartialPath devicePath = node.getPartialPath();
+      String[] tsRow = new String[7];
+      tsRow[0] = null;
+      tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
+      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[4] = schema.getCompressor().toString();
+      tsRow[5] = "-1";
+      tsRow[6] =
+          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+      Pair<PartialPath, String[]> temp =
+          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+      timeseriesSchemaList.add(temp);
+    }
+  }
+
+  private void addVectorMeasurementSchemaForTemplate(
+      MNode node,
+      List<Pair<PartialPath, String[]>> timeseriesSchemaList,
+      boolean needLast,
+      QueryContext queryContext,
+      IMeasurementSchema schema,
+      String reg,
+      String vectorId)
+      throws StorageGroupNotSetException, IllegalPathException {
+    List<String> measurements = schema.getValueMeasurementIdList();
+    for (int i = 0; i < measurements.size(); i++) {
+      if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
+        continue;
+      }
+      PartialPath devicePath =
+          new PartialPath(node.getPartialPath().getDevicePath().getFullPath(), vectorId);
       String[] tsRow = new String[7];
       tsRow[0] = null;
       tsRow[1] = getStorageGroupPath(devicePath).getFullPath();

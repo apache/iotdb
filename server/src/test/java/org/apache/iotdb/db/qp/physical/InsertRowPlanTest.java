@@ -123,7 +123,7 @@ public class InsertRowPlanTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       Assert.assertEquals(3, record.getFields().size());
@@ -202,10 +202,10 @@ public class InsertRowPlanTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 

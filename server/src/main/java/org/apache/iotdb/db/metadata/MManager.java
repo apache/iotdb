@@ -1241,7 +1241,8 @@ public class MManager {
         subSensorsPathList.add(path);
         nodeToPartialPath.put(
             node,
-            new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
+            new VectorPartialPath(
+                path.getDevice() + "." + path.getMeasurement(), subSensorsPathList));
       }
       nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
     } else {

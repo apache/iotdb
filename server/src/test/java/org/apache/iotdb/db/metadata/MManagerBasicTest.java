@@ -18,6 +18,21 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -39,27 +54,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class MManagerBasicTest {
 
@@ -909,7 +907,7 @@ public class MManagerBasicTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
-    schemaNames.add("test_vector");
+    schemaNames.add("vector");
 
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
@@ -1060,7 +1058,7 @@ public class MManagerBasicTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
         new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.s1"),
+            new PartialPath("root.sg1.d1.vector.s1"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -1074,7 +1072,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.sg1.d1.s1 ( which is incompatible with template )] already exist",
+          "Path [root.sg1.d1.vector.s1 ( which is incompatible with template )] already exist",
           e.getMessage());
     }
   }
@@ -1184,7 +1182,7 @@ public class MManagerBasicTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s0");
-    schemaNames.add("test_vector");
+    schemaNames.add("vector");
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
@@ -1213,23 +1211,13 @@ public class MManagerBasicTest {
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.d1.s1
+      // show timeseries root.laptop.d1.vector.s1
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.s1", result.get(0).getName());
-
-      // show timeseries root.laptop.d1.(s1,s2,s3)
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
-      assertEquals(3, result.size());
-      for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
-      }
+      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
@@ -1237,9 +1225,10 @@ public class MManagerBasicTest {
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
-      for (int i = 0; i < result.size(); i++) {
-        set.add("root.laptop.d1.s" + i);
+      for (int i = 1; i < result.size(); i++) {
+        set.add("root.laptop.d1.vector.s" + i);
       }
+      set.add("root.laptop.d1.s0");
 
       for (int i = 0; i < result.size(); i++) {
         set.remove(result.get(i).getName());

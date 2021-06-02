@@ -103,7 +103,8 @@ public class Template {
   }
 
   public boolean isCompatible(PartialPath path) {
-    return !schemaMap.containsKey(path.getMeasurement());
+    return !(schemaMap.containsKey(path.getMeasurement())
+        || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
   }
 
   public List<MeasurementMNode> getMeasurementMNode() {
