@@ -47,9 +47,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     this.deviceId = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
-      for (ByteBuffer b : insertValues) {
-        b.toString();
-      }
       rowPlans[i] =
           new InsertRowPlan(
               deviceId,
