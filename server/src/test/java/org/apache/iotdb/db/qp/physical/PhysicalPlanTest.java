@@ -135,7 +135,7 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1, majorVersion: 0, minorVersion: 0",
         plan.toString());
   }
 
@@ -145,7 +145,7 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1, majorVersion: 0, minorVersion: 0",
         plan.toString());
   }
 
@@ -158,7 +158,7 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
-        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1",
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY, tagOffset: -1, majorVersion: 0, minorVersion: 0",
         plan.toString());
   }
 
