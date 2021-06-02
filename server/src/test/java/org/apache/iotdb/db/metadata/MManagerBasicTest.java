@@ -262,7 +262,7 @@ public class MManagerBasicTest {
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d1.vector"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -279,9 +279,9 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
@@ -300,7 +300,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s1,s2,s3)"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -308,9 +308,9 @@ public class MManagerBasicTest {
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s1")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
-    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.s3")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
     try {
       manager.deleteTimeseries(new PartialPath("root.laptop.d1.s0"));
@@ -1114,29 +1114,29 @@ public class MManagerBasicTest {
       assertEquals(1, result.size());
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
-      // show timeseries root.laptop.d1.s1
+      // show timeseries
       showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.s1"), false, null, null, 0, 0, false);
+          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
-      assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+      assertEquals(4, result.size());
 
-      // show timeseries root.laptop.d1.(s1,s2,s3)
+      // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.(s1,s2,s3)"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.vector"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
         assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
       }
 
-      // show timeseries
+      // show timeseries root.laptop.d1.vector.s1
       showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
-      assertEquals(4, result.size());
+      assertEquals(1, result.size());
+      assertEquals("root.laptop.d1.s1", result.get(0).getName());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1349,7 +1349,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d1.vector"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("FLOAT"),
@@ -1371,9 +1371,9 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
+              new PartialPath("root.laptop.d1.vector"),
               time,
-              new String[] {"(s1,s2,s3)"},
+              new String[] {"s1", "s2", "s3"},
               dataTypes,
               columns);
       insertRowPlan.setMeasurementMNodes(
@@ -1422,143 +1422,6 @@ public class MManagerBasicTest {
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateMixedTimeseriesAndInsertWithMismatchDataType() {
-    MManager manager = IoTDB.metaManager;
-    try {
-      manager.setStorageGroup(new PartialPath("root.laptop"));
-      manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap());
-
-      manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1"),
-          Arrays.asList("s1", "s2", "s3"),
-          Arrays.asList(
-              TSDataType.valueOf("FLOAT"),
-              TSDataType.valueOf("INT64"),
-              TSDataType.valueOf("INT32")),
-          Arrays.asList(
-              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
-
-      // construct an insertRowPlan with correct data type
-      long time = 1L;
-      TSDataType[] dataTypes =
-          new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
-
-      String[] columns = new String[4];
-      columns[0] = 100 + "";
-      columns[1] = 2.0 + "";
-      columns[2] = 10000 + "";
-      columns[3] = 200 + "";
-
-      InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
-              time,
-              new String[] {"s0", "(s1,s2,s3)"},
-              dataTypes,
-              columns);
-      insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(5, mNode.getMeasurementMNodeCount());
-      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertNotNull(insertRowPlan.getMeasurementMNodes()[1]);
-      assertEquals(0, insertRowPlan.getFailedMeasurementNumber());
-
-      // construct an insertRowPlan with mismatched data type in non-aligned timeseries
-      time = 2L;
-      dataTypes =
-          new TSDataType[] {TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
-
-      columns[0] = 2.0 + "";
-      columns[1] = 2.0 + "";
-      columns[2] = 10000 + "";
-      columns[3] = 200 + "";
-
-      insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
-              time,
-              new String[] {"s0", "(s1,s2,s3)"},
-              dataTypes,
-              columns);
-      insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(5, mNode.getMeasurementMNodeCount());
-      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertNotNull(insertRowPlan.getMeasurementMNodes()[1]);
-      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
-
-      // construct an insertRowPlan with mismatched data type in aligned timeseries
-      time = 3L;
-      dataTypes =
-          new TSDataType[] {TSDataType.INT32, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT32};
-
-      columns[0] = 100 + "";
-      columns[1] = 2.0 + "";
-      columns[2] = 200 + "";
-      columns[3] = 300 + "";
-
-      insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
-              time,
-              new String[] {"s0", "(s1,s2,s3)"},
-              dataTypes,
-              columns);
-      insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(5, mNode.getMeasurementMNodeCount());
-      assertNotNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
-      assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
-
-      // construct an insertRowPlan with mismatched data type in both timeseries
-      time = 4L;
-      dataTypes =
-          new TSDataType[] {TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.INT32, TSDataType.INT32};
-
-      columns[0] = 1.0 + "";
-      columns[1] = 2.0 + "";
-      columns[2] = 200 + "";
-      columns[3] = 300 + "";
-
-      insertRowPlan =
-          new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
-              time,
-              new String[] {"s0", "(s1,s2,s3)"},
-              dataTypes,
-              columns);
-      insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
-
-      // call getSeriesSchemasAndReadLockDevice
-      mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(5, mNode.getMeasurementMNodeCount());
-      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
-      assertEquals(2, insertRowPlan.getFailedMeasurementNumber());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

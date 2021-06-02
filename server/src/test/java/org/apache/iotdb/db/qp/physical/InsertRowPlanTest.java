@@ -119,14 +119,14 @@ public class InsertRowPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(vectorRowPlan);
 
-    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 
@@ -177,8 +177,6 @@ public class InsertRowPlanTest {
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("test_vector1");
-    schemaNames.add("test_vector2");
-    schemaNames.add("s6");
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
@@ -229,27 +227,17 @@ public class InsertRowPlanTest {
   private InsertRowPlan getInsertVectorRowPlan() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
-        new TSDataType[] {
-          TSDataType.DOUBLE,
-          TSDataType.FLOAT,
-          TSDataType.INT64,
-          TSDataType.INT32,
-          TSDataType.BOOLEAN,
-          TSDataType.TEXT
-        };
+        new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64};
 
     String[] columns = new String[6];
     columns[0] = 1.0 + "";
     columns[1] = 2 + "";
     columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
 
     return new InsertRowPlan(
-        new PartialPath("root.isp.d1"),
+        new PartialPath("root.isp.d1.vector"),
         time,
-        new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
+        new String[] {"s1", "s2", "s3"},
         dataTypes,
         columns);
   }

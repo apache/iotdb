@@ -152,6 +152,30 @@ public class InsertRowPlan extends InsertPlan {
   @TestOnly
   public InsertRowPlan(
       PartialPath deviceId,
+      String vectorId,
+      long insertTime,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      String[] insertValues) {
+    super(OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.vectorId = vectorId;
+    this.measurements = measurements;
+    this.dataTypes = dataTypes;
+    this.values = new Object[dataTypes.length];
+    for (int i = 0; i < dataTypes.length; i++) {
+      try {
+        values[i] = CommonUtils.parseValueForTest(dataTypes[i], insertValues[i]);
+      } catch (QueryProcessException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  @TestOnly
+  public InsertRowPlan(
+      PartialPath deviceId,
       long insertTime,
       String measurement,
       TSDataType type,

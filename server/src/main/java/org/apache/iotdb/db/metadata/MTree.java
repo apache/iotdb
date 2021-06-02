@@ -351,6 +351,8 @@ public class MTree implements Serializable {
                   compressor),
               null);
       cur.addChild(leafName, measurementMNode);
+
+      // FIXME change for show timeseries
       for (String measurement : measurements) {
         if (child != null) {
           cur.replaceChild(measurementMNode.getName(), measurementMNode);
@@ -462,7 +464,11 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
       cur = cur.getChild(childName);
-      if (cur == null) {
+      if (cur instanceof MeasurementMNode
+          && ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+        MNode parent = cur.getParent();
+        return parent.getChildren().containsKey(nodeNames[i + 1]);
+      } else if (cur == null) {
         return false;
       }
     }

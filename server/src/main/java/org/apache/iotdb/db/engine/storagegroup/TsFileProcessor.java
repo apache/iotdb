@@ -348,6 +348,7 @@ public class TsFileProcessor {
           columns[j] = insertTabletPlan.getColumns()[columnIndex++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
+        break;
       }
       // for non aligned
       else {

@@ -210,6 +210,7 @@ public abstract class AbstractMemTable implements IMemTable {
         }
         memSeries.write(
             insertTabletPlan.getTimes(), bitMaps, columns, TSDataType.VECTOR, start, end);
+        break;
       } else {
         memSeries.write(
             insertTabletPlan.getTimes(),
