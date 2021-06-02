@@ -279,23 +279,16 @@ public class MManagerBasicTest {
     assertTrue(manager.isPathExist(new PartialPath("root.laptop")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.s2"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.s2"));
     } catch (MetadataException e) {
       assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.s2)",
-          e.getMessage());
-    }
-
-    try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.(s2, s3)"));
-    } catch (MetadataException e) {
-      assertEquals(
-          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.(s2, s3))",
+          "Not support deleting part of aligned timeseies! (Path: root.laptop.d1.vector.s2)",
           e.getMessage());
     }
 
@@ -308,6 +301,7 @@ public class MManagerBasicTest {
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
+    assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s1")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
     assertFalse(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s3")));
@@ -323,7 +317,7 @@ public class MManagerBasicTest {
 
     try {
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d1.vector"),
           Arrays.asList("s0", "s2", "s4"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -338,9 +332,10 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s0")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s2")));
-    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.s4")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s0")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s2")));
+    assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.vector.s4")));
   }
 
   @Test
@@ -1095,7 +1090,7 @@ public class MManagerBasicTest {
           compressionType,
           Collections.emptyMap());
       manager.createAlignedTimeSeries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d1.vector"),
           Arrays.asList("s1", "s2", "s3"),
           Arrays.asList(
               TSDataType.valueOf("INT32"),
@@ -1115,10 +1110,10 @@ public class MManagerBasicTest {
       assertEquals("root.laptop.d1.s0", result.get(0).getName());
 
       // show timeseries
-      showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
-      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
-      assertEquals(4, result.size());
+      //      showTimeSeriesPlan =
+      //          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+      //      result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+      //      assertEquals(4, result.size());
 
       // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
@@ -1127,7 +1122,7 @@ public class MManagerBasicTest {
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {
-        assertEquals("root.laptop.d1.s" + (i + 1), result.get(i).getName());
+        assertEquals("root.laptop.d1.vector.s" + (i + 1), result.get(i).getName());
       }
 
       // show timeseries root.laptop.d1.vector.s1
@@ -1136,7 +1131,7 @@ public class MManagerBasicTest {
               new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(1, result.size());
-      assertEquals("root.laptop.d1.s1", result.get(0).getName());
+      assertEquals("root.laptop.d1.vector.s1", result.get(0).getName());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1371,7 +1366,8 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1.vector"),
+              new PartialPath("root.laptop.d1"),
+              "vector",
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
@@ -1382,7 +1378,7 @@ public class MManagerBasicTest {
       // call getSeriesSchemasAndReadLockDevice
       MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(4, mNode.getMeasurementMNodeCount());
-      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
+      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
     } catch (Exception e) {
