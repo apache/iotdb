@@ -10,20 +10,10 @@ on:
     branches:
       - master
       - "rel/*"
-    paths:
-      - "client-*/**"
-      - "compile-tools/**"
-      - "thrift/**"
-      - "service-rpc/**"
   pull_request:
     branches:
       - master
       - "rel/*"
-    paths:
-      - "client-*/**"
-      - "compile-tools/**"
-      - "thrift/**"
-      - "service-rpc/**"
   # allow manually run the action:
   workflow_dispatch:
 
