@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -103,7 +104,7 @@ public class MultDataSourceInfo {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
           if (newReaderId != -1) {
             // register the node so the remote resources can be released
-            context.registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
+            context.registerRemoteNode(node, partitionGroup.getHeader());
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
@@ -136,10 +137,6 @@ public class MultDataSourceInfo {
 
   public List<PartialPath> getPartialPaths() {
     return partialPaths;
-  }
-
-  public int getRaftId() {
-    return partitionGroup.getId();
   }
 
   private Long getReaderId(Node node, long timestamp)
@@ -206,7 +203,7 @@ public class MultDataSourceInfo {
     return this.dataTypes;
   }
 
-  public Node getHeader() {
+  public RaftNode getHeader() {
     return partitionGroup.getHeader();
   }
 

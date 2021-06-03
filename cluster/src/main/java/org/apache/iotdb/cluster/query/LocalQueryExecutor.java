@@ -365,8 +365,7 @@ public class LocalQueryExecutor {
             valueFilter,
             queryContext,
             dataGroupMember,
-            request.ascending,
-            null);
+            request.ascending);
 
     // if the reader contains no data, send a special id of -1 to prevent the requester from
     // meaninglessly fetching data
@@ -492,11 +491,11 @@ public class LocalQueryExecutor {
     // In this case, we need to pull series from previous holder.
     Map<PartitionGroup, List<PartialPath>> prePartitionGroupPathMap = new HashMap<>();
 
-    RaftNode raftNode = new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+    RaftNode header = dataGroupMember.getHeader();
     Map<Integer, PartitionGroup> slotPreviousHolderMap =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getPreviousNodeMap()
-            .get(raftNode);
+            .get(header);
 
     for (String prefixPath : prefixPaths) {
       int slot =
@@ -721,7 +720,7 @@ public class LocalQueryExecutor {
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-            .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+            .getNodeSlots(dataGroupMember.getHeader());
     if (ascending) {
       AggregationExecutor.aggregateOneSeries(
           path,
@@ -801,7 +800,7 @@ public class LocalQueryExecutor {
     ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-            .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+            .getNodeSlots(dataGroupMember.getHeader());
     LocalGroupByExecutor executor =
         new LocalGroupByExecutor(
             path,

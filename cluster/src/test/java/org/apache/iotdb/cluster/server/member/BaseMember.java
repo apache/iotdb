@@ -257,7 +257,7 @@ public class BaseMember {
     return new TestPartitionedLogManager(
         new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(),
-        partitionGroup.getHeader(),
+        partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {
       @Override
       public void takeSnapshot() {}
@@ -273,13 +273,8 @@ public class BaseMember {
         new TestMetaGroupMember() {
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
-            return getDataGroupMember(new RaftNode(header, raftId));
-          }
-
-          @Override
-          public DataGroupMember getLocalDataMember(Node header, int raftId) {
-            return getDataGroupMember(new RaftNode(header, raftId));
+          public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
+            return getDataGroupMember(header);
           }
 
           @Override

@@ -45,7 +45,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -85,7 +84,6 @@ public abstract class DataSnapshotTest {
                   String filePath,
                   long offset,
                   int length,
-                  int raftId,
                   AsyncMethodCallback<ByteBuffer> resultHandler) {
                 new Thread(
                         () -> {
@@ -105,7 +103,7 @@ public abstract class DataSnapshotTest {
 
               @Override
               public void removeHardLink(
-                  String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
+                  String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
                 new Thread(
                         () -> {
                           try {
@@ -149,14 +147,13 @@ public abstract class DataSnapshotTest {
                       }
 
                       @Override
-                      public void updateKnownMessageSize(long size) throws TTransportException {}
+                      public void updateKnownMessageSize(long size) {}
 
                       @Override
-                      public void checkReadBytesAvailable(long numBytes)
-                          throws TTransportException {}
+                      public void checkReadBytesAvailable(long numBytes) {}
                     })) {
               @Override
-              public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
+              public ByteBuffer readFile(String filePath, long offset, int length)
                   throws TException {
                 if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                   // simulate failures

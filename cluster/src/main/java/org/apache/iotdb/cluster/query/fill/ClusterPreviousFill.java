@@ -185,7 +185,6 @@ public class ClusterPreviousFill extends PreviousFill {
             context.getQueryId(),
             metaGroupMember.getThisNode(),
             group.getHeader(),
-            group.getId(),
             arguments.getDataType().ordinal(),
             arguments.getDeviceMeasurements());
 

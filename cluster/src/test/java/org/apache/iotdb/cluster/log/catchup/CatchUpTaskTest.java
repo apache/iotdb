@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -62,7 +63,7 @@ public class CatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
   private long leaderCommit;
-  private Node header = new Node();
+  private RaftNode header = new RaftNode(new Node(), 0);
   private boolean prevUseAsyncServer;
 
   private RaftMember sender =
@@ -86,7 +87,7 @@ public class CatchUpTaskTest {
             }
 
             @Override
-            public boolean matchTerm(long index, long term, Node header, int raftId) {
+            public boolean matchTerm(long index, long term, RaftNode header) {
               return dummyMatchTerm(index, term);
             }
 
@@ -121,8 +122,7 @@ public class CatchUpTaskTest {
             public void matchTerm(
                 long index,
                 long term,
-                Node header,
-                int raftId,
+                RaftNode header,
                 AsyncMethodCallback<Boolean> resultHandler) {
               new Thread(() -> resultHandler.onComplete(dummyMatchTerm(index, term))).start();
             }
@@ -136,7 +136,7 @@ public class CatchUpTaskTest {
         }
 
         @Override
-        public Node getHeader() {
+        public RaftNode getHeader() {
           return header;
         }
       };

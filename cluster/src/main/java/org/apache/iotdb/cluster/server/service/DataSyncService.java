@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -223,7 +224,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public void endQuery(Node header, int raftId, Node requester, long queryId) throws TException {
+  public void endQuery(RaftNode header, Node requester, long queryId) throws TException {
     try {
       dataGroupMember.getQueryManager().endQuery(requester, queryId);
     } catch (StorageEngineException e) {
@@ -232,7 +233,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer fetchSingleSeries(Node header, int raftId, long readerId) throws TException {
+  public ByteBuffer fetchSingleSeries(RaftNode header, long readerId) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId);
     } catch (ReaderNotFoundException | IOException e) {
@@ -241,8 +242,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Map<String, ByteBuffer> fetchMultSeries(
-      Node header, int raftId, long readerId, List<String> paths) throws TException {
+  public Map<String, ByteBuffer> fetchMultSeries(RaftNode header, long readerId, List<String> paths)
+      throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths);
     } catch (ReaderNotFoundException | IOException e) {
@@ -252,7 +253,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
 
   @Override
   public ByteBuffer fetchSingleSeriesByTimestamps(
-      Node header, int raftId, long readerId, List<Long> timestamps) throws TException {
+      RaftNode header, long readerId, List<Long> timestamps) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
@@ -264,8 +265,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(
-      Node header, int raftId, List<String> paths, boolean withAlias) throws TException {
+  public GetAllPathsResult getAllPaths(RaftNode header, List<String> paths, boolean withAlias)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
@@ -275,7 +276,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getAllDevices(Node header, int raftId, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllDevices(path);
@@ -285,7 +286,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer getDevices(Node header, int raftId, ByteBuffer planBinary) throws TException {
+  public ByteBuffer getDevices(RaftNode header, ByteBuffer planBinary) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getDevices(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
@@ -294,8 +295,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<String> getNodeList(Node header, int raftId, String path, int nodeLevel)
-      throws TException {
+  public List<String> getNodeList(RaftNode header, String path, int nodeLevel) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
@@ -305,8 +305,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getChildNodeInNextLevel(Node header, int raftId, String path)
-      throws TException {
+  public Set<String> getChildNodeInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
@@ -316,8 +315,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public Set<String> getChildNodePathInNextLevel(Node header, int raftId, String path)
-      throws TException {
+  public Set<String> getChildNodePathInNextLevel(RaftNode header, String path) throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
@@ -327,7 +325,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public ByteBuffer getAllMeasurementSchema(Node header, int raftId, ByteBuffer planBinary)
+  public ByteBuffer getAllMeasurementSchema(RaftNode header, ByteBuffer planBinary)
       throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
@@ -346,8 +344,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public List<String> getUnregisteredTimeseries(
-      Node header, int raftId, List<String> timeseriesList) throws TException {
+  public List<String> getUnregisteredTimeseries(RaftNode header, List<String> timeseriesList)
+      throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getUnregisteredTimeseries(timeseriesList);
     } catch (CheckConsistencyException e) {
@@ -366,7 +364,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
 
   @Override
   public List<ByteBuffer> getGroupByResult(
-      Node header, int raftId, long executorId, long startTime, long endTime) throws TException {
+      RaftNode header, long executorId, long startTime, long endTime) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()
@@ -402,8 +400,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public int getPathCount(Node header, int raftId, List<String> pathsToQuery, int level)
-      throws TException {
+  public int getPathCount(RaftNode header, List<String> pathsToQuery, int level) throws TException {
     try {
       return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
     } catch (CheckConsistencyException | MetadataException e) {
@@ -412,13 +409,13 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public boolean onSnapshotApplied(Node header, int raftId, List<Integer> slots) {
+  public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) {
     return dataGroupMember.onSnapshotInstalled(slots);
   }
 
   @Override
   public ByteBuffer peekNextNotNullValue(
-      Node header, int raftId, long executorId, long startTime, long endTime) throws TException {
+      RaftNode header, long executorId, long startTime, long endTime) throws TException {
     try {
       return dataGroupMember
           .getLocalQueryExecutor()

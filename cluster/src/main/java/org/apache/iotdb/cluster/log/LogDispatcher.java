@@ -317,7 +317,6 @@ public class LogDispatcher {
     private AppendEntriesRequest prepareRequest(
         List<ByteBuffer> logList, List<SendLogRequest> currBatch, int firstIndex) {
       AppendEntriesRequest request = new AppendEntriesRequest();
-      request.setRaftId(member.getRaftGroupId());
 
       if (member.getHeader() != null) {
         request.setHeader(member.getHeader());

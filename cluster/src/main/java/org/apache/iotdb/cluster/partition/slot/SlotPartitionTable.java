@@ -289,8 +289,8 @@ public class SlotPartitionTable implements PartitionTable {
       List<PartitionGroup> retiredGroups = new ArrayList<>();
       for (int i = 0; i < localGroups.size(); i++) {
         PartitionGroup oldGroup = localGroups.get(i);
-        Node header = oldGroup.getHeader();
-        PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, oldGroup.getId()));
+        RaftNode header = oldGroup.getHeader();
+        PartitionGroup newGrp = getHeaderGroup(header);
         if (newGrp.contains(node) && newGrp.contains(thisNode)) {
           // this group changes but still contains the local node
           localGroups.set(i, newGrp);
@@ -337,7 +337,7 @@ public class SlotPartitionTable implements PartitionTable {
       RaftNode raftNode = new RaftNode(node, raftId);
       result.addNewGroup(getHeaderGroup(raftNode));
       for (Entry<Integer, PartitionGroup> entry : previousNodeMap.get(raftNode).entrySet()) {
-        RaftNode header = new RaftNode(entry.getValue().getHeader(), entry.getValue().getId());
+        RaftNode header = entry.getValue().getHeader();
         lostSlotsMap.computeIfAbsent(header, k -> new HashSet<>()).add(entry.getKey());
       }
     }
@@ -463,10 +463,6 @@ public class SlotPartitionTable implements PartitionTable {
     return previousNodeMap.get(raftNode);
   }
 
-  public List<Integer> getNodeSlots(Node header, int raftId) {
-    return getNodeSlots(new RaftNode(header, raftId));
-  }
-
   public List<Integer> getNodeSlots(RaftNode header) {
     return nodeSlotMap.get(header);
   }
@@ -519,11 +515,11 @@ public class SlotPartitionTable implements PartitionTable {
       List<Integer> removedGroupIdxs = new ArrayList<>();
       for (int i = 0; i < localGroups.size(); i++) {
         PartitionGroup oldGroup = localGroups.get(i);
-        Node header = oldGroup.getHeader();
-        if (header.equals(target)) {
+        RaftNode header = oldGroup.getHeader();
+        if (header.getNode().equals(target)) {
           removedGroupIdxs.add(i);
         } else {
-          PartitionGroup newGrp = getHeaderGroup(new RaftNode(header, oldGroup.getId()));
+          PartitionGroup newGrp = getHeaderGroup(header);
           localGroups.set(i, newGrp);
         }
       }

@@ -170,7 +170,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       synchronized (dataGroupMember.getSnapshotApplyLock()) {
         List<Integer> slots =
             ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-                .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+                .getNodeSlots(dataGroupMember.getHeader());
         for (Integer slot : slots) {
           T subSnapshot = snapshot.getSnapshot(slot);
           if (subSnapshot != null) {

@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -94,7 +94,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public RequestCommitIndexResponse requestCommitIndex(Node header, int raftId) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
 
     long commitIndex;
     long commitTerm;
@@ -118,7 +118,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
       throw new TException(new LeaderUnknownException(member.getAllNodes()));
     }
     try {
-      response = client.requestCommitIndex(header, raftId);
+      response = client.requestCommitIndex(header);
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
@@ -129,8 +129,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
-      throws TException {
+  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
     try {
       return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
@@ -139,7 +138,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath, int raftId) throws TException {
+  public void removeHardLink(String hardLinkPath) throws TException {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
     } catch (IOException e) {
@@ -148,7 +147,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header, int raftId) {
+  public boolean matchTerm(long index, long term, RaftNode header) {
     return member.matchLog(index, term);
   }
 

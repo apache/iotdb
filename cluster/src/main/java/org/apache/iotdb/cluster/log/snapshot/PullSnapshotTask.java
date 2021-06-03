@@ -183,7 +183,6 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
   public Void call() {
     request = new PullSnapshotRequest();
     request.setHeader(descriptor.getPreviousHolders().getHeader());
-    request.setRaftId(descriptor.getPreviousHolders().getId());
     request.setRequiredSlots(descriptor.getSlots());
     request.setRequireReadOnly(descriptor.isRequireReadOnly());
 

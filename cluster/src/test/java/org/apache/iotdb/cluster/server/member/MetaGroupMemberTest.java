@@ -221,7 +221,7 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+          public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
             return executeNonQueryPlan(plan);
           }
 
@@ -274,7 +274,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataGroupMember.setLogManager(
         new TestPartitionedLogManager(
-            null, partitionTable, group.getHeader(), TestSnapshot.Factory.INSTANCE));
+            null, partitionTable, group.getHeader().getNode(), TestSnapshot.Factory.INSTANCE));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLocalQueryExecutor(
@@ -339,13 +339,8 @@ public class MetaGroupMemberTest extends BaseMember {
           }
 
           @Override
-          public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
-            return getDataGroupMember(new RaftNode(header, raftId));
-          }
-
-          @Override
-          public DataGroupMember getLocalDataMember(Node header, int raftId) {
-            return getDataGroupMember(new RaftNode(header, raftId));
+          public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
+            return getDataGroupMember(header);
           }
 
           @Override
@@ -559,7 +554,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataClusterServer.setPartitionTable(partitionTable);
     for (PartitionGroup partitionGroup : partitionGroups) {
-      RaftNode header = new RaftNode(partitionGroup.getHeader(), partitionGroup.getId());
+      RaftNode header = partitionGroup.getHeader();
       DataGroupMember dataGroupMember = getDataGroupMember(partitionGroup, TestUtils.getNode(0));
       dataGroupMember.start();
       dataClusterServer.addDataGroupMember(dataGroupMember, header);

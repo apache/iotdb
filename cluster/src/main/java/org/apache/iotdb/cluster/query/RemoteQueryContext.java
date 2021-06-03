@@ -46,8 +46,8 @@ public class RemoteQueryContext extends QueryContext {
     super(jobId, debug);
   }
 
-  public void registerRemoteNode(Node node, Node header, int raftId) {
-    queriedNodesMap.computeIfAbsent(new RaftNode(header, raftId), n -> new HashSet<>()).add(node);
+  public void registerRemoteNode(Node node, RaftNode header) {
+    queriedNodesMap.computeIfAbsent(header, n -> new HashSet<>()).add(node);
   }
 
   public void registerLocalReader(long readerId) {

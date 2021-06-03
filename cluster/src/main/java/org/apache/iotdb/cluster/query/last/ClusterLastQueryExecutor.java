@@ -254,8 +254,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
               dataTypeOrdinals,
               context,
               queryPlan.getDeviceToMeasurements(),
-              group.getHeader(),
-              group.getId());
+              group.getHeader());
       return buffer;
     }
 
@@ -272,7 +271,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
                 context.getQueryId(),
                 queryPlan.getDeviceToMeasurements(),
                 group.getHeader(),
-                group.getId(),
                 syncDataClient.getNode()));
       }
     }

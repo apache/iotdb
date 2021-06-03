@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
@@ -218,11 +219,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void endQuery(
-      Node header,
-      int raftId,
-      Node requester,
-      long queryId,
-      AsyncMethodCallback<Void> resultHandler) {
+      RaftNode header, Node requester, long queryId, AsyncMethodCallback<Void> resultHandler) {
     try {
       dataGroupMember.getQueryManager().endQuery(requester, queryId);
       resultHandler.onComplete(null);
@@ -233,7 +230,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void fetchSingleSeries(
-      Node header, int raftId, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId));
     } catch (ReaderNotFoundException | IOException e) {
@@ -243,8 +240,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void fetchMultSeries(
-      Node header,
-      int raftId,
+      RaftNode header,
       long readerId,
       List<String> paths,
       AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
@@ -259,8 +255,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void fetchSingleSeriesByTimestamps(
-      Node header,
-      int raftId,
+      RaftNode header,
       long readerId,
       List<Long> timestamps,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -277,8 +272,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getAllPaths(
-      Node header,
-      int raftId,
+      RaftNode header,
       List<String> paths,
       boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -292,7 +286,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getAllDevices(
-      Node header, int raftId, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getAllDevices(path));
@@ -303,10 +297,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getDevices(
-      Node header,
-      int raftId,
-      ByteBuffer planBinary,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(dataGroupMember.getLocalQueryExecutor().getDevices(planBinary));
     } catch (CheckConsistencyException | IOException | MetadataException e) {
@@ -316,8 +307,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getNodeList(
-      Node header,
-      int raftId,
+      RaftNode header,
       String path,
       int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
@@ -331,7 +321,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getChildNodeInNextLevel(
-      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path));
@@ -342,7 +332,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getChildNodePathInNextLevel(
-      Node header, int raftId, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       resultHandler.onComplete(((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path));
@@ -353,10 +343,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getAllMeasurementSchema(
-      Node header,
-      int raftId,
-      ByteBuffer planBinary,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(
           dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary));
@@ -377,8 +364,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getUnregisteredTimeseries(
-      Node header,
-      int raftId,
+      RaftNode header,
       List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) {
     try {
@@ -400,8 +386,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getGroupByResult(
-      Node header,
-      int raftId,
+      RaftNode header,
       long executorId,
       long startTime,
       long endTime,
@@ -442,8 +427,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void getPathCount(
-      Node header,
-      int raftId,
+      RaftNode header,
       List<String> pathsToQuery,
       int level,
       AsyncMethodCallback<Integer> resultHandler) {
@@ -457,14 +441,13 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
 
   @Override
   public void onSnapshotApplied(
-      Node header, int raftId, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
+      RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(dataGroupMember.onSnapshotInstalled(slots));
   }
 
   @Override
   public void peekNextNotNullValue(
-      Node header,
-      int raftId,
+      RaftNode header,
       long executorId,
       long startTime,
       long endTime,

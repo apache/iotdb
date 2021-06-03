@@ -27,7 +27,6 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot.Factory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -81,10 +80,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   @SuppressWarnings("java:S1135") // ignore todos
   public void takeSnapshot() throws IOException {
     takeSnapshotForSpecificSlots(
-        ((SlotPartitionTable) partitionTable)
-            .getNodeSlots(
-                new RaftNode(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId())),
-        true);
+        ((SlotPartitionTable) partitionTable).getNodeSlots(dataGroupMember.getHeader()), true);
   }
 
   @Override
@@ -135,7 +131,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     if (dataGroupMember.getMetaGroupMember() != null) {
       slots =
           ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
-              .getNodeSlots(dataGroupMember.getHeader(), dataGroupMember.getRaftGroupId());
+              .getNodeSlots(dataGroupMember.getHeader());
     }
 
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {

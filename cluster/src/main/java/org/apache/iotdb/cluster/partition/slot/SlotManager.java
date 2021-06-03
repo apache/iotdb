@@ -47,6 +47,7 @@ public class SlotManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotManager.class);
   private static final long SLOT_WAIT_INTERVAL_MS = 10;
+  private static final long SLOT_WAIT_THRESHOLD_MS = 2000;
   private static final String SLOT_FILE_NAME = "SLOT_STATUS";
 
   private String slotFilePath;
@@ -93,7 +94,7 @@ public class SlotManager {
           }
         } else {
           long cost = System.currentTimeMillis() - startTime;
-          if (cost > 1000) {
+          if (cost > SLOT_WAIT_THRESHOLD_MS) {
             logger.info("Wait slot {} cost {}ms", slotId, cost);
           }
           return;
@@ -114,7 +115,7 @@ public class SlotManager {
       synchronized (slotDescriptor) {
         if (slotDescriptor.slotStatus == SlotStatus.PULLING) {
           try {
-            if ((System.currentTimeMillis() - startTime) >= 5000) {
+            if ((System.currentTimeMillis() - startTime) >= SLOT_WAIT_THRESHOLD_MS) {
               throw new StorageEngineException(
                   String.format("The status of slot %d is still PULLING after 5s.", slotId));
             }

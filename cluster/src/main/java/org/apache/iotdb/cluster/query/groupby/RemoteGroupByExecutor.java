@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
@@ -48,18 +49,16 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   private long executorId;
   private MetaGroupMember metaGroupMember;
   private Node source;
-  private Node header;
-  private int raftId;
+  private RaftNode header;
 
   private List<AggregateResult> results = new ArrayList<>();
 
   public RemoteGroupByExecutor(
-      long executorId, MetaGroupMember metaGroupMember, Node source, Node header, int raftId) {
+      long executorId, MetaGroupMember metaGroupMember, Node source, RaftNode header) {
     this.executorId = executorId;
     this.metaGroupMember = metaGroupMember;
     this.source = source;
     this.header = header;
-    this.raftId = raftId;
   }
 
   @Override
@@ -85,14 +84,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
                 .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffers =
             SyncClientAdaptor.getGroupByResult(
-                client, header, raftId, executorId, curStartTime, curEndTime);
+                client, header, executorId, curStartTime, curEndTime);
       } else {
         try (SyncDataClient syncDataClient =
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
           aggrBuffers =
-              syncDataClient.getGroupByResult(header, raftId, executorId, curStartTime, curEndTime);
+              syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
         }
       }
     } catch (TException e) {
@@ -129,15 +128,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
                 .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffer =
             SyncClientAdaptor.peekNextNotNullValue(
-                client, header, raftId, executorId, nextStartTime, nextEndTime);
+                client, header, executorId, nextStartTime, nextEndTime);
       } else {
         SyncDataClient syncDataClient =
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
         aggrBuffer =
-            syncDataClient.peekNextNotNullValue(
-                header, raftId, executorId, nextStartTime, nextEndTime);
+            syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
         ClientUtils.putBackSyncClient(syncDataClient);
       }
     } catch (TException e) {

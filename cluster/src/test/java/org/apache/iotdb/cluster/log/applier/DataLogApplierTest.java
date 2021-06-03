@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -110,7 +111,7 @@ public class DataLogApplierTest extends IoTDBTest {
         }
 
         @Override
-        public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
+        public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
           return testDataGroupMember;
         }
 
@@ -175,15 +176,14 @@ public class DataLogApplierTest extends IoTDBTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void getAllPaths(
-                  Node header,
-                  int raftId,
+                  RaftNode header,
                   List<String> path,
                   boolean withAlias,
                   AsyncMethodCallback<GetAllPathsResult> resultHandler) {
                 new Thread(
                         () ->
                             new DataAsyncService(testDataGroupMember)
-                                .getAllPaths(header, raftId, path, withAlias, resultHandler))
+                                .getAllPaths(header, path, withAlias, resultHandler))
                     .start();
               }
 

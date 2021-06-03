@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -170,7 +170,7 @@ abstract class BaseApplier implements LogApplier {
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    * @throws QueryProcessException
    */
-  private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup)
+  private void pullTimeseriesSchema(InsertPlan plan, RaftNode ignoredGroup)
       throws QueryProcessException {
     try {
       PartialPath path = plan.getDeviceId();

@@ -937,7 +937,7 @@ public class MetaGroupMember extends RaftMember {
       PartitionTable table = new SlotPartitionTable(thisNode);
       table.deserialize(partitionTable.serialize());
       table.addNode(newNode);
-      ((SlotPartitionTable) table).setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
+      table.setLastMetaLogIndex(logManager.getLastLogIndex() + 1);
 
       addNodeLog.setPartitionTable(table.serialize());
       addNodeLog.setCurrLogTerm(getTerm().get());
@@ -1658,8 +1658,7 @@ public class MetaGroupMember extends RaftMember {
     } else {
       status =
           StatusUtils.getStatus(
-              StatusUtils.EXECUTE_STATEMENT_ERROR,
-              MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+              StatusUtils.EXECUTE_STATEMENT_ERROR, MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
     }
     return status;
   }
@@ -1702,14 +1701,14 @@ public class MetaGroupMember extends RaftMember {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     RaftService.AsyncClient client =
         getClientProvider().getAsyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     Client client;
     try {
@@ -1746,7 +1745,7 @@ public class MetaGroupMember extends RaftMember {
   public List<PartitionGroup> routeIntervals(Intervals intervals, PartialPath path)
       throws StorageEngineException {
     List<PartitionGroup> partitionGroups = new ArrayList<>();
-    PartialPath storageGroupName = null;
+    PartialPath storageGroupName;
     try {
       storageGroupName = IoTDB.metaManager.getStorageGroupPath(path);
     } catch (MetadataException e) {
@@ -2288,17 +2287,8 @@ public class MetaGroupMember extends RaftMember {
    * @param request the toString() of this parameter should explain what the request is and it is
    *     only used in logs for tracing
    */
-  public DataGroupMember getLocalDataMember(Node header, int raftId, Object request) {
-    return dataClusterServer.getDataMember(new RaftNode(header, raftId), null, request);
-  }
-
-  /**
-   * Get a local DataGroupMember that is in the group of "header" for an internal request.
-   *
-   * @param node the header of the group which the local node is in
-   */
-  public DataGroupMember getLocalDataMember(Node node, int raftId) {
-    return dataClusterServer.getDataMember(new RaftNode(node, raftId), null, "Internal call");
+  public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
+    return dataClusterServer.getDataMember(header, null, request);
   }
 
   /**

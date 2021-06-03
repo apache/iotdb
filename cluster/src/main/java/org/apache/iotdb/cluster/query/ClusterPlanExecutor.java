@@ -252,16 +252,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
           client.setTimeout(RaftServer.getReadOperationTimeoutMS());
           count =
               SyncClientAdaptor.getPathCount(
-                  client, partitionGroup.getHeader(), partitionGroup.getId(), pathsToQuery, level);
+                  client, partitionGroup.getHeader(), pathsToQuery, level);
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
-            count =
-                syncDataClient.getPathCount(
-                    partitionGroup.getHeader(), partitionGroup.getId(), pathsToQuery, level);
+            count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
           }
         }
         logger.debug(
@@ -330,8 +328,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private List<PartialPath> getLocalNodesList(
       PartitionGroup group, PartialPath schemaPattern, int level)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header, group.getId());
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getNodesList(
@@ -339,7 +336,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
           level,
           new SlotSgFilter(
               ((SlotPartitionTable) metaGroupMember.getPartitionTable())
-                  .getNodeSlots(header, group.getId())));
+                  .getNodeSlots(group.getHeader())));
     } catch (MetadataException e) {
       logger.error(
           "Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
@@ -359,15 +356,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           paths =
               SyncClientAdaptor.getNodeList(
-                  client, group.getHeader(), group.getId(), schemaPattern.getFullPath(), level);
+                  client, group.getHeader(), schemaPattern.getFullPath(), level);
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             paths =
-                syncDataClient.getNodeList(
-                    group.getHeader(), group.getId(), schemaPattern.getFullPath(), level);
+                syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
           }
         }
         if (paths != null) {
@@ -446,15 +442,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildrenNodes =
               SyncClientAdaptor.getChildNodeInNextLevel(
-                  client, group.getHeader(), group.getId(), path.getFullPath());
+                  client, group.getHeader(), path.getFullPath());
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             nextChildrenNodes =
-                syncDataClient.getChildNodeInNextLevel(
-                    group.getHeader(), group.getId(), path.getFullPath());
+                syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
           }
         }
         if (nextChildrenNodes != null) {
@@ -535,8 +530,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private Set<String> getLocalNextChildren(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header, group.getId());
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodePathInNextLevel(path);
@@ -556,16 +550,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   .getClientProvider()
                   .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           nextChildren =
-              SyncClientAdaptor.getNextChildren(
-                  client, group.getHeader(), group.getId(), path.getFullPath());
+              SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             nextChildren =
-                syncDataClient.getChildNodePathInNextLevel(
-                    group.getHeader(), group.getId(), path.getFullPath());
+                syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
           }
         }
         if (nextChildren != null) {

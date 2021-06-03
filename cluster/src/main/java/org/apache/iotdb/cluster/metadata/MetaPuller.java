@@ -134,10 +134,7 @@ public class MetaPuller {
       // the node is in the target group, synchronize with leader should be enough
       try {
         metaGroupMember
-            .getLocalDataMember(
-                partitionGroup.getHeader(),
-                partitionGroup.getId(),
-                "Pull timeseries of " + prefixPaths)
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
             .syncLeader(null);
       } catch (CheckConsistencyException e) {
         logger.warn("Failed to check consistency.", e);
@@ -160,7 +157,6 @@ public class MetaPuller {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setRaftId(partitionGroup.getId());
     pullSchemaRequest.setPrefixPaths(
         prefixPaths.stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
 

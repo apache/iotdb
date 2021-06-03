@@ -79,11 +79,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         sourceInfo
             .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
             .fetchSingleSeriesByTimestamps(
-                sourceInfo.getHeader(),
-                sourceInfo.getRaftId(),
-                sourceInfo.getReaderId(),
-                timestampList,
-                handler);
+                sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList, handler);
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException e) {
         // try other node
@@ -110,7 +106,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
     try {
       curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeriesByTimestamps(
-          sourceInfo.getHeader(), sourceInfo.getRaftId(), sourceInfo.getReaderId(), timestampList);
+          sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList);
     } catch (TException e) {
       // try other node
       if (!sourceInfo.switchNode(true, timestamps[0])) {

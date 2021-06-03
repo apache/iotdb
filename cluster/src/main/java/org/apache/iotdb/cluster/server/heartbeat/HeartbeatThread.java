@@ -63,7 +63,6 @@ public class HeartbeatThread implements Runnable {
   HeartbeatThread(RaftMember localMember) {
     this.localMember = localMember;
     memberName = localMember.getName();
-    request.setRaftId(localMember.getRaftGroupId());
   }
 
   @Override
@@ -212,7 +211,6 @@ public class HeartbeatThread implements Runnable {
     req.setRequireIdentifier(request.requireIdentifier);
     req.setTerm(request.term);
     req.setLeader(localMember.getThisNode());
-    req.setRaftId(localMember.getRaftGroupId());
     if (request.isSetHeader()) {
       req.setHeader(request.header);
     }

@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -106,13 +107,13 @@ public class SyncClientAdaptor {
   }
 
   public static Boolean matchTerm(
-      AsyncClient client, Node target, long prevLogIndex, long prevLogTerm, Node header, int raftId)
+      AsyncClient client, Node target, long prevLogIndex, long prevLogTerm, RaftNode header)
       throws TException, InterruptedException {
     try {
       AtomicReference<Boolean> resultRef = new AtomicReference<>(null);
       GenericHandler<Boolean> matchTermHandler = new GenericHandler<>(target, resultRef);
 
-      client.matchTerm(prevLogIndex, prevLogTerm, header, raftId, matchTermHandler);
+      client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
       synchronized (resultRef) {
         if (resultRef.get() == null) {
           resultRef.wait(RaftServer.getConnectionTimeoutInMS());
@@ -165,14 +166,14 @@ public class SyncClientAdaptor {
   }
 
   public static List<String> getNodeList(
-      AsyncDataClient client, Node header, int raftId, String schemaPattern, int level)
+      AsyncDataClient client, RaftNode header, String schemaPattern, int level)
       throws TException, InterruptedException {
     GetNodesListHandler handler = new GetNodesListHandler();
     AtomicReference<List<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
 
-    client.getNodeList(header, raftId, schemaPattern, level, handler);
+    client.getNodeList(header, schemaPattern, level, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
@@ -182,14 +183,14 @@ public class SyncClientAdaptor {
   }
 
   public static Set<String> getChildNodeInNextLevel(
-      AsyncDataClient client, Node header, int raftId, String path)
+      AsyncDataClient client, RaftNode header, String path)
       throws TException, InterruptedException {
     GetChildNodeNextLevelHandler handler = new GetChildNodeNextLevelHandler();
     AtomicReference<Set<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
 
-    client.getChildNodeInNextLevel(header, raftId, path, handler);
+    client.getChildNodeInNextLevel(header, path, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
@@ -198,15 +199,14 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static Set<String> getNextChildren(
-      AsyncDataClient client, Node header, int raftId, String path)
+  public static Set<String> getNextChildren(AsyncDataClient client, RaftNode header, String path)
       throws TException, InterruptedException {
     GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
     AtomicReference<Set<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
 
-    client.getChildNodePathInNextLevel(header, raftId, path, handler);
+    client.getChildNodePathInNextLevel(header, path, handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
@@ -216,7 +216,7 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer getAllMeasurementSchema(
-      AsyncDataClient client, Node header, int raftId, ShowTimeSeriesPlan plan)
+      AsyncDataClient client, RaftNode header, ShowTimeSeriesPlan plan)
       throws IOException, InterruptedException, TException {
     GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
@@ -227,7 +227,7 @@ public class SyncClientAdaptor {
     plan.serialize(dataOutputStream);
 
     client.getAllMeasurementSchema(
-        header, raftId, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
+        header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (response) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
@@ -340,48 +340,47 @@ public class SyncClientAdaptor {
   }
 
   public static List<String> getUnregisteredMeasurements(
-      AsyncDataClient client, Node header, int raftId, List<String> seriesPaths)
+      AsyncDataClient client, RaftNode header, List<String> seriesPaths)
       throws TException, InterruptedException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getUnregisteredTimeseries(header, raftId, seriesPaths, handler);
+    client.getUnregisteredTimeseries(header, seriesPaths, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static GetAllPathsResult getAllPaths(
-      AsyncDataClient client, Node header, int raftId, List<String> pathsToQuery, boolean withAlias)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws InterruptedException, TException {
     AtomicReference<GetAllPathsResult> remoteResult = new AtomicReference<>();
     GenericHandler<GetAllPathsResult> handler =
         new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getAllPaths(header, raftId, pathsToQuery, withAlias, handler);
+    client.getAllPaths(header, pathsToQuery, withAlias, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static Integer getPathCount(
-      AsyncDataClient client, Node header, int raftId, List<String> pathsToQuery, int level)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery, int level)
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
     GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getPathCount(header, raftId, pathsToQuery, level, handler);
+    client.getPathCount(header, pathsToQuery, level, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static Set<String> getAllDevices(
-      AsyncDataClient client, Node header, int raftId, List<String> pathsToQuery)
+      AsyncDataClient client, RaftNode header, List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
 
-    client.getAllDevices(header, raftId, pathsToQuery, handler);
+    client.getAllDevices(header, pathsToQuery, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
-  public static ByteBuffer getDevices(
-      AsyncDataClient client, Node header, int raftId, ShowDevicesPlan plan)
+  public static ByteBuffer getDevices(AsyncDataClient client, RaftNode header, ShowDevicesPlan plan)
       throws InterruptedException, TException, IOException {
     GetDevicesHandler handler = new GetDevicesHandler();
     AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
@@ -391,8 +390,7 @@ public class SyncClientAdaptor {
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     plan.serialize(dataOutputStream);
 
-    client.getDevices(
-        header, raftId, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
+    client.getDevices(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()), handler);
     synchronized (handler) {
       if (response.get() == null) {
         response.wait(RaftServer.getReadOperationTimeoutMS());
@@ -420,11 +418,10 @@ public class SyncClientAdaptor {
   }
 
   public static TSStatus executeNonQuery(
-      AsyncClient client, PhysicalPlan plan, Node header, Node receiver, int raftId)
+      AsyncClient client, PhysicalPlan plan, RaftNode header, Node receiver)
       throws IOException, TException, InterruptedException {
     AtomicReference<TSStatus> status = new AtomicReference<>();
     ExecutNonQueryReq req = new ExecutNonQueryReq();
-    req.setRaftId(raftId);
     req.planBytes = ByteBuffer.wrap(PlanSerializer.getInstance().serialize(plan));
     if (header != null) {
       req.setHeader(header);
@@ -440,42 +437,32 @@ public class SyncClientAdaptor {
   }
 
   public static ByteBuffer readFile(
-      AsyncDataClient client, String remotePath, long offset, int fetchSize, int raftId)
+      AsyncDataClient client, String remotePath, long offset, int fetchSize)
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
 
-    client.readFile(remotePath, offset, fetchSize, raftId, handler);
+    client.readFile(remotePath, offset, fetchSize, handler);
     return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 
   public static List<ByteBuffer> getGroupByResult(
-      AsyncDataClient client,
-      Node header,
-      int raftId,
-      long executorId,
-      long curStartTime,
-      long curEndTime)
+      AsyncDataClient client, RaftNode header, long executorId, long curStartTime, long curEndTime)
       throws InterruptedException, TException {
     AtomicReference<List<ByteBuffer>> fetchResult = new AtomicReference<>();
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
-    client.getGroupByResult(header, raftId, executorId, curStartTime, curEndTime, handler);
+    client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
   public static ByteBuffer peekNextNotNullValue(
-      AsyncDataClient client,
-      Node header,
-      int raftId,
-      long executorId,
-      long curStartTime,
-      long curEndTime)
+      AsyncDataClient client, RaftNode header, long executorId, long curStartTime, long curEndTime)
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), fetchResult);
 
-    client.peekNextNotNullValue(header, raftId, executorId, curStartTime, curEndTime, handler);
+    client.peekNextNotNullValue(header, executorId, curStartTime, curEndTime, handler);
     return handler.getResult(RaftServer.getReadOperationTimeoutMS());
   }
 
@@ -503,8 +490,7 @@ public class SyncClientAdaptor {
       List<Integer> dataTypeOrdinals,
       QueryContext context,
       Map<String, Set<String>> deviceMeasurements,
-      Node header,
-      int raftId)
+      RaftNode header)
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
@@ -515,7 +501,6 @@ public class SyncClientAdaptor {
             context.getQueryId(),
             deviceMeasurements,
             header,
-            raftId,
             client.getNode());
 
     client.last(request, handler);
@@ -523,12 +508,12 @@ public class SyncClientAdaptor {
   }
 
   public static boolean onSnapshotApplied(
-      AsyncDataClient client, Node header, int raftId, List<Integer> slots)
+      AsyncDataClient client, RaftNode header, List<Integer> slots)
       throws TException, InterruptedException {
     AtomicReference<Boolean> result = new AtomicReference<>();
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
 
-    client.onSnapshotApplied(header, raftId, slots, handler);
+    client.onSnapshotApplied(header, slots, handler);
     return handler.getResult(RaftServer.getWriteOperationTimeoutMS());
   }
 }

@@ -177,7 +177,13 @@ public class DataGroupMember extends RaftMember {
       Node thisNode,
       MetaGroupMember metaGroupMember) {
     super(
-        "Data(" + nodes.getHeader().getInternalIp() + ":" + nodes.getHeader().getMetaPort() + ")",
+        "Data("
+            + nodes.getHeader().getNode().getInternalIp()
+            + ":"
+            + nodes.getHeader().getNode().getMetaPort()
+            + ", raftId="
+            + nodes.getId()
+            + ")",
         new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
@@ -269,8 +275,8 @@ public class DataGroupMember extends RaftMember {
    * also the identifier of this data group.
    */
   @Override
-  public Node getHeader() {
-    return allNodes.get(0);
+  public RaftNode getHeader() {
+    return allNodes.getHeader();
   }
 
   public ClusterQueryManager getQueryManager() {
@@ -344,7 +350,7 @@ public class DataGroupMember extends RaftMember {
     Set<Integer> lostSlots =
         ((SlotNodeAdditionResult) result)
             .getLostSlots()
-            .getOrDefault(new RaftNode(getHeader(), getRaftGroupId()), Collections.emptySet());
+            .getOrDefault(getHeader(), Collections.emptySet());
     for (Integer lostSlot : lostSlots) {
       slotManager.setToSending(lostSlot, false);
     }
@@ -520,7 +526,8 @@ public class DataGroupMember extends RaftMember {
         iterator.remove();
       } else {
         // mark the slot as pulling to control reads and writes of the pulling slot
-        slotManager.setToPulling(nodeSlot, descriptor.getPreviousHolders().getHeader(), false);
+        slotManager.setToPulling(
+            nodeSlot, descriptor.getPreviousHolders().getHeader().getNode(), false);
       }
     }
     slotManager.save();
@@ -581,7 +588,7 @@ public class DataGroupMember extends RaftMember {
         + File.separator
         + "raft"
         + File.separator
-        + getHeader().nodeIdentifier
+        + getHeader().getNode().nodeIdentifier
         + File.separator
         + getRaftGroupId()
         + File.separator;
@@ -805,10 +812,7 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
-        PartitionGroup newGroup =
-            metaGroupMember
-                .getPartitionTable()
-                .getHeaderGroup(new RaftNode(getHeader(), getRaftGroupId()));
+        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
         if (newGroup == null) {
           return;
         }
@@ -852,9 +856,7 @@ public class DataGroupMember extends RaftMember {
 
   public void pullSlots(NodeRemovalResult removalResult) {
     List<Integer> slotsToPull =
-        ((SlotNodeRemovalResult) removalResult)
-            .getNewSlotOwners()
-            .get(new RaftNode(getHeader(), getRaftGroupId()));
+        ((SlotNodeRemovalResult) removalResult).getNewSlotOwners().get(getHeader());
     if (slotsToPull != null) {
       // pull the slots that should be taken over
       PullSnapshotTaskDescriptor taskDescriptor =
@@ -895,9 +897,8 @@ public class DataGroupMember extends RaftMember {
         logManager.getCommitLogIndex(),
         logManager.getCommitLogTerm(),
         getHeader(),
-        getRaftGroupId(),
         readOnly,
-        NodeStatusManager.getINSTANCE().getLastResponseLatency(getHeader()),
+        NodeStatusManager.getINSTANCE().getLastResponseLatency(getHeader().getNode()),
         lastHeartbeatReceivedTime,
         prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());
@@ -957,11 +958,11 @@ public class DataGroupMember extends RaftMember {
    */
   public Map<PartitionGroup, Set<Integer>> getPreviousHolderSlotMap() {
     Map<PartitionGroup, Set<Integer>> holderSlotMap = new HashMap<>();
-    RaftNode raftNode = new RaftNode(getHeader(), getRaftGroupId());
+    RaftNode header = getHeader();
     Map<RaftNode, Map<Integer, PartitionGroup>> previousHolderMap =
         ((SlotPartitionTable) getMetaGroupMember().getPartitionTable()).getPreviousNodeMap();
-    if (previousHolderMap.containsKey(raftNode)) {
-      for (Entry<Integer, PartitionGroup> entry : previousHolderMap.get(raftNode).entrySet()) {
+    if (previousHolderMap.containsKey(header)) {
+      for (Entry<Integer, PartitionGroup> entry : previousHolderMap.get(header).entrySet()) {
         int slot = entry.getKey();
         PartitionGroup holder = entry.getValue();
         if (slotManager.checkSlotInDataMigrationStatus(slot)) {

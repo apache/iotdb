@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -83,6 +84,10 @@ public class TestUtils {
     node.setClientPort(IoTDBDescriptor.getInstance().getConfig().getRpcPort());
     node.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     return node;
+  }
+
+  public static RaftNode getRaftNode(int nodeNum, int raftId) {
+    return new RaftNode(getNode(nodeNum), raftId);
   }
 
   public static List<Log> prepareNodeLogs(int logNum) {

@@ -152,7 +152,7 @@ public class StoppedMemberManager {
     }
     DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
     member.setReadOnly();
-    removedMemberMap.put(new RaftNode(partitionGroup.getHeader(), raftId), member);
+    removedMemberMap.put(partitionGroup.getHeader(), member);
   }
 
   private void parseResumed(String[] split) {

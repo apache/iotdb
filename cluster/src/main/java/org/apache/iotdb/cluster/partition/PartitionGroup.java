@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.partition;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 
 import java.io.DataOutputStream;
@@ -90,8 +91,8 @@ public class PartitionGroup extends ArrayList<Node> {
     return Objects.hash(id, super.hashCode());
   }
 
-  public Node getHeader() {
-    return get(0);
+  public RaftNode getHeader() {
+    return new RaftNode(get(0), getId());
   }
 
   public int getId() {

@@ -215,8 +215,8 @@ public class MetaClusterServer extends RaftServer
 
   @Override
   public void requestCommitIndex(
-      Node header, int raftId, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
-    asyncService.requestCommitIndex(header, raftId, resultHandler);
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+    asyncService.requestCommitIndex(header, resultHandler);
   }
 
   @Override
@@ -231,12 +231,8 @@ public class MetaClusterServer extends RaftServer
 
   @Override
   public void readFile(
-      String filePath,
-      long offset,
-      int length,
-      int raftId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
-    asyncService.readFile(filePath, offset, length, raftId, resultHandler);
+      String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    asyncService.readFile(filePath, offset, length, resultHandler);
   }
 
   @Override
@@ -266,8 +262,8 @@ public class MetaClusterServer extends RaftServer
 
   @Override
   public void matchTerm(
-      long index, long term, Node header, int raftId, AsyncMethodCallback<Boolean> resultHandler) {
-    asyncService.matchTerm(index, term, header, raftId, resultHandler);
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
+    asyncService.matchTerm(index, term, header, resultHandler);
   }
 
   @Override
@@ -336,30 +332,28 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public RequestCommitIndexResponse requestCommitIndex(Node header, int raftId) throws TException {
-    return syncService.requestCommitIndex(header, raftId);
+  public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
+    return syncService.requestCommitIndex(header);
   }
 
   @Override
-  public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
-      throws TException {
-    return syncService.readFile(filePath, offset, length, raftId);
+  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+    return syncService.readFile(filePath, offset, length);
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header, int raftId) {
-    return syncService.matchTerm(index, term, header, raftId);
+  public boolean matchTerm(long index, long term, RaftNode header) {
+    return syncService.matchTerm(index, term, header);
   }
 
   @Override
-  public void removeHardLink(String hardLinkPath, int raftId) throws TException {
-    syncService.removeHardLink(hardLinkPath, raftId);
+  public void removeHardLink(String hardLinkPath) throws TException {
+    syncService.removeHardLink(hardLinkPath);
   }
 
   @Override
-  public void removeHardLink(
-      String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
-    asyncService.removeHardLink(hardLinkPath, raftId, resultHandler);
+  public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.removeHardLink(hardLinkPath, resultHandler);
   }
 
   @Override

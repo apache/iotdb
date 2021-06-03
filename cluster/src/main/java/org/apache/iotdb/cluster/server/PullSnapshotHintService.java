@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
 import org.apache.thrift.TException;
@@ -134,8 +135,7 @@ public class PullSnapshotHintService {
   private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
       throws TException, InterruptedException {
     AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
-    return SyncClientAdaptor.onSnapshotApplied(
-        asyncDataClient, hint.getHeader(), hint.getRaftId(), hint.slots);
+    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.getHeader(), hint.slots);
   }
 
   private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
@@ -143,7 +143,7 @@ public class PullSnapshotHintService {
       if (syncDataClient == null) {
         return false;
       }
-      return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.getRaftId(), hint.slots);
+      return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
     }
   }
 
@@ -156,7 +156,7 @@ public class PullSnapshotHintService {
 
     private List<Integer> slots;
 
-    public Node getHeader() {
+    public RaftNode getHeader() {
       return partitionGroup.getHeader();
     }
 

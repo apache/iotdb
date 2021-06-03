@@ -166,7 +166,7 @@ public class DataGroupMemberTest extends BaseMember {
     return new TestPartitionedLogManager(
         new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(),
-        partitionGroup.getHeader(),
+        partitionGroup.getHeader().getNode(),
         FileSnapshot.Factory.INSTANCE) {
       @Override
       public Snapshot getSnapshot(long minIndex) {
@@ -223,24 +223,16 @@ public class DataGroupMemberTest extends BaseMember {
                 @Override
                 public void pullMeasurementSchema(
                     PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                  dataGroupMemberMap
-                      .get(new RaftNode(request.getHeader(), request.getRaftId()))
-                      .setCharacter(NodeCharacter.LEADER);
-                  new DataAsyncService(
-                          dataGroupMemberMap.get(
-                              new RaftNode(request.getHeader(), request.getRaftId())))
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                       .pullMeasurementSchema(request, resultHandler);
                 }
 
                 @Override
                 public void pullTimeSeriesSchema(
                     PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
-                  dataGroupMemberMap
-                      .get(new RaftNode(request.getHeader(), request.getRaftId()))
-                      .setCharacter(NodeCharacter.LEADER);
-                  new DataAsyncService(
-                          dataGroupMemberMap.get(
-                              new RaftNode(request.getHeader(), request.getRaftId())))
+                  dataGroupMemberMap.get(request.getHeader()).setCharacter(NodeCharacter.LEADER);
+                  new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                       .pullTimeSeriesSchema(request, resultHandler);
                 }
 
@@ -265,8 +257,7 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void requestCommitIndex(
-                    Node header,
-                    int raftId,
+                    RaftNode header,
                     AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
                   new Thread(
                           () -> {
@@ -281,7 +272,7 @@ public class DataGroupMemberTest extends BaseMember {
 
                 @Override
                 public void removeHardLink(
-                    String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
+                    String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
                   new Thread(
                           () -> {
                             try {
@@ -661,8 +652,7 @@ public class DataGroupMemberTest extends BaseMember {
 
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
-      request.setHeader(TestUtils.getNode(0));
-      request.setRaftId(0);
+      request.setHeader(TestUtils.getRaftNode(0, raftId));
       AtomicReference<List<TimeseriesSchema>> result = new AtomicReference<>();
       PullTimeseriesSchemaHandler handler =
           new PullTimeseriesSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
@@ -701,7 +691,7 @@ public class DataGroupMemberTest extends BaseMember {
 
       PullSchemaRequest request = new PullSchemaRequest();
       request.setPrefixPaths(Collections.singletonList(TestUtils.getTestSg(0)));
-      request.setHeader(TestUtils.getNode(0));
+      request.setHeader(TestUtils.getRaftNode(0, raftId));
       AtomicReference<List<IMeasurementSchema>> result = new AtomicReference<>();
       PullMeasurementSchemaHandler handler =
           new PullMeasurementSchemaHandler(TestUtils.getNode(1), request.getPrefixPaths(), result);
@@ -773,7 +763,7 @@ public class DataGroupMemberTest extends BaseMember {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeries(TestUtils.getNode(0), raftId, readerId, dataHandler);
+        .fetchSingleSeries(TestUtils.getRaftNode(0, raftId), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 10; i++) {
@@ -786,8 +776,7 @@ public class DataGroupMemberTest extends BaseMember {
 
     new DataAsyncService(dataGroupMember)
         .endQuery(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             TestUtils.getNode(1),
             0,
             new GenericHandler<>(TestUtils.getNode(0), null));
@@ -841,7 +830,7 @@ public class DataGroupMemberTest extends BaseMember {
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0), dataResult);
     new DataAsyncService(dataGroupMember)
-        .fetchSingleSeries(TestUtils.getNode(0), raftId, readerId, dataHandler);
+        .fetchSingleSeries(TestUtils.getRaftNode(0, raftId), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 9; i++) {
@@ -854,8 +843,7 @@ public class DataGroupMemberTest extends BaseMember {
 
     new DataAsyncService(dataGroupMember)
         .endQuery(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             TestUtils.getNode(1),
             0,
             new GenericHandler<>(TestUtils.getNode(0), null));
@@ -915,7 +903,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
     new DataAsyncService(dataGroupMember)
         .fetchSingleSeriesByTimestamps(
-            TestUtils.getNode(0), raftId, readerId, timestamps, dataHandler);
+            TestUtils.getRaftNode(0, raftId), readerId, timestamps, dataHandler);
     Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
     for (int i = 5; i < 10; i++) {
       assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
@@ -923,8 +911,7 @@ public class DataGroupMemberTest extends BaseMember {
 
     new DataAsyncService(dataGroupMember)
         .endQuery(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             TestUtils.getNode(1),
             0,
             new GenericHandler<>(TestUtils.getNode(0), null));
@@ -983,7 +970,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
     new DataAsyncService(dataGroupMember)
         .fetchSingleSeriesByTimestamps(
-            TestUtils.getNode(0), raftId, readerId, timestamps, dataHandler);
+            TestUtils.getRaftNode(0, raftId), readerId, timestamps, dataHandler);
     Object[] values = SerializeUtils.deserializeObjects(dataResult.get());
     for (int i = 5; i < 9; i++) {
       assertEquals(i * 1.0, (Double) values[i - 5], 0.00001);
@@ -991,8 +978,7 @@ public class DataGroupMemberTest extends BaseMember {
 
     new DataAsyncService(dataGroupMember)
         .endQuery(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             TestUtils.getNode(1),
             0,
             new GenericHandler<>(TestUtils.getNode(0), null));
@@ -1006,7 +992,8 @@ public class DataGroupMemberTest extends BaseMember {
     GenericHandler<GetAllPathsResult> handler =
         new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
-        .getAllPaths(TestUtils.getNode(0), raftId, Collections.singletonList(path), false, handler);
+        .getAllPaths(
+            TestUtils.getRaftNode(0, raftId), Collections.singletonList(path), false, handler);
     List<String> result = pathResult.get().paths;
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
@@ -1022,8 +1009,7 @@ public class DataGroupMemberTest extends BaseMember {
     timestamps.add((long) 0);
     new DataAsyncService(dataGroupMember)
         .fetchSingleSeriesByTimestamps(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             0,
             timestamps,
             new AsyncMethodCallback<ByteBuffer>() {
@@ -1041,8 +1027,7 @@ public class DataGroupMemberTest extends BaseMember {
 
     new DataAsyncService(dataGroupMember)
         .fetchSingleSeries(
-            TestUtils.getNode(0),
-            raftId,
+            TestUtils.getRaftNode(0, raftId),
             0,
             new AsyncMethodCallback<ByteBuffer>() {
               @Override
@@ -1193,7 +1178,7 @@ public class DataGroupMemberTest extends BaseMember {
       List<AggregateResult> aggregateResults;
       Object[] answers;
       // get an executor from a node holding this timeseries
-      request.setHeader(TestUtils.getNode(10));
+      request.setHeader(TestUtils.getRaftNode(10, raftId));
       dataGroupMember = getDataGroupMember(TestUtils.getNode(10));
       try {
         resultRef = new AtomicReference<>();
@@ -1206,7 +1191,8 @@ public class DataGroupMemberTest extends BaseMember {
         aggrResultRef = new AtomicReference<>();
         aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
         new DataAsyncService(dataGroupMember)
-            .getGroupByResult(TestUtils.getNode(10), raftId, executorId, 0, 20, aggrResultHandler);
+            .getGroupByResult(
+                TestUtils.getRaftNode(10, raftId), executorId, 0, 20, aggrResultHandler);
 
         byteBuffers = aggrResultRef.get();
         assertNotNull(byteBuffers);
@@ -1221,7 +1207,7 @@ public class DataGroupMemberTest extends BaseMember {
       }
 
       // get an executor from a node not holding this timeseries
-      request.setHeader(TestUtils.getNode(30));
+      request.setHeader(TestUtils.getRaftNode(30, raftId));
       dataGroupMember = getDataGroupMember(TestUtils.getNode(30));
       try {
         resultRef = new AtomicReference<>();
@@ -1235,7 +1221,8 @@ public class DataGroupMemberTest extends BaseMember {
         aggrResultRef = new AtomicReference<>();
         aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
         new DataAsyncService(dataGroupMember)
-            .getGroupByResult(TestUtils.getNode(30), raftId, executorId, 0, 20, aggrResultHandler);
+            .getGroupByResult(
+                TestUtils.getRaftNode(30, raftId), executorId, 0, 20, aggrResultHandler);
 
         byteBuffers = aggrResultRef.get();
         assertNull(byteBuffers);

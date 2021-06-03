@@ -677,6 +677,9 @@ public abstract class RaftLogManager {
    */
   void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
+      // For add/remove logs in data groups, this log will be applied immediately when it is
+      // appended to the raft log.
+      // In this case, it will apply a log that has been applied.
       if (entry.isApplied()) {
         continue;
       }

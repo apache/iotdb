@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -886,7 +887,7 @@ public class CMManager extends MManager {
     DataGroupMember dataMember =
         metaGroupMember
             .getDataClusterServer()
-            .getDataMember(partitionGroup.getHeader(), partitionGroup.getId(), null, null);
+            .getDataMember(partitionGroup.getHeader(), null, null);
     return dataMember.getLocalQueryExecutor().getUnregisteredTimeseries(seriesList);
   }
 
@@ -902,15 +903,14 @@ public class CMManager extends MManager {
                   .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
           result =
               SyncClientAdaptor.getUnregisteredMeasurements(
-                  client, partitionGroup.getHeader(), partitionGroup.getId(), seriesList);
+                  client, partitionGroup.getHeader(), seriesList);
         } else {
           try (SyncDataClient syncDataClient =
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
             result =
-                syncDataClient.getUnregisteredTimeseries(
-                    partitionGroup.getHeader(), partitionGroup.getId(), seriesList);
+                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
           }
         }
         if (result != null) {
@@ -947,7 +947,7 @@ public class CMManager extends MManager {
    *     the same groups. If this method is called by an applier, it holds the lock of LogManager,
    *     while the pulling thread may want this lock too, resulting in a deadlock.
    */
-  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
+  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, RaftNode ignoredGroup)
       throws MetadataException {
     logger.debug(
         "{}: Pulling timeseries schemas of {}, ignored group {}",
@@ -996,10 +996,7 @@ public class CMManager extends MManager {
       // the node is in the target group, synchronize with leader should be enough
       try {
         metaGroupMember
-            .getLocalDataMember(
-                partitionGroup.getHeader(),
-                partitionGroup.getId(),
-                "Pull timeseries of " + prefixPaths)
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
             .syncLeader(null);
       } catch (CheckConsistencyException e) {
         logger.warn("Failed to check consistency.", e);
@@ -1010,7 +1007,6 @@ public class CMManager extends MManager {
     // pull schemas from a remote node
     PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
     pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setRaftId(partitionGroup.getId());
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     // decide the node access order with the help of QueryCoordinator
@@ -1291,8 +1287,7 @@ public class CMManager extends MManager {
     for (Node node : coordinatedNodes) {
       try {
         List<PartialPath> paths =
-            getMatchedPaths(
-                node, partitionGroup.getHeader(), partitionGroup.getId(), pathsToQuery, withAlias);
+            getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery, withAlias);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: get matched paths of {} and other {} paths from {} in {}, result {}",
@@ -1320,7 +1315,7 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(
-      Node node, Node header, int raftId, List<String> pathsToQuery, boolean withAlias)
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1328,14 +1323,14 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      result = SyncClientAdaptor.getAllPaths(client, header, raftId, pathsToQuery, withAlias);
+      result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
     } else {
       try (SyncDataClient syncDataClient =
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
-        result = syncDataClient.getAllPaths(header, raftId, pathsToQuery, withAlias);
+        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
       }
     }
 
@@ -1421,9 +1416,7 @@ public class CMManager extends MManager {
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        Set<String> paths =
-            getMatchedDevices(
-                node, partitionGroup.getHeader(), partitionGroup.getId(), pathsToQuery);
+        Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
         logger.debug(
             "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
@@ -1450,8 +1443,7 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(
-      Node node, Node header, int raftId, List<String> pathsToQuery)
+  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1459,14 +1451,14 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllDevices(client, header, raftId, pathsToQuery);
+      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
     } else {
       try (SyncDataClient syncDataClient =
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
-        paths = syncDataClient.getAllDevices(header, raftId, pathsToQuery);
+        paths = syncDataClient.getAllDevices(header, pathsToQuery);
       }
     }
     return paths;
@@ -1909,8 +1901,7 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      resultBinary =
-          SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), group.getId(), plan);
+      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(), plan);
     } else {
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
           DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -1921,9 +1912,7 @@ public class CMManager extends MManager {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getAllMeasurementSchema(
-                group.getHeader(),
-                group.getId(),
-                ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       }
     }
     return resultBinary;
@@ -1937,7 +1926,7 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), group.getId(), plan);
+      resultBinary = SyncClientAdaptor.getDevices(client, group.getHeader(), plan);
     } else {
       try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
           DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -1949,9 +1938,7 @@ public class CMManager extends MManager {
         plan.serialize(dataOutputStream);
         resultBinary =
             syncDataClient.getDevices(
-                group.getHeader(),
-                group.getId(),
-                ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       }
     }
     return resultBinary;

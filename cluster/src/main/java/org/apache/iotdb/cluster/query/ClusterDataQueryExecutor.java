@@ -274,7 +274,6 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
             DataGroupMember dataGroupMember =
                 metaGroupMember.getLocalDataMember(
                     partitionGroup.getHeader(),
-                    partitionGroup.getId(),
                     String.format(
                         "Query: %s, time filter: %s, queryId: %d",
                         path, null, context.getQueryId()));
@@ -318,8 +317,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
           } else if (endPoint == null) {
             endPoint =
                 new QueryDataSet.EndPoint(
-                    partitionGroup.getHeader().getClientIp(),
-                    partitionGroup.getHeader().getClientPort());
+                    partitionGroup.getHeader().getNode().getClientIp(),
+                    partitionGroup.getHeader().getNode().getClientPort());
           }
         }
       } catch (Exception e) {

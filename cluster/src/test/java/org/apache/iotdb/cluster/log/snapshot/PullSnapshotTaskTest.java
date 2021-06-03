@@ -143,7 +143,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
               }
 
               @Override
-              public ByteBuffer readFile(String filePath, long offset, int length, int raftId)
+              public ByteBuffer readFile(String filePath, long offset, int length)
                   throws TException {
                 try {
                   return IOUtils.readFile(filePath, offset, length);
@@ -181,7 +181,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                       }
 
                       @Override
-                      public void updateKnownMessageSize(long size) throws TTransportException {}
+                      public void updateKnownMessageSize(long size) {}
 
                       @Override
                       public void checkReadBytesAvailable(long numBytes)

@@ -557,9 +557,13 @@ public class SlotPartitionTableTest {
     return new Node("localhost", 30000 + i, i, 40000 + i, Constants.RPC_PORT + i, "localhost");
   }
 
+  private RaftNode getRaftNode(int i, int raftId) {
+    return new RaftNode(getNode(i), raftId);
+  }
+
   @Test
   public void testRemoveNode() {
-    List<Integer> nodeSlots = localTable.getNodeSlots(getNode(0), raftId);
+    List<Integer> nodeSlots = localTable.getNodeSlots(getRaftNode(0, raftId));
     localTable.removeNode(getNode(0));
     NodeRemovalResult nodeRemovalResult = localTable.getNodeRemovalResult();
     assertFalse(localTable.getAllNodes().contains(getNode(0)));

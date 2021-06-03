@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.monitor;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.rpc.RpcStat;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -195,8 +196,7 @@ public class NodeReport {
    * belongs to.
    */
   public static class DataMemberReport extends RaftMemberReport {
-    Node header;
-    int raftId;
+    RaftNode header;
     long headerLatency;
 
     public DataMemberReport(
@@ -207,8 +207,7 @@ public class NodeReport {
         long lastLogIndex,
         long commitIndex,
         long commitTerm,
-        Node header,
-        int raftId,
+        RaftNode header,
         boolean isReadOnly,
         long headerLatency,
         long lastHeartbeatReceivedTime,
@@ -227,7 +226,6 @@ public class NodeReport {
           prevLastLogIndex,
           maxAppliedLogIndex);
       this.header = header;
-      this.raftId = raftId;
       this.headerLatency = headerLatency;
     }
 
@@ -235,9 +233,9 @@ public class NodeReport {
     public String toString() {
       return "DataMemberReport{"
           + "header="
-          + header
+          + header.getNode()
           + ", raftId="
-          + raftId
+          + header.getRaftId()
           + ", character="
           + character
           + ", Leader="

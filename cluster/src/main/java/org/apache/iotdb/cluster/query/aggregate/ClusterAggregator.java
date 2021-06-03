@@ -199,7 +199,6 @@ public class ClusterAggregator {
       throws StorageEngineException {
 
     GetAggrResultRequest request = new GetAggrResultRequest();
-    request.setRaftId(partitionGroup.getId());
     request.setPath(path.getFullPath());
     request.setAggregations(aggregations);
     request.setDataTypeOrdinal(dataType.ordinal());
@@ -232,8 +231,7 @@ public class ClusterAggregator {
             results.add(result);
           }
           // register the queried node to release resources when the query ends
-          ((RemoteQueryContext) context)
-              .registerRemoteNode(node, partitionGroup.getHeader(), partitionGroup.getId());
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
           logger.debug(
               "{}: queried aggregation {} of {} from {} of {} are {}",
               metaGroupMember.getName(),

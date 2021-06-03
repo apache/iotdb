@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -87,7 +87,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void requestCommitIndex(
-      Node header, int raftId, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     long commitIndex;
     long commitTerm;
     long curTerm;
@@ -112,7 +112,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       return;
     }
     try {
-      client.requestCommitIndex(header, raftId, resultHandler);
+      client.requestCommitIndex(header, resultHandler);
     } catch (TException e) {
       resultHandler.onError(e);
     }
@@ -120,11 +120,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void readFile(
-      String filePath,
-      long offset,
-      int length,
-      int raftId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+      String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
     try {
       resultHandler.onComplete(IOUtils.readFile(filePath, offset, length));
     } catch (IOException e) {
@@ -133,8 +129,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void removeHardLink(
-      String hardLinkPath, int raftId, AsyncMethodCallback<Void> resultHandler) {
+  public void removeHardLink(String hardLinkPath, AsyncMethodCallback<Void> resultHandler) {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
       resultHandler.onComplete(null);
@@ -145,7 +140,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
 
   @Override
   public void matchTerm(
-      long index, long term, Node header, int raftId, AsyncMethodCallback<Boolean> resultHandler) {
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(member.matchLog(index, term));
   }
 

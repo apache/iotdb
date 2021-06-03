@@ -398,8 +398,7 @@ public class Coordinator {
           "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
       result =
           metaGroupMember
-              .getLocalDataMember(
-                  new RaftNode(entry.getValue().getHeader(), entry.getValue().getId()))
+              .getLocalDataMember(entry.getValue().getHeader())
               .executeNonQueryPlan(entry.getKey());
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
@@ -672,7 +671,7 @@ public class Coordinator {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     RaftService.AsyncClient client =
         metaGroupMember
@@ -681,9 +680,9 @@ public class Coordinator {
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, Node header)
+  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
-    RaftService.Client client = null;
+    RaftService.Client client;
     try {
       client =
           metaGroupMember

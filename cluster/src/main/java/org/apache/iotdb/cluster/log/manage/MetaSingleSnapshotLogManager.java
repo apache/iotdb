@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -37,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 /** MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot. */
@@ -83,21 +81,5 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     snapshot.setLastLogIndex(commitIndex);
     snapshot.setLastLogTerm(term);
     return snapshot;
-  }
-
-  @Override
-  void applyEntries(List<Log> entries) {
-    for (Log entry : entries) {
-      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
-        blockedUnappliedLogList.add(entry);
-        continue;
-      }
-      try {
-        logApplier.apply(entry);
-      } catch (Exception e) {
-        logger.error("Can not apply log {}", entry, e);
-        entry.setException(e);
-      }
-    }
   }
 }

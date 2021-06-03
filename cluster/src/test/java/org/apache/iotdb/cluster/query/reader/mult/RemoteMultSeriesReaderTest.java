@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -189,8 +190,7 @@ public class RemoteMultSeriesReaderTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void fetchMultSeries(
-                  Node header,
-                  int raftId,
+                  RaftNode header,
                   long readerId,
                   List<String> paths,
                   AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
@@ -244,7 +244,7 @@ public class RemoteMultSeriesReaderTest {
             return new SyncDataClient(null) {
               @Override
               public Map<String, ByteBuffer> fetchMultSeries(
-                  Node header, int raftId, long readerId, List<String> paths) throws TException {
+                  RaftNode header, long readerId, List<String> paths) throws TException {
                 if (failedNodes.contains(node)) {
                   throw new TException("Node down.");
                 }

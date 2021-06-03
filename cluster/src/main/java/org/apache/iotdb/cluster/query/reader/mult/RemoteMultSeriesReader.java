@@ -171,12 +171,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       try {
         sourceInfo
             .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
-            .fetchMultSeries(
-                sourceInfo.getHeader(),
-                sourceInfo.getRaftId(),
-                sourceInfo.getReaderId(),
-                paths,
-                handler);
+            .fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths, handler);
         fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
       } catch (TException | InterruptedException e) {
         logger.error("Failed to fetch result async, connect to {}", sourceInfo, e);
@@ -191,8 +186,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     try (SyncDataClient curSyncClient =
         sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS()); ) {
 
-      return curSyncClient.fetchMultSeries(
-          sourceInfo.getHeader(), sourceInfo.getRaftId(), sourceInfo.getReaderId(), paths);
+      return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
     } catch (TException e) {
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;

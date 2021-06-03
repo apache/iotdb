@@ -74,26 +74,25 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void fetchSingleSeries(
-      Node header, int raftId, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(header, 0)))
-                    .fetchSingleSeries(header, raftId, readerId, resultHandler))
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .fetchSingleSeries(header, readerId, resultHandler))
         .start();
   }
 
   @Override
   public void fetchMultSeries(
-      Node header,
-      int raftId,
+      RaftNode header,
       long readerId,
       List<String> paths,
       AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler) {
     new Thread(
             () -> {
               try {
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(header, 0)))
-                    .fetchMultSeries(header, raftId, readerId, paths, resultHandler);
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .fetchMultSeries(header, readerId, paths, resultHandler);
               } catch (TException e) {
                 e.printStackTrace();
               }
@@ -106,7 +105,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .getAggrResult(request, resultHandler))
         .start();
   }
@@ -116,7 +115,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .querySingleSeries(request, resultHandler))
         .start();
   }
@@ -127,7 +126,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
     new Thread(
             () -> {
               try {
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .queryMultSeries(request, resultHandler);
               } catch (TException e) {
                 e.printStackTrace();
@@ -138,30 +137,27 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void fetchSingleSeriesByTimestamps(
-      Node header,
-      int raftId,
+      RaftNode header,
       long readerId,
       List<Long> timestamps,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(header, 0)))
-                    .fetchSingleSeriesByTimestamps(
-                        header, raftId, readerId, timestamps, resultHandler))
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .fetchSingleSeriesByTimestamps(header, readerId, timestamps, resultHandler))
         .start();
   }
 
   @Override
   public void getAllPaths(
-      Node header,
-      int raftId,
+      RaftNode header,
       List<String> paths,
       boolean withAlias,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(header, 0)))
-                    .getAllPaths(header, raftId, paths, withAlias, resultHandler))
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .getAllPaths(header, paths, withAlias, resultHandler))
         .start();
   }
 
@@ -189,11 +185,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void readFile(
-      String filePath,
-      long offset,
-      int length,
-      int raftId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+      String filePath, long offset, int length, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () -> {
               File file = new File(filePath);
@@ -228,7 +220,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .pullTimeSeriesSchema(request, resultHandler))
         .start();
   }
@@ -238,7 +230,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .pullMeasurementSchema(request, resultHandler))
         .start();
   }
@@ -248,7 +240,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .querySingleSeriesByTimestamp(request, resultHandler))
         .start();
   }
@@ -257,24 +249,22 @@ public class TestAsyncDataClient extends AsyncDataClient {
   public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .getGroupByExecutor(request, resultHandler))
         .start();
   }
 
   @Override
   public void getGroupByResult(
-      Node header,
-      int raftId,
+      RaftNode header,
       long executorId,
       long startTime,
       long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(header, 0)))
-                    .getGroupByResult(
-                        header, raftId, executorId, startTime, endTime, resultHandler))
+                new DataAsyncService(dataGroupMemberMap.get(header))
+                    .getGroupByResult(header, executorId, startTime, endTime, resultHandler))
         .start();
   }
 
@@ -283,7 +273,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
       PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () ->
-                new DataAsyncService(dataGroupMemberMap.get(new RaftNode(request.getHeader(), 0)))
+                new DataAsyncService(dataGroupMemberMap.get(request.getHeader()))
                     .previousFill(request, resultHandler))
         .start();
   }

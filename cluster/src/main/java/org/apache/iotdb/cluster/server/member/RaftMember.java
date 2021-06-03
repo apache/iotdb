@@ -46,6 +46,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -1157,8 +1158,7 @@ public abstract class RaftMember {
       return commitIdResult.get();
     }
     synchronized (commitIdResult) {
-      client.requestCommitIndex(
-          getHeader(), getRaftGroupId(), new GenericHandler<>(leader.get(), commitIdResult));
+      client.requestCommitIndex(getHeader(), new GenericHandler<>(leader.get(), commitIdResult));
       commitIdResult.wait(RaftServer.getReadOperationTimeoutMS());
     }
     return commitIdResult.get();
@@ -1175,7 +1175,7 @@ public abstract class RaftMember {
       return response;
     }
     try {
-      response = client.requestCommitIndex(getHeader(), getRaftGroupId());
+      response = client.requestCommitIndex(getHeader());
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
@@ -1314,7 +1314,7 @@ public abstract class RaftMember {
    *     communication
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  public TSStatus forwardPlan(PhysicalPlan plan, Node node, Node header) {
+  public TSStatus forwardPlan(PhysicalPlan plan, Node node, RaftNode header) {
     if (node == null || node.equals(thisNode)) {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
@@ -1346,7 +1346,7 @@ public abstract class RaftMember {
    * @param header to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header) {
     AsyncClient client = getAsyncClient(receiver);
     if (client == null) {
       logger.debug("{}: can not get client for node={}", name, receiver);
@@ -1358,10 +1358,9 @@ public abstract class RaftMember {
   }
 
   public TSStatus forwardPlanAsync(
-      PhysicalPlan plan, Node receiver, Node header, AsyncClient client) {
+      PhysicalPlan plan, Node receiver, RaftNode header, AsyncClient client) {
     try {
-      TSStatus tsStatus =
-          SyncClientAdaptor.executeNonQuery(client, plan, header, receiver, getRaftGroupId());
+      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
@@ -1377,7 +1376,7 @@ public abstract class RaftMember {
     }
   }
 
-  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
+  private TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, RaftNode header) {
     Client client = getSyncClient(receiver);
     if (client == null) {
       logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
@@ -1386,10 +1385,10 @@ public abstract class RaftMember {
     return forwardPlanSync(plan, receiver, header, client);
   }
 
-  public TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
+  public TSStatus forwardPlanSync(
+      PhysicalPlan plan, Node receiver, RaftNode header, Client client) {
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setRaftId(getRaftGroupId());
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
       if (header != null) {
         req.setHeader(header);
@@ -1584,7 +1583,6 @@ public abstract class RaftMember {
 
   AppendEntryRequest buildAppendEntryRequest(Log log, boolean serializeNow) {
     AppendEntryRequest request = new AppendEntryRequest();
-    request.setRaftId(getRaftGroupId());
     request.setTerm(term.get());
     if (serializeNow) {
       ByteBuffer byteBuffer = log.serialize();
@@ -1646,7 +1644,7 @@ public abstract class RaftMember {
   }
 
   /** @return the header of the data raft group or null if this is in a meta group. */
-  public Node getHeader() {
+  public RaftNode getHeader() {
     return null;
   }
 
