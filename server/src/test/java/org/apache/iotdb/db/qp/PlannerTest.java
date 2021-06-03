@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -252,5 +253,20 @@ public class PlannerTest {
     assertEquals(OperatorType.QUERY, physicalPlan.getOperatorType());
     assertEquals(paths.get(0), physicalPlan.getPaths().get(0).getFullPath());
     assertEquals(paths.get(1), physicalPlan.getPaths().get(1).getFullPath());
+  }
+
+  @Test
+  public void lastDataQueryReqToPhysicalPlanTest()
+      throws QueryProcessException, IllegalPathException {
+    TSLastDataQueryReq tsLastDataQueryReq = new TSLastDataQueryReq();
+    List<String> paths = new ArrayList<>();
+    paths.add("root.vehicle.device1.sensor1");
+    tsLastDataQueryReq.setPaths(paths);
+    tsLastDataQueryReq.setTime(0);
+    tsLastDataQueryReq.setFetchSize(1000);
+    PhysicalPlan physicalPlan =
+        processor.lastDataQueryReqToPhysicalPlan(tsLastDataQueryReq, ZoneId.of("Asia/Shanghai"));
+    assertEquals(OperatorType.LAST, physicalPlan.getOperatorType());
+    assertEquals(paths.get(0), physicalPlan.getPaths().get(0).getFullPath());
   }
 }
