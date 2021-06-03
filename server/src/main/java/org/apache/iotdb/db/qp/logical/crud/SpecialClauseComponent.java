@@ -21,21 +21,21 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 public class SpecialClauseComponent {
 
-  private int rowLimit = 0;
-  private int rowOffset = 0;
-  private int seriesLimit = 0;
-  private int seriesOffset = 0;
+  protected int rowLimit = 0;
+  protected int rowOffset = 0;
+  protected int seriesLimit = 0;
+  protected int seriesOffset = 0;
 
-  private boolean ascending = true;
+  protected boolean ascending = true;
   // if true, we don't need the row whose any column is null
-  private boolean withoutAnyNull;
+  protected boolean withoutAnyNull;
   // if true, we don't need the row whose all columns are null
-  private boolean withoutAllNull;
+  protected boolean withoutAllNull;
 
-  private int level = -1;
+  protected int level = -1;
 
-  private boolean isAlignByDevice = false;
-  private boolean isAlignByTime = true;
+  protected boolean isAlignByDevice = false;
+  protected boolean isAlignByTime = true;
 
   public SpecialClauseComponent() {}
 
