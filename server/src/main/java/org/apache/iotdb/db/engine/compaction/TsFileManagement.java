@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -157,40 +156,42 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask implements Callable<Void> {
+  public class CompactionMergeTask extends StorageGroupCompactionTask {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
 
     public CompactionMergeTask(
         CloseCompactionMergeCallBack closeCompactionMergeCallBack, long timePartitionId) {
+      super(storageGroupName);
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
     @Override
-    public Void call() {
+    public void run() {
       merge(timePartitionId);
       closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
-      return null;
+      clearCompactionStatus();
     }
   }
 
-  public class CompactionRecoverTask implements Callable<Void> {
+  public class CompactionRecoverTask extends StorageGroupCompactionTask {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
     public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      super(storageGroupName);
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 
     @Override
-    public Void call() {
+    public void run() {
       recover();
       // in recover logic, we do not have to start next compaction task, and in this case the param
       // time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
-      return null;
+      clearCompactionStatus();
     }
   }
 
