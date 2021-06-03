@@ -35,11 +35,13 @@
 * [IOTDB-1348] Fix Last plan not work in cluster mode
 * [IOTDB-1376] Fix BatchProcessException was not correctly handled in BaseApplier
 * [ISSUE-3116] Fix bug when using natural month unit in time interval in group by query
+* [ISSUE-3309] Fix InsertRecordsOfOneDevice runs too slow
 * Fix the plan index is always zero when using insertRecords interface to run the cluster
 * Add authority check for users create timeseries using executeBatch interface without the privilege
 * Fix versionInfo NPE when query upgrading 0.11 tsfile
 * Fix upgrade tool cannot load old tsfile if time partition enabled in 0.11 
 * Fix import csv throw ArrayOutOfIndexError when the last value in a line is null
+* Fix upgrade tool cannot close file reader
 
 ## Improvements
 * [IOTDB-1315] ExportCsvTool should support timestamp `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
