@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
@@ -115,16 +117,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
       throws LogicalOptimizeException {
-    FilterOperator filter = queryOperator.getFilterOperator();
-    if (filter == null) {
+    WhereComponent whereComponent = queryOperator.getWhereComponent();
+    if (whereComponent == null) {
       return;
     }
 
     Set<PartialPath> filterPaths = new HashSet<>();
-    queryOperator.setFilterOperator(
+    whereComponent.setFilterOperator(
         concatFilterAndRemoveWildcards(
-            queryOperator.getFromComponent().getPrefixPaths(), filter, filterPaths));
-    queryOperator.getFilterOperator().setPathSet(filterPaths);
+            queryOperator.getFromComponent().getPrefixPaths(),
+            whereComponent.getFilterOperator(),
+            filterPaths));
+    whereComponent.getFilterOperator().setPathSet(filterPaths);
   }
 
   private FilterOperator concatFilterAndRemoveWildcards(
@@ -167,18 +171,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   private FilterOperator constructBinaryFilterTreeWithAnd(
       List<PartialPath> noStarPaths, FilterOperator operator) throws LogicalOptimizeException {
-    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_AND);
+    FilterOperator filterBinaryTree = new FilterOperator(FilterType.KW_AND);
     FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
       if (i > 0 && i < noStarPaths.size() - 1) {
-        FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
+        FilterOperator newInnerNode = new FilterOperator(FilterType.KW_AND);
         currentNode.addChildOperator(newInnerNode);
         currentNode = newInnerNode;
       }
       try {
         currentNode.addChildOperator(
             new BasicFunctionOperator(
-                operator.getTokenIntType(),
+                operator.getFilterType(),
                 noStarPaths.get(i),
                 ((BasicFunctionOperator) operator).getValue()));
       } catch (SQLParserException e) {

@@ -16,25 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
+public class WhereComponent {
 
-public class FillQueryOperator extends QueryOperator {
+  private FilterOperator filterOperator;
 
-  @Override
-  public void check() throws LogicalOperatorException {
-    super.check();
+  public WhereComponent() {}
 
-    if (!isAlignByTime()) {
-      throw new LogicalOperatorException("FILL doesn't support disable align clause.");
-    }
+  public WhereComponent(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
+  }
 
-    FilterOperator filterOperator = whereComponent.getFilterOperator();
-    if (!filterOperator.isLeaf() || filterOperator.getFilterType() != FilterType.EQUAL) {
-      throw new LogicalOperatorException("Only \"=\" can be used in fill function");
-    }
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  public void setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 }

@@ -30,7 +30,7 @@ public class QueryOperator extends Operator {
 
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;
-  protected FilterOperator filterOperator;
+  protected WhereComponent whereComponent;
   protected SpecialClauseComponent specialClauseComponent;
 
   protected Map<String, Object> props;
@@ -45,7 +45,7 @@ public class QueryOperator extends Operator {
     this();
     this.selectComponent = queryOperator.getSelectComponent();
     this.fromComponent = queryOperator.getFromComponent();
-    this.filterOperator = queryOperator.getFilterOperator();
+    this.whereComponent = queryOperator.getWhereComponent();
     this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
     this.props = queryOperator.getProps();
     this.indexType = queryOperator.getIndexType();
@@ -67,12 +67,12 @@ public class QueryOperator extends Operator {
     this.fromComponent = fromComponent;
   }
 
-  public FilterOperator getFilterOperator() {
-    return filterOperator;
+  public WhereComponent getWhereComponent() {
+    return whereComponent;
   }
 
-  public void setFilterOperator(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  public void setWhereComponent(WhereComponent whereComponent) {
+    this.whereComponent = whereComponent;
   }
 
   public void setSpecialClauseComponent(SpecialClauseComponent specialClauseComponent) {

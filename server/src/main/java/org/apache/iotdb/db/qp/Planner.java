@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
@@ -100,14 +101,15 @@ public class Planner {
       throws LogicalOperatorException, PathNumOverLimitException {
     root = (QueryOperator) new ConcatPathOptimizer().transform(root, fetchSize);
 
-    FilterOperator filter = root.getFilterOperator();
-    if (filter == null) {
+    WhereComponent whereComponent = root.getWhereComponent();
+    if (whereComponent == null) {
       return root;
     }
+    FilterOperator filter = whereComponent.getFilterOperator();
     filter = new RemoveNotOptimizer().optimize(filter);
     filter = new DnfFilterOptimizer().optimize(filter);
     filter = new MergeSingleFilterOptimizer().optimize(filter);
-    root.setFilterOperator(filter);
+    root.getWhereComponent().setFilterOperator(filter);
 
     return root;
   }

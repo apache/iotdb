@@ -25,8 +25,6 @@ public abstract class Operator {
 
   // operator type in int format
   protected int tokenIntType;
-  // operator type in String format
-  protected String tokenName;
   // flag of "explain"
   protected boolean isDebug;
 
@@ -34,7 +32,6 @@ public abstract class Operator {
 
   protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
-    this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
     this.isDebug = false;
   }
 
@@ -48,10 +45,6 @@ public abstract class Operator {
 
   public int getTokenIntType() {
     return tokenIntType;
-  }
-
-  public String getTokenName() {
-    return tokenName;
   }
 
   public void setOperatorType(OperatorType operatorType) {
@@ -68,7 +61,7 @@ public abstract class Operator {
 
   @Override
   public String toString() {
-    return tokenName;
+    return SQLConstant.tokenNames.get(tokenIntType);
   }
 
   /** If you want to add new OperatorType, you must add it in the last. */

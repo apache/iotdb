@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
@@ -540,7 +541,7 @@ public class PhysicalGenerator {
         throw new QueryProcessException("Fill functions are not supported in UDF queries.");
       }
       FillQueryPlan queryPlan = new FillQueryPlan();
-      FilterOperator timeFilter = fillQueryOperator.getFilterOperator();
+      FilterOperator timeFilter = fillQueryOperator.getWhereComponent().getFilterOperator();
       if (!timeFilter.isSingle()) {
         throw new QueryProcessException("Slice query must select a single time point");
       }
@@ -584,9 +585,10 @@ public class PhysicalGenerator {
       queryPlan.setAlignByTime(queryOperator.isAlignByTime());
 
       // transform filter operator to expression
-      FilterOperator filterOperator = queryOperator.getFilterOperator();
+      WhereComponent whereComponent = queryOperator.getWhereComponent();
 
-      if (filterOperator != null) {
+      if (whereComponent != null) {
+        FilterOperator filterOperator = whereComponent.getFilterOperator();
         List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
         try {
           List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
@@ -804,9 +806,10 @@ public class PhysicalGenerator {
     alignByDevicePlan.setPaths(paths);
 
     // get deviceToFilterMap
-    FilterOperator filterOperator = queryOperator.getFilterOperator();
-    if (filterOperator != null) {
-      alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
+    WhereComponent whereComponent = queryOperator.getWhereComponent();
+    if (whereComponent != null) {
+      alignByDevicePlan.setDeviceToFilterMap(
+          concatFilterByDevice(devices, whereComponent.getFilterOperator()));
     }
 
     queryPlan = alignByDevicePlan;

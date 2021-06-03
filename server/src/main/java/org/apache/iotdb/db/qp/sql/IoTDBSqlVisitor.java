@@ -25,6 +25,8 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.index.common.IndexUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -336,8 +339,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       deleteDataOp.addPath(parsePrefixPath(prefixPath));
     }
     if (ctx.whereClause() != null) {
-      FilterOperator whereOp = (FilterOperator) visit(ctx.whereClause());
-      Pair<Long, Long> timeInterval = parseDeleteTimeInterval(whereOp.getChildren().get(0));
+      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+      Pair<Long, Long> timeInterval = parseDeleteTimeInterval(whereComponent.getFilterOperator());
       deleteDataOp.setStartTime(timeInterval.left);
       deleteDataOp.setEndTime(timeInterval.right);
     } else {
@@ -378,8 +381,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
     parseIndexWithClause(ctx.indexWithClause(), createIndexOp);
     if (ctx.whereClause() != null) {
-      FilterOperator whereOp = (FilterOperator) visit(ctx.whereClause());
-      long indexTime = parseCreateIndexFilter(whereOp.getChildren().get(0));
+      FilterOperator filterOp = parseWhereClause(ctx.whereClause()).getFilterOperator();
+      long indexTime = parseCreateIndexFilter(filterOp);
       createIndexOp.setTime(indexTime);
     }
     return createIndexOp;
@@ -387,13 +390,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   /** for create index command, time should only have an end time. */
   private long parseCreateIndexFilter(FilterOperator filterOperator) {
-    if (filterOperator.getTokenIntType() != SQLConstant.GREATERTHAN
-        && filterOperator.getTokenIntType() != SQLConstant.GREATERTHANOREQUALTO) {
+    if (filterOperator.getFilterType() != FilterType.GREATERTHAN
+        && filterOperator.getFilterType() != FilterType.GREATERTHANOREQUALTO) {
       throw new SQLParserException(
           "For create index command, where clause must be like : time > XXX or time >= XXX");
     }
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
+    if (filterOperator.getFilterType() == FilterType.LESSTHAN) {
       time = time - 1;
     }
     return time;
@@ -1011,9 +1014,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     parseSelectClause(ctx.selectClause());
     parseFromClause(ctx.fromClause());
     if (ctx.whereClause() != null) {
-      Operator operator = visit(ctx.whereClause());
-      if (operator instanceof FilterOperator) {
-        queryOp.setFilterOperator(((FilterOperator) operator).getChildren().get(0));
+      WhereComponent whereComponent = parseWhereClause(ctx.whereClause());
+      if (whereComponent != null) {
+        queryOp.setWhereComponent(whereComponent);
       }
     }
 
@@ -1685,7 +1688,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private Pair<Long, Long> parseDeleteTimeInterval(FilterOperator filterOperator) {
-    if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
+    if (!filterOperator.isLeaf() && filterOperator.getFilterType() != FilterType.KW_AND) {
       throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
     }
 
@@ -1715,43 +1718,42 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    switch (filterOperator.getTokenIntType()) {
-      case SQLConstant.LESSTHAN:
+    switch (filterOperator.getFilterType()) {
+      case LESSTHAN:
         return new Pair<>(Long.MIN_VALUE, time - 1);
-      case SQLConstant.LESSTHANOREQUALTO:
+      case LESSTHANOREQUALTO:
         return new Pair<>(Long.MIN_VALUE, time);
-      case SQLConstant.GREATERTHAN:
+      case GREATERTHAN:
         return new Pair<>(time + 1, Long.MAX_VALUE);
-      case SQLConstant.GREATERTHANOREQUALTO:
+      case GREATERTHANOREQUALTO:
         return new Pair<>(time, Long.MAX_VALUE);
-      case SQLConstant.EQUAL:
+      case EQUAL:
         return new Pair<>(time, time);
       default:
         throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
     }
   }
 
-  @Override
-  public Operator visitWhereClause(WhereClauseContext ctx) {
+  public WhereComponent parseWhereClause(WhereClauseContext ctx) {
     if (ctx.indexPredicateClause() != null) {
       parseIndexPredicate(ctx.indexPredicateClause());
-      return queryOp;
+      return null;
     }
-    FilterOperator whereOp = new FilterOperator(SQLConstant.TOK_WHERE);
+    FilterOperator whereOp = new FilterOperator();
     whereOp.addChildOperator(parseOrExpression(ctx.orExpression()));
-    return whereOp;
+    return new WhereComponent(whereOp.getChildren().get(0));
   }
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {
       return parseAndExpression(ctx.andExpression(0));
     }
-    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_OR);
+    FilterOperator binaryOp = new FilterOperator(FilterType.KW_OR);
     if (ctx.andExpression().size() > 2) {
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(0)));
       binaryOp.addChildOperator(parseAndExpression(ctx.andExpression(1)));
       for (int i = 2; i < ctx.andExpression().size(); i++) {
-        FilterOperator op = new FilterOperator(SQLConstant.KW_OR);
+        FilterOperator op = new FilterOperator(FilterType.KW_OR);
         op.addChildOperator(binaryOp);
         op.addChildOperator(parseAndExpression(ctx.andExpression(i)));
         binaryOp = op;
@@ -1768,13 +1770,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (ctx.predicate().size() == 1) {
       return parsePredicate(ctx.predicate(0));
     }
-    FilterOperator binaryOp = new FilterOperator(SQLConstant.KW_AND);
+    FilterOperator binaryOp = new FilterOperator(FilterType.KW_AND);
     int size = ctx.predicate().size();
     if (size > 2) {
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(0)));
       binaryOp.addChildOperator(parsePredicate(ctx.predicate(1)));
       for (int i = 2; i < size; i++) {
-        FilterOperator op = new FilterOperator(SQLConstant.KW_AND);
+        FilterOperator op = new FilterOperator(FilterType.KW_AND);
         op.addChildOperator(binaryOp);
         op.addChildOperator(parsePredicate(ctx.predicate(i)));
         binaryOp = op;
@@ -1790,7 +1792,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private FilterOperator parsePredicate(PredicateContext ctx) {
     if (ctx.OPERATOR_NOT() != null) {
-      FilterOperator notOp = new FilterOperator(SQLConstant.KW_NOT);
+      FilterOperator notOp = new FilterOperator(FilterType.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
@@ -1830,7 +1832,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         values.add(constant.getText());
       }
     }
-    return new InOperator(ctx.OPERATOR_IN().getSymbol().getType(), path, not, values);
+    return new InOperator(FilterType.IN, path, not, values);
   }
 
   private FilterOperator parseBasicFunctionOperator(PredicateContext ctx, PartialPath path) {
@@ -1841,13 +1843,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       }
       basic =
           new BasicFunctionOperator(
-              ctx.comparisonOperator().type.getType(),
+              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
               path,
               Long.toString(parseDateExpression(ctx.constant().dateExpression())));
     } else {
       basic =
           new BasicFunctionOperator(
-              ctx.comparisonOperator().type.getType(), path, ctx.constant().getText());
+              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
+              path,
+              ctx.constant().getText());
     }
     return basic;
   }
