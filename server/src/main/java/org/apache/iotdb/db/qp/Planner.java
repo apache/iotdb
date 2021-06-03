@@ -109,7 +109,7 @@ public class Planner {
     filter = new RemoveNotOptimizer().optimize(filter);
     filter = new DnfFilterOptimizer().optimize(filter);
     filter = new MergeSingleFilterOptimizer().optimize(filter);
-    root.getWhereComponent().setFilterOperator(filter);
+    whereComponent.setFilterOperator(filter);
 
     return root;
   }

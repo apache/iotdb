@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * This class is for filter in where clause. It may consist of more than two child FilterComponents,
+ * This class is for filter in where clause. It may consist of more than two child FilterOperators,
  * but if it's not a leaf operator, the relation is the same among all of its children (AND or OR),
  * which is identified by tokenType.
  */
