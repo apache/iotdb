@@ -263,12 +263,12 @@ public class MetaPuller {
    *     while the pulling thread may want this lock too, resulting in a deadlock.
    */
   public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
-          throws MetadataException {
+      throws MetadataException {
     logger.debug(
-            "{}: Pulling timeseries schemas of {}, ignored group {}",
-            metaGroupMember.getName(),
-            prefixPaths,
-            ignoredGroup);
+        "{}: Pulling timeseries schemas of {}, ignored group {}",
+        metaGroupMember.getName(),
+        prefixPaths,
+        ignoredGroup);
     // split the paths by the data groups that should hold them
     Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
     for (PartialPath prefixPath : prefixPaths) {
@@ -276,25 +276,25 @@ public class MetaPuller {
         continue;
       }
       PartitionGroup partitionGroup =
-              ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
+          ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
       if (!partitionGroup.getHeader().equals(ignoredGroup)) {
         partitionGroupPathMap
-                .computeIfAbsent(partitionGroup, g -> new ArrayList<>())
-                .add(prefixPath.getFullPath());
+            .computeIfAbsent(partitionGroup, g -> new ArrayList<>())
+            .add(prefixPath.getFullPath());
       }
     }
 
     // pull timeseries schema from every group involved
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{}: pulling schemas of {} and other {} paths from {} groups",
-              metaGroupMember.getName(),
-              prefixPaths.get(0),
-              prefixPaths.size() - 1,
-              partitionGroupPathMap.size());
+          "{}: pulling schemas of {} and other {} paths from {} groups",
+          metaGroupMember.getName(),
+          prefixPaths.get(0),
+          prefixPaths.size() - 1,
+          partitionGroupPathMap.size());
     }
     for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry :
-            partitionGroupPathMap.entrySet()) {
+        partitionGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
       pullTimeSeriesSchemas(partitionGroup, paths);
@@ -311,8 +311,8 @@ public class MetaPuller {
       // the node is in the target group, synchronize with leader should be enough
       try {
         metaGroupMember
-                .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-                .syncLeader(null);
+            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
+            .syncLeader(null);
       } catch (CheckConsistencyException e) {
         logger.warn("Failed to check consistency.", e);
       }
@@ -342,11 +342,11 @@ public class MetaPuller {
   private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
     if (logger.isDebugEnabled()) {
       logger.debug(
-              "{}: Pulling timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(),
-              request.getPrefixPaths().get(0),
-              request.getPrefixPaths().size() - 1,
-              node);
+          "{}: Pulling timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node);
     }
 
     List<TimeseriesSchema> schemas = null;
@@ -354,33 +354,33 @@ public class MetaPuller {
       schemas = pullTimeSeriesSchemas(node, request);
     } catch (IOException | TException e) {
       logger.error(
-              "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(),
-              request.getPrefixPaths().get(0),
-              request.getPrefixPaths().size() - 1,
-              node,
-              e);
+          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node,
+          e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(
-              "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-              metaGroupMember.getName(),
-              request.getPrefixPaths().get(0),
-              request.getPrefixPaths().size() - 1,
-              node,
-              e);
+          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          metaGroupMember.getName(),
+          request.getPrefixPaths().get(0),
+          request.getPrefixPaths().size() - 1,
+          node,
+          e);
     }
 
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
         logger.debug(
-                "{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-                metaGroupMember.getName(),
-                schemas.size(),
-                request.getPrefixPaths().get(0),
-                request.getPrefixPaths().size() - 1,
-                node,
-                request.getHeader());
+            "{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
+            metaGroupMember.getName(),
+            schemas.size(),
+            request.getPrefixPaths().get(0),
+            request.getPrefixPaths().size() - 1,
+            node,
+            request.getHeader());
       }
       for (TimeseriesSchema schema : schemas) {
         SchemaUtils.cacheTimeseriesSchema(schema);
@@ -395,19 +395,19 @@ public class MetaPuller {
    * null if there was a timeout.
    */
   private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-          throws TException, InterruptedException, IOException {
+      throws TException, InterruptedException, IOException {
     List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-              metaGroupMember
-                      .getClientProvider()
-                      .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          metaGroupMember
+              .getClientProvider()
+              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
       try (SyncDataClient syncDataClient =
-                   metaGroupMember
-                           .getClientProvider()
-                           .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+          metaGroupMember
+              .getClientProvider()
+              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
