@@ -2147,8 +2147,13 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    PartialPath deviceId = plan.getDeviceId();
-    String vectorId = plan.getVectorId(); // could be null for not aligned timeseries
+    PartialPath prefixPath = plan.getPrefixPath();
+    PartialPath deviceId = prefixPath;
+    String vectorId = null;
+    if (plan.isAligned()) {
+      deviceId = prefixPath.getDevicePath();
+      vectorId = prefixPath.getMeasurement();
+    }
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -2165,7 +2170,7 @@ public class MManager {
       try {
         String measurement = measurementList[i];
 
-        MNode child = getMNode(deviceMNode.left, vectorId != null ? vectorId : measurement);
+        MNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
@@ -2177,15 +2182,14 @@ public class MManager {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-              if (plan.getVectorId() == null) {
-                internalCreateTimeseries(deviceId.concatNode(measurement), plan.getDataTypes()[i]);
+              if (!plan.isAligned()) {
+                internalCreateTimeseries(
+                    prefixPath.concatNode(measurement), plan.getDataTypes()[i]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
               } else {
                 internalAlignedCreateTimeseries(
-                    new PartialPath(deviceId.getFullPath(), vectorId),
-                    Arrays.asList(measurementList),
-                    Arrays.asList(plan.getDataTypes()));
-                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(plan.getVectorId());
+                    prefixPath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(vectorId);
               }
             } else {
               throw new MetadataException(
@@ -2201,7 +2205,7 @@ public class MManager {
         TSDataType insertDataType;
         DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (plan.getVectorId() != null) {
+          if (plan.isAligned()) {
             TSDataType dataTypeInNode =
                 measurementMNode.getSchema().getValueTSDataTypeList().get(i);
             insertDataType = plan.getDataTypes()[i];

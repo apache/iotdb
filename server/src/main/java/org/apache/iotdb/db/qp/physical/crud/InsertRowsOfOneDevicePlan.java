@@ -44,7 +44,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       ByteBuffer[] insertValues)
       throws QueryProcessException {
     super(OperatorType.BATCH_INSERT_ONE_DEVICE);
-    this.deviceId = deviceId;
+    this.prefixPath = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
       for (ByteBuffer b : insertValues) {
@@ -99,7 +99,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
-    putString(stream, deviceId.getFullPath());
+    putString(stream, prefixPath.getFullPath());
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
@@ -113,7 +113,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, prefixPath.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());
@@ -123,11 +123,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.deviceId = new PartialPath(readString(buffer));
+    this.prefixPath = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {
       rowPlans[i] = new InsertRowPlan();
-      rowPlans[i].setDeviceId(deviceId);
+      rowPlans[i].setPrefixPath(prefixPath);
       rowPlans[i].setTime(buffer.getLong());
       rowPlans[i].deserializeMeasurementsAndValues(buffer);
     }
@@ -144,7 +144,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public String toString() {
-    return "deviceId: " + deviceId + ", times: " + rowPlans.length;
+    return "deviceId: " + prefixPath + ", times: " + rowPlans.length;
   }
 
   @Override

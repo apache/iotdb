@@ -1446,7 +1446,7 @@ public class TSServiceImpl implements TSIService.Iface {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
+        plan.setPrefixPath(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1546,22 +1546,13 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getPrefixPath(),
           req.getTimestamp());
 
-      PartialPath deviceId;
-      String vectorId;
-      if (req.isVector) {
-        deviceId = new PartialPath(req.getPrefixPath()).getDevicePath();
-        vectorId = new PartialPath(req.getPrefixPath()).getMeasurement();
-      } else {
-        deviceId = new PartialPath(req.getPrefixPath());
-        vectorId = null;
-      }
       InsertRowPlan plan =
           new InsertRowPlan(
-              deviceId,
-              vectorId,
+              new PartialPath(req.getPrefixPath()),
               req.getTimestamp(),
               req.getMeasurements().toArray(new String[0]),
-              req.values);
+              req.values,
+              req.isAligned);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1585,7 +1576,7 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(new PartialPath(req.getDeviceId()));
+      plan.setPrefixPath(new PartialPath(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1631,14 +1622,8 @@ public class TSServiceImpl implements TSIService.Iface {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      InsertTabletPlan insertTabletPlan;
-      PartialPath prefixPath = new PartialPath(req.getPrefixPath());
-      if (req.isVector) {
-        insertTabletPlan = new InsertTabletPlan(prefixPath.getDevicePath(), req.measurements);
-        insertTabletPlan.setVectorId(prefixPath.getMeasurement());
-      } else {
-        insertTabletPlan = new InsertTabletPlan(prefixPath, req.measurements);
-      }
+      InsertTabletPlan insertTabletPlan =
+          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1647,6 +1632,7 @@ public class TSServiceImpl implements TSIService.Iface {
           QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
+      insertTabletPlan.setAligned(req.isAligned);
 
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);

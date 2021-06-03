@@ -240,11 +240,11 @@ public class InsertRowPlanTest {
     columns[2] = 10000 + "";
 
     return new InsertRowPlan(
-        new PartialPath("root.isp.d1"),
-        "vector",
+        new PartialPath("root.isp.d1.vector"),
         time,
         new String[] {"s1", "s2", "s3"},
         dataTypes,
-        columns);
+        columns,
+        true);
   }
 }

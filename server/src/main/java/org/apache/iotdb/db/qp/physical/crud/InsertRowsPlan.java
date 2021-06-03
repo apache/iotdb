@@ -219,7 +219,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertRowPlanList.get(0).getDeviceId();
+    return insertRowPlanList.get(0).getPrefixPath();
   }
 
   @Override

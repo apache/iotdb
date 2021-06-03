@@ -602,11 +602,11 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      boolean isVector,
+      boolean isAligned,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isVector);
+        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isAligned);
     insertRecord(deviceId, request);
   }
 
@@ -727,10 +727,10 @@ public class Session {
       List<String> measurements,
       List<TSDataType> types,
       List<Object> values,
-      boolean isVector)
+      boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, values, isVector);
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, isAligned);
     insertRecord(deviceId, request);
   }
 
@@ -753,7 +753,7 @@ public class Session {
       List<String> measurements,
       List<TSDataType> types,
       List<Object> values,
-      boolean isVector)
+      boolean isAligned)
       throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
     request.setPrefixPath(deviceId);
@@ -762,7 +762,7 @@ public class Session {
     ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
     putValues(types, values, buffer);
     request.setValues(buffer);
-    request.setIsVector(isVector);
+    request.setIsAligned(isAligned);
     return request;
   }
 
@@ -1159,10 +1159,10 @@ public class Session {
         request.setPrefixPath(tablet.deviceId);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
-        request.setIsVector(false);
+        request.setIsAligned(tablet.isAligned());
       } else {
         if (tablet.getSchemas().size() > 1) {
-          if (request.isVector) {
+          if (request.isAligned) {
             throw new BatchExecutionException(
                 "One tablet should only contain one aligned timeseries!");
           }
@@ -1174,7 +1174,7 @@ public class Session {
           request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
           request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
         }
-        request.setIsVector(true);
+        request.setIsAligned(true);
         break;
       }
     }

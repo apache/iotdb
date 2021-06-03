@@ -357,11 +357,11 @@ public class InsertTabletPlanTest {
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath("root.isp.d1"), new String[] {"s1", "s2", "s3"}, dataTypes);
-    tabletPlan.setVectorId("vector");
+            new PartialPath("root.isp.d1.vector"), new String[] {"s1", "s2", "s3"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
+    tabletPlan.setAligned(true);
     return tabletPlan;
   }
 }

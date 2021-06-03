@@ -173,7 +173,7 @@ abstract class BaseApplier implements LogApplier {
   private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup)
       throws QueryProcessException {
     try {
-      PartialPath path = plan.getDeviceId();
+      PartialPath path = plan.getPrefixPath();
       ((CMManager) IoTDB.metaManager)
           .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
     } catch (MetadataException e1) {

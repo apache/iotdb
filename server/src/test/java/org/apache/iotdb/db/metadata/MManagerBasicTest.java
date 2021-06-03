@@ -1358,12 +1358,12 @@ public class MManagerBasicTest {
 
       InsertRowPlan insertRowPlan =
           new InsertRowPlan(
-              new PartialPath("root.laptop.d1"),
-              "vector",
+              new PartialPath("root.laptop.d1.vector"),
               time,
               new String[] {"s1", "s2", "s3"},
               dataTypes,
-              columns);
+              columns,
+              true);
       insertRowPlan.setMeasurementMNodes(
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
 

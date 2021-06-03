@@ -132,7 +132,7 @@ public abstract class AbstractMemTable implements IMemTable {
                 vectorValue,
                 disableMemControl);
         write(
-            insertRowPlan.getDeviceId().getFullPath(),
+            insertRowPlan.getPrefixPath().getFullPath(),
             measurementMNode.getSchema(),
             insertRowPlan.getTime(),
             vectorValue);
@@ -148,7 +148,7 @@ public abstract class AbstractMemTable implements IMemTable {
                 measurementMNode.getSchema().getType(), values[columnIndex], disableMemControl);
 
         write(
-            insertRowPlan.getDeviceId().getFullPath(),
+            insertRowPlan.getPrefixPath().getFullPath(),
             measurementMNode.getSchema(),
             insertRowPlan.getTime(),
             values[columnIndex]);
@@ -194,7 +194,7 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       IWritableMemChunk memSeries =
           createIfNotExistAndGet(
-              insertTabletPlan.getDeviceId().getFullPath(),
+              insertTabletPlan.getPrefixPath().getFullPath(),
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
       if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
         VectorMeasurementSchema vectorSchema =

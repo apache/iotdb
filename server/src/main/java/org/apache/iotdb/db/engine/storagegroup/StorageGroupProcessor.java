@@ -810,7 +810,7 @@ public class StorageGroupProcessor {
           insertRowPlan.getTime()
               > partitionLatestFlushedTimeForEachDevice
                   .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                  .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -882,7 +882,8 @@ public class StorageGroupProcessor {
       long lastFlushTime =
           partitionLatestFlushedTimeForEachDevice
               .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-              .computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+              .computeIfAbsent(
+                  insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -905,7 +906,7 @@ public class StorageGroupProcessor {
               partitionLatestFlushedTimeForEachDevice
                   .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
                   .computeIfAbsent(
-                      insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+                      insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -937,7 +938,7 @@ public class StorageGroupProcessor {
       }
       long globalLatestFlushedTime =
           globalLatestFlushedTimeForEachDevice.getOrDefault(
-              insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+              insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -1006,11 +1007,12 @@ public class StorageGroupProcessor {
     if (sequence
         && latestTimeForEachDevice
                 .get(timePartitionId)
-                .getOrDefault(insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
+                .getOrDefault(insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
             < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          .put(
+              insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -1044,7 +1046,7 @@ public class StorageGroupProcessor {
         } else {
           // measurementMNodes[i] is null, use the path to update remote cache
           IoTDB.metaManager.updateLastCache(
-              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
               plan.composeLastTimeValuePair(columnIndex),
               true,
               latestFlushedTime,
@@ -1068,16 +1070,16 @@ public class StorageGroupProcessor {
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice
             .get(timePartitionId)
-            .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
+            .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
         < insertRowPlan.getTime()) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+          .put(insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
     }
 
     long globalLatestFlushTime =
         globalLatestFlushedTimeForEachDevice.getOrDefault(
-            insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+            insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1110,7 +1112,7 @@ public class StorageGroupProcessor {
               null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
         } else {
           IoTDB.metaManager.updateLastCache(
-              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
               plan.composeTimeValuePair(columnIndex),
               true,
               latestFlushedTime,
@@ -2921,7 +2923,7 @@ public class StorageGroupProcessor {
               plan.getTime()
                   > partitionLatestFlushedTimeForEachDevice
                       .get(timePartitionId)
-                      .getOrDefault(plan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                      .getOrDefault(plan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence

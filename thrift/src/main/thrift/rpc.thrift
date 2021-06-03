@@ -198,7 +198,7 @@ struct TSInsertRecordReq {
   3: required list<string> measurements
   4: required binary values
   5: required i64 timestamp
-  6: optional bool isVector
+  6: optional bool isAligned
 }
 
 struct TSInsertStringRecordReq {
@@ -217,7 +217,7 @@ struct TSInsertTabletReq {
   5: required binary timestamps
   6: required list<i32> types
   7: required i32 size
-  8: optional bool isVector
+  8: optional bool isAligned
 }
 
 struct TSInsertTabletsReq {

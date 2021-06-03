@@ -49,20 +49,22 @@ public class VectorSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    // createTemplate();
+    createTemplate();
+    insertAlignedRecord();
+
     insertTabletWithAlignedTimeseriesMethod1();
-    //    insertTabletWithAlignedTimeseriesMethod2();
-    //
-    //    insertNullableTabletWithAlignedTimeseries();
-    //    selectTest();
-    //    selectWithValueFilterTest();
-    //
-    //    selectWithGroupByTest();
-    //    selectWithLastTest();
-    //
-    //    selectWithAggregationTest();
-    //
-    //    selectWithAlignByDeviceTest();
+    insertTabletWithAlignedTimeseriesMethod2();
+
+    insertNullableTabletWithAlignedTimeseries();
+    selectTest();
+    selectWithValueFilterTest();
+
+    selectWithGroupByTest();
+    selectWithLastTest();
+
+    selectWithAggregationTest();
+
+    selectWithAlignByDeviceTest();
 
     session.close();
   }
@@ -241,7 +243,8 @@ public class VectorSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 100; row++) {
@@ -283,7 +286,8 @@ public class VectorSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -322,7 +326,8 @@ public class VectorSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
