@@ -596,11 +596,11 @@ void Session::close()
 
  
 
-void Session::insertRecord(string prefixPath,  int64_t time, vector<string>& measurements, vector<string>& values)
+void Session::insertRecord(string deviceId,  int64_t time, vector<string>& measurements, vector<string>& values)
 {
     shared_ptr<TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
-    req->__set_prefixPath(prefixPath);
+    req->__set_deviceId(deviceId);
     req->__set_timestamp(time);
     req->__set_measurements(measurements);
     req->__set_values(values);
@@ -763,7 +763,7 @@ void Session::insertTablet(Tablet& tablet, bool sorted) {
 
     shared_ptr<TSInsertTabletReq> request(new TSInsertTabletReq());
     request->__set_sessionId(sessionId);
-    request->prefixPath = tablet.prefixPath;
+    request->prefixPath = tablet.deviceId;
     for (pair<string, TSDataType::TSDataType> schema : tablet.schemas) {
         request->measurements.push_back(schema.first);
         request->types.push_back(schema.second);
@@ -857,7 +857,7 @@ void Session::testInsertRecord(string deviceId, int64_t time, vector<string>& me
 void Session::testInsertTablet(Tablet& tablet) {
     shared_ptr<TSInsertTabletReq> request(new TSInsertTabletReq());
     request->__set_sessionId(sessionId);
-    request->prefixPath = tablet.prefixPath;
+    request->prefixPath = tablet.deviceId;
     for (pair<string, TSDataType::TSDataType> schema : tablet.schemas) {
         request->measurements.push_back(schema.first);
         request->types.push_back(schema.second);

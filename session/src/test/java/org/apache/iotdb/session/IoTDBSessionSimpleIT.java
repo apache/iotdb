@@ -743,12 +743,12 @@ public class IoTDBSessionSimpleIT {
     Assert.assertArrayEquals(
         dataSet.getColumnTypes().toArray(new String[0]),
         new String[] {
-          TSDataType.INT64.toString(),
-          TSDataType.INT64.toString(),
-          TSDataType.FLOAT.toString(),
-          TSDataType.BOOLEAN.toString(),
-          TSDataType.INT32.toString(),
-          TSDataType.INT32.toString()
+          String.valueOf(TSDataType.INT64),
+          String.valueOf(TSDataType.INT64),
+          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.BOOLEAN),
+          String.valueOf(TSDataType.INT32),
+          String.valueOf(TSDataType.INT32)
         });
     long time = 1L;
     //
