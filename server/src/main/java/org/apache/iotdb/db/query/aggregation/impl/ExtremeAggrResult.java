@@ -38,7 +38,7 @@ public class ExtremeAggrResult extends AggregateResult {
   protected long timestamp = Long.MIN_VALUE;
 
   public ExtremeAggrResult(TSDataType dataType) {
-    super(dataType, AggregationType.EXT);
+    super(dataType, AggregationType.EXTREME);
     reset();
   }
 

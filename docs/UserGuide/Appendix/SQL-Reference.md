@@ -934,14 +934,14 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* EXT
+* EXTREME
 
-The EXT function returns the extreme value(lexicographically ordered) of the choosen timeseries (one or more).
+The EXTREME function returns the extreme value(lexicographically ordered) of the choosen timeseries (one or more).
 extreme value: The value that has the maximum absolute value.
 If the maximum absolute value of a positive value and a negative value is equal, return the positive value.
 ```
-SELECT EXT (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT EXT(status), EXT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT EXTREME (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 

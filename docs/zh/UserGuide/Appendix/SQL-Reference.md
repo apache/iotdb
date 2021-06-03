@@ -915,11 +915,11 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* EXT
+* EXTREME
 极值：具有最大绝对值的值（正值优先）
 ```
-SELECT EXT (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
-Eg. SELECT EXT(status), EXT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+SELECT EXTREME (Path) (COMMA EXT (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 

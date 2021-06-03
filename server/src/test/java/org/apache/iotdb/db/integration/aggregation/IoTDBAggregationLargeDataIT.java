@@ -36,7 +36,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.ext;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -144,7 +144,7 @@ public class IoTDBAggregationLargeDataIT {
     minTimeAggreWithSingleFilterTest();
     minValueAggreWithSingleFilterTest();
     maxValueAggreWithSingleFilterTest();
-    extAggreWithSingleFilterTest();
+    extremeAggreWithSingleFilterTest();
 
     countAggreWithMultiFilterTest();
     maxTimeAggreWithMultiFilterTest();
@@ -647,7 +647,7 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void extAggreWithSingleFilterTest() {
+  private void extremeAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,99,40000,122.0"};
 
     try (Connection connection =
@@ -656,7 +656,7 @@ public class IoTDBAggregationLargeDataIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select ext(s0),ext(s1),ext(s2)"
+              "select extreme(s0),extreme(s1),extreme(s2)"
                   + " from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100");
 
@@ -667,11 +667,11 @@ public class IoTDBAggregationLargeDataIT {
             String ans =
                 resultSet.getString(TIMESTAMP_STR)
                     + ","
-                    + resultSet.getString(ext(d0s0))
+                    + resultSet.getString(extreme(d0s0))
                     + ","
-                    + resultSet.getString(ext(d0s1))
+                    + resultSet.getString(extreme(d0s1))
                     + ","
-                    + resultSet.getString(ext(d0s2));
+                    + resultSet.getString(extreme(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }
@@ -681,7 +681,7 @@ public class IoTDBAggregationLargeDataIT {
 
       hasResultSet =
           statement.execute(
-              "select ext(s0),ext(s1),ext(s2)"
+              "select extreme(s0),extreme(s1),extreme(s2)"
                   + " from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100 order by time desc");
 
@@ -692,11 +692,11 @@ public class IoTDBAggregationLargeDataIT {
             String ans =
                 resultSet.getString(TIMESTAMP_STR)
                     + ","
-                    + resultSet.getString(ext(d0s0))
+                    + resultSet.getString(extreme(d0s0))
                     + ","
-                    + resultSet.getString(ext(d0s1))
+                    + resultSet.getString(extreme(d0s1))
                     + ","
-                    + resultSet.getString(ext(d0s2));
+                    + resultSet.getString(extreme(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }

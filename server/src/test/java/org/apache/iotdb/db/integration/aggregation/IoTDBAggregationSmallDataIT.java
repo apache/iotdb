@@ -37,7 +37,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.ext;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -255,7 +255,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void extWithoutFilterTest() throws ClassNotFoundException {
+  public void extremeWithoutFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,22222,null"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -264,7 +264,7 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("SELECT ext(d0.s0),ext(d1.s1),ext(d0.s3) FROM root.vehicle");
+        statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(
@@ -273,7 +273,8 @@ public class IoTDBAggregationSmallDataIT {
                     "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
       }
 
-      boolean hasResultSet = statement.execute("SELECT ext(d0.s0),ext(d1.s1) FROM root.vehicle");
+      boolean hasResultSet =
+          statement.execute("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle");
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -281,9 +282,9 @@ public class IoTDBAggregationSmallDataIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(ext(d0s0))
+                  + resultSet.getString(extreme(d0s0))
                   + ","
-                  + resultSet.getString(ext(d1s1));
+                  + resultSet.getString(extreme(d1s1));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -729,7 +730,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void extWithMultiValueFiltersTest() throws ClassNotFoundException {
+  public void extremeWithMultiValueFiltersTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,99,40000,11.11"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -738,7 +739,7 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT ext(s0),ext(s1),ext(s2)"
+              "SELECT extreme(s0),extreme(s1),extreme(s2)"
                   + " FROM root.vehicle.d0 "
                   + "WHERE s1 < 50000 AND s1 != 100");
 
@@ -749,11 +750,11 @@ public class IoTDBAggregationSmallDataIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(ext(d0s0))
+                  + resultSet.getString(extreme(d0s0))
                   + ","
-                  + resultSet.getString(ext(d0s1))
+                  + resultSet.getString(extreme(d0s1))
                   + ","
-                  + resultSet.getString(ext(d0s2));
+                  + resultSet.getString(extreme(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

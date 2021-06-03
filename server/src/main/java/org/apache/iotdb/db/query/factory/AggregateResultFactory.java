@@ -51,7 +51,7 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
-      case SQLConstant.EXT:
+      case SQLConstant.EXTREME:
         return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
@@ -86,7 +86,7 @@ public class AggregateResultFactory {
         return new MinValueAggrResult(dataType);
       case SQLConstant.MAX_VALUE:
         return new MaxValueAggrResult(dataType);
-      case SQLConstant.EXT:
+      case SQLConstant.EXTREME:
         return new ExtremeAggrResult(dataType);
       case SQLConstant.COUNT:
         return new CountAggrResult();
@@ -128,7 +128,7 @@ public class AggregateResultFactory {
         return new MaxValueAggrResult(dataType);
       case MIN_VALUE:
         return new MinValueAggrResult(dataType);
-      case EXT:
+      case EXTREME:
         return new ExtremeAggrResult(dataType);
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + aggregationType.name());

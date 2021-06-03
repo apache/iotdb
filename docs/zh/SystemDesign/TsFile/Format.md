@@ -143,7 +143,7 @@ PageHeader 结构
  | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
  | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
  | sumValue | 和 | double | double | double | double | - | - |
- | ext | 极值 | double | float | int | long | - | - |
+ | extreme | 极值 | double | float | int | long | - | - |
  
 ##### ChunkGroupFooter
 
