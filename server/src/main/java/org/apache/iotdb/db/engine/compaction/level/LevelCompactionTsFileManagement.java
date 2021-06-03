@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -526,7 +526,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
-    } catch (IOException | IllegalPathException | InterruptedException e) {
+    } catch (IOException | InterruptedException | MetadataException e) {
       logger.error("recover level tsfile management error ", e);
     } finally {
       if (logFile.exists()) {

@@ -152,7 +152,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testDeserializeMerge() throws IOException, IllegalPathException {
+  public void testDeserializeMerge() throws IOException, MetadataException {
     Map<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> measurementChunkMetadataMap =
         new HashMap<>();
     List<TsFileResource> sourceTsfileResources = seqResources.subList(0, 2);

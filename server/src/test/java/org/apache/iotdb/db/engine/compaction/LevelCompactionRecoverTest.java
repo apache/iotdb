@@ -80,7 +80,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
   /** compaction recover merge finished */
   @Test
-  public void testCompactionMergeRecoverMergeFinished() throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeFinished() throws IOException, MetadataException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -171,7 +171,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   /** compaction recover merge finished, delete one offset */
   @Test
   public void testCompactionMergeRecoverMergeFinishedAndDeleteOneOffset()
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -286,7 +286,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   /** compaction recover merge finished, delete one device - offset */
   @Test
   public void testCompactionMergeRecoverMergeFinishedAndDeleteOneDeviceWithOffset()
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -406,8 +406,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
   /** compaction recover merge finished,unseq */
   @Test
-  public void testCompactionMergeRecoverMergeFinishedUnseq()
-      throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeFinishedUnseq() throws IOException, MetadataException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -638,8 +637,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
   /** compaction recover merge finished but no finish log */
   @Test
-  public void testCompactionMergeRecoverMergeFinishedNoLog()
-      throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeFinishedNoLog() throws IOException, MetadataException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);

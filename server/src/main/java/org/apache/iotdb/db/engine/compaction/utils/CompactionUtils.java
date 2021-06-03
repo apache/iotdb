@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -178,7 +177,7 @@ public class CompactionUtils {
       RestorableTsFileIOWriter writer,
       Map<String, List<Modification>> modificationCache,
       List<Modification> modifications)
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
     Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = entry.getValue();
     readByDeserializePageMerge(
@@ -198,15 +197,10 @@ public class CompactionUtils {
       return;
     }
     IChunkWriter chunkWriter;
-    try {
-      chunkWriter =
-          new ChunkWriterImpl(
-              IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
-    } catch (MetadataException e) {
-      // this may caused in IT by restart
-      logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
-      return;
-    }
+    chunkWriter =
+        new ChunkWriterImpl(
+            IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
+
     for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
       writeTVPair(timeValuePair, chunkWriter);
       targetResource.updateStartTime(device, timeValuePair.getTimestamp());
@@ -259,7 +253,7 @@ public class CompactionUtils {
       Set<String> devices,
       boolean sequence,
       List<Modification> modifications)
-      throws IOException, IllegalPathException {
+      throws IOException, MetadataException {
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, List<Modification>> modificationCache = new HashMap<>();
