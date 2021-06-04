@@ -95,6 +95,8 @@ public class MemTableTestUtils {
         new InsertTabletPlan(
             new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
 
+    insertTabletPlan.setAligned(true);
+
     long[] times = new long[101];
     Object[] columns = new Object[2];
     columns[0] = new boolean[101];

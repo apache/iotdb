@@ -73,7 +73,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -1030,7 +1029,7 @@ public class StorageGroupProcessor {
     int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       // Don't update cached last value for vector type
-      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (mNodes[i] != null && plan.isAligned()) {
         columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
       } else {
         if (plan.getColumns()[i] == null) {
@@ -1097,7 +1096,7 @@ public class StorageGroupProcessor {
     int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       // Don't update cached last value for vector type
-      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (mNodes[i] != null && plan.isAligned()) {
         columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
       } else {
         if (plan.getValues()[columnIndex] == null) {

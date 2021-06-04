@@ -198,7 +198,7 @@ public class LogReplayer {
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
         columnIndex++;
-      } else if (mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      } else if (tPlan.isAligned()) {
         List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
         for (int j = 0; j < datatypes.size(); j++) {
           if (tPlan.getDataTypes()[columnIndex] == null) {

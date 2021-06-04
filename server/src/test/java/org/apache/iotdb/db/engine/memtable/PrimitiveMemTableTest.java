@@ -346,6 +346,7 @@ public class PrimitiveMemTableTest {
     insertTabletPlan.setMeasurementMNodes(mNodes);
     insertTabletPlan.setStart(0);
     insertTabletPlan.setEnd(100);
+    insertTabletPlan.setAligned(true);
 
     return insertTabletPlan;
   }
