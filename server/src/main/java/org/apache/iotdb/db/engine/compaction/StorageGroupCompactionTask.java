@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class StorageGroupCompactionTask implements Runnable {
+public abstract class StorageGroupCompactionTask implements Callable<Void> {
 
   private String storageGroupName;
   private ConcurrentHashMap<String, Boolean> sgCompactionStatus;

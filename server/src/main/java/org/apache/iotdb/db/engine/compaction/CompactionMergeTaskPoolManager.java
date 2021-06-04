@@ -37,6 +37,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -171,6 +172,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       Future<Void> next = subIterator.next();
       if (!next.isDone() && !next.isCancelled()) {
         next.cancel(true);
+        sgCompactionStatus.put(storageGroup, false);
       }
       subIterator.remove();
     }
@@ -186,7 +188,10 @@ public class CompactionMergeTaskPoolManager implements IService {
       }
       storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
       sgCompactionStatus.put(storageGroup, true);
-      pool.submit(storageGroupCompactionTask);
+      Future<Void> future = pool.submit(storageGroupCompactionTask);
+      storageGroupTasks
+          .computeIfAbsent(storageGroup, k -> new ConcurrentSkipListSet<>())
+          .add(future);
     }
   }
 
