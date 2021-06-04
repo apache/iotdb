@@ -1036,7 +1036,7 @@ public class TSServiceImpl implements TSIService.Iface {
         }
         break;
       case AGGREGATION:
-      case GROUPBYTIME:
+      case GROUP_BY_TIME:
       case GROUP_BY_FILL:
         List<String> aggregations = plan.getAggregations();
         if (aggregations.size() != paths.size()) {

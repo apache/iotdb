@@ -182,10 +182,9 @@ public class PhysicalGenerator {
       case REVOKE_WATERMARK_EMBEDDING:
         DataAuthOperator dataAuthOperator = (DataAuthOperator) operator;
         return new DataAuthPlan(dataAuthOperator.getType(), dataAuthOperator.getUsers());
-      case LOADDATA:
+      case LOAD_DATA:
         LoadDataOperator loadData = (LoadDataOperator) operator;
         return new LoadDataPlan(loadData.getInputFilePath(), loadData.getMeasureType());
-      case METADATA:
       case SET_STORAGE_GROUP:
         SetStorageGroupOperator setStorageGroup = (SetStorageGroupOperator) operator;
         return new SetStorageGroupPlan(setStorageGroup.getPath());

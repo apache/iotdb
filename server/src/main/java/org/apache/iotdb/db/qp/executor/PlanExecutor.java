@@ -244,7 +244,7 @@ public class PlanExecutor implements IPlanExecutor {
       case BATCH_INSERT_ROWS:
         insert((InsertRowsPlan) plan);
         return true;
-      case BATCHINSERT:
+      case BATCH_INSERT:
         insertTablet((InsertTabletPlan) plan);
         return true;
       case MULTI_BATCH_INSERT:

@@ -77,25 +77,25 @@ public class InsertTabletPlan extends InsertPlan {
   private List<Object> failedColumns;
 
   public InsertTabletPlan() {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
   }
 
   public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.deviceId = deviceId;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);

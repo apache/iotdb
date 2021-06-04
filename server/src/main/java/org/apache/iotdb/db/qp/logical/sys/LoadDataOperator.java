@@ -31,7 +31,7 @@ public class LoadDataOperator extends Operator {
   /** Constructor of LoadDataOperator. */
   public LoadDataOperator(int tokenIntType, String inputFilePath, String measureType) {
     super(tokenIntType);
-    operatorType = OperatorType.LOADDATA;
+    operatorType = OperatorType.LOAD_DATA;
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
   }
