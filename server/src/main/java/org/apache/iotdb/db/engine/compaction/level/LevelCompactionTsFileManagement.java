@@ -570,14 +570,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction
         && unseqLevelNum <= 1
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
-      isMergeExecutedInCurrentTask =
+      isMergeExecutedInCurrentTask = isMergeExecutedInCurrentTask ||
           merge(
               isForceFullMerge,
               getTsFileListByTimePartition(true, timePartition),
               forkedUnSequenceTsFileResources.get(0),
               Long.MAX_VALUE);
     } else {
-      isMergeExecutedInCurrentTask =
+      isMergeExecutedInCurrentTask = isMergeExecutedInCurrentTask ||
           merge(
               forkedUnSequenceTsFileResources,
               false,

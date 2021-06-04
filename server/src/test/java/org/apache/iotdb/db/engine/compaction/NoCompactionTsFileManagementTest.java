@@ -29,7 +29,7 @@ import java.util.Iterator;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionOnePartitionUtil;
 import org.apache.iotdb.db.engine.compaction.no.NoCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -113,11 +113,11 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
                 + ".tsfile"))), false);
     noCompactionTsFileManagement.forkCurrentFileList(0);
     noCompactionTsFileManagement.recover();
-    CompactionMergeTask compactionMergeTask =
+    CompactionOnePartitionUtil compactionOnePartitionUtil =
         noCompactionTsFileManagement
-        .new CompactionMergeTask(
+        .new CompactionOnePartitionUtil(
             (boolean isMergeExecutedInCurrentTask, long timePartitionId) -> {}, 0);
-    compactionMergeTask.run();
+    compactionOnePartitionUtil.run();
     assertEquals(1, noCompactionTsFileManagement.size(true));
     assertEquals(1, noCompactionTsFileManagement.size(false));
     noCompactionTsFileManagement.clear();

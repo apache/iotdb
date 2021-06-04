@@ -1890,7 +1890,7 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
-      tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition)
+      tsFileManagement.new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)
           .run();
     } catch (IOException e) {
       this.closeCompactionMergeCallBack(false, timePartition);
