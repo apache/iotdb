@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource.TsFileName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -781,6 +782,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   public static int getMergeLevel(File file) {
+    TsFileName tsFileName = TsFileResource.getTsFileName(file);
     String mergeLevelStr =
         file.getPath()
             .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
