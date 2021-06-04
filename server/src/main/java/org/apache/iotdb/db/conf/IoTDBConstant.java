@@ -80,6 +80,7 @@ public class IoTDBConstant {
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";
