@@ -180,9 +180,9 @@ public class LevelCompactionExecutor extends InnerSpaceCompactionExecutor {
   }
 
   @Override
-  public void doInnerSpaceCompaction(
-      List<List<TsFileResource>> mergeResources, boolean sequence, long timePartition) {
-    tsFileManagement.getTsFileListByTimePartitionAndLevel()
+  public void doInnerSpaceCompaction(boolean sequence, long timePartition) {
+    List<List<TsFileResource>> mergeResources =
+        tsFileManagement.getClosedTsFileListByTimePartition(true, timePartition);
     int currMaxLevel =
         sequence
             ? IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum()

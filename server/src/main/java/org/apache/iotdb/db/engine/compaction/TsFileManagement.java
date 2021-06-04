@@ -113,7 +113,7 @@ public class TsFileManagement {
       } else {
         List<List<TsFileResource>> unSequenceTsFileList =
             unSequenceTsFileResources.get(timePartition);
-        return new ArrayList<>(unSequenceTsFileList.get(i));
+        return new ArrayList<>(unSequenceTsFileList.get(level));
       }
     } finally {
       readUnLock();
@@ -132,12 +132,15 @@ public class TsFileManagement {
       if (sequence) {
         List<SortedSet<TsFileResource>> sequenceTsFileList =
             sequenceTsFileResources.get(timePartition);
-
-        return new ArrayList<>(sequenceTsFileList.get(level));
+        for (SortedSet<TsFileResource> tsFileResources : sequenceTsFileList) {
+          result.add(new ArrayList<>(tsFileResources));
+        }
       } else {
         List<List<TsFileResource>> unSequenceTsFileList =
             unSequenceTsFileResources.get(timePartition);
-        return new ArrayList<>(unSequenceTsFileList.get(i));
+        for (List<TsFileResource> tsFileResources : unSequenceTsFileList) {
+          result.add(new ArrayList<>(tsFileResources));
+        }
       }
       return result;
     } finally {
