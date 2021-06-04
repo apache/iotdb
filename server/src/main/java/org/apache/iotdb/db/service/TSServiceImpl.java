@@ -83,7 +83,6 @@ import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -117,6 +116,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -741,6 +741,37 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  @Override
+  public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) throws TException {
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+
+      PhysicalPlan physicalPlan =
+          processor.lastDataQueryReqToPhysicalPlan(req, sessionIdZoneIdMap.get(req.getSessionId()));
+      return physicalPlan.isQuery()
+          ? internalExecuteQueryStatement(
+              "",
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              config.getQueryTimeoutThreshold(),
+              sessionIdUsernameMap.get(req.getSessionId()),
+              req.isEnableRedirectQuery())
+          : RpcUtils.getTSExecuteStatementResp(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing lastDataQueryReqToPhysicalPlan"));
+    } catch (Exception e) {
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing lastDataQueryReqToPhysicalPlan"));
+    }
+  }
+
   /**
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
    *     some AuthorPlan
@@ -1022,13 +1053,7 @@ public class TSServiceImpl implements TSIService.Iface {
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(
-              resultColumns.get(i).getExpression() instanceof TimeSeriesOperand
-                  ? udtfPlan.getDataTypes().get(i)
-                  : udtfPlan
-                      .getExecutorByOriginalOutputColumnIndex(i)
-                      .getConfigurations()
-                      .getOutputDataType());
+          seriesTypes.add(udtfPlan.getOriginalOutputColumnDataType(i));
         }
         break;
       default:
