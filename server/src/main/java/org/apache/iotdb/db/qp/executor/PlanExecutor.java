@@ -102,6 +102,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -565,6 +566,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowTimeseries((ShowTimeSeriesPlan) showPlan, context);
       case STORAGE_GROUP:
         return processShowStorageGroup((ShowStorageGroupPlan) showPlan);
+      case LOCK_INFO:
+        return processShowLockInfo((ShowLockInfoPlan) showPlan);
       case DEVICES:
         return processShowDevices((ShowDevicesPlan) showPlan);
       case CHILD_PATH:
@@ -767,6 +770,38 @@ public class PlanExecutor implements IPlanExecutor {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(s.getFullPath()));
+      record.addField(field);
+      dataSet.putRecord(record);
+    }
+  }
+
+  private QueryDataSet processShowLockInfo(ShowLockInfoPlan showLockInfoPlan)
+      throws MetadataException {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_STORAGE_GROUP, false),
+                new PartialPath(COLUMN_LOCK_INFO, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+    try {
+      List<PartialPath> storageGroupList = getStorageGroupNames(showLockInfoPlan.getPath());
+      List<String> lockHolderList = StorageEngine.getInstance().getLockInfo(storageGroupList);
+      addLockInfoToDataSet(storageGroupList, lockHolderList, listDataSet);
+    } catch (StorageEngineException e) {
+      throw new MetadataException(e);
+    }
+    return listDataSet;
+  }
+
+  private void addLockInfoToDataSet(
+      List<PartialPath> paths, List<String> lockHolderList, ListDataSet dataSet) {
+    for (int i = 0; i < paths.size(); i++) {
+      RowRecord record = new RowRecord(0);
+      Field field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(paths.get(i).getFullPath()));
+      record.addField(field);
+      field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(lockHolderList.get(i)));
       record.addField(field);
       dataSet.putRecord(record);
     }

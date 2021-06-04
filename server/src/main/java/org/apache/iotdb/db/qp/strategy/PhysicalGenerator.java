@@ -322,6 +322,9 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
+          case SQLConstant.TOK_LOCK_INFO:
+            return new ShowLockInfoPlan(
+                ShowContentType.LOCK_INFO, ((ShowLockInfoOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
             return new ShowDevicesPlan(
