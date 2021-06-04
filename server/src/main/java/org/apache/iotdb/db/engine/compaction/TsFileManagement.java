@@ -152,23 +152,20 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask extends StorageGroupCompactionTask {
+  public class CompactionOnePartitionUtil {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
 
-    public CompactionMergeTask(
+    public CompactionOnePartitionUtil(
         CloseCompactionMergeCallBack closeCompactionMergeCallBack, long timePartitionId) {
-      super(storageGroupName);
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
-    @Override
     public void run() {
       merge(timePartitionId);
       closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
-      clearCompactionStatus();
     }
   }
 

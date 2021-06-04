@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionOnePartitionUtil;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -198,11 +198,11 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
+    CompactionOnePartitionUtil compactionOnePartitionUtil =
         levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+        .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionOnePartitionUtil.run();
     while (compactionMergeWorking) {
       // wait
     }
