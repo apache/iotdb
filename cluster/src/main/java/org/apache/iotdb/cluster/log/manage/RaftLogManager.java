@@ -677,22 +677,26 @@ public abstract class RaftLogManager {
    */
   void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
-      // For add/remove logs in data groups, this log will be applied immediately when it is
-      // appended to the raft log.
-      // In this case, it will apply a log that has been applied.
-      if (entry.isApplied()) {
-        continue;
-      }
-      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
-        blockedUnappliedLogList.add(entry);
-        continue;
-      }
-      try {
-        logApplier.apply(entry);
-      } catch (Exception e) {
-        entry.setException(e);
-        entry.setApplied(true);
-      }
+      applyEntry(entry);
+    }
+  }
+
+  public void applyEntry(Log entry) {
+    // For add/remove logs in data groups, this log will be applied immediately when it is
+    // appended to the raft log.
+    // In this case, it will apply a log that has been applied.
+    if (entry.isApplied()) {
+      return;
+    }
+    if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
+      blockedUnappliedLogList.add(entry);
+      return;
+    }
+    try {
+      logApplier.apply(entry);
+    } catch (Exception e) {
+      entry.setException(e);
+      entry.setApplied(true);
     }
   }
 

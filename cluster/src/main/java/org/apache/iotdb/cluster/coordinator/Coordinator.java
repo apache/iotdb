@@ -21,10 +21,13 @@ package org.apache.iotdb.cluster.coordinator;
 
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
@@ -67,6 +70,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 
 /** Coordinator of client non-query request */
 public class Coordinator {
@@ -306,6 +311,74 @@ public class Coordinator {
     return status;
   }
 
+  public void sendLogToAllDataGroups(Log log) throws ChangeMembershipException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Send log {} to all data groups: start", log);
+    }
+
+    Map<PhysicalPlan, PartitionGroup> planGroupMap = router.splitAndRouteChangeMembershipLog(log);
+    List<String> errorCodePartitionGroups = new CopyOnWriteArrayList<>();
+    CountDownLatch counter = new CountDownLatch(planGroupMap.size());
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      metaGroupMember
+          .getAppendLogThreadPool()
+          .submit(() -> forwardChangeMembershipPlan(log, entry, errorCodePartitionGroups, counter));
+    }
+    try {
+      counter.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ChangeMembershipException(
+          String.format("Can not wait all data groups to apply %s", log));
+    }
+    if (!errorCodePartitionGroups.isEmpty()) {
+      throw new ChangeMembershipException(
+          String.format("Apply %s failed with status {%s}", log, errorCodePartitionGroups));
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Send log {} to all data groups: end", log);
+    }
+  }
+
+  private void forwardChangeMembershipPlan(
+      Log log,
+      Map.Entry<PhysicalPlan, PartitionGroup> entry,
+      List<String> errorCodePartitionGroups,
+      CountDownLatch counter) {
+    int retryTime = 0;
+    try {
+      while (true) {
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "Send change membership log {} to data group {}, retry time: {}",
+              log,
+              entry.getValue(),
+              retryTime);
+        }
+        try {
+          TSStatus status = forwardToSingleGroup(entry);
+          if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "Success to send change membership log {} to data group {}",
+                  log,
+                  entry.getValue());
+            }
+            return;
+          }
+          Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          errorCodePartitionGroups.add(e.getMessage());
+          return;
+        }
+        retryTime++;
+      }
+    } finally {
+      counter.countDown();
+    }
+  }
+
   /** split a plan into several sub-plans, each belongs to only one data group. */
   private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
       throws UnsupportedPlanException, CheckConsistencyException {
@@ -445,8 +518,7 @@ public class Coordinator {
     TSStatus status;
     if (errorCodePartitionGroups.isEmpty()) {
       if (allRedirect) {
-        status = new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-        status.setRedirectNode(endPoint);
+        status = StatusUtils.getStatus(TSStatusCode.NEED_REDIRECTION, endPoint);
       } else {
         status = StatusUtils.OK;
       }

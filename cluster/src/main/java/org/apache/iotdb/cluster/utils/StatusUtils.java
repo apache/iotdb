@@ -208,6 +208,12 @@ public class StatusUtils {
     return status;
   }
 
+  public static TSStatus getStatus(TSStatusCode statusCode, EndPoint redirectedNode) {
+    TSStatus status = getStatus(statusCode);
+    status.setRedirectNode(redirectedNode);
+    return status;
+  }
+
   public static TSStatus getStatus(TSStatus status, String message) {
     TSStatus newStatus = status.deepCopy();
     newStatus.setMessage(message);

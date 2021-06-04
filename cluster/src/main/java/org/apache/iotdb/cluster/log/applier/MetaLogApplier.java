@@ -72,7 +72,7 @@ public class MetaLogApplier extends BaseApplier {
       return;
     }
     if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
-      metaGroupMember.sendLogToAllDataGroups(log);
+      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
     }
     member.applyAddNode(log);
   }
@@ -83,7 +83,7 @@ public class MetaLogApplier extends BaseApplier {
       return;
     }
     if (metaGroupMember.getCharacter() == NodeCharacter.LEADER) {
-      metaGroupMember.sendLogToAllDataGroups(log);
+      metaGroupMember.getCoordinator().sendLogToAllDataGroups(log);
     }
     member.applyRemoveNode(log);
   }

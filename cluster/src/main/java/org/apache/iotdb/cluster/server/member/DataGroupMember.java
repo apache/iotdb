@@ -866,21 +866,6 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
-  /** For data group, it's necessary to apply remove/add log immediately after append. */
-  @Override
-  protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
-    long resp = super.appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
-    if (resp == Response.RESPONSE_AGREE
-        && (log instanceof AddNodeLog || log instanceof RemoveNodeLog)) {
-      try {
-        commitLog(log);
-      } catch (LogExecutionException e) {
-        logger.error("{}: execute add/remove log error.", name, e);
-      }
-    }
-    return resp;
-  }
-
   /**
    * Generate a report containing the character, leader, term, last log term, last log index, header
    * and readOnly or not of this member.
