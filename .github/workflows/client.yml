@@ -66,7 +66,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: sfackler/actions/rustup@master
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
@@ -77,7 +76,6 @@ jobs:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - run: vcpkg install openssl:x64-windows
       - name: Install Boost and Win_Flex_Bison
         run: mkdir D:\a\cpp ; `
           Invoke-WebRequest https://github.com/lexxmark/winflexbison/releases/download/v2.5.24/win_flex_bison-2.5.24.zip -OutFile D:\a\cpp\win_flex_bison.zip ; `
