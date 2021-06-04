@@ -20,8 +20,8 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
@@ -179,7 +179,7 @@ public enum BasicOperatorType {
         return NOTEQUAL;
       default:
         throw new SQLParserException(
-            "unsupported type:{}" + SQLConstant.tokenNames.get(filterType));
+            "unsupported type:{}" + FilterConstant.filterNames.get(filterType));
     }
   }
 

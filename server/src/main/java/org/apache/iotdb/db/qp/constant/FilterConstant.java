@@ -16,19 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.constant;
 
 import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
 public class FilterConstant {
 
   public static final Map<Integer, FilterType> lexerToFilterType = new HashMap<>();
-  public static final Map<FilterType, String> filterSymbol = new HashMap<>();
-  public static final Map<FilterType, String> filterNames = new HashMap<>();
-  public static final Map<FilterType, FilterType> filterReverseWords = new HashMap<>();
+  public static final Map<FilterType, String> filterSymbol = new EnumMap<>(FilterType.class);
+  public static final Map<FilterType, String> filterNames = new EnumMap<>(FilterType.class);
+  public static final Map<FilterType, FilterType> filterReverseWords =
+      new EnumMap<>(FilterType.class);
 
   public enum FilterType {
     KW_AND,

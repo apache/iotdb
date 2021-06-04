@@ -27,7 +27,7 @@ public class LogicalChecker {
 
   private LogicalChecker() {}
 
-  /** To check whether illegal component exists in specific operator */
+  /** To check whether illegal component exists in specific operator. */
   public static void check(Operator operator) throws LogicalOperatorException {
     if (operator instanceof QueryOperator) {
       ((QueryOperator) operator).check();
