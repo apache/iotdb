@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -98,6 +99,23 @@ public class TsFileRewriteTool implements AutoCloseable {
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
+    partitionWriterMap = new HashMap<>();
+    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
+      oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
+      modsIterator = oldModification.iterator();
+      fileModificationMap = new HashMap<>();
+    }
+  }
+
+  public TsFileRewriteTool(TsFileResource resourceToBeRewritten, boolean needReaderForV2)
+      throws IOException {
+    oldTsFile = resourceToBeRewritten.getTsFile();
+    String file = oldTsFile.getAbsolutePath();
+    if (needReaderForV2) {
+      reader = new TsFileSequenceReaderForV2(file);
+    } else {
+      reader = new TsFileSequenceReader(file);
+    }
     partitionWriterMap = new HashMap<>();
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();

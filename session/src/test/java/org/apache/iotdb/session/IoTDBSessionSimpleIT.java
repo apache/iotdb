@@ -610,7 +610,7 @@ public class IoTDBSessionSimpleIT {
           "root.sg.d1.s2"
         });
     Assert.assertArrayEquals(
-        dataSet.getColumnTypes().toArray(new TSDataType[0]),
+        dataSet.getColumnTypes().toArray(new String[0]),
         new TSDataType[] {
           TSDataType.INT64,
           TSDataType.INT64,

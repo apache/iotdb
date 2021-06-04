@@ -245,7 +245,7 @@ net.minidev:json-smart:2.3
 com.google.code.findbugs:jsr305:3.0.2
 com.nimbusds:lang-tag:1.4.4
 com.librato.metrics:librato-java:2.1.0
-org.apache.thrift:libthrift:0.13.0
+org.apache.thrift:libthrift:0.14.1
 io.dropwizard.metrics:metrics-core:3.2.6
 io.dropwizard.metrics:metrics-json:3.2.6
 io.dropwizard.metrics:metrics-jvm:3.2.6

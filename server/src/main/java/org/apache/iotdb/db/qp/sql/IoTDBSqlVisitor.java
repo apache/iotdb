@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
@@ -80,8 +81,8 @@ import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AggregationElementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AliasClauseContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignInSpecialLimitContext;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceStatementOrDisableAlignInSpecialClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlterUserContext;
@@ -183,6 +184,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildPathsContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFunctionsContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowLockInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowMergeStatusContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowQueryProcesslistContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowStorageGroupContext;
@@ -212,6 +214,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.UdfAttributeContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UdfCallContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.WhereClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.WithoutNullStatementContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -843,6 +846,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitShowLockInfo(ShowLockInfoContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowLockInfoOperator(SQLConstant.TOK_LOCK_INFO, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowLockInfoOperator(
+          SQLConstant.TOK_LOCK_INFO, new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  @Override
   public Operator visitShowChildPaths(ShowChildPathsContext ctx) {
     if (ctx.prefixPath() != null) {
       return new ShowChildPathsOperator(
@@ -1133,11 +1146,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       parseSlimitClause(ctx.slimitClause(), queryOp);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(queryOp);
-      } else {
-        parseDisableAlign(queryOp);
-      }
+      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
     }
     return queryOp;
   }
@@ -1149,22 +1158,41 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       parseLimitClause(ctx.limitClause(), queryOp);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(queryOp);
-      } else {
-        parseDisableAlign(queryOp);
-      }
+      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
     }
     return queryOp;
   }
 
   @Override
-  public Operator visitAlignByDeviceClauseOrDisableAlignInSpecialLimit(
-      AlignByDeviceClauseOrDisableAlignInSpecialLimitContext ctx) {
-    if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
+  public Operator visitAlignByDeviceClauseOrDisableAlignStatement(
+      AlignByDeviceClauseOrDisableAlignStatementContext ctx) {
+    parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
+    return queryOp;
+  }
+
+  private void parseAlignByDeviceClauseOrDisableAlign(
+      AlignByDeviceClauseOrDisableAlignContext ctx) {
+    if (ctx.alignByDeviceClause() != null) {
       parseAlignByDeviceClause(queryOp);
     } else {
       parseDisableAlign(queryOp);
+    }
+  }
+
+  @Override
+  public Operator visitWithoutNullStatement(WithoutNullStatementContext ctx) {
+    if (ctx.withoutNullClause().WITHOUT() != null) {
+      queryOp.setWithoutAllNull(ctx.withoutNullClause().ALL() != null);
+      queryOp.setWithoutAnyNull(ctx.withoutNullClause().ANY() != null);
+    }
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), queryOp);
+    }
+    if (ctx.slimitClause() != null) {
+      parseSlimitClause(ctx.slimitClause(), queryOp);
+    }
+    if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
+      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
     }
     return queryOp;
   }
@@ -1209,22 +1237,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       parseSlimitClause(ctx.slimitClause(), queryOp);
     }
     if (ctx.alignByDeviceClauseOrDisableAlign() != null) {
-      if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-        parseAlignByDeviceClause(queryOp);
-      } else {
-        parseDisableAlign(queryOp);
-      }
-    }
-    return queryOp;
-  }
-
-  @Override
-  public Operator visitAlignByDeviceStatementOrDisableAlignInSpecialClause(
-      AlignByDeviceStatementOrDisableAlignInSpecialClauseContext ctx) {
-    if (ctx.alignByDeviceClauseOrDisableAlign().alignByDeviceClause() != null) {
-      parseAlignByDeviceClause(queryOp);
-    } else {
-      parseDisableAlign(queryOp);
+      parseAlignByDeviceClauseOrDisableAlign(ctx.alignByDeviceClauseOrDisableAlign());
     }
     return queryOp;
   }
