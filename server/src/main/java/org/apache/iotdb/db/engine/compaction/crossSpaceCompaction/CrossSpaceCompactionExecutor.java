@@ -1,9 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.crossSpaceCompaction;
 
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
-import java.util.List;
 
 public abstract class CrossSpaceCompactionExecutor {
 
@@ -15,6 +12,5 @@ public abstract class CrossSpaceCompactionExecutor {
 
   public abstract void recover();
 
-  public abstract void doCrossSpaceCompaction(
-      boolean fullMerge, List<TsFileResource> seqMergeList, List<TsFileResource> unSeqMergeList);
+  public abstract void doCrossSpaceCompaction(boolean fullMerge, long timePartition);
 }

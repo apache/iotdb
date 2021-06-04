@@ -101,6 +101,50 @@ public class TsFileManagement {
     }
   }
 
+  /** get the TsFile list in sequence by time partition and level */
+  public List<TsFileResource> getTsFileListByTimePartitionAndLevel(
+      boolean sequence, long timePartition, int level) {
+    readLock();
+    try {
+      if (sequence) {
+        List<SortedSet<TsFileResource>> sequenceTsFileList =
+            sequenceTsFileResources.get(timePartition);
+        return new ArrayList<>(sequenceTsFileList.get(level));
+      } else {
+        List<List<TsFileResource>> unSequenceTsFileList =
+            unSequenceTsFileResources.get(timePartition);
+        return new ArrayList<>(unSequenceTsFileList.get(i));
+      }
+    } finally {
+      readUnLock();
+    }
+  }
+
+  /**
+   * get the closed TsFile list in the format of tree in sequence by time partition, used by level
+   * compaction
+   */
+  public List<List<TsFileResource>> getClosedTsFileListByTimePartition(
+      boolean sequence, long timePartition) {
+    readLock();
+    try {
+      List<List<TsFileResource>> result = new ArrayList<>();
+      if (sequence) {
+        List<SortedSet<TsFileResource>> sequenceTsFileList =
+            sequenceTsFileResources.get(timePartition);
+
+        return new ArrayList<>(sequenceTsFileList.get(level));
+      } else {
+        List<List<TsFileResource>> unSequenceTsFileList =
+            unSequenceTsFileResources.get(timePartition);
+        return new ArrayList<>(unSequenceTsFileList.get(i));
+      }
+      return result;
+    } finally {
+      readUnLock();
+    }
+  }
+
   /** get the TsFile list in sequence by time partition */
   public List<TsFileResource> getTsFileListByTimePartition(boolean sequence, long timePartition) {
     readLock();

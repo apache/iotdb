@@ -32,6 +32,8 @@ import org.slf4j.LoggerFactory;
 public class InplaceCompactionExecutor extends CrossSpaceCompactionExecutor {
   private static final Logger logger = LoggerFactory.getLogger(InplaceCompactionExecutor.class);
 
+  private final int unseqLevelNum =
+      Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum(), 1);
   private final int maxOpenFileNumInEachUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
@@ -45,7 +47,8 @@ public class InplaceCompactionExecutor extends CrossSpaceCompactionExecutor {
     try {
       // recover mods
       File mergingMods =
-          SystemFileFactory.INSTANCE.getFile(tsFileManagement.storageGroupSysDir, MERGING_MODIFICATION_FILE_NAME);
+          SystemFileFactory.INSTANCE.getFile(
+              tsFileManagement.storageGroupSysDir, MERGING_MODIFICATION_FILE_NAME);
       if (mergingMods.exists()) {
         this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
@@ -69,8 +72,12 @@ public class InplaceCompactionExecutor extends CrossSpaceCompactionExecutor {
   }
 
   @Override
-  public void doCrossSpaceCompaction(
-      boolean fullMerge, List<TsFileResource> seqMergeList, List<TsFileResource> unSeqMergeList) {
+  public void doCrossSpaceCompaction(boolean fullMerge, long timePartition) {
+    List<TsFileResource> seqMergeList =
+        tsFileManagement.getTsFileListByTimePartition(true, timePartition);
+    List<TsFileResource> unSeqMergeList =
+        tsFileManagement.getTsFileListByTimePartitionAndLevel(
+            false, timePartition, unseqLevelNum - 1);
     if (seqMergeList.isEmpty() || unSeqMergeList.isEmpty()) {
       logger.info(
           "{} no files to be merged, seqFiles={}, unseqFiles={}",
@@ -113,7 +120,9 @@ public class InplaceCompactionExecutor extends CrossSpaceCompactionExecutor {
 
       tsFileManagement.mergingModification =
           new ModificationFile(
-              tsFileManagement.storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+              tsFileManagement.storageGroupSysDir
+                  + File.separator
+                  + MERGING_MODIFICATION_FILE_NAME);
 
       logger.info(
           "{} start merge {} seqFiles, {} unseqFiles",
