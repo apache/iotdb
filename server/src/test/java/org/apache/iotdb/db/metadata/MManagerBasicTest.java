@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -738,7 +739,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTotalSeriesNumber() {
+  public void testTotalSeriesNumber() throws Exception {
     MManager manager = IoTDB.metaManager;
 
     try {
@@ -781,6 +782,8 @@ public class MManagerBasicTest {
           null);
 
       assertEquals(6, manager.getTotalSeriesNumber());
+      EnvironmentUtils.restartDaemon();
+      assertEquals(6, manager.getTotalSeriesNumber());
       manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
       assertEquals(5, manager.getTotalSeriesNumber());
       manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
@@ -806,5 +809,39 @@ public class MManagerBasicTest {
     }
 
     assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
+
+  @Test
+  public void testGetStorageGroupNodeByPath() {
+    MManager manager = IoTDB.metaManager;
+    PartialPath partialPath = null;
+
+    try {
+      partialPath = new PartialPath("root.ln.sg1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.setStorageGroup(partialPath);
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      partialPath = new PartialPath("root.ln.sg2.device1.sensor1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.getStorageGroupNodeByPath(partialPath);
+    } catch (StorageGroupNotSetException e) {
+      Assert.assertEquals(
+          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          e.getMessage());
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
   }
 }
