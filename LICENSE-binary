@@ -250,7 +250,7 @@ io.dropwizard.metrics:metrics-core:3.2.6
 io.dropwizard.metrics:metrics-json:3.2.6
 io.dropwizard.metrics:metrics-jvm:3.2.6
 com.librato.metrics:metrics-librato:5.1.0
-io.moquette:moquette-broker:0.13
+de.fraunhofer.iosb.io.moquette:moquette-broker:0.14.3
 io.netty:netty-buffer:4.1.27.Final
 io.netty:netty-codec:4.1.27.Final
 io.netty:netty-codec-http:4.1.27.Final
