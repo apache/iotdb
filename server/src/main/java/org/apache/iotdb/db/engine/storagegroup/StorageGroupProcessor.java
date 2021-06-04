@@ -1062,20 +1062,7 @@ public class StorageGroupProcessor {
     writeLock();
     try {
       if (!tsFileProcessorTreeMap.containsKey(timeRangeId)) {
-        // we have to remove oldest processor to control the num of the memtables
-        // TODO: use a method to control the number of memtables
-        if (tsFileProcessorTreeMap.size()
-            >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
-          Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-          logger.info(
-              "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
-              sequence,
-              tsFileProcessorTreeMap.size(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
-              storageGroupName);
-          asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
-        }
-
+        // memory control module will control the number of memtables
         // build new processor
         TsFileProcessor newProcessor = createTsFileProcessor(sequence, timeRangeId);
         tsFileProcessorTreeMap.put(timeRangeId, newProcessor);
