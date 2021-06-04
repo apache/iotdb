@@ -18,9 +18,32 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
+import java.util.List;
+
 public class MergeOperator extends RootOperator {
+
+  public List<PartialPath> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public void setStorageGroupList(List<PartialPath> storageGroupList) {
+    this.storageGroupList = storageGroupList;
+  }
+
+  private List<PartialPath> storageGroupList;
+
+  public Boolean isSeq() {
+    return isSeq;
+  }
+
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  private Boolean isSeq;
 
   public MergeOperator(int tokenIntType) {
     super(tokenIntType);

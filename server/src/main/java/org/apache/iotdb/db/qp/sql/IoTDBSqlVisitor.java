@@ -502,7 +502,19 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitMerge(MergeContext ctx) {
-    return new MergeOperator(SQLConstant.TOK_MERGE);
+
+    MergeOperator mergeOperator = new MergeOperator(SQLConstant.TOK_MERGE);
+    if (ctx.booleanClause() != null) {
+      mergeOperator.setSeq(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    }
+    if (ctx.prefixPath(0) != null) {
+      List<PartialPath> storageGroups = new ArrayList<>();
+      for (PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      mergeOperator.setStorageGroupList(storageGroups);
+    }
+    return mergeOperator;
   }
 
   @Override
