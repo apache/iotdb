@@ -196,7 +196,7 @@ public abstract class AbstractMemTable implements IMemTable {
           createIfNotExistAndGet(
               insertTabletPlan.getPrefixPath().getFullPath(),
               insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      if (insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (insertTabletPlan.isAligned()) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];

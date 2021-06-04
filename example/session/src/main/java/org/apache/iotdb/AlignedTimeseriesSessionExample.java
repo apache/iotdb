@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("squid:S106")
-public class VectorSessionExample {
+public class AlignedTimeseriesSessionExample {
 
   private static Session session;
   private static final String ROOT_SG1_D1 = "root.sg_1.d1";
