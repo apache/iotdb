@@ -124,7 +124,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
-      logger.info(
+      logger.debug(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
   }
@@ -675,7 +675,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 i,
                 toMergeTsFiles.size());
             for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.info(
+              logger.debug(
                   "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
             }
 
