@@ -178,7 +178,7 @@
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>8.5.15</version>
+            <version>8.5.46</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -188,7 +188,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-buffer</artifactId>
-            <version>4.1.27.Final</version>
+            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.fusesource.mqtt-client</groupId>
