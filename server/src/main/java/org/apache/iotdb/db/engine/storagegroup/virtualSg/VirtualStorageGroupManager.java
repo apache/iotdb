@@ -201,7 +201,7 @@ public class VirtualStorageGroupManager {
             isSeq);
       }
 
-      processor.writeLock("VirtualCloseStorageGroupProcessor-204");
+      processor.writeLock("VirtualCloseStorageGroupProcessor-boolean-boolean");
       try {
         if (isSeq) {
           // to avoid concurrent modification problem, we need a new array list
@@ -239,7 +239,7 @@ public class VirtualStorageGroupManager {
             processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq,
             partitionId);
-        processor.writeLock("VirtualCloseStorageGroupProcessor-242");
+        processor.writeLock("VirtualCloseStorageGroupProcessor-long-boolean-boolean");
         try {
           // to avoid concurrent modification problem, we need a new array list
           List<TsFileProcessor> processors =
