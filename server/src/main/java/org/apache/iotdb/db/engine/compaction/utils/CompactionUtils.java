@@ -443,7 +443,8 @@ public class CompactionUtils {
               logger.info("{} tsfile does not exist", path);
               return null;
             }
-          } catch (IOException e) {
+          } catch (Exception e) {
+            logger.warn("{} tsfile may be destroyed", path);
             logger.error(
                 "Storage group {}, flush recover meets error. reader create failed.",
                 storageGroup,

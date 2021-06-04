@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.StorageGroupCompactionTask;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -443,6 +442,42 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
+      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      for (TsFileResource resource : upgradeSeqFileList) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      for (TsFileResource resource : upgradeUnseqFileList) {
+        long partitionNum = resource.getTimePartition();
+        updatePartitionFileVersion(partitionNum, resource.getVersion());
+      }
+      updateLatestFlushedTime();
+
+      List<TsFileResource> seqTsFileResources = tsFileManagement.getTsFileList(true);
+      for (TsFileResource resource : seqTsFileResources) {
+        long timePartitionId = resource.getTimePartition();
+        Map<String, Long> endTimeMap = new HashMap<>();
+        for (String deviceId : resource.getDevices()) {
+          long endTime = resource.getEndTime(deviceId);
+          endTimeMap.put(deviceId, endTime);
+        }
+        latestTimeForEachDevice
+            .computeIfAbsent(timePartitionId, l -> new HashMap<>())
+            .putAll(endTimeMap);
+        partitionLatestFlushedTimeForEachDevice
+            .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+            .putAll(endTimeMap);
+        globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
+      }
+
+      // leave it in the end
       String taskName =
           logicalStorageGroupName + "-" + virtualStorageGroupId + "-" + System.currentTimeMillis();
       File mergingMods =
@@ -450,6 +485,7 @@ public class StorageGroupProcessor {
       if (mergingMods.exists()) {
         this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
+
       RecoverMergeTask recoverMergeTask =
           new RecoverMergeTask(
               new ArrayList<>(tsFileManagement.getTsFileList(true)),
@@ -470,47 +506,8 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
       recoverCompaction();
-      for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
-        long partitionNum = resource.getTimePartition();
-        updatePartitionFileVersion(partitionNum, resource.getVersion());
-      }
-      for (TsFileResource resource : tsFileManagement.getTsFileList(false)) {
-        long partitionNum = resource.getTimePartition();
-        updatePartitionFileVersion(partitionNum, resource.getVersion());
-      }
-      for (TsFileResource resource : upgradeSeqFileList) {
-        long partitionNum = resource.getTimePartition();
-        updatePartitionFileVersion(partitionNum, resource.getVersion());
-      }
-      for (TsFileResource resource : upgradeUnseqFileList) {
-        long partitionNum = resource.getTimePartition();
-        updatePartitionFileVersion(partitionNum, resource.getVersion());
-      }
-      updateLatestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
-    }
-
-    List<TsFileResource> seqTsFileResources = tsFileManagement.getTsFileList(true);
-    for (TsFileResource resource : seqTsFileResources) {
-      long timePartitionId = resource.getTimePartition();
-      Map<String, Long> endTimeMap = new HashMap<>();
-      for (String deviceId : resource.getDevices()) {
-        long endTime = resource.getEndTime(deviceId);
-        endTimeMap.put(deviceId, endTime);
-      }
-      latestTimeForEachDevice
-          .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-          .putAll(endTimeMap);
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-          .putAll(endTimeMap);
-      globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
-    }
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
     }
   }
 
@@ -522,6 +519,10 @@ public class StorageGroupProcessor {
 
     @Override
     public Void call() {
+      logger.info(
+          "all partition in storage group {}: {}",
+          logicalStorageGroupName,
+          partitionLatestFlushedTimeForEachDevice.keySet());
       for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
         syncCompactOnePartition(
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
@@ -540,7 +541,7 @@ public class StorageGroupProcessor {
       try {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
-                tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
+                tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionMergeCallBack(false, 0);
         logger.error(
@@ -707,7 +708,7 @@ public class StorageGroupProcessor {
       RestorableTsFileIOWriter writer;
       try {
         // this tsfile is not zero level, no need to perform redo wal
-        if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
+        if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
@@ -1986,7 +1987,10 @@ public class StorageGroupProcessor {
 
   private void syncCompactOnePartition(long timePartition, boolean fullMerge) {
     logger.info(
-        "{}-{} submit a compaction merge task", logicalStorageGroupName, virtualStorageGroupId);
+        "{}-{} partition:{}, submit a compaction merge task",
+        logicalStorageGroupName,
+        virtualStorageGroupId,
+        timePartition);
     try {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
@@ -2000,11 +2004,29 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** close recover compaction merge callback, to start continuous compaction */
+  private void closeCompactionRecoverCallBack(boolean isMerge, long timePartitionId) {
+    logger.info(
+        "{}-{} recover finished, submit continuous compaction task",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      CompactionMergeTaskPoolManager.getInstance()
+          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+    }
+  }
+
   /** close compaction merge callback, to release some locks */
   private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
     if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       syncCompactOnePartition(
           timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    } else {
+      logger.info(
+          "{}-{} partition:{}, do not have to submit a new compaction merge task",
+          logicalStorageGroupName,
+          virtualStorageGroupId,
+          timePartitionId);
     }
   }
 

@@ -785,6 +785,11 @@ public class TsFileResource {
     return tsFileName;
   }
 
+  public static int getMergeLevel(String fileName) {
+    TsFileName tsFileName = getTsFileName(fileName);
+    return tsFileName.mergeCnt;
+  }
+
   public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource) {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
