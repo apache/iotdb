@@ -66,18 +66,14 @@ public abstract class Operator {
 
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
-    FILTER,
     GROUPBYTIME,
     NULL,
     INSERT,
     BATCHINSERT,
     DELETE,
-    BASIC_FUNC,
-    IN,
     QUERY,
     AGGREGATION,
     AUTHOR,
-    FUNC,
     LOADDATA,
     METADATA,
     FILL,
