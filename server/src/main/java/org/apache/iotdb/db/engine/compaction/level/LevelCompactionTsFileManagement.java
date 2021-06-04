@@ -124,7 +124,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
-      logger.info(
+      logger.debug(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
   }
@@ -602,18 +602,20 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
       isMergeExecutedInCurrentTask =
           merge(
-              isForceFullMerge,
-              getTsFileListByTimePartition(true, timePartition),
-              forkedUnSequenceTsFileResources.get(0),
-              Long.MAX_VALUE);
+                  isForceFullMerge,
+                  getTsFileListByTimePartition(true, timePartition),
+                  forkedUnSequenceTsFileResources.get(0),
+                  Long.MAX_VALUE)
+              || isMergeExecutedInCurrentTask;
     } else {
       isMergeExecutedInCurrentTask =
           merge(
-              forkedUnSequenceTsFileResources,
-              false,
-              timePartition,
-              unseqLevelNum,
-              unseqFileNumInEachLevel);
+                  forkedUnSequenceTsFileResources,
+                  false,
+                  timePartition,
+                  unseqLevelNum,
+                  unseqFileNumInEachLevel)
+              || isMergeExecutedInCurrentTask;
     }
   }
 
