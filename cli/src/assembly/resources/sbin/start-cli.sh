@@ -75,6 +75,7 @@ esac
 
 # echo $PARAMETERS
 
+set -o noglob
 exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
 
 
