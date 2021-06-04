@@ -519,12 +519,13 @@ public class StorageGroupProcessor {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
         syncCompactOnePartition(
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
       clearCompactionStatus();
+      return null;
     }
   }
 
@@ -1971,10 +1972,11 @@ public class StorageGroupProcessor {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       syncCompactOnePartition(
           partition, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       clearCompactionStatus();
+      return null;
     }
   }
 
@@ -1986,7 +1988,7 @@ public class StorageGroupProcessor {
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
       tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition)
-          .run();
+          .call();
     } catch (IOException e) {
       this.closeCompactionMergeCallBack(false, timePartition);
       logger.error(

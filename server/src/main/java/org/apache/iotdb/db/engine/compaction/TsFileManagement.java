@@ -169,10 +169,11 @@ public abstract class TsFileManagement {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       merge(timePartitionId);
       closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
       clearCompactionStatus();
+      return null;
     }
   }
 
@@ -186,12 +187,13 @@ public abstract class TsFileManagement {
     }
 
     @Override
-    public void run() {
+    public Void call() {
       recover();
       // in recover logic, we do not have to start next compaction task, and in this case the param
       // time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
       clearCompactionStatus();
+      return null;
     }
   }
 

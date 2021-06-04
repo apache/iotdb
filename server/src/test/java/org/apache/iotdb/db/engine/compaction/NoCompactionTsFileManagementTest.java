@@ -156,7 +156,7 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
         noCompactionTsFileManagement
         .new CompactionMergeTask(
             (boolean isMergeExecutedInCurrentTask, long timePartitionId) -> {}, 0);
-    compactionMergeTask.run();
+    compactionMergeTask.call();
     assertEquals(1, noCompactionTsFileManagement.size(true));
     assertEquals(1, noCompactionTsFileManagement.size(false));
     noCompactionTsFileManagement.clear();

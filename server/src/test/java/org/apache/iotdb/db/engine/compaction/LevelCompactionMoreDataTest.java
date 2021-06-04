@@ -203,7 +203,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
         levelCompactionTsFileManagement
         .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionMergeTask.call();
     while (compactionMergeWorking) {
       // wait
     }
