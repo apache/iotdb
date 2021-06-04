@@ -61,19 +61,14 @@ public class UpgradeTask extends WrappedRunnable {
         logger.info("find upgraded file for {}", upgradeResource.getTsFile());
         upgradedResources = findUpgradedFiles();
       }
-      upgradeResource.writeLock();
-      try {
-        upgradeResource.setUpgradedResources(upgradedResources);
-        upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
-      } finally {
-        upgradeResource.writeUnlock();
-      }
-      UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
+      upgradeResource.setUpgradedResources(upgradedResources);
+      upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
+      UpgradeSevice.getTotalUpgradeFileNum().getAndAdd(-1);
       logger.info(
           "Upgrade completes, file path:{} , the remaining upgraded file num: {}",
           oldTsfilePath,
-          UpgradeSevice.getCntUpgradeFileNum());
-      if (UpgradeSevice.getCntUpgradeFileNum() == 0) {
+          UpgradeSevice.getTotalUpgradeFileNum().get());
+      if (UpgradeSevice.getTotalUpgradeFileNum().get() == 0) {
         logger.info("Start delete empty tmp folders");
         clearTmpFolders(DirectoryManager.getInstance().getAllSequenceFileFolders());
         clearTmpFolders(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
