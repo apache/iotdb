@@ -188,7 +188,7 @@ public class InsertRowPlan extends InsertPlan {
     try {
       values[0] = CommonUtils.parseValueForTest(dataTypes[0], insertValue);
     } catch (QueryProcessException e) {
-      e.printStackTrace();
+      logger.error(e.getMessage());
     }
   }
 

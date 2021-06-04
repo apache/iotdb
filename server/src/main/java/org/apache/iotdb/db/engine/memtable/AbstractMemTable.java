@@ -118,7 +118,9 @@ public abstract class AbstractMemTable implements IMemTable {
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
     int columnIndex = 0;
     for (MeasurementMNode measurementMNode : measurementMNodes) {
-      if (measurementMNode != null && measurementMNode.getSchema().getType() == TSDataType.VECTOR) {
+      if (measurementMNode != null
+          && measurementMNode.getSchema() != null
+          && measurementMNode.getSchema().getType() == TSDataType.VECTOR) {
         // write vector
         Object[] vectorValue =
             new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
