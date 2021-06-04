@@ -83,7 +83,6 @@ import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -1054,13 +1053,7 @@ public class TSServiceImpl implements TSIService.Iface {
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(
-              resultColumns.get(i).getExpression() instanceof TimeSeriesOperand
-                  ? udtfPlan.getDataTypes().get(i)
-                  : udtfPlan
-                      .getExecutorByOriginalOutputColumnIndex(i)
-                      .getConfigurations()
-                      .getOutputDataType());
+          seriesTypes.add(udtfPlan.getOriginalOutputColumnDataType(i));
         }
         break;
       default:
