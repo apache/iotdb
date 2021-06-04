@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
 import java.io.File;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -47,6 +48,7 @@ public class CompactionMergeTaskPoolManager implements IService {
   private static final CompactionMergeTaskPoolManager INSTANCE = new CompactionMergeTaskPoolManager();
   private ExecutorService pool;
 
+  private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
   public static CompactionMergeTaskPoolManager getInstance() {
     return INSTANCE;
   }
@@ -137,10 +139,17 @@ public class CompactionMergeTaskPoolManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public void submitTask(Runnable compactionMergeTask)
+  public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
-      pool.submit(compactionMergeTask);
+      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
+      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
+      if (isCompacting) {
+        return;
+      }
+      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
+      sgCompactionStatus.put(storageGroup, true);
+      pool.submit(storageGroupCompactionTask);
     }
   }
 

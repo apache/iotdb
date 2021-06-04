@@ -216,16 +216,11 @@ public class MManager {
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
-      List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
-      for (PartialPath sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
-        totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
-      }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       logWriter.setLineNumber(lineNumber);
       isRecovering = false;
-    } catch (IOException | MetadataException e) {
+    } catch (IOException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
     }
@@ -607,7 +602,7 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(mtree.getAllTimeseriesCount(storageGroup));
+        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup));
         // clear cached MNode
         if (!allowToCreateNewSeries &&
             totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
@@ -1912,4 +1907,7 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
+  public long getTotalSeriesNumber() {
+    return totalSeriesNumber.get();
+  }
 }

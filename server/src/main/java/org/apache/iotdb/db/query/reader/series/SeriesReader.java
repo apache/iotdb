@@ -264,11 +264,12 @@ public class SeriesReader {
        * first time series metadata is already unpacked, consume cached ChunkMetadata
        */
       if (!cachedChunkMetadata.isEmpty()) {
-        firstChunkMetadata = cachedChunkMetadata.poll();
+        firstChunkMetadata = cachedChunkMetadata.peek();
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        firstChunkMetadata = cachedChunkMetadata.poll();
       }
     }
 
@@ -442,7 +443,7 @@ public class SeriesReader {
         !unSeqPageReaders.isEmpty() && orderUtils
             .isOverlapped(firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
-            && mergeReader.currentTimeValuePair().getTimestamp() > firstPageReader.getStatistics()
+            && mergeReader.currentTimeValuePair().getTimestamp() >= firstPageReader.getStatistics()
             .getStartTime()));
   }
 
@@ -616,6 +617,9 @@ public class SeriesReader {
               timeValuePair.getTimestamp(), false);
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          // update if there are unSeqPageReaders unpacked
+          timeValuePair = mergeReader.currentTimeValuePair();
 
           if (firstPageReader != null) {
             if ((orderUtils.getAscending() && timeValuePair.getTimestamp() > firstPageReader

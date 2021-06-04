@@ -249,11 +249,6 @@ public class TsFileSequenceReaderForV1 extends TsFileSequenceReader {
   }
 
   @Override
-  public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
-    return getTimeseriesMetadataFromOldFile(path);
-  }
-
-  @Override
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
     return getTimeseriesMetadataFromOldFile(device, measurements);
