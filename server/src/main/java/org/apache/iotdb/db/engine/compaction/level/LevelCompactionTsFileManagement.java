@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource.TsFileName;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -53,11 +52,9 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
@@ -266,7 +263,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     writeLock();
     try {
       long timePartitionId = tsFileResource.getTimePartition();
-      int level = getMergeLevel(tsFileResource.getTsFile());
+      int level = TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName());
       if (sequence) {
         if (level <= seqLevelNum - 1) {
           // current file has normal level
@@ -481,7 +478,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
             sourceTsFileResources.add(getTsFileResource(file, isSeq));
           }
-          int level = getMergeLevel(new File(sourceFileList.get(0)));
+          int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
           RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
@@ -507,7 +504,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 throw new InterruptedException(
                     String.format("%s [Compaction] abort", storageGroupName));
               }
-              int targetLevel = getMergeLevel(targetResource.getTsFile());
+              int targetLevel = TsFileResource.getMergeLevel(targetResource.getTsFile().getName());
               if (isSeq) {
                 sequenceTsFileResources.get(timePartition).get(targetLevel).add(targetResource);
                 sequenceRecoverTsFileResources.clear();
@@ -643,7 +640,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     boolean isMergeExecutedInCurrentTask = false;
     CompactionLogger compactionLogger = null;
     try {
-      logger.info("{} start to filter compaction condition", storageGroupName);
+      logger.debug("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
         List<TsFileResource> currLevelTsFileResource = mergeResources.get(i);
         if (currMaxFileNumInEachLevel <= currLevelTsFileResource.size()) {
@@ -779,15 +776,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       newUnSequenceTsFileResources.add(new ArrayList<>());
     }
     return newUnSequenceTsFileResources;
-  }
-
-  public static int getMergeLevel(File file) {
-    TsFileName tsFileName = TsFileResource.getTsFileName(file);
-    String mergeLevelStr =
-        file.getPath()
-            .substring(file.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1)
-            .replaceAll(TSFILE_SUFFIX, "");
-    return Integer.parseInt(mergeLevelStr);
   }
 
   private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)

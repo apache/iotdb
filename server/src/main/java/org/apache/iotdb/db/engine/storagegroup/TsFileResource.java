@@ -785,7 +785,7 @@ public class TsFileResource {
     return tsFileName;
   }
 
-  public static int getLevel(String fileName) {
+  public static int getMergeLevel(String fileName) {
     TsFileName tsFileName = getTsFileName(fileName);
     return tsFileName.mergeCnt;
   }
