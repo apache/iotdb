@@ -415,13 +415,13 @@ public class CompactionUtils {
         if (compactionLogger != null) {
           compactionLogger.logDevice(device, writer.getPos());
         }
-        for (TsFileResource tsFileResource : tsFileResources) {
-          targetResource.updatePlanIndexes(tsFileResource);
-        }
-        targetResource.serialize();
-        writer.endFile();
-        targetResource.close();
       }
+      for (TsFileResource tsFileResource : tsFileResources) {
+        targetResource.updatePlanIndexes(tsFileResource);
+      }
+      targetResource.serialize();
+      writer.endFile();
+      targetResource.close();
     } finally {
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
