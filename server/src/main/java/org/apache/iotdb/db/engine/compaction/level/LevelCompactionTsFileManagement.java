@@ -124,7 +124,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
-      logger.info(
+      logger.debug(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
   }
@@ -570,20 +570,22 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     if (enableUnseqCompaction
         && unseqLevelNum <= 1
         && forkedUnSequenceTsFileResources.get(0).size() > 0) {
-      isMergeExecutedInCurrentTask = isMergeExecutedInCurrentTask ||
-          merge(
-              isForceFullMerge,
-              getTsFileListByTimePartition(true, timePartition),
-              forkedUnSequenceTsFileResources.get(0),
-              Long.MAX_VALUE);
+      isMergeExecutedInCurrentTask =
+          isMergeExecutedInCurrentTask
+              || merge(
+                  isForceFullMerge,
+                  getTsFileListByTimePartition(true, timePartition),
+                  forkedUnSequenceTsFileResources.get(0),
+                  Long.MAX_VALUE);
     } else {
-      isMergeExecutedInCurrentTask = isMergeExecutedInCurrentTask ||
-          merge(
-              forkedUnSequenceTsFileResources,
-              false,
-              timePartition,
-              unseqLevelNum,
-              unseqFileNumInEachLevel);
+      isMergeExecutedInCurrentTask =
+          isMergeExecutedInCurrentTask
+              || merge(
+                  forkedUnSequenceTsFileResources,
+                  false,
+                  timePartition,
+                  unseqLevelNum,
+                  unseqFileNumInEachLevel);
     }
   }
 
@@ -608,6 +610,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     long startTimeMillis = System.currentTimeMillis();
     // whether execute merge chunk in the loop below
     boolean isMergeExecutedInCurrentTask = false;
+    CompactionLogger compactionLogger = null;
     try {
       logger.info("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
@@ -620,16 +623,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // do not merge current unseq file level to upper level and just merge all of them to
             // seq file
             isSeqMerging = false;
-            isMergeExecutedInCurrentTask = merge(
-                isForceFullMerge,
-                getTsFileListByTimePartition(true, timePartition),
-                mergeResources.get(i),
-                Long.MAX_VALUE);
+            isMergeExecutedInCurrentTask =
+                merge(
+                    isForceFullMerge,
+                    getTsFileListByTimePartition(true, timePartition),
+                    mergeResources.get(i),
+                    Long.MAX_VALUE);
           } else {
-            CompactionLogger compactionLogger =
-                new CompactionLogger(storageGroupDir, storageGroupName);
+            compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : mergeResources.get(i)) {
+              mergeResource.setMerging(true);
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
             File newLevelFile =
@@ -691,6 +695,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     } catch (Exception e) {
+      if (compactionLogger != null) {
+        try {
+          compactionLogger.close();
+        } catch (IOException ioException) {
+          logger.error("{} Compaction log close fail", storageGroupName + COMPACTION_LOG_NAME);
+        }
+      }
+      restoreCompaction();
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
       isSeqMerging = false;
@@ -702,6 +714,42 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           System.currentTimeMillis() - startTimeMillis);
     }
     return isMergeExecutedInCurrentTask;
+  }
+
+  /** restore the files back to the status before the compaction task is submitted */
+  private void restoreCompaction() {
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
+    try {
+      if (logFile.exists()) {
+        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
+        logAnalyzer.analyze();
+        String targetFilePath = logAnalyzer.getTargetFile();
+        List<String> sourceFileList = logAnalyzer.getSourceFiles();
+        boolean isSeq = logAnalyzer.isSeq();
+        for (String file : sourceFileList) {
+          TsFileResource fileResource = getTsFileResource(file, isSeq);
+          fileResource.setMerging(false);
+        }
+        if (targetFilePath != null) {
+          File targetFile = new File(targetFilePath);
+          if (targetFile.exists()) {
+            targetFile.delete();
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.error("restore compaction failed", e);
+    } finally {
+      if (logFile.exists()) {
+        try {
+          Files.delete(logFile.toPath());
+        } catch (IOException e) {
+          logger.error("delete compaction log file error ", e);
+        }
+      }
+    }
   }
 
   /** if level < maxLevel-1, the file need compaction else, the file can be merged later */
