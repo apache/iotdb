@@ -60,6 +60,8 @@ public class SQLConstant {
   public static final String MAX_VALUE = "max_value";
   public static final String MIN_VALUE = "min_value";
 
+  public static final String EXTREME = "extreme";
+
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
 
@@ -74,7 +76,16 @@ public class SQLConstant {
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
           Arrays.asList(
-              MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, FIRST_VALUE, LAST_VALUE, COUNT, SUM, AVG));
+              MIN_TIME,
+              MAX_TIME,
+              MIN_VALUE,
+              MAX_VALUE,
+              EXTREME,
+              FIRST_VALUE,
+              LAST_VALUE,
+              COUNT,
+              SUM,
+              AVG));
 
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
