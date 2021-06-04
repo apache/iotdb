@@ -17,29 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.expression;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-import java.util.List;
-import java.util.Set;
+public class ArithmeticMultiplicationTransformer extends ArithmeticBinaryTransformer {
 
-public interface Expression {
-
-  default boolean isAggregationFunctionExpression() {
-    return false;
+  public ArithmeticMultiplicationTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
   }
 
-  default boolean isTimeSeriesGeneratingFunctionExpression() {
-    return false;
+  @Override
+  protected double evaluate(double leftOperand, double rightOperand) {
+    return leftOperand * rightOperand;
   }
-
-  void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
-
-  void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException;
-
-  void collectPaths(Set<PartialPath> pathSet);
 }

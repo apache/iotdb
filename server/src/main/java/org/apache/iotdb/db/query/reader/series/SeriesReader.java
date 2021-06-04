@@ -297,11 +297,12 @@ public class SeriesReader {
        * first time series metadata is already unpacked, consume cached ChunkMetadata
        */
       if (!cachedChunkMetadata.isEmpty()) {
-        firstChunkMetadata = cachedChunkMetadata.poll();
+        firstChunkMetadata = cachedChunkMetadata.peek();
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        firstChunkMetadata = cachedChunkMetadata.poll();
       }
     }
 
@@ -482,7 +483,7 @@ public class SeriesReader {
                     firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
                 && mergeReader.currentTimeValuePair().getTimestamp()
-                    > firstPageReader.getStatistics().getStartTime()));
+                    >= firstPageReader.getStatistics().getStartTime()));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
@@ -684,6 +685,9 @@ public class SeriesReader {
               timeValuePair.getTimestamp(), false);
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          // update if there are unpacked unSeqPageReaders
+          timeValuePair = mergeReader.currentTimeValuePair();
 
           // from now, the unsequence reader is all unpacked, so we don't need to consider it
           // we has first page reader now

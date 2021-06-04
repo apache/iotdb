@@ -110,6 +110,8 @@ public abstract class Decoder {
           default:
             throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
         }
+      case DICTIONARY:
+        return new DictionaryDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }
