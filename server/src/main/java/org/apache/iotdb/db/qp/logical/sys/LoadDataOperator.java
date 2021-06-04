@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -42,5 +45,10 @@ public class LoadDataOperator extends Operator {
 
   public String getMeasureType() {
     return measureType;
+  }
+
+  @Override
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator) {
+    return new LoadDataPlan(getInputFilePath(), getMeasureType());
   }
 }

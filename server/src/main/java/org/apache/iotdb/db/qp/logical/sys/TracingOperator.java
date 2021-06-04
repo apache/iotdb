@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class TracingOperator extends Operator {
 
@@ -32,5 +36,11 @@ public class TracingOperator extends Operator {
 
   public boolean isTracingOn() {
     return isTracingOn;
+  }
+
+  @Override
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new TracingPlan(isTracingOn);
   }
 }

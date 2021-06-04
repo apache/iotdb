@@ -15,36 +15,38 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class GroupByQueryOperator extends AggregationQueryOperator {
+public class UnSetTTLOperator extends Operator {
+
+  private PartialPath storageGroup;
+
+  public UnSetTTLOperator(int tokenIntType) {
+    super(tokenIntType);
+    this.operatorType = OperatorType.TTL;
+  }
+
+  public PartialPath getStorageGroup() {
+    return storageGroup;
+  }
+
+  public void setStorageGroup(PartialPath storageGroup) {
+    this.storageGroup = storageGroup;
+  }
 
   @Override
   public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
       throws QueryProcessException {
-    GroupByTimePlan queryPlan = new GroupByTimePlan();
-
-    GroupByClauseComponent groupByClauseComponent = (GroupByClauseComponent) specialClauseComponent;
-    queryPlan.setInterval(groupByClauseComponent.getUnit());
-    queryPlan.setIntervalByMonth(groupByClauseComponent.isIntervalByMonth());
-    queryPlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
-    queryPlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
-    queryPlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
-    if (!groupByClauseComponent.isLeftCRightO()) {
-      queryPlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
-      queryPlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
-    } else {
-      queryPlan.setStartTime(groupByClauseComponent.getStartTime());
-      queryPlan.setEndTime(groupByClauseComponent.getEndTime());
-    }
-
-    return queryPlan;
+    return new SetTTLPlan(storageGroup);
   }
 }

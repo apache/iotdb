@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /** This class is a superclass of all operator. */
 public abstract class Operator {
@@ -63,6 +66,9 @@ public abstract class Operator {
   public String toString() {
     return SQLConstant.tokenNames.get(tokenIntType);
   }
+
+  public abstract PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException;
 
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {

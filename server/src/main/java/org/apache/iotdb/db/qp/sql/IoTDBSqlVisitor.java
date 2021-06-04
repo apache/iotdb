@@ -91,6 +91,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
+import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AliasClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.AlignByDeviceClauseOrDisableAlignStatementContext;
@@ -758,7 +759,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitUnsetTTLStatement(UnsetTTLStatementContext ctx) {
-    SetTTLOperator operator = new SetTTLOperator(SQLConstant.TOK_UNSET);
+    UnSetTTLOperator operator = new UnSetTTLOperator(SQLConstant.TOK_UNSET);
     operator.setStorageGroup(parsePrefixPath(ctx.prefixPath()));
     return operator;
   }

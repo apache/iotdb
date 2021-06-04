@@ -18,8 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
@@ -108,6 +113,23 @@ public class AuthorOperator extends Operator {
 
   public void setNodeNameList(PartialPath nodePath) {
     this.nodeName = nodePath;
+  }
+
+  @Override
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException {
+    try {
+      return new AuthorPlan(
+          getAuthorType(),
+          getUserName(),
+          getRoleName(),
+          getPassWord(),
+          getNewPassword(),
+          getPrivilegeList(),
+          getNodeName());
+    } catch (AuthException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
   }
 
   public enum AuthorType {

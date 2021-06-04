@@ -20,6 +20,9 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.List;
 
@@ -39,5 +42,10 @@ public class DeleteTimeSeriesOperator extends Operator {
 
   public void setDeletePathList(List<PartialPath> deletePathList) {
     this.deletePathList = deletePathList;
+  }
+
+  @Override
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator) {
+    return new DeleteTimeSeriesPlan(getDeletePathList());
   }
 }

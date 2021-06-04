@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -104,5 +108,30 @@ public class CreateTimeSeriesOperator extends Operator {
 
   public void setTags(Map<String, String> tags) {
     this.tags = tags;
+  }
+
+  @Override
+  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+      throws QueryProcessException {
+    if (getTags() != null
+        && !getTags().isEmpty()
+        && getAttributes() != null
+        && !getAttributes().isEmpty()) {
+      for (String tagKey : getTags().keySet()) {
+        if (getAttributes().containsKey(tagKey)) {
+          throw new QueryProcessException(
+              String.format("Tag and attribute shouldn't have the same property key [%s]", tagKey));
+        }
+      }
+    }
+    return new CreateTimeSeriesPlan(
+        getPath(),
+        getDataType(),
+        getEncoding(),
+        getCompressor(),
+        getProps(),
+        getTags(),
+        getAttributes(),
+        getAlias());
   }
 }
