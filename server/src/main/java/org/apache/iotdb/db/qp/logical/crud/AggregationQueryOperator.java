@@ -68,7 +68,7 @@ public class AggregationQueryOperator extends QueryOperator {
       }
     }
 
-    if (specialClauseComponent.isGroupByLevel()) {
+    if (isGroupByLevel()) {
       try {
         if (!verifyAllAggregationDataTypesEqual()) {
           throw new LogicalOperatorException("Aggregate among unmatched data types");
@@ -86,7 +86,10 @@ public class AggregationQueryOperator extends QueryOperator {
 
     queryPlan.setPaths(selectComponent.getPaths());
     queryPlan.setAggregations(selectComponent.getAggregationFunctions());
-    queryPlan.setLevel(specialClauseComponent.getLevel());
+
+    if (isGroupByLevel()) {
+      queryPlan.setLevel(specialClauseComponent.getLevel());
+    }
 
     return queryPlan;
   }

@@ -111,10 +111,6 @@ public class SpecialClauseComponent {
     this.level = level;
   }
 
-  public boolean isGroupByLevel() {
-    return level != -1;
-  }
-
   public boolean isAlignByDevice() {
     return isAlignByDevice;
   }

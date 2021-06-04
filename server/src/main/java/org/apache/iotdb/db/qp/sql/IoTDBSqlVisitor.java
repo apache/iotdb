@@ -39,7 +39,6 @@ import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByFillClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByFillQueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.GroupByLevelClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
@@ -1353,7 +1352,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   public void parseGroupByLevelClause(GroupByLevelClauseContext ctx) {
-    GroupByLevelClauseComponent groupByLevelClauseComponent = new GroupByLevelClauseComponent();
+    SpecialClauseComponent groupByLevelClauseComponent = new SpecialClauseComponent();
     groupByLevelClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
     queryOp.setSpecialClauseComponent(groupByLevelClauseComponent);
   }
