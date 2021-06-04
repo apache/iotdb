@@ -298,7 +298,7 @@ public class VirtualStorageGroupManager {
   public void mergeAll(boolean isFullMerge) {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.merge(isFullMerge);
+        storageGroupProcessor.merge();
       }
     }
   }

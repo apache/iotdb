@@ -17,31 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.reader.chunk;
+package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.thrift.TConfiguration;
 
-import java.io.IOException;
-
-/** To read one chunk from disk, and only used in iotdb server module */
-public class DiskChunkLoader implements IChunkLoader {
-
-  private final boolean debug;
-
-  public DiskChunkLoader(boolean debug) {
-    this.debug = debug;
-  }
-
-  @Override
-  public Chunk loadChunk(ChunkMetadata chunkMetaData) throws IOException {
-    return ChunkCache.getInstance().get(chunkMetaData, debug);
-  }
-
-  @Override
-  public void close() {
-    // do nothing
-  }
+public class TConfigurationConst {
+  // https://github.com/apache/thrift/blob/master/doc/specs/thrift-tconfiguration.md
+  public static TConfiguration defaultTConfiguration =
+      new TConfiguration(
+          RpcUtils.THRIFT_FRAME_MAX_SIZE + 4,
+          RpcUtils.THRIFT_FRAME_MAX_SIZE,
+          TConfiguration.DEFAULT_RECURSION_DEPTH);
 }
