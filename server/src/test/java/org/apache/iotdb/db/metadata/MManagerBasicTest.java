@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -733,6 +734,113 @@ public class MManagerBasicTest {
           res[8], manager.getChildNodePathInNextLevel(new PartialPath("root.laptopp")).toString());
     } catch (MetadataException e) {
       e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTotalSeriesNumber() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      assertEquals(6, manager.getTotalSeriesNumber());
+      EnvironmentUtils.restartDaemon();
+      assertEquals(6, manager.getTotalSeriesNumber());
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, manager.getTotalSeriesNumber());
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, manager.getTotalSeriesNumber());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testStorageGroupNameWithHyphen() throws IllegalPathException {
+    MManager manager = IoTDB.metaManager;
+    assertTrue(manager.isPathExist(new PartialPath("root")));
+
+    assertFalse(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.group-with-hyphen"));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    assertTrue(manager.isPathExist(new PartialPath("root.group-with-hyphen")));
+  }
+
+  @Test
+  public void testGetStorageGroupNodeByPath() {
+    MManager manager = IoTDB.metaManager;
+    PartialPath partialPath = null;
+
+    try {
+      partialPath = new PartialPath("root.ln.sg1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.setStorageGroup(partialPath);
+    } catch (MetadataException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      partialPath = new PartialPath("root.ln.sg2.device1.sensor1");
+    } catch (IllegalPathException e) {
+      fail(e.getMessage());
+    }
+
+    try {
+      manager.getStorageGroupNodeByPath(partialPath);
+    } catch (StorageGroupNotSetException e) {
+      Assert.assertEquals(
+          "Storage group is not set for current seriesPath: [root.ln.sg2.device1.sensor1]",
+          e.getMessage());
+    } catch (MetadataException e) {
       fail(e.getMessage());
     }
   }

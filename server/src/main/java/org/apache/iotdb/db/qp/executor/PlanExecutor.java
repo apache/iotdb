@@ -508,6 +508,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
+    queryDataSet.setWithoutAllNull(queryPlan.isWithoutAllNull());
+    queryDataSet.setWithoutAnyNull(queryPlan.isWithoutAnyNull());
     return queryDataSet;
   }
 
@@ -1149,6 +1151,9 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws QueryProcessException {
+    if (insertRowsOfOneDevicePlan.getRowPlans().length == 0) {
+      return;
+    }
     try {
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
         plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
@@ -1209,7 +1214,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertRowsPlan plan) throws QueryProcessException {
     for (int i = 0; i < plan.getInsertRowPlanList().size(); i++) {
-      if (plan.getResults().containsKey(i)) {
+      if (plan.getResults().containsKey(i) || plan.isExecuted(i)) {
         continue;
       }
       try {
@@ -1217,9 +1222,9 @@ public class PlanExecutor implements IPlanExecutor {
       } catch (QueryProcessException e) {
         plan.getResults().put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
-      if (!plan.getResults().isEmpty()) {
-        throw new BatchProcessException(plan.getFailingStatus());
-      }
+    }
+    if (!plan.getResults().isEmpty()) {
+      throw new BatchProcessException(plan.getFailingStatus());
     }
   }
 
@@ -1253,7 +1258,8 @@ public class PlanExecutor implements IPlanExecutor {
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
     for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
-      if (insertMultiTabletPlan.getResults().containsKey(i)) {
+      if (insertMultiTabletPlan.getResults().containsKey(i)
+          || insertMultiTabletPlan.isExecuted(i)) {
         continue;
       }
       insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
@@ -1262,6 +1268,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    if (insertTabletPlan.getRowCount() == 0) {
+      return;
+    }
     try {
       insertTabletPlan.setMeasurementMNodes(
           new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
@@ -1369,7 +1378,7 @@ public class PlanExecutor implements IPlanExecutor {
   private boolean createMultiTimeSeries(CreateMultiTimeSeriesPlan multiPlan)
       throws BatchProcessException {
     for (int i = 0; i < multiPlan.getPaths().size(); i++) {
-      if (multiPlan.getResults().containsKey(i)) {
+      if (multiPlan.getResults().containsKey(i) || multiPlan.isExecuted(i)) {
         continue;
       }
       CreateTimeSeriesPlan plan =

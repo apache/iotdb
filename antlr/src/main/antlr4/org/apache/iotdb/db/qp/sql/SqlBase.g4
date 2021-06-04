@@ -20,7 +20,7 @@
 grammar SqlBase;
 
 singleStatement
-    : EXPLAIN? statement (';')? EOF
+    : DEBUG? statement (';')? EOF
     ;
 
 /*
@@ -251,15 +251,19 @@ specialClause
     | orderByTimeClause specialLimit? #orderByTimeStatement
     | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
     | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceStatementOrDisableAlignInSpecialClause
     | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign? #fillStatement
     ;
 
 specialLimit
     : limitClause slimitClause? alignByDeviceClauseOrDisableAlign? #limitStatement
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
-    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignInSpecialLimit
+    | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
+    | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+withoutNullClause
+    : WITHOUT NULL (ALL | ANY)
     ;
 
 orderByTimeClause
@@ -1288,6 +1292,22 @@ TOLERANCE
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+DEBUG
+    : D E B U G
+    ;
+
+NULL
+    : N U L L
+    ;
+
+WITHOUT
+    : W I T H O U T
+    ;
+
+ANY
+    : A N Y
     ;
 
 //============================

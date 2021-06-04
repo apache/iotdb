@@ -34,10 +34,13 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,11 +74,11 @@ abstract class BaseApplier implements LogApplier {
     } else if (plan != null && !plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
+      } catch (BatchProcessException e) {
+        handleBatchProcessException(e, plan);
       } catch (QueryProcessException e) {
         if (e.getCause() instanceof StorageGroupNotSetException) {
           executeAfterSync(plan);
-        } else if (e instanceof BatchProcessException) {
-          logger.warn("Exception occurred while processing non-query. ", e);
         } else {
           throw e;
         }
@@ -85,6 +88,35 @@ abstract class BaseApplier implements LogApplier {
     } else if (plan != null) {
       logger.error("Unsupported physical plan: {}", plan);
     }
+  }
+
+  private void handleBatchProcessException(BatchProcessException e, PhysicalPlan plan)
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+    TSStatus[] failingStatus = e.getFailingStatus();
+    for (int i = 0; i < failingStatus.length; i++) {
+      TSStatus status = failingStatus[i];
+      // skip succeeded plans in later execution
+      if (status != null
+          && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && plan instanceof BatchPlan) {
+        ((BatchPlan) plan).setIsExecuted(i);
+      }
+    }
+    boolean needRetry = false;
+    for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
+      TSStatus status = failingStatus[i];
+      if (status != null
+          && (status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode())
+          && plan instanceof BatchPlan) {
+        ((BatchPlan) plan).unsetIsExecuted(i);
+        needRetry = true;
+      }
+    }
+    if (needRetry) {
+      executeAfterSync(plan);
+      return;
+    }
+    throw e;
   }
 
   private void executeAfterSync(PhysicalPlan plan)

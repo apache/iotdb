@@ -123,7 +123,7 @@
         <common.io.version>2.5</common.io.version>
         <commons.collections4>4.4</commons.collections4>
         <!-- keep consistent with client-cpp/tools/thrift/pom.xml-->
-        <thrift.version>0.13.0</thrift.version>
+        <thrift.version>0.14.1</thrift.version>
         <airline.version>0.8</airline.version>
         <jackson.version>2.11.0</jackson.version>
         <antlr4.version>4.8-1</antlr4.version>
@@ -139,6 +139,7 @@
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
         <felix.version>5.1.1</felix.version>
+        <snappy.version>1.1.8.4</snappy.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -448,7 +449,7 @@
             <dependency>
                 <groupId>org.xerial.snappy</groupId>
                 <artifactId>snappy-java</artifactId>
-                <version>1.1.7.2</version>
+                <version>${snappy.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.thrift</groupId>
@@ -968,8 +969,8 @@
             </activation>
             <properties>
                 <os.classifier>linux-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_linux.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_linux.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-ubuntu</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_linux.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>
@@ -984,8 +985,8 @@
             </activation>
             <properties>
                 <os.classifier>mac-x86_64</os.classifier>
-                <thrift.download-url>https://github.com/jt2594838/mvn-thrift-compiler/raw/master/thrift_0.12.0_0.13.0_mac.exe</thrift.download-url>
-                <thrift.executable>thrift_0.12.0_0.13.0_mac.exe</thrift.executable>
+                <thrift.download-url>https://github.com/apache/iotdb-bin-resources/raw/main/compile-tools/thrift-0.14-MacOS</thrift.download-url>
+                <thrift.executable>thrift_0.14.1_mac.exe</thrift.executable>
                 <thrift.skip-making-executable>false</thrift.skip-making-executable>
                 <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
                 <thrift.exec-cmd.args>+x ${project.build.directory}/tools/${thrift.executable}</thrift.exec-cmd.args>

@@ -185,8 +185,12 @@ public class QueryRouter implements IQueryRouter {
     return dataSet;
   }
 
-  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan) {
+  private GlobalTimeExpression getTimeExpression(GroupByTimePlan plan)
+      throws QueryProcessException {
     if (plan.isSlidingStepByMonth() || plan.isIntervalByMonth()) {
+      if (!plan.isAscending()) {
+        throw new QueryProcessException("Group by month doesn't support order by time desc now.");
+      }
       return new GlobalTimeExpression(
           (new GroupByMonthFilter(
               plan.getInterval(),

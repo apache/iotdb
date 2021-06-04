@@ -56,7 +56,7 @@ public class IoTDBConfig {
   private static final String ID_MATCHER =
       "([a-zA-Z0-9/\"[ ],:@#$%&{}()*=?!~\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
 
-  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\u2E80-\\u9FFF]+)";
+  private static final String STORAGE_GROUP_MATCHER = "([a-zA-Z0-9_.\\-\\u2E80-\\u9FFF]+)";
 
   // e.g.,  .s1
   private static final String PARTIAL_NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
@@ -118,7 +118,7 @@ public class IoTDBConfig {
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /** Memory allocated for the read process besides cache */
-  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 9 / 100;
+  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 3 / 10;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -272,7 +272,7 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
   /** When average series point number reaches this, flush the memtable to disk */
-  private int avgSeriesPointNumberThreshold = 100000;
+  private int avgSeriesPointNumberThreshold = 10000;
 
   /**
    * Work when tsfile_manage_strategy is level_strategy. When merge point number reaches this, merge
@@ -298,6 +298,12 @@ public class IoTDBConfig {
   private boolean enableUnseqCompaction = true;
 
   /**
+   * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
+   * automatically after finish one compaction task
+   */
+  private boolean enableContinuousCompaction = true;
+
+  /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
    * When the num of files in one level exceeds this, the files in this level will merge to one and
    * put to upper level.
@@ -316,6 +322,14 @@ public class IoTDBConfig {
 
   /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of unseq level. */
   private int unseqLevelNum = 1;
+
+  /**
+   * Works when compaction_strategy is LEVEL_COMPACTION. The max open file num in each unseq
+   * compaction task. We use the unseq file num as the open file num # This parameters have to be
+   * much smaller than the permitted max open file num of each process controlled by operator
+   * system(65535 in most system).
+   */
+  private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -530,7 +544,7 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /** kerberos principal */
-  private String kerberosPrincipal = "principal";
+  private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
   private int concurrentWritingTimePartition = 1;
@@ -587,7 +601,7 @@ public class IoTDBConfig {
   private boolean enablePartialInsert = true;
 
   // Open ID Secret
-  private String openIdProviderUrl = null;
+  private String openIdProviderUrl = "";
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
@@ -638,6 +652,10 @@ public class IoTDBConfig {
 
   /** the number of virtual storage groups per user-defined storage group */
   private int virtualStorageGroupNum = 1;
+
+  private String adminName = "root";
+
+  private String adminPassword = "root";
 
   public IoTDBConfig() {
     // empty constructor
@@ -1419,6 +1437,14 @@ public class IoTDBConfig {
     this.enableUnseqCompaction = enableUnseqCompaction;
   }
 
+  public boolean isEnableContinuousCompaction() {
+    return enableContinuousCompaction;
+  }
+
+  public void setEnableContinuousCompaction(boolean enableContinuousCompaction) {
+    this.enableContinuousCompaction = enableContinuousCompaction;
+  }
+
   public int getSeqFileNumInEachLevel() {
     return seqFileNumInEachLevel;
   }
@@ -1449,6 +1475,15 @@ public class IoTDBConfig {
 
   public void setUnseqLevelNum(int unseqLevelNum) {
     this.unseqLevelNum = unseqLevelNum;
+  }
+
+  public int getMaxSelectUnseqFileNumInEachUnseqCompaction() {
+    return maxSelectUnseqFileNumInEachUnseqCompaction;
+  }
+
+  public void setMaxSelectUnseqFileNumInEachUnseqCompaction(
+      int maxSelectUnseqFileNumInEachUnseqCompaction) {
+    this.maxSelectUnseqFileNumInEachUnseqCompaction = maxSelectUnseqFileNumInEachUnseqCompaction;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1939,6 +1974,7 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
   }
 
   public int getThriftDefaultBufferSize() {
@@ -1947,6 +1983,7 @@ public class IoTDBConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
   }
 
   public int getMaxQueryDeduplicatedPathNum() {
@@ -2068,5 +2105,21 @@ public class IoTDBConfig {
 
   public void setIoTaskQueueSizeForFlushing(int ioTaskQueueSizeForFlushing) {
     this.ioTaskQueueSizeForFlushing = ioTaskQueueSizeForFlushing;
+  }
+
+  public String getAdminName() {
+    return adminName;
+  }
+
+  public void setAdminName(String adminName) {
+    this.adminName = adminName;
+  }
+
+  public String getAdminPassword() {
+    return adminPassword;
+  }
+
+  public void setAdminPassword(String adminPassword) {
+    this.adminPassword = adminPassword;
   }
 }

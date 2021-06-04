@@ -63,6 +63,10 @@ public class IoTDBGroupByMonthIT {
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
+  /**
+   * Test when interval = slidingStep = 1 month. StartTime: 2020-10-31 00:00:00, EndTime: 2021-03-01
+   * 00:00:00
+   */
   @Test
   public void groupByNaturalMonth1() {
     try (Connection connection =
@@ -99,6 +103,10 @@ public class IoTDBGroupByMonthIT {
     }
   }
 
+  /**
+   * Test when interval = 10 days < slidingStep = 1 month. StartTime: 2020-10-31 00:00:00, EndTime:
+   * 2021-03-01 00:00:00
+   */
   @Test
   public void groupByNaturalMonth2() {
     try (Connection connection =
@@ -135,7 +143,10 @@ public class IoTDBGroupByMonthIT {
     }
   }
 
-  /** Test when endTime - startTime = interval */
+  /**
+   * Test when endTime - startTime = interval StartTime: 2020-10-31 00:00:00, EndTime: 2020-11-30
+   * 00:00:00
+   */
   @Test
   public void groupByNaturalMonth3() {
     try (Connection connection =
@@ -160,6 +171,87 @@ public class IoTDBGroupByMonthIT {
     }
   }
 
+  /**
+   * StartTime: 2021-01-31 00:00:00, EndTime: 2021-03-31 00:00:00. First Month with 28 days, Second
+   * month with 31 days
+   */
+  @Test
+  public void groupByNaturalMonth4() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String[] retArray1 = {
+        "01/31/2021:00:00:00", "28.0",
+        "02/28/2021:00:00:00", "31.0"
+      };
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from root.sg1.d1 GROUP BY ([1612051200000, 1617148800000), 1mo)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String time = resultSet.getString(TIMESTAMP_STR);
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          Assert.assertEquals(retArray1[cnt++], df.format(Long.parseLong(time)));
+          Assert.assertEquals(retArray1[cnt++], ans);
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  /** Test group by month with order by time desc. */
+  @Test
+  public void groupByNaturalMonth5() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          "select sum(temperature) from root.sg1.d1 "
+              + "GROUP BY ([1612051200000, 1617148800000), 1mo) order by time desc");
+
+      fail("No Exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains("doesn't support order by time desc now."));
+    }
+  }
+
+  /** StartTime: now() - 1mo, EndTime: now(). */
+  @Test
+  public void groupByNaturalMonth6() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature) from root.sg1.d1 GROUP BY ([now() - 1mo, now()), 1d)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          if (ans.equals("0.0")) {
+            cnt++;
+          }
+        }
+        Assert.assertEquals(30, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -167,8 +259,8 @@ public class IoTDBGroupByMonthIT {
 
       // 2020-10-31 08:00:00
       long startTime = 1604102400000L;
-      // 2021-03-01 08:00:00
-      long endTime = 1614556800000L;
+      // 2021-03-31 08:00:00
+      long endTime = 1617148800000L;
 
       for (long i = startTime; i <= endTime; i += 86400_000L) {
         statement.execute("insert into root.sg1.d1(timestamp, temperature) values (" + i + ", 1)");

@@ -42,7 +42,7 @@ IoTDB > set storage group to root.sgcc
 IoTDB> set storage group to root.ln.wf01
 Msg: 300: root.ln has already been set to storage group.
 ```
-存储组节点名只支持中英文字符、数字和下划线的组合。
+存储组节点名只支持中英文字符、数字、下划线和中划线的组合。
 
 还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 

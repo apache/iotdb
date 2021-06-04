@@ -35,7 +35,11 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
@@ -143,9 +147,12 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       }
       if (!resp.hasResultSet) {
         ioTDBRpcDataSet.emptyResultSet = true;
+        close();
       } else {
         tsQueryNonAlignDataSet = resp.getNonAlignQueryDataSet();
         if (tsQueryNonAlignDataSet == null) {
+          ioTDBRpcDataSet.emptyResultSet = true;
+          close();
           return false;
         }
       }
