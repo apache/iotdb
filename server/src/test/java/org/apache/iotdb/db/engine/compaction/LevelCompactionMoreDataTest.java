@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -195,7 +196,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
   @Test
   public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath(), null);
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
