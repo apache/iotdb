@@ -539,14 +539,14 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getPrefixPath());
 
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
           StorageGroupMNode storageGroupMNode =
-              IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
+              IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getPrefixPath());
           updateMonitorStatistics(
               processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
         } catch (MetadataException e) {
@@ -568,7 +568,7 @@ public class StorageEngine implements IService {
       }
     }
     StorageGroupProcessor storageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+        getProcessor(insertRowsOfOneDevicePlan.getPrefixPath());
 
     // TODO monitor: update statistics
     try {
@@ -592,11 +592,12 @@ public class StorageEngine implements IService {
     }
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getPrefixPath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getPrefixPath()),
           e);
     }
 
@@ -605,7 +606,7 @@ public class StorageEngine implements IService {
     if (config.isEnableStatMonitor()) {
       try {
         StorageGroupMNode storageGroupMNode =
-            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getPrefixPath());
         updateMonitorStatistics(
             processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
       } catch (MetadataException e) {

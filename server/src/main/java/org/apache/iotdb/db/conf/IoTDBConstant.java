@@ -111,7 +111,6 @@ public class IoTDBConstant {
 
   public static final String PATH_WILDCARD = "*";
   public static final String TIME = "time";
-  public static final String ALIGN_TIMESERIES_PREFIX = "$#$";
 
   // sdt parameters
   public static final String LOSS = "loss";

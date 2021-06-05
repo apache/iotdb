@@ -206,12 +206,12 @@ public class TsFileProcessor {
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
-        insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+        insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+          insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
@@ -265,13 +265,13 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-        insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
+        insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
@@ -283,7 +283,7 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getDeviceId().getFullPath();
+    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
     int columnIndex = 0;
     for (int i = 0; i < insertRowPlan.getMeasurementMNodes().length; i++) {
       // skip failed Measurements
@@ -333,14 +333,12 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
 
     int columnIndex = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
       // for aligned timeseries
-      if (insertTabletPlan.getMeasurementMNodes()[i] != null
-          && insertTabletPlan.getMeasurementMNodes()[i].getSchema().getType()
-              == TSDataType.VECTOR) {
+      if (insertTabletPlan.isAligned()) {
         VectorMeasurementSchema vectorSchema =
             (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
         Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
@@ -348,6 +346,7 @@ public class TsFileProcessor {
           columns[j] = insertTabletPlan.getColumns()[columnIndex++];
         }
         updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
+        break;
       }
       // for non aligned
       else {
