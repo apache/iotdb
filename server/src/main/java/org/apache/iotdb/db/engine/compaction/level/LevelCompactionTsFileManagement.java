@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -83,8 +84,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
-  public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
-    super(storageGroupName, storageGroupDir);
+  public LevelCompactionTsFileManagement(
+      String storageGroupName,
+      String storageGroupDir,
+      StorageGroupProcessor storageGroupProcessor) {
+    super(storageGroupName, storageGroupDir, storageGroupProcessor);
     clear();
   }
 
@@ -696,27 +700,33 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 storageGroupName,
                 i,
                 toMergeTsFiles.size());
-            writeLock();
+            storageGroupProcessor.writeLock("compaction");
             try {
-              if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException(
-                    String.format("%s [Compaction] abort", storageGroupName));
-              }
+              writeLock();
+              try {
+                if (Thread.currentThread().isInterrupted()) {
+                  throw new InterruptedException(
+                      String.format("%s [Compaction] abort", storageGroupName));
+                }
 
-              if (sequence) {
-                sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
-              } else {
-                unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+                if (sequence) {
+                  sequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+                } else {
+                  unSequenceTsFileResources.get(timePartition).get(i + 1).add(newResource);
+                }
+                deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
+                if (mergeResources.size() > i + 1) {
+                  mergeResources.get(i + 1).add(newResource);
+                }
+              } finally {
+                writeUnlock();
               }
-              deleteLevelFilesInList(timePartition, toMergeTsFiles, i, sequence);
-              if (mergeResources.size() > i + 1) {
-                mergeResources.get(i + 1).add(newResource);
-              }
+              deleteLevelFilesInDisk(toMergeTsFiles);
+              renameLevelFilesMods(modifications, toMergeTsFiles, newResource);
             } finally {
-              writeUnlock();
+              storageGroupProcessor.writeUnlock();
             }
-            deleteLevelFilesInDisk(toMergeTsFiles);
-            renameLevelFilesMods(modifications, toMergeTsFiles, newResource);
+
             compactionLogger.close();
             File logFile =
                 FSFactoryProducer.getFSFactory()

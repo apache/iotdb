@@ -347,6 +347,9 @@ public class StorageGroupProcessor {
     }
   }
 
+  @TestOnly
+  public StorageGroupProcessor() {}
+
   /**
    * constrcut a storage group processor
    *
@@ -377,7 +380,8 @@ public class StorageGroupProcessor {
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCompactionStrategy()
-            .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
+            .getTsFileManagement(
+                logicalStorageGroupName, storageGroupSysDir.getAbsolutePath(), this);
 
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(

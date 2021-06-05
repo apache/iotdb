@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -57,6 +58,7 @@ public abstract class TsFileManagement {
   private static final Logger logger = LoggerFactory.getLogger(TsFileManagement.class);
   protected String storageGroupName;
   protected String storageGroupDir;
+  protected StorageGroupProcessor storageGroupProcessor;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
@@ -78,9 +80,13 @@ public abstract class TsFileManagement {
   private final int maxOpenFileNumInEachUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().getMaxSelectUnseqFileNumInEachUnseqCompaction();
 
-  public TsFileManagement(String storageGroupName, String storageGroupDir) {
+  public TsFileManagement(
+      String storageGroupName,
+      String storageGroupDir,
+      StorageGroupProcessor storageGroupProcessor) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
+    this.storageGroupProcessor = storageGroupProcessor;
   }
 
   public void setForceFullMerge(boolean forceFullMerge) {

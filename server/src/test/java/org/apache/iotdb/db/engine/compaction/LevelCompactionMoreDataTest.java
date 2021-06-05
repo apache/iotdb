@@ -195,7 +195,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
   @Test
   public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath(), null);
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);

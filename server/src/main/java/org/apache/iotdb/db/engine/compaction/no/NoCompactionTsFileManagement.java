@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.no;
 
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.slf4j.Logger;
@@ -43,8 +44,11 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   // includes sealed and unsealed unSequence TsFiles
   private final Map<Long, List<TsFileResource>> unSequenceFileListMap = new TreeMap<>();
 
-  public NoCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
-    super(storageGroupName, storageGroupDir);
+  public NoCompactionTsFileManagement(
+      String storageGroupName,
+      String storageGroupDir,
+      StorageGroupProcessor storageGroupProcessor) {
+    super(storageGroupName, storageGroupDir, storageGroupProcessor);
   }
 
   @Deprecated

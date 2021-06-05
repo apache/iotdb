@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManageme
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -77,7 +78,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   @Test
   public void testCompactionMergeOnce() throws IllegalPathException, IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
@@ -121,7 +123,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
@@ -173,7 +176,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
 
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     TsFileResource forthSeqTsFileResource = seqResources.get(3);
     PartialPath path =
         new PartialPath(
@@ -233,7 +237,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(1);
 
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
@@ -270,7 +275,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
 
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);

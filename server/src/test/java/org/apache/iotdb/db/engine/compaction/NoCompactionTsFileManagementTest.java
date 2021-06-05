@@ -64,7 +64,7 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
   @Test
   public void testAddRemoveAndIterator() {
     NoCompactionTsFileManagement noCompactionTsFileManagement =
-        new NoCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new NoCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath(), null);
     for (TsFileResource tsFileResource : seqResources) {
       noCompactionTsFileManagement.add(tsFileResource, true);
     }
@@ -167,7 +167,7 @@ public class NoCompactionTsFileManagementTest extends LevelCompactionTest {
   @Test
   public void testIteratorRemove() {
     NoCompactionTsFileManagement noCompactionTsFileManagement =
-        new NoCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new NoCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath(), null);
     for (TsFileResource tsFileResource : seqResources) {
       noCompactionTsFileManagement.add(tsFileResource, true);
     }

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManageme
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -82,7 +83,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   @Test
   public void testCompactionMergeRecoverMergeFinished() throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     QueryContext context = new QueryContext();
@@ -173,7 +175,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeFinishedAndDeleteOneOffset()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     QueryContext context = new QueryContext();
@@ -288,7 +291,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeFinishedAndDeleteOneDeviceWithOffset()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     QueryContext context = new QueryContext();
@@ -409,7 +413,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeFinishedUnseq()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(seqResources, false);
     QueryContext context = new QueryContext();
@@ -500,7 +505,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeStartSourceLog()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     CompactionLogger compactionLogger =
@@ -542,7 +548,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeStartSequenceLog()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     CompactionLogger compactionLogger =
@@ -584,7 +591,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   @Test
   public void testCompactionMergeRecoverMergeStart() throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     CompactionLogger compactionLogger =
@@ -641,7 +649,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   public void testCompactionMergeRecoverMergeFinishedNoLog()
       throws IOException, IllegalPathException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     CompactionLogger compactionLogger =

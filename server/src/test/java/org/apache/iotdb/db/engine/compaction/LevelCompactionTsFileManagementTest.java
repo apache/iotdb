@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -63,7 +64,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
   @Test
   public void testAddRemoveAndIterator() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     for (TsFileResource tsFileResource : seqResources) {
       levelCompactionTsFileManagement.add(tsFileResource, true);
     }
@@ -160,7 +162,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
   @Test
   public void testIteratorRemove() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+        new LevelCompactionTsFileManagement(
+            COMPACTION_TEST_SG, tempSGDir.getPath(), new StorageGroupProcessor());
     for (TsFileResource tsFileResource : seqResources) {
       levelCompactionTsFileManagement.add(tsFileResource, true);
     }
