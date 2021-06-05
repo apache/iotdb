@@ -385,7 +385,7 @@ public class TimeSeriesMetadataCache {
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.estimatedSize() == 0;
+    return lruCache.asMap().isEmpty();
   }
 
   public static class TimeSeriesMetadataCacheKey {
