@@ -137,13 +137,13 @@ public abstract class Cases {
 
     // test dictionary encoding
     writeStatement.execute(
-        "create timeseries root.ln.wf01.wt01.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
+        "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
     initDataArray =
         new String[] {
-          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(250, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(300, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Singapore\")",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Shanghai\")"
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
         };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -151,10 +151,10 @@ public abstract class Cases {
 
     String[] results = new String[] {"Nanjing", "Nanjing", "Singapore", "Shanghai"};
     for (Statement readStatement : readStatements) {
-      resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt01");
+      resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt02");
       int i = 0;
       while (resultSet.next()) {
-        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt01.city"));
+        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt02.city"));
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
