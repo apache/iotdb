@@ -1192,10 +1192,11 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    if (request.isAligned) {
+    if (tablet.isAligned()) {
       if (tablet.getSchemas().size() > 1) {
         throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
       }
+      request.setIsAligned(true);
       IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
       request.setPrefixPath(
           tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());

@@ -119,23 +119,25 @@ public abstract class AbstractMemTable implements IMemTable {
     int columnIndex = 0;
     if (insertRowPlan.isAligned()) {
       MeasurementMNode measurementMNode = measurementMNodes[0];
-      // write vector
-      Object[] vectorValue =
-          new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
-      for (int j = 0; j < vectorValue.length; j++) {
-        vectorValue[j] = values[columnIndex];
-        columnIndex++;
+      if (measurementMNode != null) {
+        // write vector
+        Object[] vectorValue =
+            new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
+        for (int j = 0; j < vectorValue.length; j++) {
+          vectorValue[j] = values[columnIndex];
+          columnIndex++;
+        }
+        memSize +=
+            MemUtils.getVectorRecordSize(
+                measurementMNode.getSchema().getValueTSDataTypeList(),
+                vectorValue,
+                disableMemControl);
+        write(
+            insertRowPlan.getPrefixPath().getFullPath(),
+            measurementMNode.getSchema(),
+            insertRowPlan.getTime(),
+            vectorValue);
       }
-      memSize +=
-          MemUtils.getVectorRecordSize(
-              measurementMNode.getSchema().getValueTSDataTypeList(),
-              vectorValue,
-              disableMemControl);
-      write(
-          insertRowPlan.getPrefixPath().getFullPath(),
-          measurementMNode.getSchema(),
-          insertRowPlan.getTime(),
-          vectorValue);
     } else {
       for (MeasurementMNode measurementMNode : measurementMNodes) {
         if (values[columnIndex] == null) {

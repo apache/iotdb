@@ -2201,9 +2201,7 @@ public class MManager {
         }
 
         // check type is match
-        boolean mismatch = false;
         TSDataType insertDataType;
-        DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (plan.isAligned()) {
             TSDataType dataTypeInNode =
@@ -2213,16 +2211,27 @@ public class MManager {
               insertDataType = dataTypeInNode;
             }
             if (dataTypeInNode != insertDataType) {
-              mismatch = true;
               logger.warn(
                   "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
                   measurementMNode.getSchema().getValueMeasurementIdList().get(i),
                   measurementList[i],
                   insertDataType,
                   dataTypeInNode);
-              mismatchException =
+              DataTypeMismatchException mismatchException =
                   new DataTypeMismatchException(measurementList[i], insertDataType, dataTypeInNode);
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementAlignedInsertion(mismatchException);
+                for (int j = 0; j < i; j++) {
+                  // all the measurementMNodes should be null
+                  measurementMNodes[j] = null;
+                }
+                break;
+              }
             }
+            measurementMNodes[i] = measurementMNode;
           } else {
             if (plan instanceof InsertRowPlan) {
               if (!((InsertRowPlan) plan).isNeedInferType()) {
@@ -2234,34 +2243,28 @@ public class MManager {
             } else {
               insertDataType = getTypeInLoc(plan, i);
             }
-            mismatch = measurementMNode.getSchema().getType() != insertDataType;
-            if (mismatch) {
+            if (measurementMNode.getSchema().getType() != insertDataType) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
                   measurementList[i],
                   insertDataType,
                   measurementMNode.getSchema().getType());
-              mismatchException =
+              DataTypeMismatchException mismatchException =
                   new DataTypeMismatchException(
                       measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementInsertion(i, mismatchException);
+                continue;
+              }
             }
+            measurementMNodes[i] = measurementMNode;
+            // set measurementName instead of alias
+            measurementList[i] = measurementMNode.getName();
           }
         }
-
-        if (mismatch) {
-          if (!config.isEnablePartialInsert()) {
-            throw mismatchException;
-          } else {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, mismatchException);
-            continue;
-          }
-        }
-
-        measurementMNodes[i] = measurementMNode;
-
-        // set measurementName instead of alias
-        measurementList[i] = measurementMNode.getName();
       } catch (MetadataException e) {
         logger.warn(
             "meet error when check {}.{}, message: {}",
