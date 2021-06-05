@@ -154,7 +154,7 @@ public abstract class Cases {
       resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt02");
       int i = 0;
       while (resultSet.next()) {
-        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt01.city"));
+        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt02.city"));
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
