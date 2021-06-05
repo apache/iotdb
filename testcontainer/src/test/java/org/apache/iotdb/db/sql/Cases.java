@@ -143,7 +143,7 @@ public abstract class Cases {
           "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(250, \"Nanjing\")",
           "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(300, \"Nanjing\")",
           "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Singapore\")",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(350, \"Shanghai\")"
+          "INSERT INTO root.ln.wf01.wt01(timestamp, city) values(400, \"Shanghai\")"
         };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
