@@ -408,6 +408,26 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * get lock holder for each sg
+   *
+   * @return storage group processor
+   */
+  public List<String> getLockInfo(List<PartialPath> pathList) throws StorageEngineException {
+    try {
+      List<String> lockHolderList = new ArrayList<>(pathList.size());
+      for (PartialPath path : pathList) {
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        StorageGroupProcessor storageGroupProcessor =
+            getStorageGroupProcessorByPath(path, storageGroupMNode);
+        lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
+      }
+      return lockHolderList;
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * get storage group processor by device path
    *
    * @param devicePath path of the device
