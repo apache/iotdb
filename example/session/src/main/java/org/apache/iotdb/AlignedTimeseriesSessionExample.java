@@ -39,7 +39,7 @@ import java.util.List;
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
+  private static final String ROOT_SG1_D1_VECTOR = "root.sg_1.d1.vector";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -50,6 +50,7 @@ public class AlignedTimeseriesSessionExample {
     session.setFetchSize(10000);
 
     createTemplate();
+    createAlignedTimeseries();
     insertAlignedRecord();
 
     insertTabletWithAlignedTimeseriesMethod1();
@@ -194,7 +195,7 @@ public class AlignedTimeseriesSessionExample {
       encodings.add(TSEncoding.RLE);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1 + ".vector", measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+        ROOT_SG1_D1_VECTOR, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
   }
 
   // be sure template is coordinate with tablet
@@ -243,7 +244,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
     tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
@@ -286,7 +287,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
     tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -326,7 +327,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1 + ".vector", schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
     tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
@@ -382,7 +383,7 @@ public class AlignedTimeseriesSessionExample {
       values.add(1L);
       values.add(2);
       values.add(3L);
-      session.insertRecord(ROOT_SG1_D1 + ".vector", time, measurements, types, values, true);
+      session.insertRecord(ROOT_SG1_D1_VECTOR, time, measurements, types, values, true);
     }
   }
 }

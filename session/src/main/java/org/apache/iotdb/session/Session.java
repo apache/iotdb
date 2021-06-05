@@ -1154,28 +1154,25 @@ public class Session {
 
     TSInsertTabletReq request = new TSInsertTabletReq();
 
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      if (measurementSchema instanceof MeasurementSchema) {
+    if (request.isAligned) {
+      if (tablet.getSchemas().size() > 1) {
+        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
+      }
+      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
+      request.setPrefixPath(
+          tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());
+      int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+      for (int i = 0; i < measurementsSize; i++) {
+        request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
+        request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+      }
+      request.setIsAligned(true);
+    } else {
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         request.setPrefixPath(tablet.deviceId);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
         request.setIsAligned(tablet.isAligned());
-      } else {
-        if (tablet.getSchemas().size() > 1) {
-          if (request.isAligned) {
-            throw new BatchExecutionException(
-                "One tablet should only contain one aligned timeseries!");
-          }
-        }
-        request.setPrefixPath(
-            tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());
-        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
-        for (int i = 0; i < measurementsSize; i++) {
-          request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
-          request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
-        }
-        request.setIsAligned(true);
-        break;
       }
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));

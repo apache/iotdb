@@ -352,7 +352,6 @@ public class MTree implements Serializable {
               null);
       cur.addChild(leafName, measurementMNode);
 
-      // FIXME change for show timeseries
       for (String measurement : measurements) {
         if (child != null) {
           measurementMNode.replaceChild(measurement, new MNode(measurementMNode, measurement));
