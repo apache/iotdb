@@ -61,7 +61,7 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
 
   /** just compaction once */
   @Test
-  public void testAddRemoveAndIterator() {
+  public void testAddRemoveAndIterator() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     for (TsFileResource tsFileResource : seqResources) {
@@ -158,7 +158,7 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testIteratorRemove() {
+  public void testIteratorRemove() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     for (TsFileResource tsFileResource : seqResources) {

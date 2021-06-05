@@ -1016,7 +1016,7 @@ public class DataGroupMemberTest extends BaseMember {
             + File.separator
             + "0-"
             + serialNum
-            + "-0.tsfile";
+            + "-0-0.tsfile";
     if (asHardLink) {
       fileName = fileName + ".0_0";
     }
