@@ -177,7 +177,7 @@ public class ChunkCache {
 
   @TestOnly
   public boolean isEmpty() {
-    return lruCache.estimatedSize() == 0;
+    return lruCache.asMap().isEmpty();
   }
 
   /** singleton pattern. */
