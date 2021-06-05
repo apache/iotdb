@@ -117,30 +117,27 @@ public abstract class AbstractMemTable implements IMemTable {
 
     MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (MeasurementMNode measurementMNode : measurementMNodes) {
-      if (measurementMNode != null
-          && measurementMNode.getSchema() != null
-          && insertRowPlan.isAligned()) {
-        // write vector
-        Object[] vectorValue =
-            new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
-        for (int j = 0; j < vectorValue.length; j++) {
-          vectorValue[j] = values[columnIndex];
-          columnIndex++;
-        }
-        memSize +=
-            MemUtils.getVectorRecordSize(
-                measurementMNode.getSchema().getValueTSDataTypeList(),
-                vectorValue,
-                disableMemControl);
-        write(
-            insertRowPlan.getPrefixPath().getFullPath(),
-            measurementMNode.getSchema(),
-            insertRowPlan.getTime(),
-            vectorValue);
-        // because only one vector is in this plan
-        break;
-      } else {
+    if (insertRowPlan.isAligned()) {
+      MeasurementMNode measurementMNode = measurementMNodes[0];
+      // write vector
+      Object[] vectorValue =
+          new Object[measurementMNode.getSchema().getValueTSDataTypeList().size()];
+      for (int j = 0; j < vectorValue.length; j++) {
+        vectorValue[j] = values[columnIndex];
+        columnIndex++;
+      }
+      memSize +=
+          MemUtils.getVectorRecordSize(
+              measurementMNode.getSchema().getValueTSDataTypeList(),
+              vectorValue,
+              disableMemControl);
+      write(
+          insertRowPlan.getPrefixPath().getFullPath(),
+          measurementMNode.getSchema(),
+          insertRowPlan.getTime(),
+          vectorValue);
+    } else {
+      for (MeasurementMNode measurementMNode : measurementMNodes) {
         if (values[columnIndex] == null) {
           columnIndex++;
           continue;
