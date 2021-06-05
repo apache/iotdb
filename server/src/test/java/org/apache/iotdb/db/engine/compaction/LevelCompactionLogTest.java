@@ -59,7 +59,7 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testCompactionLog() {
+  public void testCompactionLog() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);

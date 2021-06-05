@@ -259,7 +259,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void add(TsFileResource tsFileResource, boolean sequence) {
+  public void add(TsFileResource tsFileResource, boolean sequence) throws IOException {
     writeLock();
     try {
       long timePartitionId = tsFileResource.getTimePartition();
@@ -308,7 +308,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
+  public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) throws IOException {
     writeLock();
     try {
       for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -676,7 +676,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 i,
                 toMergeTsFiles.size());
             for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.debug(
+              logger.info(
                   "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
             }
 

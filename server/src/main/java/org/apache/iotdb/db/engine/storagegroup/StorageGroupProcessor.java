@@ -690,7 +690,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) {
+  private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -722,7 +722,7 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
-      } catch (StorageGroupProcessorException e) {
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;
@@ -2163,7 +2163,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
-    } catch (IllegalPathException | WriteProcessException e) {
+    } catch (IllegalPathException | WriteProcessException | IOException e) {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
@@ -2270,7 +2270,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
-    } catch (IllegalPathException | WriteProcessException e) {
+    } catch (IllegalPathException | WriteProcessException | IOException e) {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
@@ -2560,7 +2560,7 @@ public class StorageGroupProcessor {
    */
   private boolean loadTsFileByType(
       LoadTsFileType type, File syncedTsFile, TsFileResource tsFileResource, long filePartitionId)
-      throws LoadFileException, DiskSpaceInsufficientException {
+      throws LoadFileException, DiskSpaceInsufficientException, IOException {
     File targetFile;
     switch (type) {
       case LOAD_UNSEQUENCE:

@@ -108,13 +108,14 @@ public abstract class TsFileManagement {
   public abstract void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
   /** add one TsFile to list */
-  public abstract void add(TsFileResource tsFileResource, boolean sequence);
+  public abstract void add(TsFileResource tsFileResource, boolean sequence) throws IOException;
 
   /** add one TsFile to list for recover */
   public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
 
   /** add some TsFiles to list */
-  public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
+  public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence)
+      throws IOException;
 
   /** is one TsFile contained in list */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
