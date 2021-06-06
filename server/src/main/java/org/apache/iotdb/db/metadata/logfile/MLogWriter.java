@@ -199,8 +199,7 @@ public class MLogWriter implements AutoCloseable {
       childSize = node.getChildren().size();
     }
     StorageGroupMNodePlan plan =
-        new StorageGroupMNodePlan(
-            node.getName(), node.getDataTTL(), childSize, node.getAlignedTimeseriesIndex());
+        new StorageGroupMNodePlan(node.getName(), node.getDataTTL(), childSize);
     putLog(plan);
   }
 
@@ -439,10 +438,7 @@ public class MLogWriter implements AutoCloseable {
                 CompressionType.values()[Integer.parseInt(words[5])]));
       case "1":
         return new StorageGroupMNodePlan(
-            words[1],
-            Long.parseLong(words[2]),
-            Integer.parseInt(words[3]),
-            words.length == 5 ? Integer.parseInt(words[4]) : 0);
+            words[1], Long.parseLong(words[2]), Integer.parseInt(words[3]));
       case "0":
         return new MNodePlan(words[1], Integer.parseInt(words[2]));
       default:

@@ -299,7 +299,7 @@ public class TestUtils {
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
-      insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
+      insertPlan.setPrefixPath(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
       MeasurementMNode[] mNodes = new MeasurementMNode[10];
       // 10 series each device, all double
@@ -352,7 +352,7 @@ public class TestUtils {
     }
 
     // data for fill
-    insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
+    insertPlan.setPrefixPath(new PartialPath(getTestSg(0)));
     String[] measurements = new String[] {getTestMeasurement(10)};
     MeasurementMNode[] schemas = new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
@@ -389,7 +389,7 @@ public class TestUtils {
                       + File.separator
                       + 0
                       + File.separator
-                      + "0-%d-0"
+                      + "0-%d-0-0"
                       + TsFileConstant.TSFILE_SUFFIX,
                   i);
       if (asHardLink) {

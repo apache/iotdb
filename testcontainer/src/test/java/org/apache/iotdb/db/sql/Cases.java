@@ -25,6 +25,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
@@ -36,7 +37,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 public abstract class Cases {
@@ -133,6 +138,31 @@ public abstract class Cases {
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
     }
+
+    // test dictionary encoding
+    writeStatement.execute(
+        "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
+          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
+        };
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+
+    String[] results = new String[] {"Nanjing", "Nanjing", "Singapore", "Shanghai"};
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt02");
+      int i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(results[i++], resultSet.getString("root.ln.wf01.wt02.city"));
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
   }
 
   // test https://issues.apache.org/jira/browse/IOTDB-1266
@@ -163,6 +193,7 @@ public abstract class Cases {
   @Test
   public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
     List<List<String>> measurementList = new ArrayList<>();
+    List<String> schemaNames = new ArrayList<>();
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     List<CompressionType> compressionTypes = new ArrayList<>();
@@ -179,17 +210,24 @@ public abstract class Cases {
               encodings.add(TSEncoding.RLE);
               compressionTypes.add(CompressionType.SNAPPY);
             });
+    schemaNames.add("schema");
     encodingList.add(encodings);
     dataTypeList.add(dataTypes);
     measurementList.add(Arrays.asList(vectorMeasurements));
 
-    session.createDeviceTemplate(
-        "testcontainer", measurementList, dataTypeList, encodingList, compressionTypes);
+    session.createSchemaTemplate(
+        "testcontainer",
+        schemaNames,
+        measurementList,
+        dataTypeList,
+        encodingList,
+        compressionTypes);
     session.setStorageGroup("root.template");
-    session.setDeviceTemplate("testcontainer", "root.template");
+    session.setSchemaTemplate("testcontainer", "root.template");
 
     VectorMeasurementSchema vectorMeasurementSchema =
-        new VectorMeasurementSchema(vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
+        new VectorMeasurementSchema(
+            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
 
     Tablet tablet = new Tablet("root.template.device1", Arrays.asList(vectorMeasurementSchema));
     for (int i = 0; i < 10; i++) {
@@ -219,5 +257,71 @@ public abstract class Cases {
     Assert.assertEquals(2, next.getFields().size());
     Assert.assertEquals(10, next.getFields().get(0).getLongV());
     Assert.assertEquals(10, next.getFields().get(1).getLongV());
+  }
+
+  @Test
+  public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
+
+    session.setStorageGroup("root.sg1");
+    session.createTimeseries(
+        "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    session.createTimeseries(
+        "root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    insertRecords();
+
+    List<String> paths = new ArrayList<>();
+
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d2.s1");
+
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths);
+    sessionDataSet.setFetchSize(1024);
+
+    int count = 0;
+    while (sessionDataSet.hasNext()) {
+      count++;
+      List<Field> fields = sessionDataSet.next().getFields();
+      Assert.assertEquals("[root.sg1.d1.s1, 1]", fields.toString());
+    }
+    Assert.assertEquals(1, count);
+    sessionDataSet.closeOperationHandle();
+  }
+
+  private void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+
+    for (long time = 0; time < 500; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
+    session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
 }

@@ -24,8 +24,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -36,8 +36,9 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -378,7 +379,7 @@ public class Session {
   }
 
   public void createAlignedTimeseries(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -387,19 +388,19 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            devicePath, measurements, dataTypes, encodings, compressor, measurementAliasList);
+            prefixPath, measurements, dataTypes, encodings, compressor, measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
   private TSCreateAlignedTimeseriesReq getTSCreateAlignedTimeseriesReq(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       CompressionType compressor,
       List<String> measurementAliasList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
-    request.setDevicePath(devicePath);
+    request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
@@ -590,6 +591,44 @@ public class Session {
   }
 
   /**
+   * only: select last status from root.ln.d1.s1 where time >= 1621326244168;
+   *
+   * @param paths timeSeries eg. root.ln.d1.s1,root.ln.d1.s2
+   * @param LastTime get the last data, whose timestamp greater than or equal LastTime eg.
+   *     1621326244168
+   */
+  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+      throws StatementExecutionException, IoTDBConnectionException {
+    try {
+      return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
+    } catch (RedirectException e) {
+      handleQueryRedirection(e.getEndPoint());
+      if (enableQueryRedirection) {
+        // retry
+        try {
+          return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
+        } catch (RedirectException redirectException) {
+          logger.error("redirect twice", redirectException);
+          throw new StatementExecutionException("redirect twice, please try again.");
+        }
+      } else {
+        throw new StatementExecutionException(MSG_DONOT_ENABLE_REDIRECT);
+      }
+    }
+  }
+
+  /**
+   * query eg. select last status from root.ln.wf01.wt01; <PrefixPath> + <suffixPath> = <TimeSeries>
+   *
+   * @param paths timeSeries. eg.root.ln.d1.s1,root.ln.d1.s2
+   */
+  public SessionDataSet executeLastDataQuery(List<String> paths)
+      throws StatementExecutionException, IoTDBConnectionException {
+    long time = 0L;
+    return executeLastDataQuery(paths, time);
+  }
+
+  /**
    * insert data in one row, if you want to improve your performance, please use insertRecords
    * method or insertTablet method
    *
@@ -601,11 +640,23 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      boolean isAligned,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values));
+        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isAligned);
     insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // not vector by default
+    insertRecord(deviceId, time, measurements, types, false, values);
   }
 
   private void insertRecord(String deviceId, TSInsertRecordReq request)
@@ -713,9 +764,24 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      List<Object> values,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, isAligned);
+    insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    // not vector by default
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     insertRecord(deviceId, request);
   }
 
@@ -724,15 +790,17 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      List<Object> values)
+      List<Object> values,
+      boolean isAligned)
       throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setDeviceId(deviceId);
+    request.setPrefixPath(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
     ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
     putValues(types, values, buffer);
     request.setValues(buffer);
+    request.setIsAligned(isAligned);
     return request;
   }
 
@@ -1123,24 +1191,26 @@ public class Session {
     }
 
     TSInsertTabletReq request = new TSInsertTabletReq();
-    request.setDeviceId(tablet.deviceId);
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      if (measurementSchema instanceof MeasurementSchema) {
+
+    if (request.isAligned) {
+      if (tablet.getSchemas().size() > 1) {
+        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
+      }
+      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
+      request.setPrefixPath(
+          tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());
+      int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+      for (int i = 0; i < measurementsSize; i++) {
+        request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
+        request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+      }
+      request.setIsAligned(true);
+    } else {
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        request.setPrefixPath(tablet.deviceId);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
-      } else {
-        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
-        StringBuilder measurement = new StringBuilder("(");
-        for (int i = 0; i < measurementsSize; i++) {
-          measurement.append(measurementSchema.getValueMeasurementIdList().get(i));
-          if (i != measurementsSize - 1) {
-            measurement.append(",");
-          } else {
-            measurement.append(")");
-          }
-          request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
-        }
-        request.addToMeasurements(measurement.toString());
+        request.setIsAligned(tablet.isAligned());
       }
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
@@ -1343,7 +1413,8 @@ public class Session {
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     defaultSessionConnection.testInsertRecord(request);
   }
 
@@ -1625,14 +1696,16 @@ public class Session {
     return sortedBitMap;
   }
 
-  public void setDeviceTemplate(String templateName, String prefixPath)
+  public void setSchemaTemplate(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSSetDeviceTemplateReq request = getTSSetDeviceTemplateReq(templateName, prefixPath);
-    defaultSessionConnection.setDeviceTemplate(request);
+    TSSetSchemaTemplateReq request = getTSSetSchemaTemplateReq(templateName, prefixPath);
+    defaultSessionConnection.setSchemaTemplate(request);
   }
 
   /**
    * @param name template name
+   * @param schemaNames list of schema names, if this measurement is vector, name it. if this
+   *     measurement is not vector, keep this name as same as measurement's name
    * @param measurements List of measurements, if it is a single measurement, just put it's name
    *     into a list and add to measurements if it is a vector measurement, put all measurements of
    *     the vector into a list and add to measurements
@@ -1646,33 +1719,37 @@ public class Session {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  public void createDeviceTemplate(
+  public void createSchemaTemplate(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateDeviceTemplateReq request =
-        getTSCreateDeviceTemplateReq(name, measurements, dataTypes, encodings, compressors);
-    defaultSessionConnection.createDeviceTemplate(request);
+    TSCreateSchemaTemplateReq request =
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
   }
 
-  private TSSetDeviceTemplateReq getTSSetDeviceTemplateReq(String templateName, String prefixPath) {
-    TSSetDeviceTemplateReq request = new TSSetDeviceTemplateReq();
+  private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
+    TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
     request.setPrefixPath(prefixPath);
     return request;
   }
 
-  private TSCreateDeviceTemplateReq getTSCreateDeviceTemplateReq(
+  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors) {
-    TSCreateDeviceTemplateReq request = new TSCreateDeviceTemplateReq();
+    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
     request.setName(name);
+    request.setSchemaNames(schemaNames);
     request.setMeasurements(measurements);
 
     List<List<Integer>> requestType = new ArrayList<>();

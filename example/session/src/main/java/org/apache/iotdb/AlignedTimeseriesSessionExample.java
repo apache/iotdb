@@ -36,10 +36,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("squid:S106")
-public class VectorSessionExample {
+public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
+  private static final String ROOT_SG1_D1_VECTOR = "root.sg_1.d1.vector";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -50,6 +50,9 @@ public class VectorSessionExample {
     session.setFetchSize(10000);
 
     createTemplate();
+    createAlignedTimeseries();
+    insertAlignedRecord();
+
     insertTabletWithAlignedTimeseriesMethod1();
     insertTabletWithAlignedTimeseriesMethod2();
 
@@ -178,6 +181,23 @@ public class VectorSessionExample {
     dataSet.closeOperationHandle();
   }
 
+  private static void createAlignedTimeseries()
+      throws StatementExecutionException, IoTDBConnectionException {
+    List<String> measurements = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      measurements.add("s" + i);
+    }
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.INT32);
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    session.createAlignedTimeseries(
+        ROOT_SG1_D1_VECTOR, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+  }
+
   // be sure template is coordinate with tablet
   private static void createTemplate()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -204,9 +224,12 @@ public class VectorSessionExample {
     List<CompressionType> compressionTypeList = new ArrayList<>();
     compressionTypeList.add(CompressionType.SNAPPY);
 
-    session.createDeviceTemplate(
-        "template1", measurementList, dataTypeList, encodingList, compressionTypeList);
-    session.setDeviceTemplate("template1", "root.sg_1");
+    List<String> schemaList = new ArrayList<>();
+    schemaList.add("test_vector");
+
+    session.createSchemaTemplate(
+        "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
+    session.setSchemaTemplate("template1", "root.sg_1");
   }
 
   /** Method 1 for insert tablet with aligned timeseries */
@@ -217,9 +240,12 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 100; row++) {
@@ -257,9 +283,12 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
@@ -294,9 +323,12 @@ public class VectorSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+            "vector",
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -333,5 +365,25 @@ public class VectorSessionExample {
     }
 
     session.executeNonQueryStatement("flush");
+  }
+
+  private static void insertAlignedRecord()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT32);
+    types.add(TSDataType.INT64);
+
+    for (long time = 0; time < 100; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2);
+      values.add(3L);
+      session.insertRecord(ROOT_SG1_D1_VECTOR, time, measurements, types, values, true);
+    }
   }
 }

@@ -408,6 +408,26 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * get lock holder for each sg
+   *
+   * @return storage group processor
+   */
+  public List<String> getLockInfo(List<PartialPath> pathList) throws StorageEngineException {
+    try {
+      List<String> lockHolderList = new ArrayList<>(pathList.size());
+      for (PartialPath path : pathList) {
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        StorageGroupProcessor storageGroupProcessor =
+            getStorageGroupProcessorByPath(path, storageGroupMNode);
+        lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
+      }
+      return lockHolderList;
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * get storage group processor by device path
    *
    * @param devicePath path of the device
@@ -519,14 +539,14 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getPrefixPath());
 
     try {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
           StorageGroupMNode storageGroupMNode =
-              IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getDeviceId());
+              IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getPrefixPath());
           updateMonitorStatistics(
               processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
         } catch (MetadataException e) {
@@ -548,7 +568,7 @@ public class StorageEngine implements IService {
       }
     }
     StorageGroupProcessor storageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+        getProcessor(insertRowsOfOneDevicePlan.getPrefixPath());
 
     // TODO monitor: update statistics
     try {
@@ -572,11 +592,12 @@ public class StorageEngine implements IService {
     }
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getPrefixPath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getPrefixPath()),
           e);
     }
 
@@ -585,7 +606,7 @@ public class StorageEngine implements IService {
     if (config.isEnableStatMonitor()) {
       try {
         StorageGroupMNode storageGroupMNode =
-            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getPrefixPath());
         updateMonitorStatistics(
             processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);
       } catch (MetadataException e) {

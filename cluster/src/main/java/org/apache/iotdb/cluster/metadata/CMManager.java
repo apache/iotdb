@@ -441,10 +441,10 @@ public class CMManager extends MManager {
       throws MetadataException, IOException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
-        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+        getMNodesLocally(plan.getPrefixPath(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
-      return new MNode(null, plan.getDeviceId().getDevice());
+      return new MNode(null, plan.getPrefixPath().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -567,20 +567,20 @@ public class CMManager extends MManager {
         || plan instanceof InsertRowsOfOneDevicePlan
         || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
-          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
+          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getPrefixPath())));
     } else if (plan instanceof InsertRowsPlan) {
       storageGroups.addAll(
           getStorageGroups(
               ((InsertRowsPlan) plan)
                   .getInsertRowPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
+                      .map(InsertPlan::getPrefixPath)
                       .collect(Collectors.toList())));
     } else if (plan instanceof InsertMultiTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(
               ((InsertMultiTabletPlan) plan)
                   .getInsertTabletPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
+                      .map(InsertPlan::getPrefixPath)
                       .collect(Collectors.toList())));
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
@@ -685,7 +685,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertTabletPlan.getDeviceId(),
+            insertTabletPlan.getPrefixPath(),
             insertTabletPlan);
       }
     }
@@ -701,7 +701,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertRowPlan.getDeviceId(),
+            insertRowPlan.getPrefixPath(),
             insertRowPlan);
       }
     }
@@ -725,7 +725,7 @@ public class CMManager extends MManager {
     }
 
     List<String> seriesList = new ArrayList<>();
-    PartialPath deviceId = insertPlan.getDeviceId();
+    PartialPath deviceId = insertPlan.getPrefixPath();
     PartialPath storageGroupName;
     try {
       storageGroupName =
@@ -772,7 +772,7 @@ public class CMManager extends MManager {
 
     CreateAlignedTimeSeriesPlan plan =
         new CreateAlignedTimeSeriesPlan(
-            insertPlan.getDeviceId(),
+            insertPlan.getPrefixPath(),
             measurements,
             dataTypes,
             encodings,

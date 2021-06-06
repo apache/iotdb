@@ -32,11 +32,7 @@ import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -54,21 +50,9 @@ import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
+import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -850,20 +834,28 @@ public class TsFileResource {
         + TSFILE_SUFFIX;
   }
 
-  public static TsFileName getTsFileName(String FileName) {
-    String[] fileName =
-        FileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
+  public static TsFileName getTsFileName(String fileName) throws IOException {
+    String[] fileNameParts =
+        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
             FILE_NAME_SEPARATOR);
-    TsFileName tsFileName =
-        new TsFileName(
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_TIME_INDEX]),
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_VERSION_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-    return tsFileName;
+    if (fileNameParts.length != 4) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
+    try {
+      TsFileName tsFileName =
+          new TsFileName(
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
+      return tsFileName;
+    } catch (NumberFormatException e) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
   }
 
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource) {
+  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
+      throws IOException {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
@@ -882,7 +874,7 @@ public class TsFileResource {
     return tsFileResource;
   }
 
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) {
+  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
     tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
@@ -898,7 +890,7 @@ public class TsFileResource {
             + TSFILE_SUFFIX);
   }
 
-  public static File modifyTsFileNameMergeCnt(File tsFile) {
+  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
     tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);

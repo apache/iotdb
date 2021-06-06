@@ -236,4 +236,77 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(2, result[0].size());
     resource.clear();
   }
+
+  @Test
+  public void testSelectContinuousUnseqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    try {
+      // seq files [0,0] [1,1] [2,2] ... [99,99]
+      int seqFileNum = 99;
+      for (int i = 0; i < seqFileNum; i++) {
+        File file =
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    10
+                        + "seq"
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + i
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
+        TsFileResource fileResource = new TsFileResource(file);
+        fileResource.setClosed(true);
+        prepareFile(fileResource, i, 1, 0);
+        seqList.add(fileResource);
+      }
+      int unseqFileNum = 3;
+      // 3 unseq files [0,0] [0,99] [99,99]
+      for (int i = 0; i < unseqFileNum; i++) {
+        File file =
+            new File(
+                TestConstant.BASE_OUTPUT_PATH.concat(
+                    10
+                        + "unseq"
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + i
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 10
+                        + IoTDBConstant.FILE_NAME_SEPARATOR
+                        + 0
+                        + ".tsfile"));
+        TsFileResource fileResource = new TsFileResource(file);
+        fileResource.setClosed(true);
+        unseqList.add(fileResource);
+      }
+      prepareFile(unseqList.get(0), 0, 1, 10);
+      prepareFile(unseqList.get(1), 0, 100, 20);
+      prepareFile(unseqList.get(2), 99, 1, 30);
+
+      MergeResource resource = new MergeResource(seqList, unseqList);
+      // the budget is enough to select unseq0 and unseq2, but not unseq1
+      // the first selection should only contain seq0 and unseq0
+      IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
+      List[] result = mergeFileSelector.select();
+      assertEquals(1, result[0].size());
+      assertEquals(1, result[1].size());
+      assertEquals(seqList.get(0), result[0].get(0));
+      assertEquals(unseqList.get(0), result[1].get(0));
+      resource.clear();
+
+      resource =
+          new MergeResource(
+              seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
+      // the second selection should be empty
+      mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
+      result = mergeFileSelector.select();
+      assertEquals(0, result.length);
+      resource.clear();
+    } finally {
+      removeFiles(seqList, unseqList);
+    }
+  }
 }

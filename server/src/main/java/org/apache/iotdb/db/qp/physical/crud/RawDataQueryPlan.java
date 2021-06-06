@@ -89,7 +89,7 @@ public class RawDataQueryPlan extends QueryPlan {
 
       String columnForDisplay = getColumnForDisplay(columnForReader, originalIndex);
       if (!columnForDisplaySet.contains(columnForDisplay)) {
-        addPathToIndex(columnForDisplay, getPathToIndex().size());
+        setColumnNameToDatasetOutputIndex(columnForDisplay, getPathToIndex().size());
         columnForDisplaySet.add(columnForDisplay);
       }
     }
