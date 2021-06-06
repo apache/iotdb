@@ -108,7 +108,6 @@ public class MNode implements Serializable {
         }
       }
     }
-
     child.parent = this;
     children.putIfAbsent(name, child);
   }
@@ -180,7 +179,7 @@ public class MNode implements Serializable {
   public MNode getChildOfAlignedTimeseries(String name) throws MetadataException {
     MNode node = null;
     // for aligned timeseries
-    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(name);
+    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
     for (String measurement : measurementList) {
       MNode nodeOfMeasurement = getChild(measurement);
       if (node == null) {
@@ -277,19 +276,6 @@ public class MNode implements Serializable {
       return Collections.emptyMap();
     }
     return children;
-  }
-
-  public List<MNode> getDistinctMNodes() {
-    if (children == null) {
-      return Collections.emptyList();
-    }
-    List<MNode> distinctList = new ArrayList<>();
-    for (MNode child : children.values()) {
-      if (!distinctList.contains(child)) {
-        distinctList.add(child);
-      }
-    }
-    return distinctList;
   }
 
   public Map<String, MNode> getAliasChildren() {

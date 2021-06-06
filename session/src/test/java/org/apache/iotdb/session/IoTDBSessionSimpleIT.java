@@ -379,32 +379,29 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s0", TSDataType.INT64));
     schemaList.add(
         new VectorMeasurementSchema(
+            "vector",
             new String[] {"s1", "s2", "s3"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
-    schemaList.add(new MeasurementSchema("s4", TSDataType.INT32));
 
-    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
+    Tablet tablet = new Tablet("root.sg1.d1.vector", schemaList);
+    tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
     for (long row = 0; row < 10; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(1).getValueMeasurementIdList().get(0),
+          schemaList.get(0).getValueMeasurementIdList().get(0),
           rowIndex,
           new SecureRandom().nextLong());
       tablet.addValue(
-          schemaList.get(1).getValueMeasurementIdList().get(1),
+          schemaList.get(0).getValueMeasurementIdList().get(1),
           rowIndex,
           new SecureRandom().nextInt());
       tablet.addValue(
-          schemaList.get(1).getValueMeasurementIdList().get(2), rowIndex, new Binary("test"));
-      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+          schemaList.get(0).getValueMeasurementIdList().get(2), rowIndex, new Binary("test"));
       timestamp++;
     }
 
@@ -419,8 +416,6 @@ public class IoTDBSessionSimpleIT {
       Assert.assertEquals(10L, rowRecord.getFields().get(0).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(1).getLongV());
       Assert.assertEquals(10L, rowRecord.getFields().get(2).getLongV());
-      Assert.assertEquals(10L, rowRecord.getFields().get(3).getLongV());
-      Assert.assertEquals(10L, rowRecord.getFields().get(4).getLongV());
     }
     session.close();
   }
@@ -747,13 +742,13 @@ public class IoTDBSessionSimpleIT {
         });
     Assert.assertArrayEquals(
         dataSet.getColumnTypes().toArray(new String[0]),
-        new TSDataType[] {
-          TSDataType.INT64,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.BOOLEAN,
-          TSDataType.INT32,
-          TSDataType.INT32
+        new String[] {
+          String.valueOf(TSDataType.INT64),
+          String.valueOf(TSDataType.INT64),
+          String.valueOf(TSDataType.FLOAT),
+          String.valueOf(TSDataType.BOOLEAN),
+          String.valueOf(TSDataType.INT32),
+          String.valueOf(TSDataType.INT32)
         });
     long time = 1L;
     //

@@ -32,7 +32,8 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath deviceId;
+  protected PartialPath prefixPath;
+  protected boolean isAligned;
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
@@ -49,12 +50,12 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  public PartialPath getPrefixPath() {
+    return prefixPath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
   }
 
   public String[] getMeasurements() {
@@ -91,6 +92,14 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
   }
 
   public abstract long getMinTime();
@@ -159,7 +168,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (deviceId == null) {
+    if (prefixPath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {

@@ -53,10 +53,7 @@ public class Tablet {
   private List<IMeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
-  private Map<String, Integer> measurementIndexInSchema;
-
-  /** measurementId->indexOf(values) */
-  private Map<String, Integer> measurementIndexInValues;
+  private Map<String, Integer> measurementIndex;
 
   /** timestamps in this tablet */
   public long[] timestamps;
@@ -68,6 +65,8 @@ public class Tablet {
   public int rowSize;
   /** the maximum number of rows for this tablet */
   private int maxRowNumber;
+  /** whether this tablet store data of aligned timeseries or not */
+  private boolean isAligned;
 
   /**
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
@@ -94,22 +93,16 @@ public class Tablet {
     this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
-    measurementIndexInSchema = new HashMap<>();
-    measurementIndexInValues = new HashMap<>();
+    measurementIndex = new HashMap<>();
 
-    int indexInValues = 0;
     int indexInSchema = 0;
     for (IMeasurementSchema schema : schemas) {
       if (schema.getType() == TSDataType.VECTOR) {
         for (String measurementId : schema.getValueMeasurementIdList()) {
-          measurementIndexInValues.put(measurementId, indexInValues);
-          measurementIndexInSchema.put(measurementId, indexInSchema);
-          indexInValues++;
+          measurementIndex.put(measurementId, indexInSchema);
         }
       } else {
-        measurementIndexInValues.put(schema.getMeasurementId(), indexInValues);
-        measurementIndexInSchema.put(schema.getMeasurementId(), indexInSchema);
-        indexInValues++;
+        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
       }
       indexInSchema++;
     }
@@ -127,69 +120,66 @@ public class Tablet {
     timestamps[rowIndex] = timestamp;
   }
 
-  // (s1, s2)  s3
   public void addValue(String measurementId, int rowIndex, Object value) {
-    int indexOfValues = measurementIndexInValues.get(measurementId);
-    int indexOfSchema = measurementIndexInSchema.get(measurementId);
+    int indexOfSchema = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
-
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
       int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
       TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(indexInVector);
-      addValueOfDataType(dataType, rowIndex, indexOfValues, value);
+      addValueOfDataType(dataType, rowIndex, indexInVector, value);
     } else {
-      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfValues, value);
+      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
     }
   }
 
   private void addValueOfDataType(
-      TSDataType dataType, int rowIndex, int indexOfValue, Object value) {
+      TSDataType dataType, int rowIndex, int indexOfSchema, Object value) {
 
     if (value == null) {
       // init the bitMap to mark null value
       if (bitMaps == null) {
         bitMaps = new BitMap[values.length];
       }
-      if (bitMaps[indexOfValue] == null) {
-        bitMaps[indexOfValue] = new BitMap(maxRowNumber);
+      if (bitMaps[indexOfSchema] == null) {
+        bitMaps[indexOfSchema] = new BitMap(maxRowNumber);
       }
       // mark the null value position
-      bitMaps[indexOfValue].mark(rowIndex);
+      bitMaps[indexOfSchema].mark(rowIndex);
     }
     switch (dataType) {
       case TEXT:
         {
-          Binary[] sensor = (Binary[]) values[indexOfValue];
+          Binary[] sensor = (Binary[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
           break;
         }
       case FLOAT:
         {
-          float[] sensor = (float[]) values[indexOfValue];
+          float[] sensor = (float[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (float) value : Float.MIN_VALUE;
           break;
         }
       case INT32:
         {
-          int[] sensor = (int[]) values[indexOfValue];
+          int[] sensor = (int[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (int) value : Integer.MIN_VALUE;
           break;
         }
       case INT64:
         {
-          long[] sensor = (long[]) values[indexOfValue];
+          long[] sensor = (long[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (long) value : Long.MIN_VALUE;
           break;
         }
       case DOUBLE:
         {
-          double[] sensor = (double[]) values[indexOfValue];
+          double[] sensor = (double[]) values[indexOfSchema];
           sensor[rowIndex] = value != null ? (double) value : Double.MIN_VALUE;
           break;
         }
       case BOOLEAN:
         {
-          boolean[] sensor = (boolean[]) values[indexOfValue];
+          boolean[] sensor = (boolean[]) values[indexOfSchema];
           sensor[rowIndex] = value != null && (boolean) value;
           break;
         }
@@ -336,5 +326,13 @@ public class Tablet {
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
     return valueOccupation;
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
   }
 }

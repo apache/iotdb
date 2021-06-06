@@ -80,26 +80,36 @@ public class InsertTabletPlan extends InsertPlan {
     super(OperatorType.BATCHINSERT);
   }
 
-  public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
+  public InsertTabletPlan(PartialPath prefixPath, List<String> measurements) {
     super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+    this.prefixPath = prefixPath;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
+  public InsertTabletPlan(PartialPath prefixPath, String[] measurements) {
     super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+    this.prefixPath = prefixPath;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(PartialPath prefixPath, String[] measurements, List<Integer> dataTypes) {
     super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+    this.prefixPath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;
+  }
+
+  public InsertTabletPlan(
+      PartialPath prefixPath, String[] measurements, List<Integer> dataTypes, boolean isAligned) {
+    super(OperatorType.BATCHINSERT);
+    this.prefixPath = prefixPath;
+    this.measurements = measurements;
+    setDataTypes(dataTypes);
+    this.canBeSplit = true;
+    this.isAligned = isAligned;
   }
 
   public int getStart() {
@@ -135,7 +145,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = deviceId.concatNode(m);
+      PartialPath fullPath = prefixPath.concatNode(m);
       ret.add(fullPath);
     }
     paths = ret;
@@ -150,7 +160,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    putString(stream, deviceId.getFullPath());
+    putString(stream, prefixPath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -236,7 +246,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, prefixPath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -438,7 +448,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.deviceId = new PartialPath(readString(buffer));
+    this.prefixPath = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];
@@ -557,8 +567,8 @@ public class InsertTabletPlan extends InsertPlan {
   @Override
   public String toString() {
     return "InsertTabletPlan {"
-        + "deviceId:"
-        + deviceId
+        + "prefixPath:"
+        + prefixPath
         + ", timesRange["
         + times[0]
         + ","

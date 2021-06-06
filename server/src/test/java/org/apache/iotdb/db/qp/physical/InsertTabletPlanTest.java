@@ -129,15 +129,15 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals(
+        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      System.out.println(record);
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 
@@ -157,16 +157,15 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
-    System.out.println(Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals(
+        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      System.out.println(record);
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 
@@ -241,8 +240,13 @@ public class InsertTabletPlanTest {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("vector");
+    schemaNames.add("vector2");
+    schemaNames.add("s6");
+
     return new CreateTemplatePlan(
-        "template1", measurementList, dataTypesList, encodingList, compressionTypes);
+        "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
   }
 
   @Test
@@ -339,35 +343,25 @@ public class InsertTabletPlanTest {
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     dataTypes.add(TSDataType.FLOAT.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
 
     Object[] columns = new Object[6];
     columns[0] = new double[4];
     columns[1] = new float[4];
     columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
 
     for (int r = 0; r < 4; r++) {
       ((double[]) columns[0])[r] = 1.0;
       ((float[]) columns[1])[r] = 2;
       ((long[]) columns[2])[r] = 10000;
-      ((int[]) columns[3])[r] = 100;
-      ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
     }
 
     InsertTabletPlan tabletPlan =
         new InsertTabletPlan(
-            new PartialPath("root.isp.d1"),
-            new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
-            dataTypes);
+            new PartialPath("root.isp.d1.vector"), new String[] {"s1", "s2", "s3"}, dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
+    tabletPlan.setAligned(true);
     return tabletPlan;
   }
 }

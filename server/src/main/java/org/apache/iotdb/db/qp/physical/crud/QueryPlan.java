@@ -112,7 +112,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     alignByTime = align;
   }
 
-  public void addPathToIndex(String columnName, Integer index) {
+  public void setColumnNameToDatasetOutputIndex(String columnName, Integer index) {
     pathToIndex.put(columnName, index);
   }
 
