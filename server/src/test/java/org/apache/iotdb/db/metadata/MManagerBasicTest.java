@@ -1382,6 +1382,53 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testCreateAlignedTimeseriesAndInsertWithNotAlignedData() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1.vector"),
+          Arrays.asList("s1", "s2", "s3"),
+          Arrays.asList(
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT64"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          compressionType);
+
+      // construct an insertRowPlan with mismatched data type
+      long time = 1L;
+      TSDataType[] dataTypes =
+          new TSDataType[] {TSDataType.FLOAT, TSDataType.INT64, TSDataType.INT32};
+
+      String[] columns = new String[3];
+      columns[0] = "1.0";
+      columns[1] = "2";
+      columns[2] = "3";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1.vector"),
+              time,
+              new String[] {"s1", "s2", "s3"},
+              dataTypes,
+              columns,
+              false);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.assertEquals(
+          "Path [root.laptop.d1.vector] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testCreateTimeseriesAndInsertWithMismatchDataType() {
     MManager manager = IoTDB.metaManager;
     try {
@@ -1415,6 +1462,53 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateTimeseriesAndInsertWithAlignedData() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.vector.s1"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.vector.s2"),
+          TSDataType.valueOf("INT64"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+
+      // construct an insertRowPlan with mismatched data type
+      long time = 1L;
+      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
+
+      String[] columns = new String[2];
+      columns[0] = "1";
+      columns[1] = "2";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1.vector"),
+              time,
+              new String[] {"s1", "s2"},
+              dataTypes,
+              columns,
+              true);
+      insertRowPlan.setMeasurementMNodes(
+          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.assertEquals(
+          "Path [root.laptop.d1.vector] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+          e.getMessage());
     }
   }
 

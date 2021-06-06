@@ -2163,6 +2163,23 @@ public class MManager {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
+    // check insert non-aligned InsertPlan for aligned timeseries
+    if (deviceMNode.left instanceof MeasurementMNode
+        && ((MeasurementMNode) deviceMNode.left).getSchema() instanceof VectorMeasurementSchema
+        && !plan.isAligned()) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+              prefixPath));
+    }
+    // check insert aligned InsertPlan for non-aligned timeseries
+    else if (!(deviceMNode.left instanceof MeasurementMNode) && plan.isAligned()) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+              prefixPath));
+    }
+
     // 2. get schema of each measurement
     // if do not have measurement
     MeasurementMNode measurementMNode;
