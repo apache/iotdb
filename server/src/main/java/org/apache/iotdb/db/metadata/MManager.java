@@ -2173,7 +2173,9 @@ public class MManager {
               prefixPath));
     }
     // check insert aligned InsertPlan for non-aligned timeseries
-    else if (!(deviceMNode.left instanceof MeasurementMNode) && plan.isAligned()) {
+    else if (plan.isAligned()
+        && deviceMNode.left.getChild(vectorId) != null
+        && !(deviceMNode.left.getChild(vectorId) instanceof MeasurementMNode)) {
       throw new MetadataException(
           String.format(
               "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
@@ -2186,7 +2188,6 @@ public class MManager {
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-
         MNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
