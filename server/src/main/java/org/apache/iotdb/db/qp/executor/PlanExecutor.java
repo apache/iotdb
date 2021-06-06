@@ -1310,7 +1310,8 @@ public class PlanExecutor implements IPlanExecutor {
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
       if (insertRowPlan.isAligned()) {
-        insertRowPlan.setPrefixPath(insertRowPlan.getPrefixPath().getDevicePath());
+        insertRowPlan.setPrefixPathForAlignTimeSeries(
+            insertRowPlan.getPrefixPath().getDevicePath());
       }
       insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);

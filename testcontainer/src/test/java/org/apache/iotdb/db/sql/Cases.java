@@ -224,7 +224,9 @@ public abstract class Cases {
   //        new VectorMeasurementSchema(
   //            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
   //
-  //    Tablet tablet = new Tablet("root.template.device1", Arrays.asList(vectorMeasurementSchema));
+  //    Tablet tablet = new Tablet("root.template.device1.vector",
+  //    Arrays.asList(vectorMeasurementSchema));
+  //    tablet.setAligned(true);
   //    for (int i = 0; i < 10; i++) {
   //      tablet.addTimestamp(i, i);
   //      for (int j = 0; j < 10; j++) {
