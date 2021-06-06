@@ -66,8 +66,7 @@ public class AlignedTimeseriesSessionExample {
     selectWithLastTest();
 
     selectWithAggregationTest();
-    // FIXME @Silver Narcissus
-    // selectWithAlignByDeviceTest();
+    selectWithAlignByDeviceTest();
 
     session.close();
   }
