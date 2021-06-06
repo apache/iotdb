@@ -32,16 +32,21 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return isAlignByDevice()
-        ? this.generateAggregationAlignByDevicePlan(generator)
-        : this.generateRawDataQueryPlan(generator, new GroupByTimePlan());
+        ? this.generateAlignByDevicePlan(generator)
+        : super.generateRawDataQueryPlan(generator, initGroupByTimePlan(new GroupByTimePlan()));
   }
 
   @Override
-  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    queryPlan = super.generateRawDataQueryPlan(generator, queryPlan);
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setGroupByTimePlan(initGroupByTimePlan(new GroupByTimePlan()));
 
-    GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
+    return alignByDevicePlan;
+  }
+
+  protected GroupByTimePlan initGroupByTimePlan(QueryPlan queryPlan) throws QueryProcessException {
+    GroupByTimePlan groupByTimePlan = (GroupByTimePlan) initAggregationPlan(queryPlan);
     GroupByClauseComponent groupByClauseComponent = (GroupByClauseComponent) specialClauseComponent;
 
     groupByTimePlan.setInterval(groupByClauseComponent.getUnit());
@@ -49,6 +54,7 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
     groupByTimePlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
     groupByTimePlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
     groupByTimePlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
+
     if (!groupByClauseComponent.isLeftCRightO()) {
       groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
       groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
@@ -58,15 +64,5 @@ public class GroupByQueryOperator extends AggregationQueryOperator {
     }
 
     return groupByTimePlan;
-  }
-
-  @Override
-  protected AlignByDevicePlan generateAggregationAlignByDevicePlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
-    alignByDevicePlan.setGroupByTimePlan(
-        (GroupByTimePlan) generateRawDataQueryPlan(generator, new GroupByTimePlan()));
-
-    return alignByDevicePlan;
   }
 }

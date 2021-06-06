@@ -45,29 +45,28 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return isAlignByDevice()
-        ? this.generateAggregationAlignByDevicePlan(generator)
-        : this.generateRawDataQueryPlan(generator, new GroupByTimeFillPlan());
+        ? this.generateAlignByDevicePlan(generator)
+        : super.generateRawDataQueryPlan(
+            generator, initGroupByTimeFillPlan(new GroupByTimeFillPlan()));
   }
 
   @Override
-  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    queryPlan = super.generateRawDataQueryPlan(generator, queryPlan);
-    GroupByTimeFillPlan groupByTimeFillPlan = (GroupByTimeFillPlan) queryPlan;
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setGroupByTimePlan(initGroupByTimeFillPlan(new GroupByTimeFillPlan()));
+
+    return alignByDevicePlan;
+  }
+
+  protected GroupByTimeFillPlan initGroupByTimeFillPlan(QueryPlan queryPlan)
+      throws QueryProcessException {
+    GroupByTimeFillPlan groupByTimeFillPlan =
+        (GroupByTimeFillPlan) super.initGroupByTimePlan(queryPlan);
     GroupByFillClauseComponent groupByFillClauseComponent =
         (GroupByFillClauseComponent) specialClauseComponent;
     groupByTimeFillPlan.setFillType(groupByFillClauseComponent.getFillTypes());
 
-    return queryPlan;
-  }
-
-  @Override
-  protected AlignByDevicePlan generateAggregationAlignByDevicePlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
-    alignByDevicePlan.setGroupByTimePlan(
-        (GroupByTimeFillPlan) generateRawDataQueryPlan(generator, new GroupByTimeFillPlan()));
-
-    return alignByDevicePlan;
+    return groupByTimeFillPlan;
   }
 }

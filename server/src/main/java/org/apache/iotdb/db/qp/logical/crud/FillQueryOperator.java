@@ -25,7 +25,6 @@ import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class FillQueryOperator extends QueryOperator {
@@ -55,29 +54,24 @@ public class FillQueryOperator extends QueryOperator {
       throws QueryProcessException {
     return isAlignByDevice()
         ? this.generateAlignByDevicePlan(generator)
-        : this.generateRawDataQueryPlan(generator, new FillQueryPlan());
-  }
-
-  @Override
-  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
-      throws QueryProcessException {
-    FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
-    FilterOperator timeFilter = whereComponent.getFilterOperator();
-    long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
-    fillQueryPlan.setQueryTime(time);
-    fillQueryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
-    queryPlan = super.generateRawDataQueryPlan(generator, fillQueryPlan);
-
-    return queryPlan;
+        : super.generateRawDataQueryPlan(generator, initFillQueryPlan());
   }
 
   @Override
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
       throws QueryProcessException {
     AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
-    alignByDevicePlan.setFillQueryPlan(
-        (FillQueryPlan) generateRawDataQueryPlan(generator, new FillQueryPlan()));
+    alignByDevicePlan.setFillQueryPlan(initFillQueryPlan());
 
     return alignByDevicePlan;
+  }
+
+  private FillQueryPlan initFillQueryPlan() {
+    FillQueryPlan fillQueryPlan = new FillQueryPlan();
+    FilterOperator timeFilter = whereComponent.getFilterOperator();
+    long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
+    fillQueryPlan.setQueryTime(time);
+    fillQueryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
+    return fillQueryPlan;
   }
 }

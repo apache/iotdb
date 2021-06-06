@@ -173,7 +173,6 @@ public class QueryOperator extends Operator {
 
   protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
       throws QueryProcessException {
-
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     rawDataQueryPlan.setPaths(selectComponent.getPaths());
     rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
@@ -203,14 +202,7 @@ public class QueryOperator extends Operator {
       throw new QueryProcessException(e);
     }
 
-    if (specialClauseComponent != null) {
-      rawDataQueryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
-      rawDataQueryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
-      rawDataQueryPlan.setRowLimit(specialClauseComponent.getRowLimit());
-      rawDataQueryPlan.setRowOffset(specialClauseComponent.getRowOffset());
-      rawDataQueryPlan.setAscending(specialClauseComponent.isAscending());
-      rawDataQueryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
-    }
+    convertSpecialClauseValues(rawDataQueryPlan);
 
     if (queryPlan instanceof QueryIndexPlan) {
       ((QueryIndexPlan) queryPlan).setIndexType(indexType);
@@ -360,6 +352,7 @@ public class QueryOperator extends Operator {
       measurements.addAll(measurementSetOfGivenSuffix);
     }
 
+    convertSpecialClauseValues(alignByDevicePlan);
     // slimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSlimit = specialClauseComponent.getSeriesLimit();
@@ -383,6 +376,17 @@ public class QueryOperator extends Operator {
     }
 
     return alignByDevicePlan;
+  }
+
+  private void convertSpecialClauseValues(QueryPlan queryPlan) {
+    if (specialClauseComponent != null) {
+      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
+      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
+      queryPlan.setAscending(specialClauseComponent.isAscending());
+      queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
   }
 
   private List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)

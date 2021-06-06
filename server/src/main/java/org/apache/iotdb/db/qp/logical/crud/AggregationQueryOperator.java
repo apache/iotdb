@@ -79,8 +79,8 @@ public class AggregationQueryOperator extends QueryOperator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return isAlignByDevice()
-        ? this.generateAggregationAlignByDevicePlan(generator)
-        : this.generateRawDataQueryPlan(generator, new AggregationPlan());
+        ? this.generateAlignByDevicePlan(generator)
+        : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
   }
 
   private boolean verifyAllAggregationDataTypesEqual() throws MetadataException {
@@ -103,12 +103,18 @@ public class AggregationQueryOperator extends QueryOperator {
     }
   }
 
-  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+  @Override
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
       throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setAggregationPlan(initAggregationPlan(new AggregationPlan()));
+
+    return alignByDevicePlan;
+  }
+
+  protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
-    super.generateRawDataQueryPlan(generator, aggregationPlan);
-
     if (isGroupByLevel()) {
       aggregationPlan.setLevel(specialClauseComponent.getLevel());
       try {
@@ -119,16 +125,6 @@ public class AggregationQueryOperator extends QueryOperator {
         throw new LogicalOperatorException(e);
       }
     }
-
     return aggregationPlan;
-  }
-
-  protected AlignByDevicePlan generateAggregationAlignByDevicePlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
-    alignByDevicePlan.setAggregationPlan(
-        (AggregationPlan) generateRawDataQueryPlan(generator, new AggregationPlan()));
-
-    return alignByDevicePlan;
   }
 }
