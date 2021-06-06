@@ -76,7 +76,7 @@ public class InsertOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     int measurementsNum = 0;
     for (String measurement : measurementList) {

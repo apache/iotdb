@@ -39,7 +39,7 @@ public class TracingOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return new TracingPlan(isTracingOn);
   }

@@ -21,30 +21,52 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class GroupByQueryOperator extends AggregationQueryOperator {
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    GroupByTimePlan queryPlan = new GroupByTimePlan();
+    return isAlignByDevice()
+        ? this.generateAggregationAlignByDevicePlan(generator)
+        : this.generateRawDataQueryPlan(generator, new GroupByTimePlan());
+  }
 
+  @Override
+  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+      throws QueryProcessException {
+    queryPlan = super.generateRawDataQueryPlan(generator, queryPlan);
+
+    GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
     GroupByClauseComponent groupByClauseComponent = (GroupByClauseComponent) specialClauseComponent;
-    queryPlan.setInterval(groupByClauseComponent.getUnit());
-    queryPlan.setIntervalByMonth(groupByClauseComponent.isIntervalByMonth());
-    queryPlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
-    queryPlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
-    queryPlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
+
+    groupByTimePlan.setInterval(groupByClauseComponent.getUnit());
+    groupByTimePlan.setIntervalByMonth(groupByClauseComponent.isIntervalByMonth());
+    groupByTimePlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
+    groupByTimePlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
+    groupByTimePlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
     if (!groupByClauseComponent.isLeftCRightO()) {
-      queryPlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
-      queryPlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
+      groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
+      groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
     } else {
-      queryPlan.setStartTime(groupByClauseComponent.getStartTime());
-      queryPlan.setEndTime(groupByClauseComponent.getEndTime());
+      groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime());
+      groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime());
     }
 
-    return queryPlan;
+    return groupByTimePlan;
+  }
+
+  @Override
+  protected AlignByDevicePlan generateAggregationAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setGroupByTimePlan(
+        (GroupByTimePlan) generateRawDataQueryPlan(generator, new GroupByTimePlan()));
+
+    return alignByDevicePlan;
   }
 }

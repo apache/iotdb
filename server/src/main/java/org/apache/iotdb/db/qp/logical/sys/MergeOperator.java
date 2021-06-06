@@ -33,7 +33,7 @@ public class MergeOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     if (tokenIntType == SQLConstant.TOK_FULL_MERGE) {
       return new MergePlan(OperatorType.FULL_MERGE);

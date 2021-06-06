@@ -116,7 +116,7 @@ public class AuthorOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     try {
       return new AuthorPlan(

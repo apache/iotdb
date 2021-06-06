@@ -45,7 +45,7 @@ public class DeleteTimeSeriesOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator) {
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
     return new DeleteTimeSeriesPlan(getDeletePathList());
   }
 }

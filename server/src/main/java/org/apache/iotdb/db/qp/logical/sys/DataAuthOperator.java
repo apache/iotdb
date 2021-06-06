@@ -45,7 +45,7 @@ public class DataAuthOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator) {
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
     return new DataAuthPlan(getType(), getUsers());
   }
 }

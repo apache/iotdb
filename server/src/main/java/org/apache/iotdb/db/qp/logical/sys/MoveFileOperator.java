@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.io.File;
 
@@ -41,5 +45,11 @@ public class MoveFileOperator extends Operator {
 
   public File getTargetDir() {
     return targetDir;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new OperateFilePlan(file, targetDir, OperatorType.MOVE_FILE);
   }
 }

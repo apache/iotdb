@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.Set;
 
@@ -48,5 +52,11 @@ public class DeletePartitionOperator extends Operator {
 
   public Set<Long> getPartitionId() {
     return partitionIds;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new DeletePartitionPlan(storageGroupName, partitionIds);
   }
 }

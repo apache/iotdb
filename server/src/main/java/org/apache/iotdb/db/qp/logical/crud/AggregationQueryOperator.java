@@ -26,6 +26,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -68,30 +70,17 @@ public class AggregationQueryOperator extends QueryOperator {
       }
     }
 
-    if (isGroupByLevel()) {
-      try {
-        if (!verifyAllAggregationDataTypesEqual()) {
-          throw new LogicalOperatorException("Aggregate among unmatched data types");
-        }
-      } catch (MetadataException e) {
-        throw new LogicalOperatorException(e);
-      }
+    if (isGroupByLevel() && isAlignByDevice()) {
+      throw new LogicalOperatorException("group by level does not support align by device now.");
     }
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    AggregationPlan queryPlan = new AggregationPlan();
-
-    queryPlan.setPaths(selectComponent.getPaths());
-    queryPlan.setAggregations(selectComponent.getAggregationFunctions());
-
-    if (isGroupByLevel()) {
-      queryPlan.setLevel(specialClauseComponent.getLevel());
-    }
-
-    return queryPlan;
+    return isAlignByDevice()
+        ? this.generateAggregationAlignByDevicePlan(generator)
+        : this.generateRawDataQueryPlan(generator, new AggregationPlan());
   }
 
   private boolean verifyAllAggregationDataTypesEqual() throws MetadataException {
@@ -112,5 +101,34 @@ public class AggregationQueryOperator extends QueryOperator {
       default:
         return true;
     }
+  }
+
+  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+      throws QueryProcessException {
+    AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+    aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
+    super.generateRawDataQueryPlan(generator, aggregationPlan);
+
+    if (isGroupByLevel()) {
+      aggregationPlan.setLevel(specialClauseComponent.getLevel());
+      try {
+        if (!verifyAllAggregationDataTypesEqual()) {
+          throw new LogicalOperatorException("Aggregate among unmatched data types");
+        }
+      } catch (MetadataException e) {
+        throw new LogicalOperatorException(e);
+      }
+    }
+
+    return aggregationPlan;
+  }
+
+  protected AlignByDevicePlan generateAggregationAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setAggregationPlan(
+        (AggregationPlan) generateRawDataQueryPlan(generator, new AggregationPlan()));
+
+    return alignByDevicePlan;
   }
 }

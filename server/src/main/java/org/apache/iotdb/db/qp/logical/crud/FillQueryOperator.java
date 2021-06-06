@@ -23,7 +23,9 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class FillQueryOperator extends QueryOperator {
@@ -49,13 +51,33 @@ public class FillQueryOperator extends QueryOperator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    FillQueryPlan queryPlan = new FillQueryPlan();
+    return isAlignByDevice()
+        ? this.generateAlignByDevicePlan(generator)
+        : this.generateRawDataQueryPlan(generator, new FillQueryPlan());
+  }
+
+  @Override
+  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+      throws QueryProcessException {
+    FillQueryPlan fillQueryPlan = (FillQueryPlan) queryPlan;
     FilterOperator timeFilter = whereComponent.getFilterOperator();
     long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
-    queryPlan.setQueryTime(time);
-    queryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
+    fillQueryPlan.setQueryTime(time);
+    fillQueryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
+    queryPlan = super.generateRawDataQueryPlan(generator, fillQueryPlan);
+
     return queryPlan;
+  }
+
+  @Override
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setFillQueryPlan(
+        (FillQueryPlan) generateRawDataQueryPlan(generator, new FillQueryPlan()));
+
+    return alignByDevicePlan;
   }
 }

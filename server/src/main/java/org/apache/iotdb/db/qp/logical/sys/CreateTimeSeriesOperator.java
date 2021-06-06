@@ -111,7 +111,7 @@ public class CreateTimeSeriesOperator extends Operator {
   }
 
   @Override
-  public PhysicalPlan transform2PhysicalPlan(int fetchSize, PhysicalGenerator generator)
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     if (getTags() != null
         && !getTags().isEmpty()
