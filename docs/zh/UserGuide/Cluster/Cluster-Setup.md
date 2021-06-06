@@ -47,6 +47,32 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 * `is_sync_enable` 不再生效，并被视为 `false`.
 
+## 集群扩展
+在集群运行过程中，用户可以向集群中加入新的节点或者删除集群中已有节点。目前仅支持逐节点集群扩展操作，多节点的集群扩展可以转化为一系列单节点集群扩展操作来实现。集群只有在上一次集群扩展操作完成后才会接收新的集群扩展操作。
+
+### 增加节点
+在要加入集群的新节点上启动以下脚本进行增加节点操作：
+```bash
+# Unix/OS X
+> nohup sbin/add-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
+
+# Windows
+> sbin\add-node.bat [printgc] [<conf_path>] 
+```
+`printgc`表示在启动的时候，会开启GC日志。
+`<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
+
+### 删除节点
+在任一集群中的节点上启动以下脚本进行删除节点操作：
+```bash
+# Unix/OS X
+> sbin/remove-node.sh <internal_ip> <internal_meta_port>
+
+# Windows
+> sbin\remove-node.bat <internal_ip> <internal_meta_port>
+```
+`internal_ip`表示待删除节点的IP地址
+`internal_meta_port`表示待删除节点的meta服务端口
 
 ## 配置项
 
@@ -136,6 +162,15 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |描述|集群副本数|
 |类型|Int32|
 |默认值|3|
+|改后生效方式|重启服务生效，集群建立后不可更改|
+
+* multi\_raft\_factor
+
+|名字|multi\_raft\_factor|
+|:---:|:---|
+|描述|每个数据组启动的raft组实例数量，默认每个数据组启动一个raft组|
+|类型|Int32|
+|默认值|1|
 |改后生效方式|重启服务生效，集群建立后不可更改|
 
 * cluster\_name
