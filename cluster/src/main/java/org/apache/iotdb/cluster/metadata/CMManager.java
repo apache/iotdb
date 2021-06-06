@@ -276,7 +276,7 @@ public class CMManager extends MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      return toVectorPath(partialPath, node.getName());
+      return toVectorPath(partialPath);
     }
   }
 

@@ -1192,16 +1192,15 @@ public class MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      return toVectorPath(partialPath, node.getName());
+      return toVectorPath(partialPath);
     }
   }
 
   /** Convert the PartialPath to VectorPartialPath. */
-  protected VectorPartialPath toVectorPath(PartialPath partialPath, String name)
-      throws MetadataException {
+  protected VectorPartialPath toVectorPath(PartialPath partialPath) throws MetadataException {
     List<PartialPath> subSensorsPathList = new ArrayList<>();
     subSensorsPathList.add(partialPath);
-    return new VectorPartialPath(partialPath.getDevice() + "." + name, subSensorsPathList);
+    return new VectorPartialPath(partialPath.getDevice(), subSensorsPathList);
   }
 
   /**
@@ -1241,10 +1240,7 @@ public class MManager {
       } else {
         List<PartialPath> subSensorsPathList = new ArrayList<>();
         subSensorsPathList.add(path);
-        nodeToPartialPath.put(
-            node,
-            new VectorPartialPath(
-                path.getDevice() + "." + path.getMeasurement(), subSensorsPathList));
+        nodeToPartialPath.put(node, new VectorPartialPath(node.getFullPath(), subSensorsPathList));
       }
       nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
     } else {

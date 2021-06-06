@@ -66,7 +66,8 @@ public class AlignedTimeseriesSessionExample {
     selectWithLastTest();
 
     selectWithAggregationTest();
-    selectWithAlignByDeviceTest();
+
+    // selectWithAlignByDeviceTest();
 
     session.close();
   }
@@ -197,7 +198,7 @@ public class AlignedTimeseriesSessionExample {
       encodings.add(TSEncoding.RLE);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1_VECTOR1, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+        ROOT_SG1_D1_VECTOR2, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
   }
 
   // be sure template is coordinate with tablet
@@ -227,7 +228,7 @@ public class AlignedTimeseriesSessionExample {
     compressionTypeList.add(CompressionType.SNAPPY);
 
     List<String> schemaList = new ArrayList<>();
-    schemaList.add("test_vector");
+    schemaList.add("vector");
 
     session.createSchemaTemplate(
         "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
@@ -248,9 +249,9 @@ public class AlignedTimeseriesSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
-    long timestamp = System.currentTimeMillis();
+    long timestamp = 1;
 
-    for (long row = 0; row < 100; row++) {
+    for (long row = 1; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
@@ -294,7 +295,7 @@ public class AlignedTimeseriesSessionExample {
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = 100; time < 200; time++) {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
@@ -339,7 +340,7 @@ public class AlignedTimeseriesSessionExample {
     tablet.bitMaps = bitMaps;
 
     bitMaps[1] = new BitMap(tablet.getMaxRowNumber());
-    for (long time = 100; time < 200; time++) {
+    for (long time = 200; time < 300; time++) {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
