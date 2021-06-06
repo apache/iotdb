@@ -1032,17 +1032,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
-    boolean isFirstElement = true;
     for (ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
       // judge query type according to the first select element
-      if (!hasDecidedQueryType() && isFirstElement) {
+      if (!hasDecidedQueryType()) {
         if (selectComponent.hasAggregationFunction()) {
           queryOp = new AggregationQueryOperator(queryOp);
         } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
           queryOp = new UDFQueryOperator(queryOp);
         }
-        isFirstElement = false;
       }
     }
 
@@ -1052,7 +1050,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private boolean hasDecidedQueryType() {
     return queryOp instanceof GroupByQueryOperator
         || queryOp instanceof FillQueryOperator
-        || queryOp instanceof LastQueryOperator;
+        || queryOp instanceof LastQueryOperator
+        || queryOp instanceof AggregationQueryOperator
+        || queryOp instanceof UDFQueryOperator;
   }
 
   @Override

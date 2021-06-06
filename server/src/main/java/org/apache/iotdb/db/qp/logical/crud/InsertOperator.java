@@ -100,7 +100,7 @@ public class InsertOperator extends Operator {
       insertRowsPlan.addOneInsertRowPlan(
           new InsertRowPlan(
               device,
-              times[0],
+              times[i],
               measurementList,
               Arrays.copyOfRange(valueList, i * measurementsNum, (i + 1) * measurementsNum)),
           i);
