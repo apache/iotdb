@@ -584,6 +584,10 @@ public class CMManager extends MManager {
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
+    } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              Collections.singletonList(((CreateAlignedTimeSeriesPlan) plan).getPrefixPath())));
     } else if (plan instanceof SetDeviceTemplatePlan) {
       storageGroups.addAll(
           getStorageGroups(
@@ -734,15 +738,11 @@ public class CMManager extends MManager {
       logger.error("Failed to infer storage group from deviceId {}", deviceId);
       return false;
     }
-    boolean hasVector = false;
     for (String measurementId : insertPlan.getMeasurements()) {
-      if (measurementId.contains("(") && measurementId.contains(",")) {
-        hasVector = true;
-      }
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
-    if (hasVector) {
-      return createAlignedTimeseries(seriesList, (InsertTabletPlan) insertPlan);
+    if (insertPlan.isAligned()) {
+      return createAlignedTimeseries(seriesList, insertPlan);
     }
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
@@ -755,16 +755,27 @@ public class CMManager extends MManager {
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
   }
 
-  private boolean createAlignedTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
+  private boolean createAlignedTimeseries(List<String> seriesList, InsertPlan insertPlan)
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
       measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
     }
 
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (TSDataType dataType : insertPlan.getDataTypes()) {
+    List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> encodings = new ArrayList<>(measurements.size());
+    for (int index = 0; index < measurements.size(); index++) {
+      TSDataType dataType;
+      if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
+        dataType = insertPlan.getDataTypes()[index];
+      } else {
+        dataType =
+            TypeInferenceUtils.getPredictedDataType(
+                insertPlan instanceof InsertTabletPlan
+                    ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+                    : ((InsertRowPlan) insertPlan).getValues()[index],
+                true);
+      }
       dataTypes.add(dataType);
       encodings.add(getDefaultEncoding(dataType));
     }
