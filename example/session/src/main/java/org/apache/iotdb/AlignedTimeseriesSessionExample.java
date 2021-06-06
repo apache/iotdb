@@ -39,9 +39,10 @@ import java.util.List;
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1 = "root.sg_1.d1";
   private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1.vector";
   private static final String ROOT_SG1_D1_VECTOR2 = "root.sg_1.d1.vector2";
+  private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
+  private static final String ROOT_SG1_D1_VECTOR4 = "root.sg_1.d1.vector4";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -246,7 +247,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
@@ -289,7 +290,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
     tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
@@ -329,7 +330,7 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
     tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
@@ -382,7 +383,7 @@ public class AlignedTimeseriesSessionExample {
       List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR2, time, measurements, types, values, true);
+      session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, types, values, true);
     }
   }
 }

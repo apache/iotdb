@@ -38,7 +38,6 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1151,13 +1150,13 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.prefixPath, e.getEndPoint());
     }
   }
 
@@ -1172,13 +1171,13 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.prefixPath, e.getEndPoint());
     }
   }
 
@@ -1198,8 +1197,7 @@ public class Session {
       }
       request.setIsAligned(true);
       IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
-      request.setPrefixPath(
-          tablet.deviceId + TsFileConstant.PATH_SEPARATOR + measurementSchema.getMeasurementId());
+      request.setPrefixPath(tablet.prefixPath);
       int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
       for (int i = 0; i < measurementsSize; i++) {
         request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
@@ -1208,7 +1206,7 @@ public class Session {
       request.setIsAligned(true);
     } else {
       for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.setPrefixPath(tablet.deviceId);
+        request.setPrefixPath(tablet.prefixPath);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
         request.setIsAligned(tablet.isAligned());
@@ -1308,7 +1306,7 @@ public class Session {
       sortTablet(tablet);
     }
 
-    request.addToDeviceIds(tablet.deviceId);
+    request.addToDeviceIds(tablet.prefixPath);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
