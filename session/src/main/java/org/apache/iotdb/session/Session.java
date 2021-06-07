@@ -685,16 +685,16 @@ public class Session {
     }
   }
 
+  // TODO https://issues.apache.org/jira/browse/IOTDB-1399
   private void removeBrokenSessionConnection(String deviceId) {
     // remove the cached broken leader session
     if (enableCacheLeader) {
       EndPoint endPoint = deviceIdToEndpoint.remove(deviceId);
       removeBrokenSessionConnection(endPoint);
     }
-    // TODO how to deal with the defaultSessionConnection? maybe we can mark the session as broken,
-    //  however, it still needs the upper called layer to switch the connect node.
   }
 
+  // TODO https://issues.apache.org/jira/browse/IOTDB-1399
   private void removeBrokenSessionConnection(EndPoint endPoint) {
     // remove the cached broken leader session
     if (enableCacheLeader) {
@@ -705,8 +705,6 @@ public class Session {
       }
       endPointToSessionConnection.remove(endPoint);
     }
-    // TODO how to deal with the defaultSessionConnection? maybe we can mark the session as broken,
-    //  however, it still needs the upper called layer to switch the connect node.
   }
 
   private void handleMetaRedirection(String storageGroup, RedirectException e)
