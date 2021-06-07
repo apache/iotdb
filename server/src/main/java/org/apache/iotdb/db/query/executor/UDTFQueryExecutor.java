@@ -48,12 +48,7 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new UDTFAlignByTimeDataSet(
-        context,
-        udtfPlan,
-        udtfPlan.getDeduplicatedPaths(),
-        udtfPlan.getDeduplicatedDataTypes(),
-        readersOfSelectedSeries);
+    return new UDTFAlignByTimeDataSet(context, udtfPlan, readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context)
@@ -67,24 +62,13 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries =
         initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFAlignByTimeDataSet(
-        context,
-        udtfPlan,
-        udtfPlan.getDeduplicatedPaths(),
-        udtfPlan.getDeduplicatedDataTypes(),
-        timestampGenerator,
-        readersOfSelectedSeries,
-        cached);
+        context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException, InterruptedException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new UDTFNonAlignDataSet(
-        context,
-        udtfPlan,
-        udtfPlan.getDeduplicatedPaths(),
-        udtfPlan.getDeduplicatedDataTypes(),
-        readersOfSelectedSeries);
+    return new UDTFNonAlignDataSet(context, udtfPlan, readersOfSelectedSeries);
   }
 
   public QueryDataSet executeWithValueFilterNonAlign(QueryContext context)
@@ -98,12 +82,6 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries =
         initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFNonAlignDataSet(
-        context,
-        udtfPlan,
-        udtfPlan.getDeduplicatedPaths(),
-        udtfPlan.getDeduplicatedDataTypes(),
-        timestampGenerator,
-        readersOfSelectedSeries,
-        cached);
+        context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
   }
 }
