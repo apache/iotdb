@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.level;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -584,6 +585,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
                   return false;
                 }
               }
+              System.out.println(CompactionMergeTaskPoolManager.totalWriteCount);
             }
             // avoid pending tasks holds the metadata and streams
             mergeResource.clear();

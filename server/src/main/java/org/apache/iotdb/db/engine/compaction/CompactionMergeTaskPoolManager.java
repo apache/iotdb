@@ -55,6 +55,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       new CompactionMergeTaskPoolManager();
   private ExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  public static long totalWriteCount = 0L;
 
   public static CompactionMergeTaskPoolManager getInstance() {
     return INSTANCE;
