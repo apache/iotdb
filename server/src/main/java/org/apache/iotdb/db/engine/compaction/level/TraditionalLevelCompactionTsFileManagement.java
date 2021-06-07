@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
@@ -510,7 +509,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
           IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
           try {
             List[] mergeFiles = fileSelector.select();
-            if (mergeFiles.length == 0 || mergeFiles[0].size() == 0) {
+            if (mergeFiles.length == 0 || mergeFiles[0].size() == 0 || mergeFiles[1].size() == 0) {
               writeLock();
               try {
                 File newLevelFile =
@@ -564,7 +563,7 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
               mergingModification =
                   new ModificationFile(
                       storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-              MergeManager.getINSTANCE().submitMainTask(mergeTask);
+              mergeTask.call();
               if (logger.isInfoEnabled()) {
                 logger.info(
                     "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
