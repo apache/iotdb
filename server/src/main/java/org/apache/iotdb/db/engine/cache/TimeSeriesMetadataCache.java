@@ -235,6 +235,8 @@ public class TimeSeriesMetadataCache {
       Set<String> allSensors,
       boolean debug)
       throws IOException {
+    // put all sub sensors into allSensors
+    allSensors.addAll(subSensorList);
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);

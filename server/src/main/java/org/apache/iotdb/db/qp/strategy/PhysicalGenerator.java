@@ -61,6 +61,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
@@ -111,6 +112,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
@@ -322,6 +324,9 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowStorageGroupPlan(
                 ShowContentType.STORAGE_GROUP, ((ShowStorageGroupOperator) operator).getPath());
+          case SQLConstant.TOK_LOCK_INFO:
+            return new ShowLockInfoPlan(
+                ShowContentType.LOCK_INFO, ((ShowLockInfoOperator) operator).getPath());
           case SQLConstant.TOK_DEVICES:
             ShowDevicesOperator showDevicesOperator = (ShowDevicesOperator) operator;
             return new ShowDevicesPlan(

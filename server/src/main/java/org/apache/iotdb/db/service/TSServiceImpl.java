@@ -83,7 +83,6 @@ import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -97,8 +96,8 @@ import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
@@ -124,7 +123,7 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -1054,13 +1053,7 @@ public class TSServiceImpl implements TSIService.Iface {
         UDTFPlan udtfPlan = (UDTFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(
-              resultColumns.get(i).getExpression() instanceof TimeSeriesOperand
-                  ? udtfPlan.getDataTypes().get(i)
-                  : udtfPlan
-                      .getExecutorByOriginalOutputColumnIndex(i)
-                      .getConfigurations()
-                      .getOutputDataType());
+          seriesTypes.add(udtfPlan.getOriginalOutputColumnDataType(i));
         }
         break;
       default:
@@ -1478,7 +1471,7 @@ public class TSServiceImpl implements TSIService.Iface {
     for (int i = 0; i < req.deviceIds.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setDeviceId(new PartialPath(req.getDeviceIds().get(i)));
+        plan.setPrefixPath(new PartialPath(req.getDeviceIds().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1575,15 +1568,16 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           currSessionId.get(),
-          req.getDeviceId(),
+          req.getPrefixPath(),
           req.getTimestamp());
 
       InsertRowPlan plan =
           new InsertRowPlan(
-              new PartialPath(req.getDeviceId()),
+              new PartialPath(req.getPrefixPath()),
               req.getTimestamp(),
               req.getMeasurements().toArray(new String[0]),
-              req.values);
+              req.values,
+              req.isAligned);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -1607,7 +1601,7 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(new PartialPath(req.getDeviceId()));
+      plan.setPrefixPath(new PartialPath(req.getDeviceId()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1654,7 +1648,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       InsertTabletPlan insertTabletPlan =
-          new InsertTabletPlan(new PartialPath(req.deviceId), req.measurements);
+          new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
       insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
@@ -1663,6 +1657,7 @@ public class TSServiceImpl implements TSIService.Iface {
           QueryDataSetUtils.readBitMapsFromBuffer(req.values, req.types.size(), req.size));
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
+      insertTabletPlan.setAligned(req.isAligned);
 
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
@@ -1812,7 +1807,7 @@ public class TSServiceImpl implements TSIService.Iface {
         return createTimeseries(
             new TSCreateTimeseriesReq(
                 req.sessionId,
-                req.devicePath + "." + req.measurements.get(0),
+                req.prefixPath + "." + req.measurements.get(0),
                 req.dataTypes.get(0),
                 req.encodings.get(0),
                 req.compressor));
@@ -1822,7 +1817,7 @@ public class TSServiceImpl implements TSIService.Iface {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
             currSessionId.get(),
-            req.getDevicePath(),
+            req.getPrefixPath(),
             req.getMeasurements());
       }
 
@@ -1837,7 +1832,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
-              new PartialPath(req.devicePath),
+              new PartialPath(req.prefixPath),
               req.measurements,
               dataTypes,
               encodings,
@@ -1969,7 +1964,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus createDeviceTemplate(TSCreateDeviceTemplateReq req) throws TException {
+  public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) throws TException {
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -1977,9 +1972,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create device template {}.{}.{}.{}.{}",
+            "Session-{} create device template {}.{}.{}.{}.{}.{}",
             currSessionId.get(),
             req.getName(),
+            req.getSchemaNames(),
             req.getMeasurements(),
             req.getDataTypes(),
             req.getEncodings(),
@@ -2011,7 +2007,12 @@ public class TSServiceImpl implements TSIService.Iface {
 
       CreateTemplatePlan plan =
           new CreateTemplatePlan(
-              req.getName(), req.getMeasurements(), dataTypes, encodings, compressionTypes);
+              req.getName(),
+              req.getSchemaNames(),
+              req.getMeasurements(),
+              dataTypes,
+              encodings,
+              compressionTypes);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -2022,7 +2023,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus setDeviceTemplate(TSSetDeviceTemplateReq req) throws TException {
+  public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
     if (!checkLogin(req.getSessionId())) {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
