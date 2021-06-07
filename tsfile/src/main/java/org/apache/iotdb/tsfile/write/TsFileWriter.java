@@ -212,13 +212,13 @@ public class TsFileWriter implements AutoCloseable {
    */
   private void checkIsTimeSeriesExist(Tablet tablet) throws WriteProcessException {
     IChunkGroupWriter groupWriter;
-    if (!groupWriters.containsKey(tablet.deviceId)) {
-      groupWriter = new ChunkGroupWriterImpl(tablet.deviceId);
-      groupWriters.put(tablet.deviceId, groupWriter);
+    if (!groupWriters.containsKey(tablet.prefixPath)) {
+      groupWriter = new ChunkGroupWriterImpl(tablet.prefixPath);
+      groupWriters.put(tablet.prefixPath, groupWriter);
     } else {
-      groupWriter = groupWriters.get(tablet.deviceId);
+      groupWriter = groupWriters.get(tablet.prefixPath);
     }
-    String deviceId = tablet.deviceId;
+    String deviceId = tablet.prefixPath;
 
     // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
     for (IMeasurementSchema timeseries : tablet.getSchemas()) {
@@ -267,7 +267,7 @@ public class TsFileWriter implements AutoCloseable {
     // make sure the ChunkGroupWriter for this Tablet exist
     checkIsTimeSeriesExist(tablet);
     // get corresponding ChunkGroupWriter and write this Tablet
-    groupWriters.get(tablet.deviceId).write(tablet);
+    groupWriters.get(tablet.prefixPath).write(tablet);
     recordCount += tablet.rowSize;
     return checkMemorySizeAndMayFlushChunks();
   }

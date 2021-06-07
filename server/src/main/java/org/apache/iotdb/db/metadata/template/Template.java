@@ -125,7 +125,7 @@ public class Template {
           measurementMNode =
               new MeasurementMNode(
                   null,
-                  getMeasurementNodeName(measurementSchema.getValueMeasurementIdList().get(0)),
+                  getMeasurementNodeName(measurementSchema.getMeasurementId()),
                   measurementSchema,
                   null);
         }

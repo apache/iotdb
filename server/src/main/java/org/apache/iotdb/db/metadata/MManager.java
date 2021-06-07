@@ -1192,16 +1192,15 @@ public class MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      return toVectorPath(partialPath, node.getName());
+      return toVectorPath(partialPath);
     }
   }
 
   /** Convert the PartialPath to VectorPartialPath. */
-  protected VectorPartialPath toVectorPath(PartialPath partialPath, String name)
-      throws MetadataException {
+  protected VectorPartialPath toVectorPath(PartialPath partialPath) throws MetadataException {
     List<PartialPath> subSensorsPathList = new ArrayList<>();
     subSensorsPathList.add(partialPath);
-    return new VectorPartialPath(partialPath.getDevice() + "." + name, subSensorsPathList);
+    return new VectorPartialPath(partialPath.getDevice(), subSensorsPathList);
   }
 
   /**
@@ -1210,10 +1209,9 @@ public class MManager {
    *
    * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
    *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
-   * @return Pair<List < PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
-   *     the input list size. For example, the VectorMeasurementSchema (s1,s2) would be returned
-   *     once; Size of integer list must equal to the input list size. It indicates the index of
-   *     elements of original list in the result list
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     VectorMeasurementSchema (s1,s2) would be returned once; Size of integer list must equal to
+   *     the input list size. It indicates the index of elements of original list in the result list
    */
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
@@ -1241,10 +1239,7 @@ public class MManager {
       } else {
         List<PartialPath> subSensorsPathList = new ArrayList<>();
         subSensorsPathList.add(path);
-        nodeToPartialPath.put(
-            node,
-            new VectorPartialPath(
-                path.getDevice() + "." + path.getMeasurement(), subSensorsPathList));
+        nodeToPartialPath.put(node, new VectorPartialPath(node.getFullPath(), subSensorsPathList));
       }
       nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
     } else {
@@ -1345,6 +1340,9 @@ public class MManager {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
+   * @param allowCreateSg The stand-alone version can create an sg at will, but the cluster version
+   *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
+   *     thrown here
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
@@ -2163,13 +2161,31 @@ public class MManager {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
+    // check insert non-aligned InsertPlan for aligned timeseries
+    if (deviceMNode.left instanceof MeasurementMNode
+        && ((MeasurementMNode) deviceMNode.left).getSchema() instanceof VectorMeasurementSchema
+        && !plan.isAligned()) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+              prefixPath));
+    }
+    // check insert aligned InsertPlan for non-aligned timeseries
+    else if (plan.isAligned()
+        && deviceMNode.left.getChild(vectorId) != null
+        && !(deviceMNode.left.getChild(vectorId) instanceof MeasurementMNode)) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+              prefixPath));
+    }
+
     // 2. get schema of each measurement
     // if do not have measurement
     MeasurementMNode measurementMNode;
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-
         MNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
@@ -2201,9 +2217,7 @@ public class MManager {
         }
 
         // check type is match
-        boolean mismatch = false;
         TSDataType insertDataType;
-        DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
           if (plan.isAligned()) {
             TSDataType dataTypeInNode =
@@ -2213,16 +2227,27 @@ public class MManager {
               insertDataType = dataTypeInNode;
             }
             if (dataTypeInNode != insertDataType) {
-              mismatch = true;
               logger.warn(
                   "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
                   measurementMNode.getSchema().getValueMeasurementIdList().get(i),
                   measurementList[i],
                   insertDataType,
                   dataTypeInNode);
-              mismatchException =
+              DataTypeMismatchException mismatchException =
                   new DataTypeMismatchException(measurementList[i], insertDataType, dataTypeInNode);
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementAlignedInsertion(mismatchException);
+                for (int j = 0; j < i; j++) {
+                  // all the measurementMNodes should be null
+                  measurementMNodes[j] = null;
+                }
+                break;
+              }
             }
+            measurementMNodes[i] = measurementMNode;
           } else {
             if (plan instanceof InsertRowPlan) {
               if (!((InsertRowPlan) plan).isNeedInferType()) {
@@ -2234,34 +2259,28 @@ public class MManager {
             } else {
               insertDataType = getTypeInLoc(plan, i);
             }
-            mismatch = measurementMNode.getSchema().getType() != insertDataType;
-            if (mismatch) {
+            if (measurementMNode.getSchema().getType() != insertDataType) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
                   measurementList[i],
                   insertDataType,
                   measurementMNode.getSchema().getType());
-              mismatchException =
+              DataTypeMismatchException mismatchException =
                   new DataTypeMismatchException(
                       measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementInsertion(i, mismatchException);
+                continue;
+              }
             }
+            measurementMNodes[i] = measurementMNode;
+            // set measurementName instead of alias
+            measurementList[i] = measurementMNode.getName();
           }
         }
-
-        if (mismatch) {
-          if (!config.isEnablePartialInsert()) {
-            throw mismatchException;
-          } else {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, mismatchException);
-            continue;
-          }
-        }
-
-        measurementMNodes[i] = measurementMNode;
-
-        // set measurementName instead of alias
-        measurementList[i] = measurementMNode.getName();
       } catch (MetadataException e) {
         logger.warn(
             "meet error when check {}.{}, message: {}",

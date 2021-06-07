@@ -47,7 +47,7 @@ public class Tablet {
   private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
   /** deviceId of this tablet */
-  public String deviceId;
+  public String prefixPath;
 
   /** the list of measurement schemas for creating the tablet */
   private List<IMeasurementSchema> schemas;
@@ -72,25 +72,25 @@ public class Tablet {
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
    * should be the same size).
    *
-   * @param deviceId the name of the device specified to be written in
+   * @param prefixPath the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
    *     type take effects
    */
-  public Tablet(String deviceId, List<IMeasurementSchema> schemas) {
-    this(deviceId, schemas, DEFAULT_SIZE);
+  public Tablet(String prefixPath, List<IMeasurementSchema> schemas) {
+    this(prefixPath, schemas, DEFAULT_SIZE);
   }
 
   /**
    * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
    * directly for testing purposes. Tablet should normally always be default size.
    *
-   * @param deviceId the name of the device specified to be written in
+   * @param prefixPath the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the row batch, only measurementId
    *     and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public Tablet(String deviceId, List<IMeasurementSchema> schemas, int maxRowNumber) {
-    this.deviceId = deviceId;
+  public Tablet(String prefixPath, List<IMeasurementSchema> schemas, int maxRowNumber) {
+    this.prefixPath = prefixPath;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
     measurementIndex = new HashMap<>();
@@ -112,8 +112,8 @@ public class Tablet {
     reset();
   }
 
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+  public void setPrefixPath(String prefixPath) {
+    this.prefixPath = prefixPath;
   }
 
   public void addTimestamp(int rowIndex, long timestamp) {
