@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.merge.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
@@ -301,7 +300,6 @@ public class MergeFileTask {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       fileWriter.writeChunk(chunk, chunkMetaData);
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
-      CompactionMergeTaskPoolManager.totalWriteCount += chunkMetaData.getNumOfPoints();
     }
     fileWriter.endChunkGroup();
   }
@@ -396,7 +394,6 @@ public class MergeFileTask {
           fileWriter.writeChunk(chunk, metaData);
           maxVersion = metaData.getVersion() > maxVersion ? metaData.getVersion() : maxVersion;
           context.incTotalPointWritten(metaData.getNumOfPoints());
-          CompactionMergeTaskPoolManager.totalWriteCount += metaData.getNumOfPoints();
           break;
         }
       }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 
@@ -80,6 +81,7 @@ public class MergeContext {
 
   public void incTotalPointWritten(long increment) {
     totalPointWritten.addAndGet(increment);
+    CompactionMergeTaskPoolManager.totalWriteCount += increment;
   }
 
   public long getTotalPointWritten() {
