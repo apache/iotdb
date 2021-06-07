@@ -78,6 +78,7 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -705,6 +706,9 @@ public class DataGroupMember extends RaftMember {
             || cause instanceof UndefinedTemplateException) {
           try {
             metaGroupMember.syncLeaderWithConsistencyCheck(true);
+            if (plan instanceof InsertPlan && ((InsertPlan) plan).getFailedMeasurements() != null) {
+              ((InsertPlan) plan).recoverFromFailure();
+            }
             getLocalExecutor().processNonQuery(plan);
             return StatusUtils.OK;
           } catch (CheckConsistencyException ce) {

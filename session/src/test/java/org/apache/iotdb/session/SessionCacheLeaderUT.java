@@ -779,7 +779,7 @@ public class SessionCacheLeaderUT {
 
     @Override
     protected void insertRecord(TSInsertRecordReq request) throws RedirectException {
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override
@@ -805,7 +805,7 @@ public class SessionCacheLeaderUT {
 
     @Override
     protected void insertTablet(TSInsertTabletReq request) throws RedirectException {
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
     }
 
     @Override

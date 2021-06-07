@@ -130,7 +130,7 @@ public class MLogTxtWriter implements AutoCloseable {
         String.format(
             "%s,%s,%s,%s,%s,%s",
             MetadataOperationType.CREATE_TIMESERIES,
-            plan.getDevicePath().getFullPath(),
+            plan.getPrefixPath().getFullPath(),
             plan.getMeasurements(),
             plan.getDataTypes().stream().map(TSDataType::serialize),
             plan.getEncodings().stream().map(TSEncoding::serialize),

@@ -45,7 +45,7 @@
   - 5: TEXT (`String`)
 - **Encoding Type Hardcode**
   - 0: PLAIN
-  - 1: PLAIN_DICTIONARY
+  - 1: DICTIONARY
   - 2: RLE
   - 3: DIFF
   - 4: TS_2DIFF
@@ -68,7 +68,7 @@
 
 Here is a graph about the TsFile structure.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/37140360/109955373-6069c480-7d1d-11eb-9cae-252ea139abaa.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/120660695-2a71e300-c4ba-11eb-9e61-5e023636480b.png">
 
 This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
@@ -144,6 +144,7 @@ Here is the detailed information for `statistics`:
  | firstValue | first value | double | float | int | long | Binary | boolean|
  | lastValue | last value | double | float | int | long | Binary | boolean|
  | sumValue | sum value | double | double | double | double | - | - |
+ | extreme | extreme value | double | float | int | long | - | - |
  
 ##### ChunkGroupFooter
 

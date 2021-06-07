@@ -31,6 +31,7 @@ import org.testcontainers.containers.DockerComposeContainer;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.util.concurrent.TimeUnit;
 
 // do not add tests here.
 // add tests into Cases.java instead.
@@ -84,6 +85,7 @@ public abstract class ClusterIT extends Cases {
     }
     session = new Session(getWriteRpcIp(), getWriteRpcPort());
     session.open();
+    TimeUnit.MILLISECONDS.sleep(3000);
   }
 
   @After
