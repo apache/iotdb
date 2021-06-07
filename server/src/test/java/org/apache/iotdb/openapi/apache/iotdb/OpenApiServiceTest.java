@@ -85,8 +85,7 @@ public class OpenApiServiceTest {
     assertNotNull(response);
     Gson json = new Gson();
     System.out.println(response.getEntity().toString());
-    assertNotNull(
-        json.fromJson(response.getEntity().toString(), List.class).size());
+    assertNotNull(json.fromJson(response.getEntity().toString(), List.class).size());
   }
 
   @Test
