@@ -173,6 +173,7 @@ public class SQLConstant {
   public static final int TOK_TRIGGER_START = 102;
   public static final int TOK_TRIGGER_STOP = 103;
   public static final int TOK_SHOW_TRIGGERS = 104;
+  public static final int TOK_LOCK_INFO = 105;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 

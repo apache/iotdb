@@ -17,24 +17,20 @@
  * under the License.
  *
  */
+package org.apache.iotdb.db.qp.logical.sys;
 
-package org.apache.iotdb.db.qp.logical.crud;
+import org.apache.iotdb.db.metadata.PartialPath;
 
-public class WhereComponent {
+public class ShowLockInfoOperator extends ShowOperator {
 
-  private FilterOperator filterOperator;
+  private final PartialPath path;
 
-  public WhereComponent() {}
-
-  public WhereComponent(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  public ShowLockInfoOperator(int tokenIntType, PartialPath path) {
+    super(tokenIntType);
+    this.path = path;
   }
 
-  public FilterOperator getFilterOperator() {
-    return filterOperator;
-  }
-
-  public void setFilterOperator(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  public PartialPath getPath() {
+    return path;
   }
 }

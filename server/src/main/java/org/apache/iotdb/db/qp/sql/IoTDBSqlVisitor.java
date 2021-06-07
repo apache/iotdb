@@ -81,6 +81,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
@@ -195,6 +196,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildPathsContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFunctionsContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowLockInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowMergeStatusContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowQueryProcesslistContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowStorageGroupContext;
@@ -235,7 +237,7 @@ import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.MinusExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -839,6 +841,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitShowLockInfo(ShowLockInfoContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowLockInfoOperator(SQLConstant.TOK_LOCK_INFO, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowLockInfoOperator(
+          SQLConstant.TOK_LOCK_INFO, new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  @Override
   public Operator visitShowChildPaths(ShowChildPathsContext ctx) {
     if (ctx.prefixPath() != null) {
       return new ShowChildPathsOperator(
@@ -1032,6 +1044,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
+    boolean isFirstElement = true;
     for (ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
       // judge query type according to the first select element
@@ -1087,7 +1100,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
     if (context.unary != null) {
       return context.MINUS() != null
-          ? new MinusExpression(parseExpression(context.expression(0)))
+          ? new NegationExpression(parseExpression(context.expression(0)))
           : parseExpression(context.expression(0));
     }
 

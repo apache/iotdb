@@ -15,26 +15,21 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
 
-package org.apache.iotdb.db.qp.logical.crud;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-public class WhereComponent {
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-  private FilterOperator filterOperator;
+public class ArithmeticSubtractionTransformer extends ArithmeticBinaryTransformer {
 
-  public WhereComponent() {}
-
-  public WhereComponent(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  public ArithmeticSubtractionTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
   }
 
-  public FilterOperator getFilterOperator() {
-    return filterOperator;
-  }
-
-  public void setFilterOperator(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  @Override
+  protected double evaluate(double leftOperand, double rightOperand) {
+    return leftOperand - rightOperand;
   }
 }

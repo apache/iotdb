@@ -117,7 +117,7 @@ public class SessionExample {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
       Map<String, String> attributes = new HashMap<>();
-      tags.put("description", "v1");
+      attributes.put("description", "v1");
       session.createTimeseries(
           ROOT_SG1_D1_S4,
           TSDataType.INT64,
