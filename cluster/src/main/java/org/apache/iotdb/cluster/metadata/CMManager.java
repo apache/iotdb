@@ -30,12 +30,9 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -82,7 +79,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -949,175 +945,6 @@ public class CMManager extends MManager {
   }
 
   /**
-   * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain a storage group. The pulled schemas will be cache in CMManager.
-   *
-   * @param ignoredGroup do not pull schema from the group to avoid backward dependency. If a user
-   *     send an insert request before registering schemas, then this method may pull schemas from
-   *     the same groups. If this method is called by an applier, it holds the lock of LogManager,
-   *     while the pulling thread may want this lock too, resulting in a deadlock.
-   */
-  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
-      throws MetadataException {
-    logger.debug(
-        "{}: Pulling timeseries schemas of {}, ignored group {}",
-        metaGroupMember.getName(),
-        prefixPaths,
-        ignoredGroup);
-    // split the paths by the data groups that should hold them
-    Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
-      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
-        continue;
-      }
-      PartitionGroup partitionGroup =
-          ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
-      if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap
-            .computeIfAbsent(partitionGroup, g -> new ArrayList<>())
-            .add(prefixPath.getFullPath());
-      }
-    }
-
-    // pull timeseries schema from every group involved
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: pulling schemas of {} and other {} paths from {} groups",
-          metaGroupMember.getName(),
-          prefixPaths.get(0),
-          prefixPaths.size() - 1,
-          partitionGroupPathMap.size());
-    }
-    for (Entry<PartitionGroup, List<String>> partitionGroupListEntry :
-        partitionGroupPathMap.entrySet()) {
-      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
-      List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths);
-    }
-  }
-
-  /**
-   * Pull timeseries schemas of "prefixPaths" from "partitionGroup". If this node is a member of
-   * "partitionGroup", synchronize with the group leader and collect local schemas. Otherwise pull
-   * schemas from one node in the group. The pulled schemas will be cached in CMManager.
-   */
-  private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
-    if (partitionGroup.contains(metaGroupMember.getThisNode())) {
-      // the node is in the target group, synchronize with leader should be enough
-      try {
-        metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-            .syncLeader(null);
-      } catch (CheckConsistencyException e) {
-        logger.warn("Failed to check consistency.", e);
-      }
-      return;
-    }
-
-    // pull schemas from a remote node
-    PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
-    pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPaths(prefixPaths);
-
-    // decide the node access order with the help of QueryCoordinator
-    List<Node> nodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    for (Node node : nodes) {
-      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest)) {
-        break;
-      }
-    }
-  }
-
-  /**
-   * send the PullSchemaRequest to "node" and cache the results in CMManager if they are
-   * successfully returned.
-   *
-   * @return true if the pull succeeded, false otherwise
-   */
-  private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: Pulling timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node);
-    }
-
-    List<TimeseriesSchema> schemas = null;
-    try {
-      schemas = pullTimeSeriesSchemas(node, request);
-    } catch (IOException | TException e) {
-      logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node,
-          e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node,
-          e);
-    }
-
-    if (schemas != null) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            metaGroupMember.getName(),
-            schemas.size(),
-            request.getPrefixPaths().get(0),
-            request.getPrefixPaths().size() - 1,
-            node,
-            request.getHeader());
-      }
-      for (TimeseriesSchema schema : schemas) {
-        SchemaUtils.cacheTimeseriesSchema(schema);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * send a PullSchemaRequest to a node to pull TimeseriesSchemas, and return the pulled schema or
-   * null if there was a timeout.
-   */
-  private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
-    List<TimeseriesSchema> schemas;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
-    } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
-        ByteBuffer buffer = pullSchemaResp.schemaBytes;
-        int size = buffer.getInt();
-        schemas = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-          schemas.add(TimeseriesSchema.deserializeFrom(buffer));
-        }
-      }
-    }
-
-    return schemas;
-  }
-
-  /**
    * Get the data types of "paths". If "aggregation" is not null, every path will use the
    * aggregation. First get types locally and if some paths does not exists, pull them from other
    * nodes.
@@ -1131,7 +958,7 @@ public class CMManager extends MManager {
       return getSeriesTypesByPathsLocally(pathStrs, aggregation);
     } catch (PathNotExistException e) {
       // pull schemas remotely and cache them
-      pullTimeSeriesSchemas(pathStrs, null);
+      metaPuller.pullTimeSeriesSchemas(pathStrs, null);
       return getSeriesTypesByPathsLocally(pathStrs, aggregation);
     }
   }
@@ -1204,8 +1031,7 @@ public class CMManager extends MManager {
   private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(
       List<PartialPath> paths, List<String> aggregations) throws MetadataException {
     // pull schemas remotely and cache them
-    pullTimeSeriesSchemas(paths, null);
-
+    metaPuller.pullTimeSeriesSchemas(paths, null);
     return getSeriesTypesByPathLocally(paths, aggregations);
   }
 
