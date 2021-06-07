@@ -2011,8 +2011,7 @@ public class StorageGroupProcessor {
         logicalStorageGroupName,
         virtualStorageGroupId);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+      new CompactionAllPartitionTask(logicalStorageGroupName).call();
     }
   }
 
