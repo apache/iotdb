@@ -75,7 +75,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+    pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForReaderSet = new HashSet<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -103,8 +103,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
-
-    setPathNameToReaderIndex(pathNameToReaderIndex);
   }
 
   private void setDatasetOutputIndexToResultColumnIndex(
@@ -206,10 +204,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   public int getReaderIndex(String pathName) {
     return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
   }
 
   @Override
