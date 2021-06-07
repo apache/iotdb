@@ -404,6 +404,7 @@ public class ChunkWriterImpl implements IChunkWriter {
     } catch (IOException e) {
       throw new PageException(e);
     }
+    clearPageWriter();
   }
 
   /**
