@@ -19,12 +19,12 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
-public class AuthorOperator extends RootOperator {
+public class AuthorOperator extends Operator {
 
   private final AuthorType authorType;
   private String userName;

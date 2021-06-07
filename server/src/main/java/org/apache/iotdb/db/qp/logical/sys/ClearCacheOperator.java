@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class ClearCacheOperator extends RootOperator {
+public class ClearCacheOperator extends Operator {
 
   public ClearCacheOperator(int tokenIntType) {
     super(tokenIntType);

@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class TracingOperator extends RootOperator {
+public class TracingOperator extends Operator {
 
   private boolean isTracingOn;
 

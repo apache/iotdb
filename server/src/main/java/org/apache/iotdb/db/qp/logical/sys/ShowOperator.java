@@ -19,9 +19,9 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class ShowOperator extends RootOperator {
+public class ShowOperator extends Operator {
 
   public ShowOperator(int tokenIntType) {
     this(tokenIntType, OperatorType.SHOW);

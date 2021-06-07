@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.util.List;
 
-public class FlushOperator extends RootOperator {
+public class FlushOperator extends Operator {
 
   public List<PartialPath> getStorageGroupList() {
     return storageGroupList;

@@ -17,24 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.PartialPath;
 
-public class DropTriggerOperator extends Operator {
+import java.util.ArrayList;
+import java.util.List;
 
-  private String triggerName;
+/** this class maintains information of {@code FROM} clause. */
+public class FromComponent {
 
-  public DropTriggerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.DROP_TRIGGER;
+  private List<PartialPath> prefixList = new ArrayList<>();
+
+  public FromComponent() {}
+
+  public void addPrefixTablePath(PartialPath prefixPath) {
+    prefixList.add(prefixPath);
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
-  }
-
-  public String getTriggerName() {
-    return triggerName;
+  public List<PartialPath> getPrefixPaths() {
+    return prefixList;
   }
 }

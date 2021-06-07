@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.io.File;
 
-public class MoveFileOperator extends RootOperator {
+public class MoveFileOperator extends Operator {
 
   private File file;
   private File targetDir;

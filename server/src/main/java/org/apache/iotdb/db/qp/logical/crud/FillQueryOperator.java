@@ -16,30 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 
-import java.util.ArrayList;
-import java.util.List;
+public class FillQueryOperator extends QueryOperator {
 
-/** this class maintains information of {@code FROM} clause. */
-public class FromOperator extends Operator {
+  @Override
+  public void check() throws LogicalOperatorException {
+    super.check();
 
-  private List<PartialPath> prefixList;
+    if (!isAlignByTime()) {
+      throw new LogicalOperatorException("FILL doesn't support disable align clause.");
+    }
 
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FROM;
-    prefixList = new ArrayList<>();
-  }
-
-  public void addPrefixTablePath(PartialPath prefixPath) {
-    prefixList.add(prefixPath);
-  }
-
-  public List<PartialPath> getPrefixPaths() {
-    return prefixList;
+    FilterOperator filterOperator = whereComponent.getFilterOperator();
+    if (!filterOperator.isLeaf() || filterOperator.getFilterType() != FilterType.EQUAL) {
+      throw new LogicalOperatorException("Only \"=\" can be used in fill function");
+    }
   }
 }

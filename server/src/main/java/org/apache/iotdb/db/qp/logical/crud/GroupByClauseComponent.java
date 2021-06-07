@@ -16,29 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
+package org.apache.iotdb.db.qp.logical.crud;
 
-public class GroupByTimePlan extends AggregationPlan {
+public class GroupByClauseComponent extends SpecialClauseComponent {
 
-  // [startTime, endTime)
   private long startTime;
   private long endTime;
-  // aggregation time interval
-  private long interval;
+  // time interval
+  private long unit;
   // sliding step
   private long slidingStep;
-  // if group by query is by natural month
-  private boolean isIntervalByMonth;
-  private boolean isSlidingStepByMonth;
-
+  private boolean isIntervalByMonth = false;
+  private boolean isSlidingStepByMonth = false;
   // if it is left close and right open interval
-  private boolean leftCRightO = true;
+  private boolean leftCRightO;
 
-  public GroupByTimePlan() {
-    super();
-    setOperatorType(Operator.OperatorType.GROUPBYTIME);
+  public GroupByClauseComponent() {}
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
+  }
+
+  public long getUnit() {
+    return unit;
+  }
+
+  public void setUnit(long unit) {
+    this.unit = unit;
   }
 
   public long getStartTime() {
@@ -57,12 +66,12 @@ public class GroupByTimePlan extends AggregationPlan {
     this.endTime = endTime;
   }
 
-  public long getInterval() {
-    return interval;
+  public long getSlidingStep() {
+    return slidingStep;
   }
 
-  public void setInterval(long interval) {
-    this.interval = interval;
+  public void setSlidingStep(long slidingStep) {
+    this.slidingStep = slidingStep;
   }
 
   public boolean isSlidingStepByMonth() {
@@ -79,21 +88,5 @@ public class GroupByTimePlan extends AggregationPlan {
 
   public void setIntervalByMonth(boolean isIntervalByMonth) {
     this.isIntervalByMonth = isIntervalByMonth;
-  }
-
-  public long getSlidingStep() {
-    return slidingStep;
-  }
-
-  public void setSlidingStep(long slidingStep) {
-    this.slidingStep = slidingStep;
-  }
-
-  public boolean isLeftCRightO() {
-    return leftCRightO;
-  }
-
-  public void setLeftCRightO(boolean leftCRightO) {
-    this.leftCRightO = leftCRightO;
   }
 }

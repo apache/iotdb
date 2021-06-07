@@ -17,24 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
+public class UDFQueryOperator extends QueryOperator {
 
-public class DropTriggerOperator extends Operator {
-
-  private String triggerName;
-
-  public DropTriggerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.DROP_TRIGGER;
+  public UDFQueryOperator() {
+    super();
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
-  }
-
-  public String getTriggerName() {
-    return triggerName;
+  public UDFQueryOperator(QueryOperator queryOperator) {
+    super(queryOperator);
   }
 }

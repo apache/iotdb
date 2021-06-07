@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class DropFunctionOperator extends RootOperator {
+public class DropFunctionOperator extends Operator {
 
   private String udfName;
 

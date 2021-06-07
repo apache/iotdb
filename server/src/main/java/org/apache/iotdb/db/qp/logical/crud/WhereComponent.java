@@ -17,24 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
+public class WhereComponent {
 
-public class DropTriggerOperator extends Operator {
+  private FilterOperator filterOperator;
 
-  private String triggerName;
+  public WhereComponent() {}
 
-  public DropTriggerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.DROP_TRIGGER;
+  public WhereComponent(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
   }
 
-  public String getTriggerName() {
-    return triggerName;
+  public void setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 }

@@ -17,24 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class DropTriggerOperator extends Operator {
+import java.util.Map;
 
-  private String triggerName;
+public class FillClauseComponent extends SpecialClauseComponent {
 
-  public DropTriggerOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.DROP_TRIGGER;
+  private Map<TSDataType, IFill> fillTypes;
+
+  public FillClauseComponent() {}
+
+  public Map<TSDataType, IFill> getFillTypes() {
+    return fillTypes;
   }
 
-  public void setTriggerName(String triggerName) {
-    this.triggerName = triggerName;
-  }
-
-  public String getTriggerName() {
-    return triggerName;
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
+    this.fillTypes = fillTypes;
   }
 }

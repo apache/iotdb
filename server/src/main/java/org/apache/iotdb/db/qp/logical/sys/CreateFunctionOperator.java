@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 
-public class CreateFunctionOperator extends RootOperator {
+public class CreateFunctionOperator extends Operator {
 
   private boolean isTemporary;
   private String udfName;
