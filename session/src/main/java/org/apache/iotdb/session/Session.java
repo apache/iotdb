@@ -686,24 +686,23 @@ public class Session {
   }
 
   // TODO https://issues.apache.org/jira/browse/IOTDB-1399
-  private void removeBrokenSessionConnection(String deviceId) {
+  private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
     // remove the cached broken leader session
     if (enableCacheLeader) {
-      EndPoint endPoint = deviceIdToEndpoint.remove(deviceId);
-      removeBrokenSessionConnection(endPoint);
-    }
-  }
+      EndPoint endPoint = null;
+      for (Map.Entry<EndPoint, SessionConnection> entry : endPointToSessionConnection.entrySet()) {
+        if (entry.getValue().equals(sessionConnection)) {
+          endPoint = entry.getKey();
+          endPointToSessionConnection.remove(endPoint);
+          break;
+        }
+      }
 
-  // TODO https://issues.apache.org/jira/browse/IOTDB-1399
-  private void removeBrokenSessionConnection(EndPoint endPoint) {
-    // remove the cached broken leader session
-    if (enableCacheLeader) {
       for (Map.Entry<String, EndPoint> entry : deviceIdToEndpoint.entrySet()) {
-        if (endPoint.equals(entry.getValue())) {
+        if (entry.getValue().equals(endPoint)) {
           deviceIdToEndpoint.remove(entry.getKey());
         }
       }
-      endPointToSessionConnection.remove(endPoint);
     }
   }
 
@@ -889,22 +888,36 @@ public class Session {
       List<List<String>> measurementsList,
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<String, TSInsertStringRecordsReq> deviceGroup = new HashMap<>();
+    Map<SessionConnection, TSInsertStringRecordsReq> recordsGroup = new HashMap<>();
+    EndPoint endPoint;
+    SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
+      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      if (endPoint != null) {
+        connection = endPointToSessionConnection.get(endPoint);
+      } else {
+        connection = defaultSessionConnection;
+      }
       TSInsertStringRecordsReq request =
-          deviceGroup.computeIfAbsent(deviceIds.get(i), k -> new TSInsertStringRecordsReq());
+          recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
       updateTSInsertStringRecordsReq(
           request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
     }
     // TODO parallel
     StringBuilder errMsgBuilder = new StringBuilder();
-    for (Entry<String, TSInsertStringRecordsReq> entry : deviceGroup.entrySet()) {
+    for (Entry<SessionConnection, TSInsertStringRecordsReq> entry : recordsGroup.entrySet()) {
       try {
-        getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
+        entry.getKey().insertRecords(entry.getValue());
       } catch (RedirectException e) {
-        handleRedirection(entry.getKey(), e.getEndPoint());
+        for (Entry<String, EndPoint> deviceEndPointEntry : e.getDeviceEndPointMap().entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // remove the broken session
+        removeBrokenSessionConnection(entry.getKey());
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
@@ -1097,10 +1110,18 @@ public class Session {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<String, TSInsertRecordsReq> deviceGroup = new HashMap<>();
+    Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
+    EndPoint endPoint;
+    SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
+      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      if (endPoint != null) {
+        connection = endPointToSessionConnection.get(endPoint);
+      } else {
+        connection = defaultSessionConnection;
+      }
       TSInsertRecordsReq request =
-          deviceGroup.computeIfAbsent(deviceIds.get(i), k -> new TSInsertRecordsReq());
+          recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
       updateTSInsertRecordsReq(
           request,
           deviceIds.get(i),
@@ -1111,11 +1132,13 @@ public class Session {
     }
     // TODO parallel
     StringBuilder errMsgBuilder = new StringBuilder();
-    for (Entry<String, TSInsertRecordsReq> entry : deviceGroup.entrySet()) {
+    for (Entry<SessionConnection, TSInsertRecordsReq> entry : recordsGroup.entrySet()) {
       try {
-        getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
+        entry.getKey().insertRecords(entry.getValue());
       } catch (RedirectException e) {
-        handleRedirection(entry.getKey(), e.getEndPoint());
+        for (Entry<String, EndPoint> deviceEndPointEntry : e.getDeviceEndPointMap().entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
       } catch (IoTDBConnectionException e) {
@@ -1283,7 +1306,6 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
-    Map<SessionConnection, EndPoint> sessionConnectionEndPointMap = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
       endPoint = deviceIdToEndpoint.get(entry.getKey());
       if (endPoint != null) {
@@ -1291,7 +1313,6 @@ public class Session {
       } else {
         connection = defaultSessionConnection;
       }
-      sessionConnectionEndPointMap.putIfAbsent(connection, endPoint);
       TSInsertTabletsReq request =
           tabletGroup.computeIfAbsent(connection, k -> new TSInsertTabletsReq());
       updateTSInsertTabletsReq(request, entry.getValue(), sorted);
@@ -1309,7 +1330,7 @@ public class Session {
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
       } catch (IoTDBConnectionException e) {
-        removeBrokenSessionConnection(sessionConnectionEndPointMap.get(entry.getKey()));
+        removeBrokenSessionConnection(entry.getKey());
         throw e;
       }
     }

@@ -95,6 +95,22 @@ public class RpcUtils {
     }
   }
 
+  public static void verifySuccessWithRedirectionForMultiDevices(
+      TSStatus status, List<String> devices) throws StatementExecutionException, RedirectException {
+    verifySuccess(status);
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
+      List<TSStatus> statusSubStatus = status.getSubStatus();
+      for (int i = 0; i < statusSubStatus.size(); i++) {
+        TSStatus subStatus = statusSubStatus.get(i);
+        if (subStatus.isSetRedirectNode()) {
+          deviceEndPointMap.put(devices.get(i), subStatus.getRedirectNode());
+        }
+      }
+      throw new RedirectException(deviceEndPointMap);
+    }
+  }
+
   public static void verifySuccessWithRedirectionForInsertTablets(
       TSStatus status, TSInsertTabletsReq req)
       throws StatementExecutionException, RedirectException {
