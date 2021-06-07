@@ -20,18 +20,20 @@
 package org.apache.iotdb.cluster.log;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
-import org.apache.iotdb.cluster.log.LogDispatcher.DispatcherThread;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * IndirectLogDispatcher sends entries only to a pre-selected subset of followers instead of all
@@ -39,11 +41,11 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
  */
 public class IndirectLogDispatcher extends LogDispatcher {
 
-  private Map<Node, List<Node>> directToIndirectFollowerMap = new HashMap<>();
+  private static final Logger logger = LoggerFactory.getLogger(IndirectLogDispatcher.class);
+  private Map<Node, List<Node>> directToIndirectFollowerMap;
 
   public IndirectLogDispatcher(RaftMember member) {
     super(member);
-    recalculateDirectFollowerMap();
   }
 
   @Override
@@ -54,9 +56,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
 
   @Override
   void createQueueAndBindingThreads() {
-    for (Node node : directToIndirectFollowerMap.keySet()) {
-      nodeLogQueues.add(createQueueAndBindingThread(node));
-    }
+    recalculateDirectFollowerMap();
   }
 
   public void recalculateDirectFollowerMap() {
@@ -64,9 +64,17 @@ public class IndirectLogDispatcher extends LogDispatcher {
     allNodes.removeIf(n -> ClusterUtils.isNodeEquals(n, member.getThisNode()));
     QueryCoordinator instance = QueryCoordinator.getINSTANCE();
     List<Node> orderedNodes = instance.reorderNodes(allNodes);
-
     synchronized (this) {
-      directToIndirectFollowerMap.clear();
+      executorService.shutdown();
+      try {
+        executorService.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Dispatcher thread pool of {} cannot be shutdown within 10s", member);
+      }
+      executorService = Executors.newCachedThreadPool();
+
+      directToIndirectFollowerMap = new HashMap<>();
       for (int i = 0, j = orderedNodes.size() - 1; i <= j; i++, j--) {
         if (i != j) {
           directToIndirectFollowerMap.put(orderedNodes.get(i),
@@ -75,6 +83,10 @@ public class IndirectLogDispatcher extends LogDispatcher {
           directToIndirectFollowerMap.put(orderedNodes.get(i), Collections.emptyList());
         }
       }
+    }
+
+    for (Node node : directToIndirectFollowerMap.keySet()) {
+      nodeLogQueues.add(createQueueAndBindingThread(node));
     }
   }
 

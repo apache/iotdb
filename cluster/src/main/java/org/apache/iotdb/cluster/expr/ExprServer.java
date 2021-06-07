@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.expr;
 
-import io.moquette.broker.config.IConfig;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -31,7 +30,6 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TServerTransport;
@@ -74,6 +72,9 @@ public class ExprServer extends MetaClusterServer {
     String[] allNodeStr = args[1].split(",");
 
     int dispatcherThreadNum = Integer.parseInt(args[2]);
+    boolean useIndirectDispatcher = Boolean.parseBoolean(args[3]);
+    boolean bypassRaft = Boolean.parseBoolean(args[4]);
+    boolean useSW = Boolean.parseBoolean(args[5]);
 
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Arrays.asList(allNodeStr));
     ClusterDescriptor.getInstance().getConfig().setInternalMetaPort(port);
@@ -81,7 +82,10 @@ public class ExprServer extends MetaClusterServer {
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(false);
     ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
     RaftMember.USE_LOG_DISPATCHER = true;
+    RaftMember.USE_INDIRECT_LOG_DISPATCHER = useIndirectDispatcher;
     LogDispatcher.bindingThreadNum = dispatcherThreadNum;
+    ExprMember.bypassRaft = bypassRaft;
+    ExprMember.useSlidingWindow = useSW;
 
     ExprServer server = new ExprServer();
     server.start();

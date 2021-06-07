@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
 import org.apache.iotdb.cluster.log.CommitLogTask;
 import org.apache.iotdb.cluster.log.HardState;
+import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
@@ -120,6 +121,7 @@ public abstract class RaftMember {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static boolean USE_LOG_DISPATCHER = false;
+  public static boolean USE_INDIRECT_LOG_DISPATCHER = false;
 
   private static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
   private static final String MSG_FORWARD_ERROR =
@@ -591,6 +593,7 @@ public abstract class RaftMember {
 
   public long appendEntryIndirect(AppendEntryRequest request, List<Node> subFollowers) throws UnknownLogTypeException {
     long result = appendEntry(request);
+    request.entry.rewind();
     appendLogThreadPool.submit(() -> sendLogToSubFollowers(request, subFollowers));
     return result;
   }
@@ -1508,7 +1511,11 @@ public abstract class RaftMember {
 
   private synchronized LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
-      logDispatcher = new LogDispatcher(this);
+      if (USE_INDIRECT_LOG_DISPATCHER) {
+        logDispatcher = new IndirectLogDispatcher(this);
+      } else {
+        logDispatcher = new LogDispatcher(this);
+      }
     }
     return logDispatcher;
   }

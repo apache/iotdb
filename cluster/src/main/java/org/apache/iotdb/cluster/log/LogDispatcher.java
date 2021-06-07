@@ -68,7 +68,7 @@ public class LogDispatcher {
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
   List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
-  private ExecutorService executorService;
+  ExecutorService executorService;
   private static ExecutorService serializationService =
       Executors.newFixedThreadPool(
           Runtime.getRuntime().availableProcessors(),

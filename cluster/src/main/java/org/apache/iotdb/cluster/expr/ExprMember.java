@@ -42,6 +42,9 @@ import org.apache.thrift.protocol.TProtocolFactory;
 
 public class ExprMember extends MetaGroupMember {
 
+  public static boolean bypassRaft = false;
+  public static boolean useSlidingWindow = false;
+
   public ExprMember() {
   }
 
@@ -69,7 +72,7 @@ public class ExprMember extends MetaGroupMember {
 
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    if (false) {
+    if (bypassRaft) {
       if (plan instanceof ExprPlan && !((ExprPlan) plan).isNeedForward()) {
         return StatusUtils.OK;
       } else if (plan instanceof ExprPlan) {
@@ -99,7 +102,10 @@ public class ExprMember extends MetaGroupMember {
     return processNonPartitionedMetaPlan(plan);
   }
 
-  protected long appendEntry1(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
+  protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
+    if (!useSlidingWindow) {
+      return super.appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
+    }
     long resp;
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long success = 0;
