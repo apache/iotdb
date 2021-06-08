@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cluster.server;
 
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
@@ -27,8 +29,8 @@ import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -52,7 +54,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -62,9 +63,6 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 
 /**
  * MetaCluster manages the whole cluster's metadata, such as what nodes are in the cluster and the
@@ -319,12 +317,12 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public long appendEntries(AppendEntriesRequest request) throws TException {
+  public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
     return syncService.appendEntries(request);
   }
 
   @Override
-  public long appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
     return syncService.appendEntry(request);
   }
 
@@ -374,24 +372,24 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
       throws TException {
     return syncService.appendEntryIndirect(request, subReceivers);
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+  public void acknowledgeAppendEntry(AppendEntryResult ack) {
     syncService.acknowledgeAppendEntry(ack);
   }
 
   @Override
   public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
-      AsyncMethodCallback<Long> resultHandler) {
+      AsyncMethodCallback<AppendEntryResult> resultHandler) {
     asyncService.appendEntryIndirect(request, subReceivers, resultHandler);
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack,
+  public void acknowledgeAppendEntry(AppendEntryResult ack,
       AsyncMethodCallback<Void> resultHandler) {
     asyncService.acknowledgeAppendEntry(ack, resultHandler);
   }

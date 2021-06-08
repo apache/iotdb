@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -152,32 +154,35 @@ public class LogDispatcher {
   public static class SendLogRequest {
 
     private Log log;
-    private AtomicInteger voteCounter;
+    private Set<Integer> votedNodeIds;
     private AtomicBoolean leaderShipStale;
     private AtomicLong newLeaderTerm;
     private AppendEntryRequest appendEntryRequest;
     private long enqueueTime;
     private Future<ByteBuffer> serializedLogFuture;
+    private int quorumSize;
 
     public SendLogRequest(
         Log log,
-        AtomicInteger voteCounter,
+        Set<Integer> votedNodeIds,
         AtomicBoolean leaderShipStale,
         AtomicLong newLeaderTerm,
-        AppendEntryRequest appendEntryRequest) {
+        AppendEntryRequest appendEntryRequest,
+        int quorumSize) {
       this.setLog(log);
-      this.setVoteCounter(voteCounter);
+      this.setVotedNodeIds(votedNodeIds);
       this.setLeaderShipStale(leaderShipStale);
       this.setNewLeaderTerm(newLeaderTerm);
       this.setAppendEntryRequest(appendEntryRequest);
+      this.setQuorumSize(quorumSize);
     }
 
-    public AtomicInteger getVoteCounter() {
-      return voteCounter;
+    public Set<Integer> getVotedNodeIds() {
+      return votedNodeIds;
     }
 
-    public void setVoteCounter(AtomicInteger voteCounter) {
-      this.voteCounter = voteCounter;
+    public void setVotedNodeIds(Set<Integer> votedNodeIds) {
+      this.votedNodeIds = votedNodeIds;
     }
 
     public Log getLog() {
@@ -218,6 +223,14 @@ public class LogDispatcher {
 
     public void setAppendEntryRequest(AppendEntryRequest appendEntryRequest) {
       this.appendEntryRequest = appendEntryRequest;
+    }
+
+    public int getQuorumSize() {
+      return quorumSize;
+    }
+
+    public void setQuorumSize(int quorumSize) {
+      this.quorumSize = quorumSize;
     }
 
     @Override
@@ -272,7 +285,7 @@ public class LogDispatcher {
     private void appendEntriesAsync(
         List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch)
         throws TException {
-      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
+      AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       AsyncClient client = member.getSendLogAsyncClient(receiver);
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -302,19 +315,11 @@ public class LogDispatcher {
         logger.error("No available client for {}", receiver);
         return;
       }
-      AsyncMethodCallback<Long> handler = new AppendEntriesHandler(currBatch);
+      AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
-        long result = client.appendEntries(request);
+        AppendEntryResult result = client.appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
-        if (result != -1 && logger.isInfoEnabled()) {
-          logger.info(
-              "{}: Append {} logs to {}, resp: {}",
-              member.getName(),
-              logList.size(),
-              receiver,
-              result);
-        }
         handler.onComplete(result);
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
@@ -404,18 +409,19 @@ public class LogDispatcher {
           logRequest.getLog().getCreateTime());
       member.sendLogToFollower(
           logRequest.getLog(),
-          logRequest.getVoteCounter(),
+          logRequest.getVotedNodeIds(),
           receiver,
           logRequest.getLeaderShipStale(),
           logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest());
+          logRequest.getAppendEntryRequest(),
+          logRequest.getQuorumSize());
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
           logRequest.getLog().getCreateTime());
     }
 
-    class AppendEntriesHandler implements AsyncMethodCallback<Long> {
+    class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {
 
-      private final List<AsyncMethodCallback<Long>> singleEntryHandlers;
+      private final List<AsyncMethodCallback<AppendEntryResult>> singleEntryHandlers;
 
       private AppendEntriesHandler(List<SendLogRequest> batch) {
         singleEntryHandlers = new ArrayList<>(batch.size());
@@ -423,44 +429,47 @@ public class LogDispatcher {
           AppendNodeEntryHandler handler =
               getAppendNodeEntryHandler(
                   sendLogRequest.getLog(),
-                  sendLogRequest.getVoteCounter(),
+                  sendLogRequest.getVotedNodeIds(),
                   receiver,
                   sendLogRequest.getLeaderShipStale(),
                   sendLogRequest.getNewLeaderTerm(),
-                  peer);
+                  peer,
+                  sendLogRequest.getQuorumSize());
           singleEntryHandlers.add(handler);
         }
       }
 
       @Override
-      public void onComplete(Long aLong) {
-        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+      public void onComplete(AppendEntryResult aLong) {
+        for (AsyncMethodCallback<AppendEntryResult> singleEntryHandler : singleEntryHandlers) {
           singleEntryHandler.onComplete(aLong);
         }
       }
 
       @Override
       public void onError(Exception e) {
-        for (AsyncMethodCallback<Long> singleEntryHandler : singleEntryHandlers) {
+        for (AsyncMethodCallback<AppendEntryResult> singleEntryHandler : singleEntryHandlers) {
           singleEntryHandler.onError(e);
         }
       }
 
       private AppendNodeEntryHandler getAppendNodeEntryHandler(
           Log log,
-          AtomicInteger voteCounter,
+          Set<Integer> voteCounter,
           Node node,
           AtomicBoolean leaderShipStale,
           AtomicLong newLeaderTerm,
-          Peer peer) {
+          Peer peer,
+          int quorumSize) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
         handler.setReceiver(node);
-        handler.setVoteCounter(voteCounter);
+        handler.setVotedNodeIds(voteCounter);
         handler.setLeaderShipStale(leaderShipStale);
         handler.setLog(log);
         handler.setMember(member);
         handler.setPeer(peer);
         handler.setReceiverTerm(newLeaderTerm);
+        handler.setQuorumSize(quorumSize);
         return handler;
       }
     }

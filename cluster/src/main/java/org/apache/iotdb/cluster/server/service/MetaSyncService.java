@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
@@ -54,11 +55,11 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   }
 
   @Override
-  public long appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
     if (metaGroupMember.getPartitionTable() == null) {
       // this node lacks information of the cluster and refuse to work
       logger.debug("This node is blind to the cluster and cannot accept logs");
-      return Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
+      return new AppendEntryResult(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
     }
 
     return super.appendEntry(request);

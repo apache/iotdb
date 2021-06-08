@@ -271,6 +271,12 @@ struct GetAllPathsResult {
   2: optional list<string> aliasList
 }
 
+struct AppendEntryResult {
+  1: required i64 status;
+  2: optional i64 lastLogTerm;
+  3: optional i64 lastLogIndex;
+}
+
 
 service RaftService {
   /**
@@ -303,7 +309,7 @@ service RaftService {
   * @param request entries that need to be appended and the information of the leader.
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
-  long appendEntries(1:AppendEntriesRequest request)
+  AppendEntryResult appendEntries(1:AppendEntriesRequest request)
 
   /**
   * Leader will call this method to send a entry to all followers.
@@ -314,12 +320,12 @@ service RaftService {
   * @param request entry that needs to be appended and the information of the leader.
   * @return -1: agree, -2: log index mismatch , otherwise return the follower's term
   **/
-  long appendEntry(1:AppendEntryRequest request)
+  AppendEntryResult appendEntry(1:AppendEntryRequest request)
 
   /**
   * Like appendEntry, but the receiver should forward the request to nodes in subReceivers.
   **/
-  long appendEntryIndirect(1:AppendEntryRequest request, 2:list<Node> subReceivers)
+  AppendEntryResult appendEntryIndirect(1:AppendEntryRequest request, 2:list<Node> subReceivers)
 
   void sendSnapshot(1:SendSnapshotRequest request)
 
@@ -357,7 +363,7 @@ service RaftService {
   * when a follower reiceives an AppendEntryRequest from a non-leader node, it sends this ack to
   * the leader so the leader can know whether it has successfully received the entry
   **/
-  void acknowledgeAppendEntry(1: AppendEntryAcknowledgement ack)
+  void acknowledgeAppendEntry(1: AppendEntryResult ack)
 }
 
 

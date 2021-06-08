@@ -49,8 +49,10 @@ public class Response {
   // the new node, which tries to join the cluster, contains conflicted parameters with the
   // cluster, so the operation is rejected.
   public static final long RESPONSE_NEW_NODE_PARAMETER_CONFLICT = -10;
+  public static final long RESPONSE_STRONG_ACCEPT = -11;
+  public static final long RESPONSE_WEAK_ACCEPT = -12;
   // the request is not executed locally anc should be forwarded
-  public static final long RESPONSE_NULL = Long.MIN_VALUE;
+  public static final int RESPONSE_NULL = Integer.MIN_VALUE;
 
   private Response() {
     // enum-like class

@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -102,18 +103,21 @@ public class ExprMember extends MetaGroupMember {
     return processNonPartitionedMetaPlan(plan);
   }
 
-  protected long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
+  protected AppendEntryResult appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     if (!useSlidingWindow) {
       return super.appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
     }
-    long resp;
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long success = 0;
 
+    AppendEntryResult result = new AppendEntryResult();
     synchronized (logManager) {
       long windowPos = log.getCurrLogIndex() - logManager.getLastLogIndex() - 1;
       if (windowPos < 0) {
         success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+        result.status = Response.RESPONSE_STRONG_ACCEPT;
+        result.setLastLogIndex(logManager.getLastLogIndex());
+        result.setLastLogTerm(logManager.getLastLogTerm());
       } else if (windowPos < windowSize) {
         logWindow[(int) windowPos] = log;
         if (windowPos == 0) {
@@ -135,23 +139,24 @@ public class ExprMember extends MetaGroupMember {
             for (int i = 1; i <= flushPos; i++) {
               logWindow[windowSize - i] = null;
             }
-          } else {
-            System.out.println("not success");
           }
+          result.status = Response.RESPONSE_STRONG_ACCEPT;
+          result.setLastLogIndex(logManager.getLastLogIndex());
+          result.setLastLogTerm(logManager.getLastLogTerm());
+        } else {
+          result.status = Response.RESPONSE_WEAK_ACCEPT;
         }
       } else {
-        return Response.RESPONSE_LOG_MISMATCH;
+        return new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH);
       }
     }
 
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-    if (success != -1) {
-      resp = Response.RESPONSE_AGREE;
-    } else {
+    if (success == -1) {
       // the incoming log points to an illegal position, reject it
-      resp = Response.RESPONSE_LOG_MISMATCH;
+      result.status = Response.RESPONSE_LOG_MISMATCH;
     }
-    return resp;
+    return result;
   }
 
 }

@@ -28,8 +28,8 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -68,7 +68,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public long appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
     try {
       return member.appendEntry(request);
     } catch (UnknownLogTypeException e) {
@@ -77,7 +77,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public long appendEntries(AppendEntriesRequest request) throws TException {
+  public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
     try {
       return member.appendEntries(request);
     } catch (BufferUnderflowException e) {
@@ -159,12 +159,12 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+  public void acknowledgeAppendEntry(AppendEntryResult ack) {
     member.acknowledgeAppendLog(ack);
   }
 
   @Override
-  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
       throws TException {
     try {
       return member.appendEntryIndirect(request, subReceivers);

@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -208,8 +209,8 @@ public class BaseMember {
           }
 
           @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
+          public AppendEntryResult appendEntry(AppendEntryRequest request) {
+            return new AppendEntryResult(Response.RESPONSE_AGREE);
           }
 
           @Override

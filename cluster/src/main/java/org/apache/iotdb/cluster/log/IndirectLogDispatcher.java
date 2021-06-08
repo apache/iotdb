@@ -103,7 +103,7 @@ public class IndirectLogDispatcher extends LogDispatcher {
           logRequest.getLog().getCreateTime());
       member.sendLogToFollower(
           logRequest.getLog(),
-          logRequest.getVoteCounter(),
+          logRequest.getVotedNodeIds(),
           receiver,
           logRequest.getLeaderShipStale(),
           logRequest.getNewLeaderTerm(),

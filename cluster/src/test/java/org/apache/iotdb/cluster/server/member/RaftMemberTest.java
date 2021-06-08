@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -184,8 +185,8 @@ public class RaftMemberTest extends BaseMember {
           }
 
           @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
+          public AppendEntryResult appendEntry(AppendEntryRequest request) {
+            return new AppendEntryResult(Response.RESPONSE_AGREE);
           }
 
           @Override
@@ -221,8 +222,8 @@ public class RaftMemberTest extends BaseMember {
           }
 
           @Override
-          public long appendEntry(AppendEntryRequest request) {
-            return Response.RESPONSE_AGREE;
+          public AppendEntryResult appendEntry(AppendEntryRequest request) {
+            return new AppendEntryResult(Response.RESPONSE_AGREE);
           }
 
           @Override

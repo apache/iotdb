@@ -20,12 +20,13 @@
 package org.apache.iotdb.cluster.server.handlers.forwarder;
 
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IndirectAppendHandler implements AsyncMethodCallback<Long> {
+public class IndirectAppendHandler implements AsyncMethodCallback<AppendEntryResult> {
 
   private static final Logger logger = LoggerFactory.getLogger(IndirectAppendHandler.class);
   private Node receiver;
@@ -38,7 +39,7 @@ public class IndirectAppendHandler implements AsyncMethodCallback<Long> {
   }
 
   @Override
-  public void onComplete(Long response) {
+  public void onComplete(AppendEntryResult response) {
     // ignore response from indirect appender
   }
 

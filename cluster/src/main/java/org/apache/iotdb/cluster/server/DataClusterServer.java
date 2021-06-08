@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
@@ -30,8 +39,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryAcknowledgement;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
@@ -59,7 +68,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.DataSyncService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -69,16 +77,6 @@ import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DataClusterServer extends RaftServer
     implements TSDataService.AsyncIface, TSDataService.Iface {
@@ -262,7 +260,7 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -271,7 +269,7 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
     Node header = request.getHeader();
     DataAsyncService service = getDataAsyncService(header, resultHandler, request);
     if (service != null) {
@@ -902,12 +900,12 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public long appendEntries(AppendEntriesRequest request) throws TException {
+  public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
     return getDataSyncService(request.getHeader()).appendEntries(request);
   }
 
   @Override
-  public long appendEntry(AppendEntryRequest request) throws TException {
+  public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
     return getDataSyncService(request.getHeader()).appendEntry(request);
   }
 
@@ -966,26 +964,26 @@ public class DataClusterServer extends RaftServer
   }
 
   @Override
-  public long appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
+  public AppendEntryResult appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers)
       throws TException {
     return getDataSyncService(thisNode)
         .appendEntryIndirect(request, subReceivers);
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack) {
+  public void acknowledgeAppendEntry(AppendEntryResult ack) {
     getDataSyncService(thisNode).acknowledgeAppendEntry(ack);
   }
 
   @Override
   public void appendEntryIndirect(AppendEntryRequest request, List<Node> subReceivers,
-      AsyncMethodCallback<Long> resultHandler) {
+      AsyncMethodCallback<AppendEntryResult> resultHandler) {
     getDataAsyncService(thisNode, resultHandler, request)
         .appendEntryIndirect(request, subReceivers, resultHandler);
   }
 
   @Override
-  public void acknowledgeAppendEntry(AppendEntryAcknowledgement ack,
+  public void acknowledgeAppendEntry(AppendEntryResult ack,
       AsyncMethodCallback<Void> resultHandler) {
     getDataAsyncService(thisNode, resultHandler, ack)
         .acknowledgeAppendEntry(ack, resultHandler);
