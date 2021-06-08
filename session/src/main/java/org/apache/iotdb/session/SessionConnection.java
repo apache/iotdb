@@ -414,7 +414,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -433,7 +434,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertStringRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -490,7 +492,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -690,5 +693,10 @@ public class SessionConnection {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 }
