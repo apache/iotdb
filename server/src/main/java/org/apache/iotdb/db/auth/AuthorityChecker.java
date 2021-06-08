@@ -117,6 +117,8 @@ public class AuthorityChecker {
         return PrivilegeType.REVOKE_USER_ROLE.ordinal();
       case SET_STORAGE_GROUP:
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
+      case DELETE_STORAGE_GROUP:
+        return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
       case DELETE_TIMESERIES:
@@ -138,6 +140,7 @@ public class AuthorityChecker {
       case INSERT:
       case LOADDATA:
       case CREATE_INDEX:
+      case ALTER_TIMESERIES:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:

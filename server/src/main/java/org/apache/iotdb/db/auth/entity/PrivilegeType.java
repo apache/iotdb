@@ -21,6 +21,7 @@ package org.apache.iotdb.db.auth.entity;
 /** This enum class contains all available privileges in IoTDB. */
 public enum PrivilegeType {
   SET_STORAGE_GROUP,
+  DELETE_STORAGE_GROUP,
   INSERT_TIMESERIES,
   @Deprecated
   UPDATE_TIMESERIES,

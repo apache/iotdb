@@ -30,7 +30,7 @@ public class UserTest {
     User user = new User("user", "password");
     PathPrivilege pathPrivilege = new PathPrivilege("root.ln");
     user.setPrivilegeList(Collections.singletonList(pathPrivilege));
-    user.setPrivileges("root.ln", Collections.singleton(1));
+    user.setPrivileges("root.ln", Collections.singleton(2));
     Assert.assertEquals(
         "User{name='user', password='password', privilegeList=[root.ln : INSERT_TIMESERIES], roleList=[], useWaterMark=false, lastActiveTime=0}",
         user.toString());
