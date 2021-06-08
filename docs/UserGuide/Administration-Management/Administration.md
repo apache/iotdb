@@ -132,7 +132,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
-|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|
+|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own passwords. )|
 |LIST\_USER|list all users; list a user's privileges; list a user's roles with three kinds of operation privileges; path independent|
 |GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|
 |REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|
@@ -149,6 +149,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DROP_TRIGGER|drop triggers; path independent|
 |START_TRIGGER|start triggers; path independent|
 |STOP_TRIGGER|stop triggers; path independent|
+|TTL|use TTL; path independent|
 
 ### Username Restrictions
 

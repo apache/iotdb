@@ -45,6 +45,7 @@ public enum PrivilegeType {
   DROP_TRIGGER,
   START_TRIGGER,
   STOP_TRIGGER,
+  TTL,
   ALL;
 
   /**

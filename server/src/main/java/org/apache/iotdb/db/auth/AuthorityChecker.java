@@ -162,6 +162,8 @@ public class AuthorityChecker {
         return PrivilegeType.START_TRIGGER.ordinal();
       case STOP_TRIGGER:
         return PrivilegeType.STOP_TRIGGER.ordinal();
+      case TTL:
+        return PrivilegeType.TTL.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;
