@@ -836,8 +836,8 @@ public class SessionCacheLeaderUT {
     }
 
     // set connection as broken, due to we enable the cache leader, when we called
-// ((MockSession) session). getLastConstructedSessionConnection(), the session's endpoint has been changed to
-    // EndPoint(ip:127.0.0.1, port:55562)
+    // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
+    // been changed to EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
         "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
@@ -990,8 +990,8 @@ public class SessionCacheLeaderUT {
     // set the session connection as broken
     ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     // set connection as broken, due to we enable the cache leader, when we called
-// ((MockSession) session). getLastConstructedSessionConnection(), the session's endpoint has been changed to
-    // EndPoint(ip:127.0.0.1, port:55562)
+    // ((MockSession) session).getLastConstructedSessionConnection(), the session's endpoint has
+    // been changed to EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
         "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
         ((MockSession) session).getLastConstructedSessionConnection().toString());
