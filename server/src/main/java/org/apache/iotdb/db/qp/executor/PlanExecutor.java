@@ -1158,7 +1158,7 @@ public class PlanExecutor implements IPlanExecutor {
       } else {
         storageGroupPaths.add(plan.getStorageGroup());
       }
-      for (PartialPath storagePath : storageGroupPaths){
+      for (PartialPath storagePath : storageGroupPaths) {
         IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
         StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
       }
