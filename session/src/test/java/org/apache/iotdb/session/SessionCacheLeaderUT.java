@@ -724,7 +724,7 @@ public class SessionCacheLeaderUT {
     assertEquals(session.metaSessionConnection, session.defaultSessionConnection);
     assertNull(session.deviceIdToEndpoint);
     assertNull(session.endPointToSessionConnection);
-    ((MockSession) session).getMockSessionConnection().setConnectionBroken(true);
+    ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
 
     List<String> allDeviceIds =
         new ArrayList<String>() {
@@ -840,8 +840,8 @@ public class SessionCacheLeaderUT {
     // EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
         "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
-        ((MockSession) session).getMockSessionConnection().toString());
-    ((MockSession) session).getMockSessionConnection().setConnectionBroken(true);
+        ((MockSession) session).getLastConstructedSessionConnection().toString());
+    ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     try {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
@@ -875,7 +875,7 @@ public class SessionCacheLeaderUT {
     assertNull(session.endPointToSessionConnection);
 
     // set the session connection as broken
-    ((MockSession) session).getMockSessionConnection().setConnectionBroken(true);
+    ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     List<String> allDeviceIds =
         new ArrayList<String>() {
           {
@@ -988,13 +988,13 @@ public class SessionCacheLeaderUT {
     }
 
     // set the session connection as broken
-    ((MockSession) session).getMockSessionConnection().setConnectionBroken(true);
+    ((MockSession) session).getLastConstructedSessionConnection().setConnectionBroken(true);
     // set connection as broken, due to we enable the cache leader, when we called
     // ((MockSession) session).getMockSessionConnection(), the session's endpoint have changed to
     // EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
         "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
-        ((MockSession) session).getMockSessionConnection().toString());
+        ((MockSession) session).getLastConstructedSessionConnection().toString());
 
     for (long row = 0; row < 10; row++) {
       int row1 = tablet1.rowSize++;
@@ -1073,7 +1073,7 @@ public class SessionCacheLeaderUT {
 
   static class MockSession extends Session {
 
-    private MockSessionConnection mockSessionConnection;
+    private MockSessionConnection lastConstructedSessionConnection;
 
     public MockSession(String host, int rpcPort, boolean enableCacheLeader) {
       super(
@@ -1091,12 +1091,12 @@ public class SessionCacheLeaderUT {
     @Override
     public SessionConnection constructSessionConnection(
         Session session, EndPoint endpoint, ZoneId zoneId) {
-      mockSessionConnection = new MockSessionConnection(session, endpoint, zoneId);
-      return mockSessionConnection;
+      lastConstructedSessionConnection = new MockSessionConnection(session, endpoint, zoneId);
+      return lastConstructedSessionConnection;
     }
 
-    public MockSessionConnection getMockSessionConnection() {
-      return mockSessionConnection;
+    public MockSessionConnection getLastConstructedSessionConnection() {
+      return lastConstructedSessionConnection;
     }
   }
 

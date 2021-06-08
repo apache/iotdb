@@ -59,6 +59,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -690,17 +691,22 @@ public class Session {
     // remove the cached broken leader session
     if (enableCacheLeader) {
       EndPoint endPoint = null;
-      for (Map.Entry<EndPoint, SessionConnection> entry : endPointToSessionConnection.entrySet()) {
+      for (Iterator<Entry<EndPoint, SessionConnection>> it =
+              endPointToSessionConnection.entrySet().iterator();
+          it.hasNext(); ) {
+        Map.Entry<EndPoint, SessionConnection> entry = it.next();
         if (entry.getValue().equals(sessionConnection)) {
           endPoint = entry.getKey();
-          endPointToSessionConnection.remove(endPoint);
+          it.remove();
           break;
         }
       }
 
-      for (Map.Entry<String, EndPoint> entry : deviceIdToEndpoint.entrySet()) {
+      for (Iterator<Entry<String, EndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+          it.hasNext(); ) {
+        Map.Entry<String, EndPoint> entry = it.next();
         if (entry.getValue().equals(endPoint)) {
-          deviceIdToEndpoint.remove(entry.getKey());
+          it.remove();
         }
       }
     }

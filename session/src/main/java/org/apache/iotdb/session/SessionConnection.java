@@ -553,7 +553,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {

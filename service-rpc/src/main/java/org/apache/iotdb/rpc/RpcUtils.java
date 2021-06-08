@@ -22,7 +22,6 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.lang.reflect.Proxy;
@@ -105,23 +104,6 @@ public class RpcUtils {
         TSStatus subStatus = statusSubStatus.get(i);
         if (subStatus.isSetRedirectNode()) {
           deviceEndPointMap.put(devices.get(i), subStatus.getRedirectNode());
-        }
-      }
-      throw new RedirectException(deviceEndPointMap);
-    }
-  }
-
-  public static void verifySuccessWithRedirectionForInsertTablets(
-      TSStatus status, TSInsertTabletsReq req)
-      throws StatementExecutionException, RedirectException {
-    verifySuccess(status);
-    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      Map<String, EndPoint> deviceEndPointMap = new HashMap<>();
-      List<TSStatus> statusSubStatus = status.getSubStatus();
-      for (int i = 0; i < statusSubStatus.size(); i++) {
-        TSStatus subStatus = statusSubStatus.get(i);
-        if (subStatus.isSetRedirectNode()) {
-          deviceEndPointMap.put(req.getDeviceIds().get(i), subStatus.getRedirectNode());
         }
       }
       throw new RedirectException(deviceEndPointMap);
