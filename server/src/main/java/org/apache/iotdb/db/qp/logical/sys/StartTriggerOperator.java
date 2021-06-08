@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class StartTriggerOperator extends Operator {
 
@@ -36,5 +40,11 @@ public class StartTriggerOperator extends Operator {
 
   public String getTriggerName() {
     return triggerName;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new StartTriggerPlan(triggerName);
   }
 }

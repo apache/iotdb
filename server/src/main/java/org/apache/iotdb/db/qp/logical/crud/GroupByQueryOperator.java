@@ -19,4 +19,50 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
-public class GroupByQueryOperator extends AggregationQueryOperator {}
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
+public class GroupByQueryOperator extends AggregationQueryOperator {
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return isAlignByDevice()
+        ? this.generateAlignByDevicePlan(generator)
+        : super.generateRawDataQueryPlan(generator, initGroupByTimePlan(new GroupByTimePlan()));
+  }
+
+  @Override
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setGroupByTimePlan(initGroupByTimePlan(new GroupByTimePlan()));
+
+    return alignByDevicePlan;
+  }
+
+  protected GroupByTimePlan initGroupByTimePlan(QueryPlan queryPlan) throws QueryProcessException {
+    GroupByTimePlan groupByTimePlan = (GroupByTimePlan) initAggregationPlan(queryPlan);
+    GroupByClauseComponent groupByClauseComponent = (GroupByClauseComponent) specialClauseComponent;
+
+    groupByTimePlan.setInterval(groupByClauseComponent.getUnit());
+    groupByTimePlan.setIntervalByMonth(groupByClauseComponent.isIntervalByMonth());
+    groupByTimePlan.setSlidingStep(groupByClauseComponent.getSlidingStep());
+    groupByTimePlan.setSlidingStepByMonth(groupByClauseComponent.isSlidingStepByMonth());
+    groupByTimePlan.setLeftCRightO(groupByClauseComponent.isLeftCRightO());
+
+    if (!groupByClauseComponent.isLeftCRightO()) {
+      groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime() + 1);
+      groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime() + 1);
+    } else {
+      groupByTimePlan.setStartTime(groupByClauseComponent.getStartTime());
+      groupByTimePlan.setEndTime(groupByClauseComponent.getEndTime());
+    }
+
+    return groupByTimePlan;
+  }
+}

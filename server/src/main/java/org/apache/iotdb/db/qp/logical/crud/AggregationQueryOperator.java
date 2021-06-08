@@ -19,10 +19,23 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.List;
 
 public class AggregationQueryOperator extends QueryOperator {
 
@@ -45,11 +58,73 @@ public class AggregationQueryOperator extends QueryOperator {
       throw new LogicalOperatorException("AGGREGATION doesn't support disable align clause.");
     }
 
+    if (hasTimeSeriesGeneratingFunction()) {
+      throw new LogicalOperatorException(
+          "User-defined and built-in hybrid aggregation is not supported together.");
+    }
+
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
       if (expression instanceof TimeSeriesOperand) {
         throw new LogicalOperatorException(ERROR_MESSAGE1);
       }
     }
+
+    if (isGroupByLevel() && isAlignByDevice()) {
+      throw new LogicalOperatorException("group by level does not support align by device now.");
+    }
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return isAlignByDevice()
+        ? this.generateAlignByDevicePlan(generator)
+        : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+  }
+
+  private boolean verifyAllAggregationDataTypesEqual() throws MetadataException {
+    List<String> aggregations = selectComponent.getAggregationFunctions();
+    if (aggregations.isEmpty()) {
+      return true;
+    }
+
+    List<PartialPath> paths = selectComponent.getPaths();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
+    String aggType = aggregations.get(0);
+    switch (aggType) {
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        return dataTypes.stream().allMatch(dataTypes.get(0)::equals);
+      default:
+        return true;
+    }
+  }
+
+  @Override
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
+    alignByDevicePlan.setAggregationPlan(initAggregationPlan(new AggregationPlan()));
+
+    return alignByDevicePlan;
+  }
+
+  protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
+    AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
+    aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
+    if (isGroupByLevel()) {
+      aggregationPlan.setLevel(specialClauseComponent.getLevel());
+      try {
+        if (!verifyAllAggregationDataTypesEqual()) {
+          throw new LogicalOperatorException("Aggregate among unmatched data types");
+        }
+      } catch (MetadataException e) {
+        throw new LogicalOperatorException(e);
+      }
+    }
+    return aggregationPlan;
   }
 }

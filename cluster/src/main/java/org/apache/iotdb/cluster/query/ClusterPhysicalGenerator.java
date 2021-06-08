@@ -47,7 +47,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -58,7 +57,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
       List<PartialPath> paths, String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
@@ -72,16 +71,6 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
       throws MetadataException {
     return getCMManager().getSeriesSchemas(paths);
-  }
-
-  @Override
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedPaths(path);
-  }
-
-  @Override
-  protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedDevices(path);
   }
 
   @Override
@@ -99,7 +88,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
+  public PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
     if (type == LoadConfigurationOperatorType.GLOBAL) {
       Properties[] properties = new Properties[2];
