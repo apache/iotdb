@@ -79,6 +79,6 @@ public class CreateIndexOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new CreateIndexPlan(getPaths(), getProps(), getTime(), getIndexType());
+    return new CreateIndexPlan(paths, props, time, indexType);
   }
 }

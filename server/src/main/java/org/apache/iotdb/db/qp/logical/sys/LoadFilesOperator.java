@@ -56,6 +56,6 @@ public class LoadFilesOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new OperateFilePlan(file, OperatorType.LOAD_FILES, isAutoCreateSchema(), sgLevel);
+    return new OperateFilePlan(file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel);
   }
 }

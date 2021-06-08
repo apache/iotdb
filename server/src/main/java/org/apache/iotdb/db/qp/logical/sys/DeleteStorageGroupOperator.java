@@ -45,6 +45,6 @@ public class DeleteStorageGroupOperator extends Operator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new DeleteStorageGroupPlan(getDeletePathList());
+    return new DeleteStorageGroupPlan(deletePathList);
   }
 }

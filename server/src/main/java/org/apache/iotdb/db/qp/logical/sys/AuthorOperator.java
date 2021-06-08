@@ -120,13 +120,7 @@ public class AuthorOperator extends Operator {
       throws QueryProcessException {
     try {
       return new AuthorPlan(
-          getAuthorType(),
-          getUserName(),
-          getRoleName(),
-          getPassWord(),
-          getNewPassword(),
-          getPrivilegeList(),
-          getNodeName());
+          authorType, userName, roleName, password, newPassword, privilegeList, nodeName);
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }

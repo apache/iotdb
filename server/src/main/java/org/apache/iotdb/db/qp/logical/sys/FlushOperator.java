@@ -57,6 +57,6 @@ public class FlushOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new FlushPlan(isSeq(), getStorageGroupList());
+    return new FlushPlan(isSeq, storageGroupList);
   }
 }

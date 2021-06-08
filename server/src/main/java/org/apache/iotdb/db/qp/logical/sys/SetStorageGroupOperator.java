@@ -43,6 +43,6 @@ public class SetStorageGroupOperator extends Operator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new SetStorageGroupPlan(getPath());
+    return new SetStorageGroupPlan(path);
   }
 }

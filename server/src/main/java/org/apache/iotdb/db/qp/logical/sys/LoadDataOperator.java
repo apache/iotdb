@@ -49,6 +49,6 @@ public class LoadDataOperator extends Operator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new LoadDataPlan(getInputFilePath(), getMeasureType());
+    return new LoadDataPlan(inputFilePath, measureType);
   }
 }

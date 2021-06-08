@@ -102,8 +102,7 @@ public class AlterTimeSeriesOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new AlterTimeSeriesPlan(
-        getPath(), getAlterType(), getAlterMap(), getAlias(), getTagsMap(), getAttributesMap());
+    return new AlterTimeSeriesPlan(path, alterType, alterMap, alias, tagsMap, attributesMap);
   }
 
   public enum AlterType {

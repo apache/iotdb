@@ -113,25 +113,15 @@ public class CreateTimeSeriesOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if (getTags() != null
-        && !getTags().isEmpty()
-        && getAttributes() != null
-        && !getAttributes().isEmpty()) {
-      for (String tagKey : getTags().keySet()) {
-        if (getAttributes().containsKey(tagKey)) {
+    if (tags != null && !tags.isEmpty() && attributes != null && !attributes.isEmpty()) {
+      for (String tagKey : tags.keySet()) {
+        if (attributes.containsKey(tagKey)) {
           throw new QueryProcessException(
               String.format("Tag and attribute shouldn't have the same property key [%s]", tagKey));
         }
       }
     }
     return new CreateTimeSeriesPlan(
-        getPath(),
-        getDataType(),
-        getEncoding(),
-        getCompressor(),
-        getProps(),
-        getTags(),
-        getAttributes(),
-        getAlias());
+        path, dataType, encoding, compressor, props, tags, attributes, alias);
   }
 }

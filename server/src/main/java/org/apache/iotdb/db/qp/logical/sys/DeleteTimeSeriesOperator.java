@@ -46,6 +46,6 @@ public class DeleteTimeSeriesOperator extends Operator {
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
-    return new DeleteTimeSeriesPlan(getDeletePathList());
+    return new DeleteTimeSeriesPlan(deletePathList);
   }
 }
