@@ -884,7 +884,7 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
@@ -1140,7 +1140,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
@@ -1185,7 +1185,7 @@ public class SessionCacheLeaderUT {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
+      throw new RedirectException(getDeviceIdBelongedEndpoint(request.deviceId));
     }
 
     @Override
