@@ -1895,12 +1895,12 @@ public class StorageGroupProcessor {
 
   /** close recover compaction merge callback, to start continuous compaction */
   private void closeCompactionRecoverCallBack(boolean isMerge, long timePartitionId) {
-    logger.info(
-        "{} recover finished, submit continuous compaction task", storageGroupName);
+    CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(storageGroupName);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      logger.info(
+          "{} recover finished, submit continuous compaction task", storageGroupName);
       CompactionMergeTaskPoolManager.getInstance()
           .submitTask(new CompactionAllPartitionTask(storageGroupName));
-      new CompactionAllPartitionTask(storageGroupName).run();
     }
   }
 
