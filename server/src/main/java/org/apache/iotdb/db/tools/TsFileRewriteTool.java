@@ -324,10 +324,7 @@ public class TsFileRewriteTool implements AutoCloseable {
           decodeAndWritePageInToFiles(schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
         } else {
           writePageInToFile(
-              schema,
-              pageHeadersInChunk.get(j),
-              pageDataInChunk.get(j),
-              chunkWritersInChunkGroup);
+              schema, pageHeadersInChunk.get(j), pageDataInChunk.get(j), chunkWritersInChunkGroup);
         }
       }
     }
