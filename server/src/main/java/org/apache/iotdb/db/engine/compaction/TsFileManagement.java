@@ -353,7 +353,7 @@ public abstract class TsFileManagement {
     for (TsFileResource unseqFile : unseqFiles) {
       unseqFile.writeLock();
       try {
-        unseqFile.remove();
+        unseqFile.getTsFile().renameTo(new File(unseqFile.getTsFilePath() + "_bak"));
       } finally {
         unseqFile.writeUnlock();
       }
