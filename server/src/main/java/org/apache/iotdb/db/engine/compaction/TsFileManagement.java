@@ -187,6 +187,7 @@ public abstract class TsFileManagement {
     @Override
     public Void call() {
       recover();
+      // in recover logic, the param time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
       return null;
     }
