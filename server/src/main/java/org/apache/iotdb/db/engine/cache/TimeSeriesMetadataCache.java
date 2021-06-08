@@ -93,8 +93,8 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
                       + RamUsageEstimator.shallowSizeOf(value.getStatistics())
                       + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
-                      + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                      * value.getChunkMetadataList().size()
+                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                          * value.getChunkMetadataList().size()
                       + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
               averageSize = ((averageSize * count) + currentSize) / (++count);
             } else if (count < 100000) {
@@ -109,8 +109,8 @@ public class TimeSeriesMetadataCache {
                       + RamUsageEstimator.sizeOf(value.getMeasurementId())
                       + RamUsageEstimator.shallowSizeOf(value.getStatistics())
                       + (((ChunkMetadata) value.getChunkMetadataList().get(0)).calculateRamSize()
-                      + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                      * value.getChunkMetadataList().size()
+                              + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                          * value.getChunkMetadataList().size()
                       + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList());
               count = 1;
               currentSize = averageSize;
@@ -292,7 +292,9 @@ public class TimeSeriesMetadataCache {
                 metadata -> {
                   TimeSeriesMetadataCacheKey k =
                       new TimeSeriesMetadataCacheKey(
-                          key.filePath, key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement, metadata.getMeasurementId());
+                          key.filePath,
+                          key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                          metadata.getMeasurementId());
                   if (!lruCache.containsKey(k)) {
                     lruCache.put(k, metadata);
                   }
@@ -329,14 +331,21 @@ public class TimeSeriesMetadataCache {
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
     lock.readLock().lock();
     try {
-      TimeseriesMetadata timeseriesMetadata = lruCache.get(new TimeSeriesMetadataCacheKey(key.filePath,
-          key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement, key.measurement));
+      TimeseriesMetadata timeseriesMetadata =
+          lruCache.get(
+              new TimeSeriesMetadataCacheKey(
+                  key.filePath,
+                  key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                  key.measurement));
       if (timeseriesMetadata != null) {
         res.add(timeseriesMetadata);
         for (String subSensor : subSensorList) {
           timeseriesMetadata =
-              lruCache.get(new TimeSeriesMetadataCacheKey(key.filePath,
-                  key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement, subSensor));
+              lruCache.get(
+                  new TimeSeriesMetadataCacheKey(
+                      key.filePath,
+                      key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                      subSensor));
           if (timeseriesMetadata != null) {
             res.add(timeseriesMetadata);
           } else {
@@ -385,9 +394,7 @@ public class TimeSeriesMetadataCache {
     return lruCache.getAverageSize();
   }
 
-  /**
-   * clear LRUCache.
-   */
+  /** clear LRUCache. */
   public void clear() {
     lock.writeLock().lock();
     if (lruCache != null) {
@@ -453,9 +460,7 @@ public class TimeSeriesMetadataCache {
     }
   }
 
-  /**
-   * singleton pattern.
-   */
+  /** singleton pattern. */
   private static class TimeSeriesMetadataCacheHolder {
 
     private static final TimeSeriesMetadataCache INSTANCE = new TimeSeriesMetadataCache();
