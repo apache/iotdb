@@ -195,6 +195,12 @@ public class QueryOperator extends Operator {
       }
     }
 
+    if (queryPlan instanceof QueryIndexPlan) {
+      ((QueryIndexPlan) queryPlan).setIndexType(indexType);
+      ((QueryIndexPlan) queryPlan).setProps(props);
+      return queryPlan;
+    }
+
     try {
       rawDataQueryPlan.setDataTypes(generator.getSeriesTypes(selectComponent.getPaths()));
       queryPlan.deduplicate(generator);
@@ -204,10 +210,6 @@ public class QueryOperator extends Operator {
 
     convertSpecialClauseValues(rawDataQueryPlan);
 
-    if (queryPlan instanceof QueryIndexPlan) {
-      ((QueryIndexPlan) queryPlan).setIndexType(indexType);
-      ((QueryIndexPlan) queryPlan).setProps(props);
-    }
     return rawDataQueryPlan;
   }
 
