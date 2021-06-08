@@ -836,7 +836,7 @@ public class SessionCacheLeaderUT {
     }
 
     // set connection as broken, due to we enable the cache leader, when we called
-    // ((MockSession) session).getMockSessionConnection(), the session's endpoint have changed to
+// ((MockSession) session). getLastConstructedSessionConnection(), the session's endpoint has been changed to
     // EndPoint(ip:127.0.0.1, port:55562)
     Assert.assertEquals(
         "MockSessionConnection{ endPoint=EndPoint(ip:127.0.0.1, port:55562)}",
