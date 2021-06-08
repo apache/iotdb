@@ -294,8 +294,7 @@ public class ChunkWriterImpl implements IChunkWriter {
       if (numOfPages == 0) { // record the firstPageStatistics
         this.firstPageStatistics = pageWriter.getStatistics();
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
-      } else if (numOfPages == 1
-          && firstPageStatistics != null) { // put the firstPageStatistics into pageBuffer
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         byte[] b = pageBuffer.toByteArray();
         pageBuffer.reset();
         pageBuffer.write(b, 0, this.sizeWithoutStatistic);
@@ -375,15 +374,31 @@ public class ChunkWriterImpl implements IChunkWriter {
    * 0.11/v2 to 0.12/v3 TsFile
    */
   public void writePageHeaderAndDataIntoBuff(
-      ByteBuffer data, PageHeader header, boolean isOnlyOnePageChunk) throws PageException {
-
+      ByteBuffer data, PageHeader header) throws PageException {
     // write the page header to pageBuffer
     try {
       logger.debug(
           "start to flush a page header into buffer, buffer position {} ", pageBuffer.size());
-      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
-      ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
-      if (!isOnlyOnePageChunk) {
+      // serialize pageHeader  see writePageToPageBuffer method
+      if (numOfPages == 0) { // record the firstPageStatistics
+        this.firstPageStatistics = header.getStatistics();
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        this.sizeWithoutStatistic +=
+            ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+      } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
+        byte[] b = pageBuffer.toByteArray();
+        pageBuffer.reset();
+        pageBuffer.write(b, 0, this.sizeWithoutStatistic);
+        firstPageStatistics.serialize(pageBuffer);
+        pageBuffer.write(b, this.sizeWithoutStatistic, b.length - this.sizeWithoutStatistic);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
+        header.getStatistics().serialize(pageBuffer);
+        firstPageStatistics = null;
+      } else {
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getUncompressedSize(), pageBuffer);
+        ReadWriteForEncodingUtils.writeUnsignedVarInt(header.getCompressedSize(), pageBuffer);
         header.getStatistics().serialize(pageBuffer);
       }
       logger.debug(

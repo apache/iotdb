@@ -319,7 +319,6 @@ public class TsFileRewriteTool implements AutoCloseable {
       List<PageHeader> pageHeadersInChunk = pageHeadersInChunkGroup.get(i);
       List<Boolean> needToDecodeInfoInChunk = needToDecodeInfoInChunkGroup.get(i);
       valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
-      boolean isOnlyOnePageChunk = pageDataInChunk.size() == 1;
       for (int j = 0; j < pageDataInChunk.size(); j++) {
         if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
           decodeAndWritePageInToFiles(schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
@@ -328,8 +327,7 @@ public class TsFileRewriteTool implements AutoCloseable {
               schema,
               pageHeadersInChunk.get(j),
               pageDataInChunk.get(j),
-              chunkWritersInChunkGroup,
-              isOnlyOnePageChunk);
+              chunkWritersInChunkGroup);
         }
       }
     }
@@ -389,15 +387,14 @@ public class TsFileRewriteTool implements AutoCloseable {
       MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup,
-      boolean isOnlyOnePageChunk)
+      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws PageException {
     long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     Map<MeasurementSchema, ChunkWriterImpl> chunkWriters =
         chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
     ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
-    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader, isOnlyOnePageChunk);
+    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
     chunkWriters.put(schema, chunkWriter);
     chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
