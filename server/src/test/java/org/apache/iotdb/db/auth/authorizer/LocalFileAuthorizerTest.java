@@ -88,20 +88,20 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testUserPermission() throws AuthException {
     authorizer.createUser(user.getName(), user.getPassword());
-    authorizer.grantPrivilegeToUser(user.getName(), nodeName, 2);
+    authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     try {
-      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 2);
+      authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("User user already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToUser("error", nodeName, 2);
+      authorizer.grantPrivilegeToUser("error", nodeName, 1);
     } catch (AuthException e) {
       assertEquals("No such user error", e.getMessage());
     }
 
     try {
-      authorizer.grantPrivilegeToUser("root", nodeName, 2);
+      authorizer.grantPrivilegeToUser("root", nodeName, 1);
     } catch (AuthException e) {
       Assert.assertEquals(
           "Invalid operation, administrator already has all privileges", e.getMessage());
@@ -113,9 +113,9 @@ public class LocalFileAuthorizerTest {
       assertEquals("Invalid privilegeId 100", e.getMessage());
     }
 
-    authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 2);
+    authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     try {
-      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 2);
+      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("User user does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
@@ -128,13 +128,13 @@ public class LocalFileAuthorizerTest {
 
     try {
       authorizer.deleteUser(user.getName());
-      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 2);
+      authorizer.revokePrivilegeFromUser(user.getName(), nodeName, 1);
     } catch (AuthException e) {
       assertEquals("No such user user", e.getMessage());
     }
 
     try {
-      authorizer.revokePrivilegeFromUser("root", "root", 2);
+      authorizer.revokePrivilegeFromUser("root", "root", 1);
     } catch (AuthException e) {
       Assert.assertEquals(
           "Invalid operation, administrator must have all privileges", e.getMessage());
@@ -160,26 +160,26 @@ public class LocalFileAuthorizerTest {
   @Test
   public void testRolePermission() throws AuthException {
     authorizer.createRole(roleName);
-    authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
+    authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     try {
-      authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     } catch (AuthException e) {
       assertEquals("Role role already has INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
-    authorizer.revokePrivilegeFromRole(roleName, nodeName, 2);
+    authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     try {
-      authorizer.revokePrivilegeFromRole(roleName, nodeName, 2);
+      authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     } catch (AuthException e) {
       assertEquals("Role role does not have INSERT_TIMESERIES on root.laptop.d1", e.getMessage());
     }
     authorizer.deleteRole(roleName);
     try {
-      authorizer.revokePrivilegeFromRole(roleName, nodeName, 2);
+      authorizer.revokePrivilegeFromRole(roleName, nodeName, 1);
     } catch (AuthException e) {
       assertEquals("No such role role", e.getMessage());
     }
     try {
-      authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
+      authorizer.grantPrivilegeToRole(roleName, nodeName, 1);
     } catch (AuthException e) {
       assertEquals("No such role role", e.getMessage());
     }

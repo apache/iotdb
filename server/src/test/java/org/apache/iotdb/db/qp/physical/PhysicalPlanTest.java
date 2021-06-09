@@ -180,7 +180,7 @@ public class PhysicalPlanTest {
   @Test
   public void testAuthor() throws QueryProcessException {
     String sql =
-        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
+        "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     Planner processor = new Planner();
     AuthorPlan plan = (AuthorPlan) processor.parseSQLToPhysicalPlan(sql);
     assertEquals(
@@ -188,7 +188,7 @@ public class PhysicalPlanTest {
             + "roleName: xm\n"
             + "password: null\n"
             + "newPassword: null\n"
-            + "permissions: [0, 1, 5]\n"
+            + "permissions: [0, 5]\n"
             + "nodeName: root.vehicle.d1.s1\n"
             + "authorType: GRANT_ROLE",
         plan.toString());

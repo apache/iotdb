@@ -128,6 +128,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
+|ALTER\_TIMESERIES|alter data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
 |DELETE\_TIMESERIES|delete data or timeseries; path dependent|
 |CREATE\_USER|create users; path independent|
