@@ -90,8 +90,7 @@ public class AuthorityCheckerTest {
         user.getName(), nodeName, PrivilegeType.DELETE_STORAGE_GROUP.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.ALTER_TIMESERIES.ordinal());
-    authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.TTL.ordinal());
+    authorizer.grantPrivilegeToUser(user.getName(), nodeName, PrivilegeType.TTL.ordinal());
     Assert.assertTrue(
         AuthorityChecker.check(
             user.getName(),
