@@ -173,7 +173,7 @@ The root node exists by default. Creating storage groups, deleting storage group
 	* create LeafMNode, and store the alias in LeafMNode if it has
 	* If it has alias, create another links with alias to LeafMNode
 
-* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; If in the deletion process,it is found that a node does not any child nodes, it also needs to recursively delete this node.
+* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; If in the deletion process,it is found that a node does not have any child nodes, it also needs to delete this node recursively.
 	
 ## MTree checkpoint
 
