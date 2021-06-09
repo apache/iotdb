@@ -402,9 +402,10 @@ public class CompactionUtils {
       }
       targetResource.setHistoricalVersions(historicalVersions);
       targetResource.serialize();
+      writer.endFile();
       targetResource.close();
     } finally {
-      writer.endFile();
+      writer.close();
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }
