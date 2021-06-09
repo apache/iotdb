@@ -51,7 +51,7 @@ In addition, the storage engine includes asynchronous persistence and file merge
 
 ## Data writing
 See details:
-* [Data write](../StorageEngine/DataManipulation.md)
+* [Data writing](../StorageEngine/DataManipulation.md)
 
 ## Data access
 
