@@ -39,7 +39,10 @@ import java.util.List;
 public class AlignedTimeseriesSessionExample {
 
   private static Session session;
-  private static final String ROOT_SG1_D1_VECTOR = "root.sg_1.d1.vector";
+  private static final String ROOT_SG1_D1_VECTOR1 = "root.sg_1.d1.vector";
+  private static final String ROOT_SG1_D1_VECTOR2 = "root.sg_1.d1.vector2";
+  private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
+  private static final String ROOT_SG1_D1_VECTOR4 = "root.sg_1.d1.vector4";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -55,30 +58,29 @@ public class AlignedTimeseriesSessionExample {
 
     insertTabletWithAlignedTimeseriesMethod1();
     insertTabletWithAlignedTimeseriesMethod2();
-
     insertNullableTabletWithAlignedTimeseries();
+
     selectTest();
     selectWithValueFilterTest();
-
     selectWithGroupByTest();
     selectWithLastTest();
 
     selectWithAggregationTest();
 
-    selectWithAlignByDeviceTest();
+    // selectWithAlignByDeviceTest();
 
     session.close();
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_1.d1");
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg_1.d1.vector");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
-    dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
+    dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -102,8 +104,7 @@ public class AlignedTimeseriesSessionExample {
   private static void selectWithValueFilterTest()
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet =
-        session.executeQueryStatement("select s1 from root.sg_1.d1 where s1 > 0");
-    System.out.println(dataSet.getColumnNames());
+        session.executeQueryStatement("select s1 from root.sg_1.d1.vector where s1 > 0");
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
@@ -111,7 +112,7 @@ public class AlignedTimeseriesSessionExample {
     dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
-            "select * from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000");
+            "select * from root.sg_1.d1.vector where time > 50 and s1 > 0 and s2 > 10000");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -122,7 +123,8 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithAggregationTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select count(s1) from root.sg_1.d1");
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select count(s1) from root.sg_1.d1.vector");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -131,7 +133,7 @@ public class AlignedTimeseriesSessionExample {
     dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
-            "select sum(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000");
+            "select sum(*) from root.sg_1.d1.vector where time > 50 and s1 > 0 and s2 > 10000");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -144,7 +146,7 @@ public class AlignedTimeseriesSessionExample {
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet =
         session.executeQueryStatement(
-            "select count(s1) from root.sg_1.d1 GROUP BY ([1, 100), 20ms)");
+            "select count(s1) from root.sg_1.d1.vector GROUP BY ([1, 100), 20ms)");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -153,7 +155,7 @@ public class AlignedTimeseriesSessionExample {
     dataSet.closeOperationHandle();
     dataSet =
         session.executeQueryStatement(
-            "select count(*) from root.sg_1.d1 where time > 50 and s1 > 0 and s2 > 10000"
+            "select count(*) from root.sg_1.d1.vector where time > 50 and s1 > 0 and s2 > 10000"
                 + " GROUP BY ([50, 100), 10ms)");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
@@ -165,14 +167,15 @@ public class AlignedTimeseriesSessionExample {
 
   private static void selectWithLastTest()
       throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select last s1 from root.sg_1.d1");
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select last s1 from root.sg_1.d1.vector");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
 
     dataSet.closeOperationHandle();
-    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1");
+    dataSet = session.executeQueryStatement("select last * from root.sg_1.d1.vector");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -195,7 +198,7 @@ public class AlignedTimeseriesSessionExample {
       encodings.add(TSEncoding.RLE);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1_VECTOR, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+        ROOT_SG1_D1_VECTOR2, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
   }
 
   // be sure template is coordinate with tablet
@@ -225,7 +228,7 @@ public class AlignedTimeseriesSessionExample {
     compressionTypeList.add(CompressionType.SNAPPY);
 
     List<String> schemaList = new ArrayList<>();
-    schemaList.add("test_vector");
+    schemaList.add("vector");
 
     session.createSchemaTemplate(
         "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
@@ -244,11 +247,11 @@ public class AlignedTimeseriesSessionExample {
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
-    long timestamp = System.currentTimeMillis();
+    long timestamp = 1;
 
-    for (long row = 0; row < 100; row++) {
+    for (long row = 1; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
@@ -283,16 +286,16 @@ public class AlignedTimeseriesSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            "vector",
+            "vector2",
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR2, schemaList);
     tablet.setAligned(true);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = 100; time < 200; time++) {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
@@ -323,11 +326,11 @@ public class AlignedTimeseriesSessionExample {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
         new VectorMeasurementSchema(
-            "vector",
+            "vector3",
             new String[] {"s1", "s2"},
             new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
 
-    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR, schemaList);
+    Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR3, schemaList);
     tablet.setAligned(true);
 
     long[] timestamps = tablet.timestamps;
@@ -337,7 +340,7 @@ public class AlignedTimeseriesSessionExample {
     tablet.bitMaps = bitMaps;
 
     bitMaps[1] = new BitMap(tablet.getMaxRowNumber());
-    for (long time = 100; time < 200; time++) {
+    for (long time = 200; time < 300; time++) {
       int row = tablet.rowSize++;
       timestamps[row] = time;
 
@@ -373,17 +376,14 @@ public class AlignedTimeseriesSessionExample {
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
-    measurements.add("s3");
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT32);
-    types.add(TSDataType.INT64);
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = 0; time < 1; time++) {
       List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2);
-      values.add(3L);
-      session.insertRecord(ROOT_SG1_D1_VECTOR, time, measurements, types, values, true);
+      session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, types, values, true);
     }
   }
 }

@@ -77,25 +77,25 @@ public class InsertTabletPlan extends InsertPlan {
   private List<Object> failedColumns;
 
   public InsertTabletPlan() {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
   }
 
   public InsertTabletPlan(PartialPath prefixPath, List<String> measurements) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.prefixPath = prefixPath;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.prefixPath = prefixPath;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements, List<Integer> dataTypes) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.prefixPath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
@@ -104,7 +104,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   public InsertTabletPlan(
       PartialPath prefixPath, String[] measurements, List<Integer> dataTypes, boolean isAligned) {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
     this.prefixPath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
@@ -166,6 +166,7 @@ public class InsertTabletPlan extends InsertPlan {
     writeTimes(stream);
     writeBitMaps(stream);
     writeValues(stream);
+    stream.write((byte) (isAligned ? 1 : 0));
   }
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
@@ -252,6 +253,7 @@ public class InsertTabletPlan extends InsertPlan {
     writeTimes(buffer);
     writeBitMaps(buffer);
     writeValues(buffer);
+    buffer.put((byte) (isAligned ? 1 : 0));
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
@@ -473,6 +475,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
+    this.isAligned = buffer.get() == 1;
   }
 
   public void setDataTypes(List<Integer> dataTypes) {

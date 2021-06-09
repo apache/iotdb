@@ -397,6 +397,7 @@ public class InsertRowPlan extends InsertPlan {
     stream.write((byte) (isNeedInferType ? 1 : 0));
 
     stream.writeLong(index);
+    stream.write((byte) (isAligned ? 1 : 0));
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
@@ -545,6 +546,8 @@ public class InsertRowPlan extends InsertPlan {
     // the types are not inferred before the plan is serialized
     buffer.put((byte) (isNeedInferType ? 1 : 0));
     buffer.putLong(index);
+
+    buffer.put((byte) (isAligned ? 1 : 0));
   }
 
   @Override
@@ -573,6 +576,7 @@ public class InsertRowPlan extends InsertPlan {
 
     isNeedInferType = buffer.get() == 1;
     this.index = buffer.getLong();
+    isAligned = buffer.get() == 1;
   }
 
   @Override

@@ -1096,21 +1096,19 @@ public class StorageGroupProcessor {
     }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (int i = 0; i < mNodes.length; i++) {
+    for (MeasurementMNode mNode : mNodes) {
       // Don't update cached last value for vector type
-      if (mNodes[i] != null && plan.isAligned()) {
-        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
-      } else {
+      if (!plan.isAligned()) {
         if (plan.getValues()[columnIndex] == null) {
           columnIndex++;
           continue;
         }
         // Update cached last value with high priority
-        if (mNodes[i] != null) {
+        if (mNode != null) {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
+              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNode);
         } else {
           IoTDB.metaManager.updateLastCache(
               plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
@@ -1608,10 +1606,14 @@ public class StorageGroupProcessor {
   }
 
   public void readLock() {
+    // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
+    // apply read lock for TsFileResource list
+    tsFileManagement.readLock();
   }
 
   public void readUnlock() {
+    tsFileManagement.readUnLock();
     insertLock.readLock().unlock();
   }
 

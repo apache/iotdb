@@ -361,6 +361,7 @@ public class ClusterPlanRouter {
       }
       InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
       newBatch.setRange(locs);
+      newBatch.setAligned(plan.isAligned());
       result.put(newBatch, entry.getKey());
     }
     return result;

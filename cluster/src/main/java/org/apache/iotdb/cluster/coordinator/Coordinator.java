@@ -52,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -239,6 +240,7 @@ public class Coordinator {
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan
               || plan instanceof CreateTimeSeriesPlan
+              || plan instanceof CreateAlignedTimeSeriesPlan
               || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);

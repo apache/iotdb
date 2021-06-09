@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.constant;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -35,8 +34,8 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  private static final String[] SINGLE_ROOT_ARRAY = new String[1];
-  private static final String[] SINGLE_TIME_ARRAY = new String[1];
+  private static final String[] SINGLE_ROOT_ARRAY = {"root"};
+  private static final String[] SINGLE_TIME_ARRAY = {"time"};
   public static final PartialPath TIME_PATH = new PartialPath(SINGLE_TIME_ARRAY);
   public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
@@ -88,20 +87,6 @@ public class SQLConstant {
               SUM,
               AVG));
 
-  public static final int KW_AND = 1;
-  public static final int KW_OR = 2;
-  public static final int KW_NOT = 3;
-
-  public static final int EQUAL = SqlBaseLexer.OPERATOR_EQ;
-  public static final int NOTEQUAL = SqlBaseLexer.OPERATOR_NEQ;
-  public static final int LESSTHANOREQUALTO = SqlBaseLexer.OPERATOR_LTE;
-  public static final int LESSTHAN = SqlBaseLexer.OPERATOR_LT;
-  public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
-  public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
-  public static final int IN = SqlBaseLexer.OPERATOR_IN;
-
-  public static final int TOK_SELECT = 21;
-  public static final int TOK_FROM = 22;
   public static final int TOK_WHERE = 23;
   public static final int TOK_INSERT = 24;
   public static final int TOK_DELETE = 25;
@@ -188,12 +173,9 @@ public class SQLConstant {
   public static final int TOK_TRIGGER_START = 102;
   public static final int TOK_TRIGGER_STOP = 103;
   public static final int TOK_SHOW_TRIGGERS = 104;
-
   public static final int TOK_LOCK_INFO = 105;
 
-  public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
-  public static final Map<Integer, Integer> reverseWords = new HashMap<>();
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;
@@ -204,33 +186,6 @@ public class SQLConstant {
   }
 
   static {
-    SINGLE_ROOT_ARRAY[0] = ROOT;
-    SINGLE_TIME_ARRAY[0] = RESERVED_TIME;
-    tokenSymbol.put(KW_AND, "&");
-    tokenSymbol.put(KW_OR, "|");
-    tokenSymbol.put(KW_NOT, "!");
-    tokenSymbol.put(EQUAL, "=");
-    tokenSymbol.put(NOTEQUAL, "<>");
-    tokenSymbol.put(LESSTHANOREQUALTO, "<=");
-    tokenSymbol.put(LESSTHAN, "<");
-    tokenSymbol.put(GREATERTHANOREQUALTO, ">=");
-    tokenSymbol.put(GREATERTHAN, ">");
-  }
-
-  static {
-    tokenNames.put(KW_AND, "and");
-    tokenNames.put(KW_OR, "or");
-    tokenNames.put(KW_NOT, "not");
-    tokenNames.put(EQUAL, "equal");
-    tokenNames.put(NOTEQUAL, "not_equal");
-    tokenNames.put(LESSTHANOREQUALTO, "lessthan_or_equalto");
-    tokenNames.put(LESSTHAN, "lessthan");
-    tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
-    tokenNames.put(GREATERTHAN, "greaterthan");
-    tokenNames.put(IN, "in");
-
-    tokenNames.put(TOK_SELECT, "TOK_SELECT");
-    tokenNames.put(TOK_FROM, "TOK_FROM");
     tokenNames.put(TOK_WHERE, "TOK_WHERE");
     tokenNames.put(TOK_INSERT, "TOK_INSERT");
     tokenNames.put(TOK_DELETE, "TOK_DELETE");
@@ -284,17 +239,6 @@ public class SQLConstant {
     tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");
     tokenNames.put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP");
     tokenNames.put(TOK_SHOW_TRIGGERS, "TOK_SHOW_TRIGGERS");
-  }
-
-  static {
-    reverseWords.put(KW_AND, KW_OR);
-    reverseWords.put(KW_OR, KW_AND);
-    reverseWords.put(EQUAL, NOTEQUAL);
-    reverseWords.put(NOTEQUAL, EQUAL);
-    reverseWords.put(LESSTHAN, GREATERTHANOREQUALTO);
-    reverseWords.put(GREATERTHANOREQUALTO, LESSTHAN);
-    reverseWords.put(LESSTHANOREQUALTO, GREATERTHAN);
-    reverseWords.put(GREATERTHAN, LESSTHANOREQUALTO);
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

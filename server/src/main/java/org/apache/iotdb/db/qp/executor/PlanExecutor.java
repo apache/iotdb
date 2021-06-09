@@ -244,7 +244,7 @@ public class PlanExecutor implements IPlanExecutor {
       case BATCH_INSERT_ROWS:
         insert((InsertRowsPlan) plan);
         return true;
-      case BATCHINSERT:
+      case BATCH_INSERT:
         insertTablet((InsertTabletPlan) plan);
         return true;
       case MULTI_BATCH_INSERT:
@@ -1222,6 +1222,9 @@ public class PlanExecutor implements IPlanExecutor {
         // check whether types are match
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
+        if (plan.isAligned()) {
+          plan.setPrefixPath(plan.getPrefixPath().getDevicePath());
+        }
       }
       // ok, we can begin to write data into the engine..
       StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
@@ -1306,6 +1309,10 @@ public class PlanExecutor implements IPlanExecutor {
       }
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
+      if (insertRowPlan.isAligned()) {
+        insertRowPlan.setPrefixPathForAlignTimeSeries(
+            insertRowPlan.getPrefixPath().getDevicePath());
+      }
       insertRowPlan.transferType();
       StorageEngine.getInstance().insert(insertRowPlan);
       if (insertRowPlan.getFailedMeasurements() != null) {
@@ -1346,6 +1353,9 @@ public class PlanExecutor implements IPlanExecutor {
       insertTabletPlan.setMeasurementMNodes(
           new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
       getSeriesSchemas(insertTabletPlan);
+      if (insertTabletPlan.isAligned()) {
+        insertTabletPlan.setPrefixPath(insertTabletPlan.getPrefixPath().getDevicePath());
+      }
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);
