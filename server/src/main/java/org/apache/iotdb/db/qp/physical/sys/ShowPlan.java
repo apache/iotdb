@@ -45,8 +45,7 @@ public class ShowPlan extends PhysicalPlan {
     this.path = path;
   }
 
-  public ShowPlan(
-      ShowContentType showContentType, PartialPath path, int limit, int offset, int fetchSize) {
+  public ShowPlan(ShowContentType showContentType, PartialPath path, int limit, int offset) {
     this(showContentType, path);
     this.limit = limit;
     this.offset = offset;

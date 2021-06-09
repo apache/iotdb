@@ -16,15 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical;
 
-/**
- * RootOperator indicates the operator that could be executed as a entire command. RootOperator
- * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
- */
-public abstract class RootOperator extends Operator {
+package org.apache.iotdb.db.qp.logical.crud;
 
-  public RootOperator(int tokenIntType) {
-    super(tokenIntType);
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Map;
+
+public class GroupByFillClauseComponent extends GroupByClauseComponent {
+
+  private Map<TSDataType, IFill> fillTypes;
+
+  public GroupByFillClauseComponent() {}
+
+  public Map<TSDataType, IFill> getFillTypes() {
+    return fillTypes;
+  }
+
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
+    this.fillTypes = fillTypes;
   }
 }

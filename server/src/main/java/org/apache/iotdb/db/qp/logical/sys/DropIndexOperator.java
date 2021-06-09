@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,5 +55,11 @@ public class DropIndexOperator extends Operator {
 
   public void setIndexType(IndexType indexType) {
     this.indexType = indexType;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new DropIndexPlan(paths, indexType);
   }
 }

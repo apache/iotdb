@@ -21,16 +21,13 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 
 import java.util.List;
 import java.util.Set;
-
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_AND;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_NOT;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 public class RemoveNotOptimizer implements IFilterOptimizer {
 
@@ -53,8 +50,8 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
     if (filter.isLeaf()) {
       return filter;
     }
-    int tokenInt = filter.getTokenIntType();
-    switch (tokenInt) {
+    FilterType filterType = filter.getFilterType();
+    switch (filterType) {
       case KW_AND:
       case KW_OR:
         // replace children in-place for efficiency
@@ -73,7 +70,7 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
         }
         return reverseFilter(filter.getChildren().get(0));
       default:
-        throw new LogicalOptimizeException("removeNot", tokenInt);
+        throw new LogicalOptimizeException("removeNot", filterType);
     }
   }
 
@@ -85,23 +82,23 @@ public class RemoveNotOptimizer implements IFilterOptimizer {
    * @throws LogicalOptimizeException exception in reverse filter
    */
   private FilterOperator reverseFilter(FilterOperator filter) throws LogicalOperatorException {
-    int tokenInt = filter.getTokenIntType();
+    FilterType filterType = filter.getFilterType();
     if (filter.isLeaf()) {
       ((FunctionOperator) filter).reverseFunc();
       return filter;
     }
-    switch (tokenInt) {
+    switch (filterType) {
       case KW_AND:
       case KW_OR:
         List<FilterOperator> children = filter.getChildren();
         children.set(0, reverseFilter(children.get(0)));
         children.set(1, reverseFilter(children.get(1)));
-        filter.setTokenIntType(SQLConstant.reverseWords.get(tokenInt));
+        filter.setFilterType(FilterConstant.filterReverseWords.get(filterType));
         return filter;
       case KW_NOT:
         return removeNot(filter.getChildren().get(0));
       default:
-        throw new LogicalOptimizeException("reverseFilter", tokenInt);
+        throw new LogicalOptimizeException("reverseFilter", filterType);
     }
   }
 }

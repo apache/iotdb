@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
-public class LoadDataOperator extends RootOperator {
+public class LoadDataOperator extends Operator {
 
   private final String inputFilePath;
   private final String measureType;
@@ -31,7 +34,7 @@ public class LoadDataOperator extends RootOperator {
   /** Constructor of LoadDataOperator. */
   public LoadDataOperator(int tokenIntType, String inputFilePath, String measureType) {
     super(tokenIntType);
-    operatorType = OperatorType.LOADDATA;
+    operatorType = OperatorType.LOAD_DATA;
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
   }
@@ -42,5 +45,10 @@ public class LoadDataOperator extends RootOperator {
 
   public String getMeasureType() {
     return measureType;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new LoadDataPlan(inputFilePath, measureType);
   }
 }

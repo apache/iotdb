@@ -305,7 +305,9 @@ public class TimeSeriesMetadataCache {
                 metadata -> {
                   TimeSeriesMetadataCacheKey k =
                       new TimeSeriesMetadataCacheKey(
-                          key.filePath, key.device, metadata.getMeasurementId());
+                          key.filePath,
+                          key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                          metadata.getMeasurementId());
                   if (!lruCache.containsKey(k)) {
                     lruCache.put(k, metadata);
                   }
@@ -342,12 +344,21 @@ public class TimeSeriesMetadataCache {
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
     lock.readLock().lock();
     try {
-      TimeseriesMetadata timeseriesMetadata = lruCache.get(key);
+      TimeseriesMetadata timeseriesMetadata =
+          lruCache.get(
+              new TimeSeriesMetadataCacheKey(
+                  key.filePath,
+                  key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                  key.measurement));
       if (timeseriesMetadata != null) {
         res.add(timeseriesMetadata);
         for (String subSensor : subSensorList) {
           timeseriesMetadata =
-              lruCache.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
+              lruCache.get(
+                  new TimeSeriesMetadataCacheKey(
+                      key.filePath,
+                      key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement,
+                      subSensor));
           if (timeseriesMetadata != null) {
             res.add(timeseriesMetadata);
           } else {
