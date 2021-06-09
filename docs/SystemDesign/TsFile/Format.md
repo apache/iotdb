@@ -29,7 +29,7 @@
 
 - **Big Endian**
        
-  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, not `08 00 00 00`
+  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, replace by `08 00 00 00`
 - **String with Variable Length**
   - The format is `int size` plus `String literal`. Size can be zero.
   - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
