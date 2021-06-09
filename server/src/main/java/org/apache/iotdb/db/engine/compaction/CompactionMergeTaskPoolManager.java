@@ -139,6 +139,14 @@ public class CompactionMergeTaskPoolManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
+  public synchronized void clearCompactionStatus(String storageGroupName) {
+    // for test
+    if (sgCompactionStatus == null) {
+      sgCompactionStatus = new ConcurrentHashMap<>();
+    }
+    sgCompactionStatus.put(storageGroupName, false);
+  }
+
   public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
@@ -147,8 +155,8 @@ public class CompactionMergeTaskPoolManager implements IService {
       if (isCompacting) {
         return;
       }
-      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
       sgCompactionStatus.put(storageGroup, true);
+      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
       pool.submit(storageGroupCompactionTask);
     }
   }

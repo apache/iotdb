@@ -371,14 +371,9 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(storageGroupName));
-    }
   }
 
-  public class CompactionAllPartitionTask extends StorageGroupCompactionTask{
+  public class CompactionAllPartitionTask extends StorageGroupCompactionTask {
 
     CompactionAllPartitionTask(String storageGroupName) {
       super(storageGroupName);
@@ -400,9 +395,9 @@ public class StorageGroupProcessor {
       try {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
-                tsFileManagement.new CompactionRecoverTask(this::closeCompactionMergeCallBack));
+                tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
       } catch (RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack(false, 0);
+        this.closeCompactionRecoverCallBack(false, 0);
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1861,12 +1856,12 @@ public class StorageGroupProcessor {
     }
     logger.info("signal closing storage group condition in {}", storageGroupName);
 
-    CompactionMergeTaskPoolManager.getInstance().submitTask(
-        new CompactionOnePartitionTask(storageGroupName, tsFileProcessor.getTimeRangeId()));
+    CompactionMergeTaskPoolManager.getInstance()
+        .submitTask(
+            new CompactionOnePartitionTask(storageGroupName, tsFileProcessor.getTimeRangeId()));
   }
 
-
-  public class CompactionOnePartitionTask extends StorageGroupCompactionTask{
+  public class CompactionOnePartitionTask extends StorageGroupCompactionTask {
 
     private long partition;
 
@@ -1878,8 +1873,7 @@ public class StorageGroupProcessor {
     @Override
     public void run() {
       syncCompactOnePartition(
-          partition,
-          IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+          partition, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       clearCompactionStatus();
     }
   }
@@ -1890,11 +1884,22 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
-      tsFileManagement.new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)
+      tsFileManagement
+          .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)
           .run();
     } catch (IOException e) {
       this.closeCompactionMergeCallBack(false, timePartition);
       logger.error("{} compaction submit task failed", storageGroupName);
+    }
+  }
+
+  /** close recover compaction merge callback, to start continuous compaction */
+  private void closeCompactionRecoverCallBack(boolean isMerge, long timePartitionId) {
+    CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(storageGroupName);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
+      logger.info("{} recover finished, submit continuous compaction task", storageGroupName);
+      CompactionMergeTaskPoolManager.getInstance()
+          .submitTask(new CompactionAllPartitionTask(storageGroupName));
     }
   }
 

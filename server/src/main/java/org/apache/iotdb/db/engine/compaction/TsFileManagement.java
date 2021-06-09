@@ -181,10 +181,8 @@ public abstract class TsFileManagement {
     @Override
     public void run() {
       recover();
-      // in recover logic, we do not have to start next compaction task, and in this case the param
-      // time partition is useless, we can just pass 0L
+      // in recover logic, the param time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
-      clearCompactionStatus();
     }
   }
 
