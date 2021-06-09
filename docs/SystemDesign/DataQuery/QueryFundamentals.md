@@ -34,7 +34,7 @@ IoTDB stores sequential and un-sequential TsFiles separately under `data/sequenc
 
 It should be noted that, in the following query documents, we tend to use `seq file` to represent Sequential files for short. For un-sequential ones we use `unseq file`. Sometimes `unordered file` or `out-of-order file` are also used as aliases of un-sequential files.
 
-## General process of reading TsFile
+## General process of reading TsFile and other memory data
 
 The multi-level structure of TsFile is introduced in [TsFile](../TsFile/TsFile.md). 
 For each timeseries, we always follow the query routine across 5 levels: TsFileResource -> TimeseriesMetadata -> ChunkMetadata -> IPageReader -> BatchData
