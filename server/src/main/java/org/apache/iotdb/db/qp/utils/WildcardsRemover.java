@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -39,13 +40,13 @@ import java.util.List;
 public class WildcardsRemover {
 
   private final int maxDeduplicatedPathNum;
-  private final int soffset;
+  private int soffset = 0;
 
-  private int currentOffset;
-  private int currentLimit;
+  private int currentOffset = 0;
+  private int currentLimit = Integer.MAX_VALUE;
 
   /** Records the path number that the MManager totally returned. */
-  private int consumed;
+  private int consumed = 0;
 
   public WildcardsRemover(QueryOperator queryOperator, int fetchSize) {
     // Dataset of last query actually has only three columns, so we shouldn't limit the path num
@@ -53,24 +54,21 @@ public class WildcardsRemover {
     // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
     // set it to Integer.MAX_VALUE - 1
     maxDeduplicatedPathNum =
-        queryOperator.isLastQuery()
+        queryOperator instanceof LastQueryOperator
             ? Integer.MAX_VALUE - 1
             : QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    soffset = queryOperator.getSeriesOffset();
-    currentOffset = soffset;
+    if (queryOperator.getSpecialClauseComponent() != null) {
+      soffset = queryOperator.getSpecialClauseComponent().getSeriesOffset();
+      currentOffset = soffset;
 
-    final int slimit = queryOperator.getSeriesLimit();
-    currentLimit =
-        slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
-
-    consumed = 0;
+      final int slimit = queryOperator.getSpecialClauseComponent().getSeriesLimit();
+      currentLimit =
+          slimit == 0 || maxDeduplicatedPathNum < slimit ? maxDeduplicatedPathNum + 1 : slimit;
+    }
   }
 
   public WildcardsRemover() {
     maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    soffset = 0;
-    currentLimit = maxDeduplicatedPathNum + 1;
-    consumed = 0;
   }
 
   public List<PartialPath> removeWildcardFrom(PartialPath path) throws LogicalOptimizeException {

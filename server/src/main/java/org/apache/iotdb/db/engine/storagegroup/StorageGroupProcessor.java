@@ -1606,10 +1606,14 @@ public class StorageGroupProcessor {
   }
 
   public void readLock() {
+    // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
+    // apply read lock for TsFileResource list
+    tsFileManagement.readLock();
   }
 
   public void readUnlock() {
+    tsFileManagement.readUnLock();
     insertLock.readLock().unlock();
   }
 

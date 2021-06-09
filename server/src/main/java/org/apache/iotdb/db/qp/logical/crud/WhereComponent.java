@@ -15,31 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
+
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+public class WhereComponent {
 
-import java.util.ArrayList;
-import java.util.List;
+  private FilterOperator filterOperator;
 
-/** this class maintains information of {@code FROM} clause. */
-public class FromOperator extends Operator {
+  public WhereComponent() {}
 
-  private List<PartialPath> prefixList;
-
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FROM;
-    prefixList = new ArrayList<>();
+  public WhereComponent(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 
-  public void addPrefixTablePath(PartialPath prefixPath) {
-    prefixList.add(prefixPath);
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
   }
 
-  public List<PartialPath> getPrefixPaths() {
-    return prefixList;
+  public void setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 }
