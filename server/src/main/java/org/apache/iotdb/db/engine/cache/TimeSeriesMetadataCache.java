@@ -81,6 +81,11 @@ public class TimeSeriesMetadataCache {
         new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(
             MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE) {
 
+          /**
+           * The calculation is time consuming, so we won't calculate each entry' size each time.
+           * Every 100,000 entry, we will calculate the average size of the first 10 entries, and
+           * use that to represent the next 99,990 entries' size.
+           */
           @Override
           protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
             long currentSize;
@@ -226,6 +231,14 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  /**
+   * Support for vector
+   *
+   * @param key vector's own fullPath, e.g. root.sg1.d1.vector
+   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param allSensors all sensors of the device in one device, to vector, this should contain both
+   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   */
   // Suppress synchronize warning
   // Suppress high Cognitive Complexity warning
   @SuppressWarnings({"squid:S1860", "squid:S3776"})
