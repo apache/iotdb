@@ -289,6 +289,10 @@ public class StorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
+  /**
+   * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
+   * one holds the insertWriteLock
+   */
   private String insertWriteLockHolder = "";
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */

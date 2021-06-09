@@ -303,6 +303,10 @@ public class TimeSeriesMetadataCache {
           try {
             timeSeriesMetadataList.forEach(
                 metadata -> {
+                  // for root.sg1.d1.vector1.s1, key.device of vector will only return root.sg1.d1
+                  // metadata.getMeasurementId() will return s1, the vector1 is saved in
+                  // key.measurement
+                  // so we should concat them to get the deviceId for root.sg1.d1.vector1.s1
                   TimeSeriesMetadataCacheKey k =
                       new TimeSeriesMetadataCacheKey(
                           key.filePath,
@@ -340,6 +344,16 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  /**
+   * !!!Attention!!!
+   *
+   * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
+   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
+   * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
+   * device: root.sg1.d1.vector1, measurement: s2}
+   */
   private void getVectorTimeSeriesMetadataListFromCache(
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
     lock.readLock().lock();

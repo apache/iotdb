@@ -217,6 +217,10 @@ public class TsFileResource {
     this.timeIndexType = 1;
   }
 
+  /**
+   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
+   */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void generateTimeSeriesMetadata() throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
