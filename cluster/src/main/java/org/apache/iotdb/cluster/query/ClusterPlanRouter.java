@@ -166,7 +166,7 @@ public class ClusterPlanRouter {
     for (PartitionGroup partitionGroup : partitionTable.calculateGlobalGroups(oldRing)) {
       // It doesn't need to notify the data group which will be removed from cluster.
       if (log instanceof RemoveNodeLog
-          && partitionGroup.getHeader().equals(((RemoveNodeLog) log).getRemovedNode())) {
+          && partitionGroup.getHeader().getNode().equals(((RemoveNodeLog) log).getRemovedNode())) {
         continue;
       }
       result.put(new LogPlan(plan), partitionGroup);

@@ -300,7 +300,7 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testGetHeader() {
     System.out.println("Start testGetHeader()");
-    assertEquals(TestUtils.getNode(0), dataGroupMember.getHeader());
+    assertEquals(TestUtils.getRaftNode(0, 0), dataGroupMember.getHeader());
   }
 
   @Test

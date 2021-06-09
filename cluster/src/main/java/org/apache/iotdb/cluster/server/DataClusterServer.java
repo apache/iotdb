@@ -774,9 +774,10 @@ public class DataClusterServer extends RaftServer
       while (entryIterator.hasNext()) {
         Entry<RaftNode, DataGroupMember> entry = entryIterator.next();
         DataGroupMember dataGroupMember = entry.getValue();
-        if (dataGroupMember.getHeader().equals(node) || node.equals(thisNode)) {
+        if (dataGroupMember.getHeader().getNode().equals(node) || node.equals(thisNode)) {
           entryIterator.remove();
-          removeMember(entry.getKey(), dataGroupMember, dataGroupMember.getHeader().equals(node));
+          removeMember(
+              entry.getKey(), dataGroupMember, dataGroupMember.getHeader().getNode().equals(node));
         } else {
           // the group should be updated
           dataGroupMember.removeNode(node);

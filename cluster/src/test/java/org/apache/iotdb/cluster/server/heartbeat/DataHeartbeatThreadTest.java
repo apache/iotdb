@@ -97,7 +97,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
                     assertEquals(TestUtils.getNode(0), request.getLeader());
                     assertEquals(13, request.getCommitLogIndex());
                     assertEquals(10, request.getTerm());
-                    assertEquals(TestUtils.getNode(0), request.getHeader());
+                    assertEquals(TestUtils.getRaftNode(0, 0), request.getHeader());
                     synchronized (receivedNodes) {
                       receivedNodes.add(getSerialNum());
                       for (int i = 1; i < 10; i++) {

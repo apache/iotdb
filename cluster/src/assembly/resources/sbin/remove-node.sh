@@ -29,22 +29,6 @@ fi
 
 IOTDB_CONF=${IOTDB_HOME}/conf
 
-is_conf_path=false
-for arg do
-    shift
-    if [ "$arg" == "-c" ]; then
-        is_conf_path=true
-        continue
-    fi
-
-    if [ $is_conf_path == true ]; then
-        IOTDB_CONF=$arg
-        is_conf_path=false
-        continue
-    fi
-    set -- "$@" "$arg"
-done
-
 CONF_PARAMS="-r "$*
 
 if [ -n "$JAVA_HOME" ]; then

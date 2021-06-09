@@ -275,7 +275,7 @@ public class Coordinator {
         // the query should be handled by a group the local node is in, handle it with in the group
         status =
             metaGroupMember
-                .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+                .getLocalDataMember(partitionGroup.getHeader())
                 .executeNonQueryPlan(plan);
         logger.debug(
             "Execute {} in a local group of {} with status {}",
@@ -348,6 +348,7 @@ public class Coordinator {
       List<String> errorCodePartitionGroups,
       CountDownLatch counter) {
     int retryTime = 0;
+    long startTime = System.currentTimeMillis();
     try {
       while (true) {
         if (logger.isDebugEnabled()) {
@@ -366,6 +367,13 @@ public class Coordinator {
                   log,
                   entry.getValue());
             }
+            return;
+          }
+          long cost = System.currentTimeMillis() - startTime;
+          if (cost > ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS()) {
+            errorCodePartitionGroups.add(
+                String.format(
+                    "Forward change membership log %s to data group %s", log, entry.getValue()));
             return;
           }
           Thread.sleep(ClusterConstant.RETRY_WAIT_TIME_MS);

@@ -61,14 +61,7 @@ set IOTDB_LOGS=%IOTDB_HOME%\logs
 set CONF_PARAMS=-r
 set is_conf_path=false
 for %%i in (%*) do (
-	IF "%%i" == "-c" (
-		set is_conf_path=true
-	) ELSE IF "!is_conf_path!" == "true" (
-		set is_conf_path=false
-		set IOTDB_CONF=%%i
-	) ELSE (
-		set CONF_PARAMS=!CONF_PARAMS! %%i
-	)
+	set CONF_PARAMS=!CONF_PARAMS! %%i
 )
 
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
