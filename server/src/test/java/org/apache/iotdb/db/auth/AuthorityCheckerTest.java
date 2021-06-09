@@ -86,6 +86,12 @@ public class AuthorityCheckerTest {
         user.getName(), nodeName, PrivilegeType.SET_STORAGE_GROUP.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.CREATE_TIMESERIES.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.DELETE_STORAGE_GROUP.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.ALTER_TIMESERIES.ordinal());
+    authorizer.grantPrivilegeToUser(
+        user.getName(), nodeName, PrivilegeType.TTL.ordinal());
     Assert.assertTrue(
         AuthorityChecker.check(
             user.getName(),
@@ -231,6 +237,27 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.GROUP_BY_FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.DELETE_STORAGE_GROUP,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.ALTER_TIMESERIES,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.TTL,
             user.getName()));
   }
 }
