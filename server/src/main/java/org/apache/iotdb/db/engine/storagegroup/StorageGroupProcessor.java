@@ -543,7 +543,7 @@ public class StorageGroupProcessor {
             .submitTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
       } catch (RejectedExecutionException e) {
-        this.closeCompactionMergeCallBack(false, 0);
+        this.closeCompactionRecoverCallBack(false, 0);
         logger.error(
             "{} - {} compaction submit task failed",
             logicalStorageGroupName,
