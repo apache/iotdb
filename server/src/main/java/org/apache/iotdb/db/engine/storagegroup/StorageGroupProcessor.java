@@ -1882,12 +1882,7 @@ public class StorageGroupProcessor {
     logger.info("{} submit a compaction merge task", storageGroupName);
     try {
       // fork and filter current tsfile, then commit then to compaction merge
-      tsFileManagement.readLock();
-      try {
-        tsFileManagement.forkCurrentFileList(timePartition);
-      } finally {
-        tsFileManagement.readUnLock();
-      }
+      tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
       tsFileManagement
           .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)

@@ -256,8 +256,8 @@ public class CompactionUtils {
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, List<Modification>> modificationCache = new HashMap<>();
+    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
     try {
-      RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
       RateLimiter compactionWriteRateLimiter =
           MergeManager.getINSTANCE().getMergeWriteRateLimiter();
       Set<String> tsFileDevicesMap =
@@ -402,9 +402,9 @@ public class CompactionUtils {
       }
       targetResource.setHistoricalVersions(historicalVersions);
       targetResource.serialize();
-      writer.endFile();
       targetResource.close();
     } finally {
+      writer.endFile();
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }
