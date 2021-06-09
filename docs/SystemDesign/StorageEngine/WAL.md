@@ -21,7 +21,7 @@
 
 # WAL
 
-## Work Process
+## Working Process
 * WAL overall recording principle
   * For each Memtable, a corresponding WAL file will be recorded. When the Memtable is flushed, the WAL will be deleted.
 * WAL record details
