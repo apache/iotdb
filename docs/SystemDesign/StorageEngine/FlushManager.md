@@ -25,7 +25,7 @@
 
 After the memory buffer memtable reaches a certain threshold, it will be handed over to the FlushManager for asynchronous persistence without blocking normal writes. The persistence process is pipelined.
 
-## Related idea
+## Related codes
 
 * org.apache.iotdb.db.engine.flush.FlushManager
 
