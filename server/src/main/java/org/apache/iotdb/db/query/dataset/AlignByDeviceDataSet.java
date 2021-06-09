@@ -92,7 +92,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.measurementTypeMap = alignByDevicePlan.getMeasurementTypeMap();
 
     switch (alignByDevicePlan.getOperatorType()) {
-      case GROUPBYTIME:
+      case GROUP_BY_TIME:
         this.dataSetType = DataSetType.GROUPBYTIME;
         this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
         this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
