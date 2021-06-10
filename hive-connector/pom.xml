@@ -177,7 +177,7 @@
         <repository>
             <id>for_pentaho</id>
             <name>conjars.org</name>
-            <url>https://conjars.wensel.net/repo/</url>
+            <url>https://orig.conjars.org/repo/</url>
             <layout>default</layout>
             <releases>
                 <enabled>true</enabled>
