@@ -264,8 +264,8 @@ public class CompactionUtils {
     try {
       RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
       Map<String, List<Modification>> modificationCache = new HashMap<>();
-      RateLimiter compactionWriteRateLimiter = MergeManager.getINSTANCE()
-          .getMergeWriteRateLimiter();
+      RateLimiter compactionWriteRateLimiter =
+          MergeManager.getINSTANCE().getMergeWriteRateLimiter();
       Set<String> tsFileDevicesMap =
           getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap, storageGroup);
       for (String device : tsFileDevicesMap) {
@@ -280,10 +280,10 @@ public class CompactionUtils {
                         new File(o1.getFileName()), new File(o2.getFileName())));
         Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
             chunkMetadataListIteratorCache =
-            new TreeMap<>(
-                (o1, o2) ->
-                    TsFileManagement.compareFileName(
-                        new File(o1.getFileName()), new File(o2.getFileName())));
+                new TreeMap<>(
+                    (o1, o2) ->
+                        TsFileManagement.compareFileName(
+                            new File(o1.getFileName()), new File(o2.getFileName())));
         for (TsFileResource tsFileResource : tsFileResources) {
           TsFileSequenceReader reader =
               buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderMap, storageGroup);
@@ -344,7 +344,7 @@ public class CompactionUtils {
               }
               Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>>
                   sensorReaderChunkMetadataListEntry =
-                  new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
+                      new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
               if (!sequence) {
                 writeByDeserializePageMerge(
                     device,
@@ -361,14 +361,14 @@ public class CompactionUtils {
                   for (ChunkMetadata chunkMetadata : chunkMetadatas) {
                     if (chunkMetadata.getNumOfPoints()
                         < IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getMergePagePointNumberThreshold()) {
+                            .getConfig()
+                            .getMergePagePointNumberThreshold()) {
                       isPageEnoughLarge = false;
                     }
                     if (chunkMetadata.getNumOfPoints()
                         < IoTDBDescriptor.getInstance()
-                        .getConfig()
-                        .getMergeChunkPointNumberThreshold()) {
+                            .getConfig()
+                            .getMergeChunkPointNumberThreshold()) {
                       isChunkEnoughLarge = false;
                     }
                   }
