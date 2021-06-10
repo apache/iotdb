@@ -46,10 +46,10 @@ public enum PrivilegeType {
   DROP_TRIGGER,
   START_TRIGGER,
   STOP_TRIGGER,
+  ALL,
   DELETE_STORAGE_GROUP,
   ALTER_TIMESERIES,
-  TTL,
-  ALL;
+  TTL;
 
   /**
    * Some privileges need a seriesPath as parameter, while others do not. This method returns which
