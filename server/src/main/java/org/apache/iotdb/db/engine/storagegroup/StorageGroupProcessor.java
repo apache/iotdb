@@ -391,13 +391,12 @@ public class StorageGroupProcessor {
 
   private void recoverCompaction() {
     if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
-      logger.info("{} submit a compaction merge task", storageGroupName);
       try {
         CompactionMergeTaskPoolManager.getInstance()
             .submitTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
+        logger.info("{} submit a compaction merge task", storageGroupName);
       } catch (RejectedExecutionException e) {
-        this.closeCompactionRecoverCallBack(false, 0);
         logger.error("{} compaction submit task failed", storageGroupName);
       }
     } else {
@@ -1884,11 +1883,8 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
-      tsFileManagement
-          .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)
-          .run();
+      tsFileManagement.new CompactionOnePartitionUtil(timePartition).run();
     } catch (IOException e) {
-      this.closeCompactionMergeCallBack(false, timePartition);
       logger.error("{} compaction submit task failed", storageGroupName);
     }
   }
@@ -1898,16 +1894,7 @@ public class StorageGroupProcessor {
     CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(storageGroupName);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
       logger.info("{} recover finished, submit continuous compaction task", storageGroupName);
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(storageGroupName));
-    }
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
-    if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      syncCompactOnePartition(
-          timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+      CompactionMergeTaskPoolManager.getInstance().init(this::merge);
     }
   }
 
