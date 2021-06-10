@@ -2016,24 +2016,13 @@ public class StorageGroupProcessor {
           "{}-{} recover finished, submit continuous compaction task",
           logicalStorageGroupName,
           virtualStorageGroupId);
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+
+      CompactionMergeTaskPoolManager.getInstance().init(this::merge);
     }
   }
 
   /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
-    if (isMerge && IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      syncCompactOnePartition(
-          timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    } else {
-      logger.info(
-          "{}-{} partition:{}, do not have to submit a new compaction merge task",
-          logicalStorageGroupName,
-          virtualStorageGroupId,
-          timePartitionId);
-    }
-  }
+  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {}
 
   /**
    * count all Tsfiles in the storage group which need to be upgraded
