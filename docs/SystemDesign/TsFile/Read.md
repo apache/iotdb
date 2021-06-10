@@ -19,7 +19,7 @@
 
 -->
 
-# TsFile Read Process
+# TsFile Reading Process
 
 This chapter introduces how to read TsFile. The content is mainly divided into two parts, the introduction of Filters and Expressions , and the detailed illustration of query process in TsFile.
 
@@ -42,11 +42,11 @@ This chapter introduces how to read TsFile. The content is mainly divided into t
     - [2.4 Join Query](#24-Join-Query)
     - [2.5 Query of TsFile](#25-Query-of-TsFile)
     - [2.6 Related Concepts](#26-Related-Concepts)
-## 1 Filters and Expressions
-
+## 1 Filters conditions and query experssions
 ### 1.1 Filter
+This chapter introduces the filtering conditions and the relevant defination of query expression when TSFILE file is read first. Secondly, how to transform the filtering conditions entered by users into query conditions that the system can execute.
 
-In this document, the term Filter means filter conditions. Users can customize filter conditions on timestamp, or the value of time series. We distinguish the filters which are on timestamp from those on column values. Assume t to be a timestamp constant, there are 12 basic types of Filters. In implementation, they all inherit from the super class Filter.
+Filter represents the basic filtering condition. The user can specify specific filtering criteria on a timestamp or on a column of values. After distinguishing the filtering conditions of timestamp and column value, let t represent a certain timestamp constant. Filter has the following 12 basic types, which are inheritance relations in implementation.
 
 Filter|Filter Type|Explanation|Examples
 ----|----|---|------
@@ -63,7 +63,7 @@ ValueLt|value filter|value on this column < some value|ValueLt("string") means v
 ValueLtEq|value filter|value on this column <= some value|ValueLtEq(-100) means value on this column shold be less than or equal to -100
 ValueNotEq|value filter|value on this column != some value|ValueNotEq(true) means value on this column should not be true
 
-Filter can be composed of one or two Filter children。If a Filter is composed of a single Filter, it is also termed as UnaryFilter.If it contains two filters, it is termed as BinaryFilter. In this case, the two filters are connected with a logical relation, AND or OR, where the formar is termed as AndFilter, and the latter is OrFilter. Obviously, both AndFilter and OrFilter are BinaryFilter.
+A filter can consist of one or two sub-filters.。If a Filter is composed of a single Filter, it is also termed as UnaryFilter.If it contains two filters, it is termed as BinaryFilter. In this case, the two filters are connected with a logical relation, AND or OR, where the formar is termed as AndFilter, and the latter is OrFilter. Obviously, both AndFilter and OrFilter are BinaryFilter.
 
 We give some examples of AndFilter and OrFilter, where "&&" indicates relation AND and "||" indicates relation OR.
 
@@ -478,7 +478,7 @@ This component provides two basic functions:
 
 2. get the next satisfying timestamp
 
-### 2.3 Merge Query
+### 2.3 Query Merging
 org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator
 
 Suppose there are n time series. For each one of them, a FileSeriesReader will be generated. If there's a GlobalTimeExpression, the filter in it will be input to the FileSeriesReaders.
@@ -497,7 +497,7 @@ The steps include:
 
 (5) Terminate the process.
 
-### 2.4 Join Query
+### 2.4 Join Queries
 
 org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator
 
@@ -513,7 +513,7 @@ Join query execution generates timestamp according to the filter conditions, and
 
 (5) Combine the data points in step (4) to form a RowRecord, then go to step (3) to generate another row of records.
 
-### 2.5 Query of TsFile
+### 2.5 Query entrence of TsFile
 
  org.apache.iotdb.tsfile.read.query.executor.TsFileExecutor
 
