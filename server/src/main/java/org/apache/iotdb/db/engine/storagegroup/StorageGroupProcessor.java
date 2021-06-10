@@ -1883,7 +1883,9 @@ public class StorageGroupProcessor {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
-      tsFileManagement.new CompactionOnePartitionUtil(timePartition).run();
+      tsFileManagement
+          .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, timePartition)
+          .run();
     } catch (IOException e) {
       logger.error("{} compaction submit task failed", storageGroupName);
     }
@@ -1897,6 +1899,10 @@ public class StorageGroupProcessor {
       CompactionMergeTaskPoolManager.getInstance().init(this::merge);
     }
   }
+
+  /** close compaction merge callback, to release some locks */
+  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {}
+
 
   /**
    * count all Tsfiles in the storage group which need to be upgraded

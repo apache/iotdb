@@ -156,12 +156,18 @@ public abstract class TsFileManagement {
 
     private long timePartitionId;
 
-    public CompactionOnePartitionUtil(long timePartitionId) {
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
+
+    public CompactionOnePartitionUtil(
+        CloseCompactionMergeCallBack closeCompactionMergeCallBack,
+        long timePartitionId) {
+      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
     public void run() {
       merge(timePartitionId);
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
     }
   }
 
