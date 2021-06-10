@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -55,6 +56,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       new CompactionMergeTaskPoolManager();
   private ScheduledExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
 
@@ -188,7 +190,8 @@ public class CompactionMergeTaskPoolManager implements IService {
   }
 
   public void init(Runnable function) {
-    pool.scheduleWithFixedDelay(function, 1, 1, TimeUnit.SECONDS);
+    pool.scheduleWithFixedDelay(
+        function, 1000, config.getCompactionInterval(), TimeUnit.MILLISECONDS);
   }
 
   public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)

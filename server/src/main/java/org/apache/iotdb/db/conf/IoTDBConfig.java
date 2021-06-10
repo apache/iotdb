@@ -380,6 +380,9 @@ public class IoTDBConfig {
   /** the max executing time of query in ms. */
   private int queryTimeoutThreshold = 60000;
 
+  /** compaction interval in ms */
+  private long compactionInterval = 10000;
+
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
@@ -1371,6 +1374,14 @@ public class IoTDBConfig {
 
   public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  }
+
+  public long getCompactionInterval() {
+    return compactionInterval;
+  }
+
+  public void setCompactionInterval(long compactionInterval) {
+    this.compactionInterval = compactionInterval;
   }
 
   public boolean isEnableMemControl() {
