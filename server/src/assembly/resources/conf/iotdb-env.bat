@@ -18,7 +18,6 @@
 @REM
 
 @echo off
-setlocal enabledelayedexpansion
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
 set JMX_LOCAL="true"
@@ -44,19 +43,14 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
-set line=0
-for /f  %%a in ('wmic cpu get numberofcores') do (
-	set /a line+=1
-	if !line!==2 set system_cpu_cores=%%a
+for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
+	set system_cpu_cores=%%b
 )
-set as=%system_cpu_cores%
 
-if ["%system_cpu_cores%"] LSS ["1"] set system_cpu_cores="1"
+if %system_cpu_cores% LSS 1 set system_cpu_cores=1
 
-set liner=0
-for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory') do (
-	set /a liner+=1
-	if !liner!==2 set system_memory=%%b
+for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
+	set system_memory=%%b
 )
 
 echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %temp%\tmp.vbs
@@ -67,10 +61,10 @@ set system_memory_in_mb=%system_memory_in_mb:,=%
 set /a half_=%system_memory_in_mb%/2
 set /a quarter_=%half_%/2
 
-if ["%half_%"] GTR ["1024"] set %half_%=1024
-if ["%quarter_%"] GTR ["65536"] set %quarter_%=65536
+if %half_% GTR 1024 set half_=1024
+if %quarter_% GTR 65536 set quarter_=65536
 
-if ["%half_%"] GTR ["quarter_"] (
+if %half_% GTR %quarter_% (
 	set max_heap_size_in_mb=%half_%
 ) else set max_heap_size_in_mb=%quarter_%
 
@@ -79,7 +73,7 @@ set max_sensible_yg_per_core_in_mb=100
 set /a max_sensible_yg_in_mb=%max_sensible_yg_per_core_in_mb%*%system_cpu_cores%
 set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
 
-if ["%desired_yg_in_mb%"] GTR ["%max_sensible_yg_in_mb%"] (
+if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
