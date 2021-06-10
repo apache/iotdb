@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
@@ -46,7 +47,7 @@ public class CompactionMergeTaskPoolManager implements IService {
   private static final Logger logger = LoggerFactory
       .getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE = new CompactionMergeTaskPoolManager();
-  private ExecutorService pool;
+  private ScheduledExecutorService pool;
 
   private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
   public static CompactionMergeTaskPoolManager getInstance() {
@@ -145,6 +146,10 @@ public class CompactionMergeTaskPoolManager implements IService {
       sgCompactionStatus = new ConcurrentHashMap<>();
     }
     sgCompactionStatus.put(storageGroupName, false);
+  }
+
+  public void init(Runnable function) {
+    pool.scheduleWithFixedDelay(function, 1, 1, TimeUnit.SECONDS);
   }
 
   public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
