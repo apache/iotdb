@@ -1153,7 +1153,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
       List<PartialPath> storageGroupPaths = new ArrayList<>();
-      if (plan.getStorageGroup().equals("root")) {
+      if (plan.getStorageGroup().equals(IoTDBConstant.PATH_ROOT)) {
         storageGroupPaths = IoTDB.metaManager.getStorageGroupPaths(plan.getStorageGroup());
       } else {
         storageGroupPaths.add(plan.getStorageGroup());
