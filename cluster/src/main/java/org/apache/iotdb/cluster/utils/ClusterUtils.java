@@ -402,12 +402,12 @@ public class ClusterUtils {
         ((AlterTimeSeriesPlan) plan).getPath().setMinorVersion(currLogIndex);
         break;
       case CREATE_ALIGNED_TIMESERIES:
-        partialPath = ((CreateAlignedTimeSeriesPlan) plan).getDevicePath();
+        partialPath = ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath();
         storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
         ((CreateAlignedTimeSeriesPlan) plan)
-            .getDevicePath()
+            .getPrefixPath()
             .setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((CreateAlignedTimeSeriesPlan) plan).getDevicePath().setMinorVersion(currLogIndex);
+        ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath().setMinorVersion(currLogIndex);
         break;
       case CREATE_MULTI_TIMESERIES:
       case DELETE_TIMESERIES:
