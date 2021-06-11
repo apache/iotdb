@@ -75,19 +75,15 @@ public class MetadataIndexConstructor {
             }
           }
 
-          // only add time column of vector into LEAF_MEASUREMENT node
-          if (currentIndexNode.getChildren().isEmpty()
-              || serializedTimeseriesMetadataNum + numOfValueColumns + 1
-                  > config.getMaxDegreeOfIndexNode() * 1.5) {
-            currentIndexNode.addEntry(
-                new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
-            serializedTimeseriesMetadataNum = 0;
-          }
+          // for each vector, add time column of vector into LEAF_MEASUREMENT node
+          currentIndexNode.addEntry(
+              new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
+          serializedTimeseriesMetadataNum = 0;
 
           timeseriesMetadata.serializeTo(out.wrapAsStream());
           serializedTimeseriesMetadataNum++;
           for (int j = 0; j < numOfValueColumns; j++) {
-            i += 1;
+            i++;
             timeseriesMetadata = entry.getValue().get(i);
             // value columns of vector should not be added into LEAF_MEASUREMENT node
             timeseriesMetadata.serializeTo(out.wrapAsStream());

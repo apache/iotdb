@@ -124,7 +124,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
           childPath = tempPath;
         } else {
           // add a new inner node
-          FilterOperator newFilter = new FilterOperator(filter.getTokenIntType(), true);
+          FilterOperator newFilter = new FilterOperator(filter.getFilterType(), true);
           newFilter.setSinglePath(childPath);
           newFilter.setChildren(tempExtrNode);
           ret.add(newFilter);
@@ -140,7 +140,7 @@ public class MergeSingleFilterOptimizer implements IFilterOptimizer {
         ret.add(tempExtrNode.get(0));
       } else {
         // add a new inner node
-        FilterOperator newFil = new FilterOperator(filter.getTokenIntType(), true);
+        FilterOperator newFil = new FilterOperator(filter.getFilterType(), true);
         newFil.setSinglePath(childPath);
         newFil.setChildren(tempExtrNode);
         ret.add(newFil);

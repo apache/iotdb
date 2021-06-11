@@ -28,8 +28,8 @@ import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -46,7 +46,7 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -475,7 +475,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -494,7 +495,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertStringRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -551,7 +553,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -737,16 +740,16 @@ public class SessionConnection {
     return flag;
   }
 
-  protected void createDeviceTemplate(TSCreateDeviceTemplateReq request)
+  protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccess(client.createDeviceTemplate(request));
+      RpcUtils.verifySuccess(client.createSchemaTemplate(request));
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.createDeviceTemplate(request));
+          RpcUtils.verifySuccess(client.createSchemaTemplate(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -756,16 +759,16 @@ public class SessionConnection {
     }
   }
 
-  protected void setDeviceTemplate(TSSetDeviceTemplateReq request)
+  protected void setSchemaTemplate(TSSetSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccess(client.setDeviceTemplate(request));
+      RpcUtils.verifySuccess(client.setSchemaTemplate(request));
     } catch (TException e) {
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
-          RpcUtils.verifySuccess(client.setDeviceTemplate(request));
+          RpcUtils.verifySuccess(client.setSchemaTemplate(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -789,5 +792,10 @@ public class SessionConnection {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 }

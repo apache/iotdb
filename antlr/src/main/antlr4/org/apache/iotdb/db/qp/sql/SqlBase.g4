@@ -76,6 +76,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -1233,6 +1234,10 @@ WITHOUT
 
 ANY
     : A N Y
+    ;
+
+LOCK
+    : L O C K
     ;
 
 //============================

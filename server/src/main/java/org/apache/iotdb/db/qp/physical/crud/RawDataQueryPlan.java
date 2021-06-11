@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -157,7 +156,7 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public Set<String> getAllMeasurementsInDevice(String device) {
-    return deviceToMeasurements.getOrDefault(device, Collections.emptySet());
+    return deviceToMeasurements.getOrDefault(device, new HashSet<>());
   }
 
   public void addFilterPathInDeviceToMeasurements(Path path) {
