@@ -135,9 +135,6 @@ public class TsFileSketchTool {
               // skip the PlanIndex
               nextChunkGroupHeaderPos += 16;
               break;
-            default:
-              System.out.println("error occurred, unknown marker=" + marker);
-              return;
           }
 
           printlnBoth(pw, str1 + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() + " ends");
