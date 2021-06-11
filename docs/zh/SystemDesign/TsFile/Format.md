@@ -21,6 +21,15 @@
 
 # TsFile 文件格式
 
+概览：
+1. TsFile 设计
+2. TsFile 的总览图
+3. TsFile工具集
+    - 3.1 IoTDB Data Directory 快速概览工具
+    - 3.2 TsFileResource 打印工具
+    - 3.3 TsFile 描述工具
+    - 3.4 TsFileSequenceRead
+    - 3.5 Vis工具
 
 ## 1. TsFile 设计
 
@@ -243,9 +252,24 @@ TsFile 是以6个字节的magic string (`TsFile`) 作为结束.
 
 恭喜您, 至此您已经完成了 TsFile 的探秘之旅，祝您玩儿的开心!
 
-### 1.3 TsFile工具集
+## 2. TsFile 的总览图
 
-#### 1.3.1 IoTDB Data Directory 快速概览工具
+### v0.8
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
+
+### v0.9 / 000001
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+
+### v0.10 / 000002
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
+
+
+## 3. TsFile工具集
+
+### 3.1 IoTDB Data Directory 快速概览工具
 
 该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
@@ -294,7 +318,7 @@ TsFile data dir num:1
 |==============================================================
 ```
 
-#### 1.3.2 TsFileResource 打印工具
+### 3.2 TsFileResource 打印工具
 
 该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
@@ -325,7 +349,7 @@ device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), 
 analyzing the resource file finished.
 ```
 
-#### 1.3.3 TsFile 描述工具
+### 3.3 TsFile 描述工具
 
 该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
 
@@ -566,20 +590,180 @@ file length: 33436
 ---------------------------------- TsFile Sketch End ----------------------------------
 ```
 
-#### 1.3.4 TsFileSequenceRead
+### 3.4 TsFileSequenceRead
 
 您可以使用示例中的类 `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` 顺序打印 TsFile 中的内容.
 
-### 1.4 TsFile 的总览图
+### 3.5 Vis工具
 
-#### v0.8
+Vis是一个把TsFiles中的chunk数据的时间分布以及点数可视化的工具。你可以使用这个工具来帮助你debug，还可以用来观察数据分布等等。
+欢迎使用这个工具，在社区里交流你的想法。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
+![image](https://user-images.githubusercontent.com/33376433/120703097-74bd8900-c4e7-11eb-8068-ff71c775e8a0.png)
 
-#### v0.9 / 000001
+- 图中的一个窄长矩形代表的是一个TsFile里的一个chunk，其可视化信息为\[tsName, fileName, chunkId, startTime, endTime, pointCountNum\]。
+- 矩形在x轴上的位置是由该chunk的startTime和endTime决定的。
+- 矩形在y轴上的位置是由以下三项共同决定的：
+    - (a)`showSpecific`: 用户指定要显示的特定时间序列集合。
+    - (b) seqKey/unseqKey显示规则: 从满足特定时间序列集合的keys提取seqKey或unseqKey时采取不同的显示规则：
+        - b-1) unseqKey识别tsName和fileName，因此有相同tsName和fileName但是不同chunkIds的chunk数据将绘制在同一行；
+          chunkId的相对大小用于识别一个unsequence tsfile内一条时间序列的各个chunks的写入顺序。
+        - b-2) seqKey识别tsName，因此有相同tsName但是不同fileNames和chunkIds的chunk数据将绘制在同一行，
+    - (c)`isFileOrder`：根据`isFileOrder`对seqKey&unseqKey进行排序，true则以fileName优先的顺序排序，
+      false则以tsName优先的顺序排序。当在一张图上同时显示多条时间序列时，该参数将给用户提供这两种可选的观察视角。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+#### 3.5.1 如何运行Vis
 
-#### v0.10 / 000002
+源数据包含两个文件：`TsFileExtractVisdata.java`和`vis.m`。
+`TsFileExtractVisdata.java`从输入的tsfile文件中提取必要的可视化信息，`vis.m`用这些信息来完成作图。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
+简单说就是：先运行`TsFileExtractVisdata.java`然后再运行`vis.m`。
+
+##### 第一步：运行TsFileExtractVisdata.java
+
+`TsFileExtractVisdata.java`对输入的tsfiles的每一个chunk提取可视化信息[tsName, fileName, chunkId, startTime, endTime, pointCountNum]，
+并把这些信息保存到指定的输出文件里。
+
+该工具的启动脚本会在编译 server 之后生成至 `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` 目录中。
+
+使用方式:
+
+Windows:
+
+```
+.\print-tsfile-visdata.bat path1 seqIndicator1 path2 seqIndicator2 ... pathN seqIndicatorN outputPath
+```
+
+Linux or MacOs:
+
+```
+./print-tsfile-visdata.sh path1 seqIndicator1 path2 seqIndicator2 ... pathN seqIndicatorN outputPath
+```
+
+参数: [`path1` `seqIndicator1` `path2` `seqIndicator2` ... `pathN` `seqIndicatorN` `outputPath`]
+
+细节:
+
+-   一共2N+1个参数。
+-   `seqIndicator`：'true'或者'false' （大小写不敏感）. 'true'表示是顺序文件, 'false'表示是乱序文件。
+-   `Path`：可以是一个tsfile的全路径，也可以是一个文件夹路径。如果是文件夹路径，你需要确保这个文件夹下的所有tsfile文件的`seqIndicator`都是一样的。
+
+##### 第二步：运行vis.m
+
+`vis.m`把`TsFileExtractVisdata`生成的visdata加载进来，然后基于visdata以及两个用户绘图参数`showSpecific`和`isFileOrder`来完成作图。
+
+```matlab
+function [timeMap,countMap] = loadVisData(filePath,timestampUnit)
+% Load visdata generated by TsFileExtractDataToVisTool.
+%
+% filePath: the path of visdata.
+% The format is [tsName,fileName,chunkId,startTime,endTime,pointCountNum].
+% `tsName` and `fileName` are string, the others are long value.
+% If the tsfile is unsequence file, `fileName` will contain "unseq" as an
+% indicator, which is guaranteed by TsFileExtractDataToVisTool.
+%
+% timestampUnit(not case sensitive):
+%   'us' if the timestamp is microsecond, e.g., 1621993620816000
+%   'ms' if it is millisecond, e.g., 1621993620816
+%   's' if it is second, e.g., 1621993620
+%
+% timeMap: record the time range of every chunk.
+% Key [tsName][fileName][chunkId] identifies the only chunk. Value is
+% [startTime,endTime] of the chunk.
+%
+% countMap: record the point count number of every chunk. Key is the same
+% as that of timeMap. Value is pointCountNum.
+```
+
+```matlab
+function draw(timeMap,countMap,showSpecific,isFileOrder)
+% Plot figures given the loaded data and two plot parameters:
+% `showSpecific` and `isFileOrder`.
+%
+% process: 1) traverse `keys(timeMap)` to get the position arrangements on
+%          the y axis dynamically, which is defined simultaneously by
+%           (a)`showSpecific`: traverse `keys(timeMap)`, filter out keys
+%          that don't statisfy `showSpecific`.
+%           (b) seqKey/unseqKey display policies: extract seqKey or unseqKey
+%          from statisfied keys under different display policies:
+%               b-1) unseqKey identifies tsName and fileName, so chunk data with the
+%               same fileName and tsName but different chunkIds are
+%               plotted in the same line.
+%               b-2) seqKey identifies tsName, so chunk data with the same tsName but
+%               different fileNames and chunkIds are ploteed in the same
+%               line.
+%           (c)`isFileOrder`: sort seqKey&unseqKey according to `isFileOrder`,
+%          finally get the position arrangements on the y axis.
+%          2) traverse `keys(timeMap)` again, get startTime&endTime from
+%          `treeMap` as positions on the x axis, combined with the
+%          positions on the y axis from the last step, finish plot.
+%
+% timeMap,countMap: generated by loadVisData function.
+%
+% showSpecific: the specific set of time series to be plotted.
+%               If showSpecific is empty{}, then all loaded time series
+%               will be plotted.
+%               Note: Wildcard matching is not supported now. In other
+%               words, showSpecific only support full time series path
+%               names.
+%
+% isFileOrder: true to sort seqKeys&unseqKeys by fileName priority, false
+%              to sort seqKeys&unseqKeys by tsName priority.
+```
+
+#### 3.5.2 例子
+
+##### 例1
+
+使用由`IoTDBLargeDataIT.insertData`写出的tsfiles。
+小修改：`IoTDBLargeDataIT.insertData`最后添加一条`statement.execute("flush");`指令。
+
+第一步：运行`TsFileExtractVisdata.java`
+
+```
+.\print-tsfile-visdata.bat D:\iotdb\server\target\data\sequence true D:\iotdb\server\target\data\unsequence false D:\visdata1.csv
+```
+或者等价地：
+```
+.\print-tsfile-visdata.bat D:\iotdb\server\target\data\sequence\root.vehicle\0\0\1623390725130-1-0-0.tsfile true D:\iotdb\server\target\data\sequence\root.vehicle\0\0\1623390732328-2-0-0.tsfile true D:\iotdb\server\target\data\sequence\root.vehicle\0\0\1623390732560-3-0-0.tsfile true D:\iotdb\server\target\data\unsequence\root.vehicle\0\0\1623390732746-4-0-0.tsfile false D:\visdata1.csv
+```
+
+第二步：运行`vis.m`
+
+```matlab
+clear all;close all;
+
+% 1. load visdata generated by TsFileExtractDataToVisTool
+filePath = 'D:\visdata1.csv';
+[timeMap,countMap] = loadVisData(filePath,'ms'); % mind the timestamp unit
+
+% 2. plot figures given the loaded data and two plot parameters:
+% `showSpecific` and `isFileOrder`
+draw(timeMap,countMap,{},false)
+title("draw(timeMap,countMap,\{\},false)")
+
+draw(timeMap,countMap,{},true)
+title("draw(timeMap,countMap,\{\},true)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0'},false)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0'},false)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},false)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},false)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},true)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},true)")
+```
+
+绘图结果：
+
+![image](https://user-images.githubusercontent.com/33376433/121626687-7b7c6b00-caa8-11eb-9bca-aeb20d383442.png)
+
+![image](https://user-images.githubusercontent.com/33376433/121626705-859e6980-caa8-11eb-869e-6d5d4cef76cf.png)
+
+![image](https://user-images.githubusercontent.com/33376433/121626726-8e8f3b00-caa8-11eb-99e5-9623523ddab2.png)
+
+![image](https://user-images.githubusercontent.com/33376433/121626739-96e77600-caa8-11eb-844f-ed46f940c51f.png)
+
+![image](https://user-images.githubusercontent.com/33376433/121626753-9ea71a80-caa8-11eb-9ab3-ef257bd647d8.png)
+
