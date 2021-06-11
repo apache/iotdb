@@ -17,57 +17,36 @@
  * under the License.
  *
  */
+
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class ShowDevicesOperator extends ShowOperator {
+public class UnSetTTLOperator extends Operator {
 
-  private PartialPath path;
-  private int limit = 0;
-  private int offset = 0;
-  private boolean hasSgCol;
+  private PartialPath storageGroup;
 
-  public ShowDevicesOperator(int tokenIntType, PartialPath path) {
+  public UnSetTTLOperator(int tokenIntType) {
     super(tokenIntType);
-    this.path = path;
+    this.operatorType = OperatorType.TTL;
   }
 
-  public PartialPath getPath() {
-    return path;
+  public PartialPath getStorageGroup() {
+    return storageGroup;
   }
 
-  public int getLimit() {
-    return limit;
-  }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public int getOffset() {
-    return offset;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
-  }
-
-  public void setSgCol(boolean hasSgCol) {
-    this.hasSgCol = hasSgCol;
-  }
-
-  public boolean hasSgCol() {
-    return hasSgCol;
+  public void setStorageGroup(PartialPath storageGroup) {
+    this.storageGroup = storageGroup;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new ShowDevicesPlan(path, limit, offset, hasSgCol);
+    return new SetTTLPlan(storageGroup);
   }
 }

@@ -59,7 +59,7 @@ jobs:
           -Dbranch=$BRANCH_NAME \
           -DpullRequest=$PR_NUMBER \
           -DrepoToken=${{ secrets.COVERALL_TOKEN }} \
-          -Pcode-coverage
+          -Pcode-coverage -P '!testcontainer'
       - name: SonarCloud Report
         if: ${{ success() && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'apache/iotdb' || github.event_name == 'push')}}
         env:
@@ -71,4 +71,4 @@ jobs:
           -Dsonar.projectKey=apache_incubator-iotdb \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.login=${{ secrets.SONARCLOUD_TOKEN }} \
-          -DskipTests -pl '!distribution' -am
+          -DskipTests -pl '!distribution'  -P '!testcontainer' -am

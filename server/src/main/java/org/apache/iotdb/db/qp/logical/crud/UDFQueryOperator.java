@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
 public class UDFQueryOperator extends QueryOperator {
 
   public UDFQueryOperator() {
@@ -27,5 +32,17 @@ public class UDFQueryOperator extends QueryOperator {
 
   public UDFQueryOperator(QueryOperator queryOperator) {
     super(queryOperator);
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return super.generateRawDataQueryPlan(generator, initUDTFPlan());
+  }
+
+  private UDTFPlan initUDTFPlan() {
+    UDTFPlan udtfPlan = new UDTFPlan(selectComponent.getZoneId());
+    udtfPlan.constructUdfExecutors(selectComponent.getResultColumns());
+    return udtfPlan;
   }
 }
