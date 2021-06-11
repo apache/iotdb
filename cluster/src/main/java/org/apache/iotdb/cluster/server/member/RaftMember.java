@@ -57,6 +57,7 @@ import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -70,14 +71,8 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -960,66 +955,6 @@ public abstract class RaftMember {
     return false;
   }
 
-  void setVersionForSpecialPlan(PhysicalPlan plan, long currLogIndex) throws MetadataException {
-    switch (plan.getOperatorType()) {
-      case SET_STORAGE_GROUP:
-        plan.setMajorVersion(currLogIndex);
-        plan.setMinorVersion(0);
-        break;
-      case DELETE_STORAGE_GROUP:
-        List<PartialPath> deletePathList = new ArrayList<>();
-        for (PartialPath storageGroupPath : plan.getPaths()) {
-          List<PartialPath> allRelatedStorageGroupPath =
-              IoTDB.metaManager.getStorageGroupPaths(storageGroupPath);
-          if (allRelatedStorageGroupPath.isEmpty()) {
-            throw new PathNotExistException(storageGroupPath.getFullPath(), true);
-          }
-          for (PartialPath path : allRelatedStorageGroupPath) {
-            StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-            path.setMajorVersion(storageGroupMNode.getMajorVersion());
-            path.setMinorVersion(storageGroupMNode.getMinorVersion());
-          }
-        }
-        // replace the to be deleted paths
-        plan.setPaths(deletePathList);
-        break;
-      case CREATE_TIMESERIES:
-        PartialPath partialPath = ((CreateTimeSeriesPlan) plan).getPath();
-        StorageGroupMNode storageGroupMNode =
-            IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((CreateTimeSeriesPlan) plan)
-            .getPath()
-            .setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((CreateTimeSeriesPlan) plan).getPath().setMinorVersion(currLogIndex);
-        break;
-      case ALTER_TIMESERIES:
-        partialPath = ((AlterTimeSeriesPlan) plan).getPath();
-        storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((AlterTimeSeriesPlan) plan).getPath().setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((AlterTimeSeriesPlan) plan).getPath().setMinorVersion(currLogIndex);
-        break;
-      case CREATE_ALIGNED_TIMESERIES:
-        partialPath = ((CreateAlignedTimeSeriesPlan) plan).getDevicePath();
-        storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((CreateAlignedTimeSeriesPlan) plan)
-            .getDevicePath()
-            .setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((CreateAlignedTimeSeriesPlan) plan).getDevicePath().setMinorVersion(currLogIndex);
-        break;
-      case CREATE_MULTI_TIMESERIES:
-      case DELETE_TIMESERIES:
-        List<PartialPath> partialPaths = plan.getPaths();
-        for (PartialPath path : partialPaths) {
-          storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-          path.setMajorVersion(storageGroupMNode.getMajorVersion());
-          path.setMinorVersion(currLogIndex);
-        }
-        break;
-      default:
-        // do nothing
-    }
-  }
-
   /**
    * Create a log for "plan" and append it locally and to all followers. Only the group leader can
    * call this method. Will commit the log locally and send it to followers
@@ -1047,7 +982,7 @@ public abstract class RaftMember {
 
       // Set version for some special plans
       try {
-        setVersionForSpecialPlan(plan, log.getCurrLogIndex());
+        ClusterUtils.setVersionForSpecialPlan(plan, log.getCurrLogIndex());
       } catch (MetadataException e) {
         logger.error("process plan failed, plan={}", plan, e);
         return StatusUtils.INTERNAL_ERROR;

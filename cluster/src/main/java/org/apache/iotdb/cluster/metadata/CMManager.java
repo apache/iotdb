@@ -1861,7 +1861,7 @@ public class CMManager extends MManager {
 
   @Override
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
-    PartialPath path = plan.getDevicePath();
+    PartialPath path = plan.getPrefixPath();
     if (checkSgNodeAndPlanMajorVersion(path)) {
       super.createAlignedTimeSeries(plan);
     }

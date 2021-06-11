@@ -69,8 +69,8 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
     this.compressor = compressor;
     this.aliasList = aliasList;
     this.canBeSplit = false;
-    this.majorVersion = devicePath.getMajorVersion();
-    this.minorVersion = devicePath.getMinorVersion();
+    this.majorVersion = prefixPath.getMajorVersion();
+    this.minorVersion = prefixPath.getMinorVersion();
   }
 
   public PartialPath getPrefixPath() {
@@ -264,11 +264,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public int hashCode() {
-<<<<<<< HEAD
     return Objects.hash(
-        devicePath, measurements, dataTypes, encodings, compressor, majorVersion, minorVersion);
-=======
-    return Objects.hash(prefixPath, measurements, dataTypes, encodings, compressor);
->>>>>>> apache_master
+        prefixPath, measurements, dataTypes, encodings, compressor, majorVersion, minorVersion);
   }
 }

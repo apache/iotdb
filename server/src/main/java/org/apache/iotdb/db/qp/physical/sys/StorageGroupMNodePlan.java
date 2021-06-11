@@ -44,17 +44,11 @@ public class StorageGroupMNodePlan extends MNodePlan {
   }
 
   public StorageGroupMNodePlan(
-      String name,
-      long dataTTL,
-      int childSize,
-      int alignedTimeseriesIndex,
-      long majorVersion,
-      long minorVersion) {
+      String name, long dataTTL, int childSize, long majorVersion, long minorVersion) {
     super(false, Operator.OperatorType.STORAGE_GROUP_MNODE);
     this.name = name;
     this.dataTTL = dataTTL;
     this.childSize = childSize;
-    this.alignedTimeseriesIndex = alignedTimeseriesIndex;
     this.majorVersion = majorVersion;
     this.minorVersion = minorVersion;
   }
