@@ -48,7 +48,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -318,6 +321,49 @@ public class MergeMultiChunkTask {
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.updateStartTime(deviceId, currDeviceMinTime);
+    } else {
+      copyFile(
+          new File(currTsFile.getTsFilePath() + "_" + System.currentTimeMillis()),
+          currTsFile.getTsFile());
+    }
+  }
+
+  public static void copyFile(File toFile, File fromFile) { // 复制文件
+    if (toFile.exists()) { // 判断目标目录中文件是否存在
+      System.out.println("文件" + toFile.getAbsolutePath() + "已经存在，跳过该文件！");
+      return;
+    } else {
+      createFile(toFile, true); // 创建文件
+    }
+    try {
+      InputStream is = new FileInputStream(fromFile); // 创建文件输入流
+      FileOutputStream fos = new FileOutputStream(toFile); // 文件输出流
+      byte[] buffer = new byte[1024]; // 字节数组
+      while (is.read(buffer) != -1) { // 将文件内容写到文件中
+        fos.write(buffer);
+      }
+      is.close(); // 输入流关闭
+      fos.close(); // 输出流关闭
+    } catch (IOException e) { // 捕获文件不存在异常
+      e.printStackTrace();
+    } // 捕获异常
+  }
+
+  public static void createFile(File file, boolean isFile) { // 创建文件
+    if (!file.exists()) { // 如果文件不存在
+      if (!file.getParentFile().exists()) { // 如果文件父目录不存在
+        createFile(file.getParentFile(), false);
+      } else { // 存在文件父目录
+        if (isFile) { // 创建文件
+          try {
+            file.createNewFile(); // 创建新文件
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        } else {
+          file.mkdir(); // 创建目录
+        }
+      }
     }
   }
 
