@@ -518,7 +518,7 @@ public class IoTDBConfig {
   private long defaultTTL = Long.MAX_VALUE;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 128;
+  private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
