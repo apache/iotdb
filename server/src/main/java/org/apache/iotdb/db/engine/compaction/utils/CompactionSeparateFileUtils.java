@@ -19,6 +19,20 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.createNewTsFileNameByOffset;
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+
+import com.google.common.util.concurrent.RateLimiter;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -36,24 +50,8 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.createNewTsFileNameByOffset;
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
 public class CompactionSeparateFileUtils {
 
@@ -157,8 +155,12 @@ public class CompactionSeparateFileUtils {
         long currentWrittenPointNum = 0;
         for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
           writeTVPair(timeValuePair, chunkWriter);
-          targetResource.updateStartTime(device, timeValuePair.getTimestamp());
-          targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+          returnTsFileResources
+              .get(returnTsFileResources.size() - 1)
+              .updateStartTime(device, timeValuePair.getTimestamp());
+          returnTsFileResources
+              .get(returnTsFileResources.size() - 1)
+              .updateEndTime(device, timeValuePair.getTimestamp());
 
           currentWrittenPointNum++;
           if (currentWrittenPointNum >= AVG_UNSEQ_SERIES_POINT_NUMBER) {
