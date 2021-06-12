@@ -22,12 +22,11 @@ package org.apache.iotdb.db.engine.compaction.level;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionSeparateFileUtils;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -55,7 +54,6 @@ import java.util.TreeSet;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
@@ -148,7 +146,9 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
       TimeSeriesMetadataCache.getInstance().clear();
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      seqFile.delete();
+      seqFile
+          .getTsFile()
+          .renameTo(new File(seqFile.getTsFilePath() + "_" + System.currentTimeMillis()));
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
     } finally {
@@ -537,54 +537,44 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
                 writeUnlock();
               }
             } else {
-              String taskName = storageGroupName + "-" + System.currentTimeMillis();
-              // do not cache metadata until true candidates are chosen, or too much metadata will
-              // be
-              // cached during selection
-              mergeResource.setCacheDeviceMeta(true);
-
-              for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-                tsFileResource.setMerging(true);
-              }
-              for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-                tsFileResource.setMerging(true);
-              }
-
-              isUnseqMerging = true;
-              MergeTask mergeTask =
-                  new MergeTask(
-                      mergeResource,
-                      storageGroupDir,
-                      this::mergeEndAction,
-                      taskName,
-                      IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-                      fileSelector.getConcurrentMergeNum(),
-                      storageGroupName);
-              mergingModification =
-                  new ModificationFile(
-                      storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-              mergeTask.call();
-              if (logger.isInfoEnabled()) {
-                logger.info(
-                    "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-                    storageGroupName,
-                    taskName,
-                    mergeFiles[0].size(),
-                    mergeFiles[1].size());
-              }
-              // wait until seq merge has finished
-              while (isUnseqMerging) {
-                try {
-                  synchronized (this) {
-                    wait(200);
-                  }
-                } catch (InterruptedException e) {
-                  logger.error("{} [Compaction] shutdown", storageGroupName, e);
-                  Thread.currentThread().interrupt();
-                  return false;
+              List<TsFileResource> seqResources = mergeResource.getSeqFiles();
+              List<TsFileResource> unseqResources = mergeResource.getUnseqFiles();
+              List<TsFileResource> sourceResources = new ArrayList<>(seqResources);
+              sourceResources.addAll(unseqResources);
+              File newLevelFile =
+                  TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
+              TsFileResource newResource = new TsFileResource(newLevelFile);
+              List<TsFileResource> targetTsFileResources =
+                  CompactionSeparateFileUtils.mergeWithFileSeparate(
+                      newResource, sourceResources, storageGroupName);
+              logger.info(
+                  "{} [Compaction] merged level-{}'s {} TsFiles to next level's {} TsFiles, and start to delete old files",
+                  storageGroupName,
+                  i,
+                  unseqResources.size(),
+                  targetTsFileResources.size());
+              writeLock();
+              try {
+                if (Thread.currentThread().isInterrupted()) {
+                  throw new InterruptedException(
+                      String.format("%s [Compaction] abort", storageGroupName));
                 }
+                unSequenceTsFileResources
+                    .get(timePartition)
+                    .get(i + 1)
+                    .addAll(targetTsFileResources);
+                deleteLevelFilesInList(timePartition, unSeqMergeList, i, false);
+                deleteLevelFilesInList(timePartition, seqResources, i + 1, false);
+                if (mergeResources.size() > i + 1) {
+                  mergeResources.get(i + 1).removeAll(seqResources);
+                  mergeResources.get(i + 1).addAll(targetTsFileResources);
+                }
+              } catch (InterruptedException interruptedException) {
+                interruptedException.printStackTrace();
+              } finally {
+                writeUnlock();
               }
-              System.out.println(CompactionMergeTaskPoolManager.totalWriteCount);
+              deleteLevelFilesInDisk(sourceResources);
             }
             // avoid pending tasks holds the metadata and streams
             mergeResource.clear();
