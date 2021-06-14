@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -49,6 +50,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1788,6 +1790,108 @@ public class Session {
         getTSCreateSchemaTemplateReq(
             name, schemaNames, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
+  }
+
+  public void createSchemaTemplate(String templateName, List<IMeasurementSchema> measurementSchemas)
+          throws IoTDBConnectionException, StatementExecutionException{
+    List<String> schemaNames = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> dataTypes = new ArrayList<>();
+    List<List<TSEncoding>> encodings = new ArrayList<>();
+
+    List<CompressionType> compressors = new ArrayList<>();
+    for (IMeasurementSchema measurementSchema : measurementSchemas) {
+      List<String> measurement = new ArrayList<>();
+      List<TSDataType> dataType = new ArrayList<>();
+      List<TSEncoding> encoding = new ArrayList<>();
+
+      schemaNames.add(measurementSchema.toString());
+
+      measurement.add(measurementSchema.getMeasurementId());
+      measurements.add(measurement);
+      dataType.add(measurementSchema.getType());
+      dataTypes.add(dataType);
+      encoding.add(measurementSchema.getEncodingType());
+      encodings.add(encoding);
+
+      compressors.add(measurementSchema.getCompressor());
+    }
+
+    TSCreateSchemaTemplateReq request =
+            getTSCreateSchemaTemplateReq(
+                    templateName,
+                    schemaNames,
+                    measurements,
+                    dataTypes,
+                    encodings,
+                    compressors
+            );
+    defaultSessionConnection.createSchemaTemplate(request);
+  }
+
+  public void createMeasurementSchemaTemplate(
+          String name,
+          String path,
+          TSDataType dataType,
+          TSEncoding encoding,
+          CompressionType compressor)
+          throws IoTDBConnectionException, StatementExecutionException {
+    List<String> schemaNames = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> dataTypes = new ArrayList<>();
+    List<List<TSEncoding>> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
+
+    schemaNames.add(name);
+    List<String> measurement = new ArrayList<>();
+    measurement.add(path);
+    measurements.add(measurement);
+    List<TSDataType> dataTypeList = new ArrayList<>();
+    dataTypeList.add(dataType);
+    dataTypes.add(dataTypeList);
+    List<TSEncoding> encodingList = new ArrayList<>();
+    encodingList.add(encoding);
+    encodings.add(encodingList);
+    compressors.add(compressor);
+
+
+    TSCreateSchemaTemplateReq request =
+            getTSCreateSchemaTemplateReq(
+                    name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
+  }
+
+  public void createVectorSchemaTemplate(
+          String name,
+          String prefixPath,
+          List<String> measurementNames,
+          List<TSDataType> dataTypeList,
+          List<TSEncoding> encodingList,
+          CompressionType compressor
+  )throws IoTDBConnectionException, StatementExecutionException{
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add(prefixPath);
+
+    List<List<String>> measurements = new ArrayList<>();
+    List<String> vectorMeasurements = new ArrayList<>();
+    for (String measurement : measurementNames) {
+      vectorMeasurements.add(prefixPath + measurement);
+    }
+    measurements.add(vectorMeasurements);
+
+    List<List<TSDataType>> dataTypes = new ArrayList<>();
+    List<List<TSEncoding>> encodings = new ArrayList<>();
+    dataTypes.add(dataTypeList);
+    encodings.add(encodingList);
+
+    List<CompressionType> compressors = new ArrayList<>();
+    compressors.add(compressor);
+
+    TSCreateSchemaTemplateReq request =
+            getTSCreateSchemaTemplateReq(
+                    name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
+
   }
 
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
