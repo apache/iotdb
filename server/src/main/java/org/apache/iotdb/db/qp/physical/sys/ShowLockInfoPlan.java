@@ -16,30 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.db.query.expression;
-
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 
-import java.util.List;
-import java.util.Set;
+public class ShowLockInfoPlan extends ShowPlan {
 
-public interface Expression {
+  private final PartialPath path;
 
-  default boolean isAggregationFunctionExpression() {
-    return false;
+  public ShowLockInfoPlan(ShowContentType showContentType, PartialPath path) {
+    super(showContentType);
+    this.path = path;
   }
 
-  default boolean isTimeSeriesGeneratingFunctionExpression() {
-    return false;
+  @Override
+  public PartialPath getPath() {
+    return this.path;
   }
-
-  void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
-
-  void removeWildcards(WildcardsRemover wildcardsRemover, List<Expression> resultExpressions)
-      throws LogicalOptimizeException;
-
-  void collectPaths(Set<PartialPath> pathSet);
 }
