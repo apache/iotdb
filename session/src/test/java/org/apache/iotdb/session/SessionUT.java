@@ -252,7 +252,7 @@ public class SessionUT {
     session.setSchemaTemplate("template1", "root.sg.1");
 
     MeasurementSchema testMeasurementSchema =
-            new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
+        new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
     session.createSchemaTemplate("template3", Collections.singletonList(testMeasurementSchema));
   }
 }
