@@ -149,7 +149,7 @@ i64 requestStatementId(1:i64 sessionId);
 ```
 
 ### IDL定义文件位置
-IDL定义文件的路径是thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义、
+IDL定义文件的路径是thrift/src/main/thrift/rpc.thrift，其中包括了结构体定义与函数定义
 
 ### 生成文件位置
 在mvn编译过程中，会调用thrift编译IDL文件，生成最终的.class文件
