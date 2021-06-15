@@ -30,13 +30,13 @@
     <artifactId>iotdb-python-api</artifactId>
     <name>python-api</name>
     <description>Python API of IoTDB.</description>
-    <!--    <dependencies>-->
-    <!--        <dependency>-->
-    <!--            <groupId>org.apache.iotdb</groupId>-->
-    <!--            <artifactId>iotdb-thrift</artifactId>-->
-    <!--            <version>${project.version}</version>-->
-    <!--        </dependency>-->
-    <!--    </dependencies>-->
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>
