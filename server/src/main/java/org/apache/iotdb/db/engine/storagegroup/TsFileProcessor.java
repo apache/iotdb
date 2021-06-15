@@ -84,28 +84,43 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
 
+  /** logger fot this class */
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
 
+  /** storgae group name of this tsfile */
   private final String storageGroupName;
 
+  /** IoTDB config */
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  /** whether it's enable mem control */
   private final boolean enableMemControl = config.isEnableMemControl();
+
+  /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo;
+  /** tsfile processor info for mem control */
   private TsFileProcessorInfo tsFileProcessorInfo;
 
   /** sync this object in query() and asyncTryToFlush() */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
 
+  /** modification to memtable mapping */
   private List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+
+  /** writer for restore tsfile and flushing */
   private RestorableTsFileIOWriter writer;
+
+  /** tsfile resource for index this tsfile */
   private final TsFileResource tsFileResource;
-  // time range index to indicate this processor belongs to which time range
+
+  /** time range index to indicate this processor belongs to which time range */
   private long timeRangeId;
   /**
    * Whether the processor is in the queue of the FlushManager or being flushed by a flush thread.
    */
   private volatile boolean managedByFlushManager;
 
+  /** a lock to mutual exclude query and query */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
   /**
    * It is set by the StorageGroupProcessor and checked by flush threads. (If shouldClose == true
@@ -113,20 +128,29 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
 
+  /** working memtable */
   private IMemTable workMemTable;
 
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
+  /** Wal log node */
   private WriteLogNode logNode;
+
+  /** whether it's a sequence file or not */
   private final boolean sequence;
+
+  /** total memtable size for mem control */
   private long totalMemTableSize;
 
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE =
       "{}: {} get flushQueryLock write lock released";
 
+  /** close file listener */
   private List<CloseFileListener> closeFileListeners = new ArrayList<>();
+
+  /** flush file listener */
   private List<FlushListener> flushListeners = new ArrayList<>();
 
   @SuppressWarnings("squid:S107")
@@ -591,6 +615,7 @@ public class TsFileProcessor {
     logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
 
+  /** async close one tsfile, register and close it by another thread */
   void asyncClose() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
@@ -1015,6 +1040,7 @@ public class TsFileProcessor {
     }
   }
 
+  /** end file and write some meta */
   private void endFile() throws IOException, TsFileProcessorException {
     logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
@@ -1054,6 +1080,11 @@ public class TsFileProcessor {
     this.managedByFlushManager = managedByFlushManager;
   }
 
+  /**
+   * get WAL log node
+   *
+   * @return WAL log node
+   */
   public WriteLogNode getLogNode() {
     if (logNode == null) {
       logNode =
@@ -1065,6 +1096,7 @@ public class TsFileProcessor {
     return logNode;
   }
 
+  /** close this tsfile */
   public void close() throws TsFileProcessorException {
     try {
       // when closing resource file, its corresponding mod file is also closed.
@@ -1090,6 +1122,7 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
+  /** get modifications from a memtable */
   private List<Modification> getModificationsForMemtable(IMemTable memTable) {
     List<Modification> modifications = new ArrayList<>();
     boolean foundMemtable = false;
@@ -1102,6 +1135,14 @@ public class TsFileProcessor {
     return modifications;
   }
 
+  /**
+   * construct a deletion list from a memtable
+   *
+   * @param memTable memtable
+   * @param deviceId device id
+   * @param measurement measurement name
+   * @param timeLowerBound time water mark
+   */
   private List<TimeRange> constructDeletionList(
       IMemTable memTable, String deviceId, String measurement, long timeLowerBound)
       throws MetadataException {
@@ -1234,6 +1275,7 @@ public class TsFileProcessor {
     this.timeRangeId = timeRangeId;
   }
 
+  /** release resource of a memtable */
   public void putMemTableBackAndClose() throws TsFileProcessorException {
     if (workMemTable != null) {
       workMemTable.release();

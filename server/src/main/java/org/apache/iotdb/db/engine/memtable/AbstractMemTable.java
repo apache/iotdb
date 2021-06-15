@@ -95,6 +95,13 @@ public abstract class AbstractMemTable implements IMemTable {
     return memTableMap.containsKey(deviceId) && memTableMap.get(deviceId).containsKey(measurement);
   }
 
+  /**
+   * create this memtable if it's not exist
+   *
+   * @param deviceId device id
+   * @param schema measurement schema
+   * @return this memtable
+   */
   private IWritableMemChunk createIfNotExistAndGet(String deviceId, IMeasurementSchema schema) {
     Map<String, IWritableMemChunk> memSeries =
         memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());

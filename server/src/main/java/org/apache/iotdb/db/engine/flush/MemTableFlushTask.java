@@ -46,6 +46,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 
+/**
+ * flush task to flush one memtable using a pipeline model to flush, which is sort memtable ->
+ * encoding -> write to disk (io task)
+ */
 public class MemTableFlushTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemTableFlushTask.class);
@@ -115,6 +119,9 @@ public class MemTableFlushTask {
         long startTime = System.currentTimeMillis();
         IWritableMemChunk series = iWritableMemChunkEntry.getValue();
         IMeasurementSchema desc = series.getSchema();
+        /*
+         * sort task (first task of flush pipeline)
+         */
         TVList tvList = series.getSortedTvListForFlush();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.put(new Pair<>(tvList, desc));
@@ -158,6 +165,7 @@ public class MemTableFlushTask {
         System.currentTimeMillis() - start);
   }
 
+  /** encoding task (second task of pipeline) */
   private Runnable encodingTask =
       new Runnable() {
         private void writeOneSeries(
@@ -343,6 +351,7 @@ public class MemTableFlushTask {
         }
       };
 
+  /** io task (third task of pipeline) */
   @SuppressWarnings("squid:S135")
   private Runnable ioTask =
       () -> {
