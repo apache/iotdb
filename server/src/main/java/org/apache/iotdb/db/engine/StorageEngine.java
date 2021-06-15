@@ -742,6 +742,19 @@ public class StorageEngine implements IService {
     }
   }
 
+  public void mergeSpecified(PartialPath storageGroupPath, boolean isFullMerge)
+      throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+
+    if (!processorMap.containsKey(storageGroupPath)) {
+      return;
+    }
+    VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
+    virtualStorageGroupManager.mergeAll(isFullMerge);
+  }
+
   /**
    * delete all data files (both memory data and file on disk) in a storage group. It is used when
    * there is no timeseries (which are all deleted) in this storage group)

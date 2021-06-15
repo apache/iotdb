@@ -409,10 +409,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
-    if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
-      StorageEngine.getInstance().mergeAll(true);
+    boolean isFullMerge = (plan.getOperatorType() == OperatorType.FULL_MERGE) ? true : false;
+
+    if (plan.getPaths().isEmpty()) {
+      StorageEngine.getInstance().mergeAll(isFullMerge);
     } else {
-      StorageEngine.getInstance().mergeAll(false);
+      mergeSpecifiedStorageGroups(plan, isFullMerge);
     }
   }
 
@@ -504,6 +506,16 @@ public class PlanExecutor implements IPlanExecutor {
               .closeStorageGroupProcessor(storageGroupName, pair.left, pair.right, true);
         }
       }
+    }
+  }
+
+  public static void mergeSpecifiedStorageGroups(MergePlan plan, boolean isFullMerge)
+      throws StorageEngineException {
+    Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupMap =
+        plan.getStorageGroupPartitionIds();
+    for (Entry<PartialPath, List<Pair<Long, Boolean>>> entry : storageGroupMap.entrySet()) {
+      PartialPath storageGroupName = entry.getKey();
+      StorageEngine.getInstance().mergeSpecified(storageGroupName, isFullMerge);
     }
   }
 

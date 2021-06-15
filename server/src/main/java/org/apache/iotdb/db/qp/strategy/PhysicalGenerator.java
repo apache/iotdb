@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
+import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
@@ -267,10 +268,11 @@ public class PhysicalGenerator {
         }
         return insertRowsPlan;
       case MERGE:
+        MergeOperator mergeOperator = (MergeOperator) operator;
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
-          return new MergePlan(OperatorType.FULL_MERGE);
+          return new MergePlan(mergeOperator.getStorageGroupList(), OperatorType.FULL_MERGE);
         } else {
-          return new MergePlan();
+          return new MergePlan(mergeOperator.getStorageGroupList());
         }
       case FLUSH:
         FlushOperator flushOperator = (FlushOperator) operator;
