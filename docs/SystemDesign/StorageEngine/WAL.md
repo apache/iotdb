@@ -21,7 +21,7 @@
 
 # WAL
 
-## Work Process
+## Working Process
 * WAL overall recording principle
   * For each Memtable, a corresponding WAL file will be recorded. When the Memtable is flushed, the WAL will be deleted.
 * WAL record details
@@ -35,7 +35,7 @@
 
 ## Test Result
 
-* When running forceTask, The entire process is mainly blocked by org.apache.iotdb.db.writelog.io.LogWriter.force()
+* The main time spent on forceTask is focused on. org.apache.iotdb.db.writelog.io.LogWriter.force()
 * Test forceTask on SSD and HDD respectively
   * In SSD, the speed is 75MB/s
   * In HDD, the speed is 5MB/s

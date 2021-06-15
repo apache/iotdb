@@ -76,13 +76,6 @@ Total line number = 4
 It costs 0.170s
 ```
 
-As for **aligned** timeseries，we could insert values into measurements by **explicit** declaration with parentheses. Empty values could be represented by `NULL` or `null`:
-
-```
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,(1.0,2),(null,4))
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
-```
-
 ## SELECT
 
 ### Time Slice Query
@@ -1510,7 +1503,6 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 ```
 Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
 ```
-
 
 ## DELETE
 

@@ -73,7 +73,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -179,12 +178,14 @@ public class StorageGroupProcessor {
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
+  /** sequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
 
   // upgrading unsequence TsFile resource list
   private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
 
+  /** unsequence tsfile processors which are closing */
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor =
       new CopyOnReadLinkedList<>();
 
@@ -216,10 +217,16 @@ public class StorageGroupProcessor {
    */
   private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
 
+  /** virtual storage group id */
   private String virtualStorageGroupId;
+
+  /** logical storage group name */
   private String logicalStorageGroupName;
+
+  /** storage group system directory */
   private File storageGroupSysDir;
-  // manage seqFileList and unSeqFileList
+
+  /** manage seqFileList and unSeqFileList */
   private TsFileManagement tsFileManagement;
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
@@ -233,8 +240,12 @@ public class StorageGroupProcessor {
    */
   private long dataTTL = Long.MAX_VALUE;
 
+  /** file system factory (local or hdfs) */
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  /** file flush policy */
   private TsFileFlushPolicy fileFlushPolicy;
+
   /**
    * The max file versions in each partition. By recording this, if several IoTDB instances have the
    * same policy of closing file and their ingestion is identical, then files of the same version in
@@ -243,6 +254,7 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  /** storage group info for mem control */
   private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
   /**
    * Record the device number of the last TsFile in each storage group, which is applied to
@@ -251,8 +263,13 @@ public class StorageGroupProcessor {
    */
   private int deviceNumInLastClosedTsFile = DeviceTimeIndex.INIT_ARRAY_SIZE;
 
+  /** whether it's ready from recovery */
   private boolean isReady = false;
+
+  /** close file listeners */
   private List<CloseFileListener> customCloseFileListeners = Collections.emptyList();
+
+  /** flush listeners */
   private List<FlushListener> customFlushListeners = Collections.emptyList();
 
   private static final int WAL_BUFFER_SIZE =
@@ -272,6 +289,10 @@ public class StorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
+  /**
+   * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
+   * one holds the insertWriteLock
+   */
   private String insertWriteLockHolder = "";
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
@@ -415,6 +436,7 @@ public class StorageGroupProcessor {
     return ret;
   }
 
+  /** recover from file */
   private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", logicalStorageGroupName + "-" + virtualStorageGroupId);
 
@@ -794,6 +816,11 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * insert one row of data
+   *
+   * @param insertRowPlan one row of data
+   */
   public void insert(InsertRowPlan insertRowPlan)
       throws WriteProcessException, TriggerExecutionException {
     // reject insertions that are out of ttl
@@ -812,7 +839,7 @@ public class StorageGroupProcessor {
           insertRowPlan.getTime()
               > partitionLatestFlushedTimeForEachDevice
                   .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                  .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -884,7 +911,8 @@ public class StorageGroupProcessor {
       long lastFlushTime =
           partitionLatestFlushedTimeForEachDevice
               .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-              .computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+              .computeIfAbsent(
+                  insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -907,7 +935,7 @@ public class StorageGroupProcessor {
               partitionLatestFlushedTimeForEachDevice
                   .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
                   .computeIfAbsent(
-                      insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+                      insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -939,7 +967,7 @@ public class StorageGroupProcessor {
       }
       long globalLatestFlushedTime =
           globalLatestFlushedTimeForEachDevice.getOrDefault(
-              insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+              insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -1008,11 +1036,12 @@ public class StorageGroupProcessor {
     if (sequence
         && latestTimeForEachDevice
                 .get(timePartitionId)
-                .getOrDefault(insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
+                .getOrDefault(insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
             < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          .put(
+              insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -1030,7 +1059,7 @@ public class StorageGroupProcessor {
     int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       // Don't update cached last value for vector type
-      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      if (mNodes[i] != null && plan.isAligned()) {
         columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
       } else {
         if (plan.getColumns()[i] == null) {
@@ -1046,7 +1075,7 @@ public class StorageGroupProcessor {
         } else {
           // measurementMNodes[i] is null, use the path to update remote cache
           IoTDB.metaManager.updateLastCache(
-              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
               plan.composeLastTimeValuePair(columnIndex),
               true,
               latestFlushedTime,
@@ -1070,16 +1099,16 @@ public class StorageGroupProcessor {
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice
             .get(timePartitionId)
-            .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
+            .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
         < insertRowPlan.getTime()) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+          .put(insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
     }
 
     long globalLatestFlushTime =
         globalLatestFlushedTimeForEachDevice.getOrDefault(
-            insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+            insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1095,24 +1124,22 @@ public class StorageGroupProcessor {
     }
     MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (int i = 0; i < mNodes.length; i++) {
+    for (MeasurementMNode mNode : mNodes) {
       // Don't update cached last value for vector type
-      if (mNodes[i] != null && mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
-        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
-      } else {
+      if (!plan.isAligned()) {
         if (plan.getValues()[columnIndex] == null) {
           columnIndex++;
           continue;
         }
         // Update cached last value with high priority
-        if (mNodes[i] != null) {
+        if (mNode != null) {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
+              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNode);
         } else {
           IoTDB.metaManager.updateLastCache(
-              plan.getDeviceId().concatNode(plan.getMeasurements()[columnIndex]),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
               plan.composeTimeValuePair(columnIndex),
               true,
               latestFlushedTime,
@@ -1123,6 +1150,11 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * mem control module use this method to flush memtable
+   *
+   * @param tsFileProcessor tsfile processor in which memtable to be flushed
+   */
   public void submitAFlushTaskWhenShouldFlush(TsFileProcessor tsFileProcessor) {
     writeLock("submitAFlushTaskWhenShouldFlush");
     try {
@@ -1273,6 +1305,12 @@ public class StorageGroupProcessor {
     return TsFileResource.getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
+  /**
+   * close one tsfile processor
+   *
+   * @param sequence whether this tsfile processor is sequence or not
+   * @param tsFileProcessor tsfile processor
+   */
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     synchronized (closeStorageGroupCondition) {
       try {
@@ -1299,7 +1337,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  /** thread-safety should be ensured by caller */
+  /**
+   * close one tsfile processor, thread-safety should be ensured by caller
+   *
+   * @param sequence whether this tsfile processor is sequence or not
+   * @param tsFileProcessor tsfile processor
+   */
   public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     // for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
@@ -1338,7 +1381,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  /** delete the storageGroup's own folder in folder data/system/storage_groups */
+  /**
+   * delete the storageGroup's own folder in folder data/system/storage_groups
+   *
+   * @param systemDir system dir
+   */
   public void deleteFolder(String systemDir) {
     logger.info(
         "{} will close all files for deleting data folder {}",
@@ -1357,6 +1404,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** close all tsfile resource */
   public void closeAllResources() {
     for (TsFileResource tsFileResource : tsFileManagement.getTsFileList(false)) {
       try {
@@ -1374,6 +1422,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** release wal buffer */
   public void releaseWalDirectByteBufferPool() {
     synchronized (walByteBufferPool) {
       while (!walByteBufferPool.isEmpty()) {
@@ -1383,6 +1432,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** delete tsfile */
   public void syncDeleteDataFiles() {
     logger.info(
         "{} will close all files for deleting data files",
@@ -1523,6 +1573,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** close all working tsfile processors */
   public void asyncCloseAllWorkingTsFileProcessors() {
     writeLock("asyncCloseAllWorkingTsFileProcessors");
     try {
@@ -1544,6 +1595,7 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** force close all working tsfile processors */
   public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
     writeLock("forceCloseAllWorkingTsFileProcessors");
     try {
@@ -1566,6 +1618,14 @@ public class StorageGroupProcessor {
   }
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
+  /**
+   * build query data source by searching all tsfile which fit in query filter
+   *
+   * @param fullPath data path
+   * @param context query context
+   * @param timeFilter time filter
+   * @return query data source
+   */
   public QueryDataSource query(
       PartialPath fullPath,
       QueryContext context,
@@ -1606,19 +1666,27 @@ public class StorageGroupProcessor {
     }
   }
 
+  /** lock the read lock of the insert lock */
   public void readLock() {
+    // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
+    // apply read lock for TsFileResource list
+    tsFileManagement.readLock();
   }
 
+  /** unlock the read lock of insert lock */
   public void readUnlock() {
+    tsFileManagement.readUnLock();
     insertLock.readLock().unlock();
   }
 
+  /** lock the write lock of the insert lock */
   public void writeLock(String holder) {
     insertLock.writeLock().lock();
     insertWriteLockHolder = holder;
   }
 
+  /** unlock the write lock of the insert lock */
   public void writeUnlock() {
     insertWriteLockHolder = "";
     insertLock.writeLock().unlock();
@@ -2026,6 +2094,7 @@ public class StorageGroupProcessor {
     return upgradeFileCount.get();
   }
 
+  /** upgrade all files belongs to this storage group */
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.setSeq(true);
@@ -2114,6 +2183,11 @@ public class StorageGroupProcessor {
     resources.clear();
   }
 
+  /**
+   * merge file under this storage group processor
+   *
+   * @param isFullMerge whether this merge is a full merge or not
+   */
   public void merge(boolean isFullMerge) {
     writeLock("merge");
     try {
@@ -2697,6 +2771,11 @@ public class StorageGroupProcessor {
     return true;
   }
 
+  /**
+   * get all working sequence tsfile processors
+   *
+   * @return all working sequence tsfile processors
+   */
   public Collection<TsFileProcessor> getWorkSequenceTsFileProcessors() {
     return workSequenceTsFileProcessors.values();
   }
@@ -2754,6 +2833,11 @@ public class StorageGroupProcessor {
     return true;
   }
 
+  /**
+   * get all working unsequence tsfile processors
+   *
+   * @return all working unsequence tsfile processors
+   */
   public Collection<TsFileProcessor> getWorkUnsequenceTsFileProcessors() {
     return workUnsequenceTsFileProcessors.values();
   }
@@ -2898,6 +2982,11 @@ public class StorageGroupProcessor {
     return tsFileManagement;
   }
 
+  /**
+   * insert batch of rows belongs to one device
+   *
+   * @param insertRowsOfOneDevicePlan batch of rows belongs to one device
+   */
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws WriteProcessException, TriggerExecutionException {
     writeLock("InsertRowsOfOneDevice");
@@ -2925,7 +3014,7 @@ public class StorageGroupProcessor {
               plan.getTime()
                   > partitionLatestFlushedTimeForEachDevice
                       .get(timePartitionId)
-                      .getOrDefault(plan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                      .getOrDefault(plan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence

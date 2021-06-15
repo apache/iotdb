@@ -24,8 +24,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateDeviceTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -36,7 +36,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.service.rpc.thrift.TSSetDeviceTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -59,6 +59,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -378,7 +379,7 @@ public class Session {
   }
 
   public void createAlignedTimeseries(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -387,19 +388,19 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
         getTSCreateAlignedTimeseriesReq(
-            devicePath, measurements, dataTypes, encodings, compressor, measurementAliasList);
+            prefixPath, measurements, dataTypes, encodings, compressor, measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
 
   private TSCreateAlignedTimeseriesReq getTSCreateAlignedTimeseriesReq(
-      String devicePath,
+      String prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
       CompressionType compressor,
       List<String> measurementAliasList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
-    request.setDevicePath(devicePath);
+    request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
@@ -639,11 +640,23 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      boolean isAligned,
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request =
-        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values));
+        genTSInsertRecordReq(deviceId, time, measurements, types, Arrays.asList(values), isAligned);
     insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException {
+    // not vector by default
+    insertRecord(deviceId, time, measurements, types, false, values);
   }
 
   private void insertRecord(String deviceId, TSInsertRecordReq request)
@@ -670,6 +683,32 @@ public class Session {
       return endPointToSessionConnection.get(endPoint);
     } else {
       return defaultSessionConnection;
+    }
+  }
+
+  // TODO https://issues.apache.org/jira/browse/IOTDB-1399
+  private void removeBrokenSessionConnection(SessionConnection sessionConnection) {
+    // remove the cached broken leader session
+    if (enableCacheLeader) {
+      EndPoint endPoint = null;
+      for (Iterator<Entry<EndPoint, SessionConnection>> it =
+              endPointToSessionConnection.entrySet().iterator();
+          it.hasNext(); ) {
+        Map.Entry<EndPoint, SessionConnection> entry = it.next();
+        if (entry.getValue().equals(sessionConnection)) {
+          endPoint = entry.getKey();
+          it.remove();
+          break;
+        }
+      }
+
+      for (Iterator<Entry<String, EndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+          it.hasNext(); ) {
+        Map.Entry<String, EndPoint> entry = it.next();
+        if (entry.getValue().equals(endPoint)) {
+          it.remove();
+        }
+      }
     }
   }
 
@@ -751,9 +790,24 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
+      List<Object> values,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, isAligned);
+    insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    // not vector by default
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     insertRecord(deviceId, request);
   }
 
@@ -762,15 +816,17 @@ public class Session {
       long time,
       List<String> measurements,
       List<TSDataType> types,
-      List<Object> values)
+      List<Object> values,
+      boolean isAligned)
       throws IoTDBConnectionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setDeviceId(deviceId);
+    request.setPrefixPath(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
     ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
     putValues(types, values, buffer);
     request.setValues(buffer);
+    request.setIsAligned(isAligned);
     return request;
   }
 
@@ -838,22 +894,36 @@ public class Session {
       List<List<String>> measurementsList,
       List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<String, TSInsertStringRecordsReq> deviceGroup = new HashMap<>();
+    Map<SessionConnection, TSInsertStringRecordsReq> recordsGroup = new HashMap<>();
+    EndPoint endPoint;
+    SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
+      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      if (endPoint != null) {
+        connection = endPointToSessionConnection.get(endPoint);
+      } else {
+        connection = defaultSessionConnection;
+      }
       TSInsertStringRecordsReq request =
-          deviceGroup.computeIfAbsent(deviceIds.get(i), k -> new TSInsertStringRecordsReq());
+          recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
       updateTSInsertStringRecordsReq(
           request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
     }
     // TODO parallel
     StringBuilder errMsgBuilder = new StringBuilder();
-    for (Entry<String, TSInsertStringRecordsReq> entry : deviceGroup.entrySet()) {
+    for (Entry<SessionConnection, TSInsertStringRecordsReq> entry : recordsGroup.entrySet()) {
       try {
-        getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
+        entry.getKey().insertRecords(entry.getValue());
       } catch (RedirectException e) {
-        handleRedirection(entry.getKey(), e.getEndPoint());
+        for (Entry<String, EndPoint> deviceEndPointEntry : e.getDeviceEndPointMap().entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // remove the broken session
+        removeBrokenSessionConnection(entry.getKey());
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
@@ -1046,10 +1116,18 @@ public class Session {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    Map<String, TSInsertRecordsReq> deviceGroup = new HashMap<>();
+    Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
+    EndPoint endPoint;
+    SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
+      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      if (endPoint != null) {
+        connection = endPointToSessionConnection.get(endPoint);
+      } else {
+        connection = defaultSessionConnection;
+      }
       TSInsertRecordsReq request =
-          deviceGroup.computeIfAbsent(deviceIds.get(i), k -> new TSInsertRecordsReq());
+          recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
       updateTSInsertRecordsReq(
           request,
           deviceIds.get(i),
@@ -1060,13 +1138,19 @@ public class Session {
     }
     // TODO parallel
     StringBuilder errMsgBuilder = new StringBuilder();
-    for (Entry<String, TSInsertRecordsReq> entry : deviceGroup.entrySet()) {
+    for (Entry<SessionConnection, TSInsertRecordsReq> entry : recordsGroup.entrySet()) {
       try {
-        getSessionConnection(entry.getKey()).insertRecords(entry.getValue());
+        entry.getKey().insertRecords(entry.getValue());
       } catch (RedirectException e) {
-        handleRedirection(entry.getKey(), e.getEndPoint());
+        for (Entry<String, EndPoint> deviceEndPointEntry : e.getDeviceEndPointMap().entrySet()) {
+          handleRedirection(deviceEndPointEntry.getKey(), deviceEndPointEntry.getValue());
+        }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        // remove the broken session
+        removeBrokenSessionConnection(entry.getKey());
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
@@ -1121,13 +1205,13 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.prefixPath, e.getEndPoint());
     }
   }
 
@@ -1142,13 +1226,13 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
       }
     } catch (RedirectException e) {
-      handleRedirection(tablet.deviceId, e.getEndPoint());
+      handleRedirection(tablet.prefixPath, e.getEndPoint());
     }
   }
 
@@ -1161,24 +1245,26 @@ public class Session {
     }
 
     TSInsertTabletReq request = new TSInsertTabletReq();
-    request.setDeviceId(tablet.deviceId);
-    for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-      if (measurementSchema instanceof MeasurementSchema) {
+
+    if (tablet.isAligned()) {
+      if (tablet.getSchemas().size() > 1) {
+        throw new BatchExecutionException("One tablet should only contain one aligned timeseries!");
+      }
+      request.setIsAligned(true);
+      IMeasurementSchema measurementSchema = tablet.getSchemas().get(0);
+      request.setPrefixPath(tablet.prefixPath);
+      int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
+      for (int i = 0; i < measurementsSize; i++) {
+        request.addToMeasurements(measurementSchema.getValueMeasurementIdList().get(i));
+        request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
+      }
+      request.setIsAligned(true);
+    } else {
+      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+        request.setPrefixPath(tablet.prefixPath);
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
-      } else {
-        int measurementsSize = measurementSchema.getValueMeasurementIdList().size();
-        StringBuilder measurement = new StringBuilder("(");
-        for (int i = 0; i < measurementsSize; i++) {
-          measurement.append(measurementSchema.getValueMeasurementIdList().get(i));
-          if (i != measurementsSize - 1) {
-            measurement.append(",");
-          } else {
-            measurement.append(")");
-          }
-          request.addToTypes(measurementSchema.getValueTSDataTypeList().get(i).ordinal());
-        }
-        request.addToMeasurements(measurement.toString());
+        request.setIsAligned(tablet.isAligned());
       }
     }
     request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
@@ -1249,6 +1335,9 @@ public class Session {
         }
       } catch (StatementExecutionException e) {
         errMsgBuilder.append(e.getMessage());
+      } catch (IoTDBConnectionException e) {
+        removeBrokenSessionConnection(entry.getKey());
+        throw e;
       }
     }
     String errMsg = errMsgBuilder.toString();
@@ -1275,7 +1364,7 @@ public class Session {
       sortTablet(tablet);
     }
 
-    request.addToDeviceIds(tablet.deviceId);
+    request.addToDeviceIds(tablet.prefixPath);
     List<String> measurements = new ArrayList<>();
     List<Integer> dataTypes = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
@@ -1381,7 +1470,8 @@ public class Session {
       List<TSDataType> types,
       List<Object> values)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, types, values);
+    TSInsertRecordReq request =
+        genTSInsertRecordReq(deviceId, time, measurements, types, values, false);
     defaultSessionConnection.testInsertRecord(request);
   }
 
@@ -1663,14 +1753,16 @@ public class Session {
     return sortedBitMap;
   }
 
-  public void setDeviceTemplate(String templateName, String prefixPath)
+  public void setSchemaTemplate(String templateName, String prefixPath)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSSetDeviceTemplateReq request = getTSSetDeviceTemplateReq(templateName, prefixPath);
-    defaultSessionConnection.setDeviceTemplate(request);
+    TSSetSchemaTemplateReq request = getTSSetSchemaTemplateReq(templateName, prefixPath);
+    defaultSessionConnection.setSchemaTemplate(request);
   }
 
   /**
    * @param name template name
+   * @param schemaNames list of schema names, if this measurement is vector, name it. if this
+   *     measurement is not vector, keep this name as same as measurement's name
    * @param measurements List of measurements, if it is a single measurement, just put it's name
    *     into a list and add to measurements if it is a vector measurement, put all measurements of
    *     the vector into a list and add to measurements
@@ -1684,33 +1776,37 @@ public class Session {
    * @throws IoTDBConnectionException
    * @throws StatementExecutionException
    */
-  public void createDeviceTemplate(
+  public void createSchemaTemplate(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateDeviceTemplateReq request =
-        getTSCreateDeviceTemplateReq(name, measurements, dataTypes, encodings, compressors);
-    defaultSessionConnection.createDeviceTemplate(request);
+    TSCreateSchemaTemplateReq request =
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
   }
 
-  private TSSetDeviceTemplateReq getTSSetDeviceTemplateReq(String templateName, String prefixPath) {
-    TSSetDeviceTemplateReq request = new TSSetDeviceTemplateReq();
+  private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
+    TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
     request.setPrefixPath(prefixPath);
     return request;
   }
 
-  private TSCreateDeviceTemplateReq getTSCreateDeviceTemplateReq(
+  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq(
       String name,
+      List<String> schemaNames,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors) {
-    TSCreateDeviceTemplateReq request = new TSCreateDeviceTemplateReq();
+    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
     request.setName(name);
+    request.setSchemaNames(schemaNames);
     request.setMeasurements(measurements);
 
     List<List<Integer>> requestType = new ArrayList<>();

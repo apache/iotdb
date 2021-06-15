@@ -63,6 +63,11 @@ public class ChunkCache {
     lruCache =
         new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE) {
 
+          /**
+           * The calculation is time consuming, so we won't calculate each entry' size each time.
+           * Every 100,000 entry, we will calculate the average size of the first 10 entries, and
+           * use that to represent the next 99,990 entries' size.
+           */
           @Override
           protected long calEntrySize(ChunkMetadata key, Chunk value) {
             long currentSize;

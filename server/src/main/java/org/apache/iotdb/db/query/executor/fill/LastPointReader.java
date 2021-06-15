@@ -73,6 +73,7 @@ public class LastPointReader {
     this.context = context;
     this.queryTime = queryTime;
     this.deviceMeasurements = deviceMeasurements;
+    deviceMeasurements.add(seriesPath.getMeasurement());
     this.timeFilter = timeFilter;
   }
 

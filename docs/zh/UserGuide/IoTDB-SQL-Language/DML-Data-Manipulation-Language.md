@@ -77,13 +77,6 @@ Total line number = 4
 It costs 0.170s
 ```
 
-对于**对齐**时间序列而言，可以通过括号来**显式地**同时向序列中所有传感器插入值。其中，空值可以用 `NULL` 或者 `null` 占用：
-
-```
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,(1.0,2),(null,4))
-IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
-```
-
 ## 数据查询
 
 ### 时间条件过滤查询
@@ -1386,7 +1379,6 @@ It costs 0.014s
 
 请参考 [UDF (用户定义函数)](../Advanced-Features/UDF-User-Defined-Function.md)。
 
-### 错误处理
 #### 算数运算查询
 
 ##### 一元算数运算符
@@ -1500,8 +1492,6 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 Empty set.
 It costs 0.005s
 ```
-
-
 
 ## 数据删除
 

@@ -120,7 +120,7 @@ public class IoTDBUDTFHybridQueryIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains("User-defined and built-in hybrid aggregation is not supported."));
+              .contains("User-defined and built-in hybrid aggregation is not supported together."));
     }
   }
 
