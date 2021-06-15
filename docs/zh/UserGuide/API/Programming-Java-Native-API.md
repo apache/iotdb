@@ -105,7 +105,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 * 创建对齐时间序列
 
 ```
-void createAlignedTimeseries(String devicePath, List<String> measurements,
+void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
       CompressionType compressor, List<String> measurementAliasList);
 ```
@@ -129,7 +129,7 @@ void deleteData(List<String> paths, long time)
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
 
 ```java
-void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
 * 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
@@ -154,7 +154,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
 
 ```java
-void insertRecord(String deviceId, long time, List<String> measurements,
+void insertRecord(String prefixPath, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
@@ -203,23 +203,20 @@ void executeNonQueryStatement(String sql)
 * encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入encodings中，
              如果该工况是对齐的，将所有对齐工况的编码类型放入一个list再放入encodings中
 * compressors: 压缩方式列表                          
-void createDeviceTemplate(
-      String name,
+void createSchemaTemplate(
+      String templateName,
+      List<String> schemaName,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<CompressionType> compressors)
 ```
 
-
 * 将名为'templateName'的设备模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的设备模板
 
 ``` 
-void setDeviceTemplate(String templateName, String prefixPath)
+void setSchemaTemplate(String templateName, String prefixPath)
 ```
-
-
-
 
 ### 测试接口说明
 
@@ -276,9 +273,7 @@ void testInsertTablet(Tablet tablet)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`。
-
-  
+使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
 
 ### 示例代码
 

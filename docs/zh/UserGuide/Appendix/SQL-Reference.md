@@ -96,14 +96,14 @@ Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is t
 
 * 创建设备模板语句
 ```
-CREATE device template <TemplateName> WITH <AttributeClauses>
+CREATE schema template <TemplateName> WITH <AttributeClauses>
 attributeClauses
     : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
     (COMMA property)*)
     attributeClause
     ;
-Eg: create device template temp1(
+Eg: create schema template temp1(
         (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
         (s2 FLOAT with encoding=RLE, compression=SNAPPY)
        )  
@@ -111,8 +111,8 @@ Eg: create device template temp1(
 
 * 挂载设备模板语句
 ```
-set device template <TemplateName> to <STORAGE_GROUP_NAME>
-Eg: set device template temp1 to root.beijing
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
 ```
 
 * 删除时间序列语句
@@ -318,8 +318,8 @@ CREATE SNAPSHOT FOR SCHEMA
 * 插入记录语句
 
 ```
-INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <MeasurementName> [COMMA <MeasurementName>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
-MeasurementName : Identifier | LPAREN Identifier (COMMA Identifier)+ RPAREN
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
+Sensor : Identifier
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
