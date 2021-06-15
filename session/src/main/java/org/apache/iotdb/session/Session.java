@@ -1801,18 +1801,10 @@ public class Session {
 
     List<CompressionType> compressors = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
-      List<String> measurement = new ArrayList<>();
-      List<TSDataType> dataType = new ArrayList<>();
-      List<TSEncoding> encoding = new ArrayList<>();
-
-      schemaNames.add(measurementSchema.toString());
-
-      measurement.add(measurementSchema.getMeasurementId());
-      measurements.add(measurement);
-      dataType.add(measurementSchema.getType());
-      dataTypes.add(dataType);
-      encoding.add(measurementSchema.getEncodingType());
-      encodings.add(encoding);
+      schemaNames.add(measurementSchema.getMeasurementId());
+      measurements.add(Collections.singletonList(measurementSchema.getMeasurementId()));
+      dataTypes.add(Collections.singletonList(measurementSchema.getType()));
+      encodings.add(Collections.singletonList(measurementSchema.getEncodingType()));
 
       compressors.add(measurementSchema.getCompressor());
     }
@@ -1842,16 +1834,10 @@ public class Session {
     List<List<TSEncoding>> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
 
-    schemaNames.add(name);
-    List<String> measurement = new ArrayList<>();
-    measurement.add(path);
-    measurements.add(measurement);
-    List<TSDataType> dataTypeList = new ArrayList<>();
-    dataTypeList.add(dataType);
-    dataTypes.add(dataTypeList);
-    List<TSEncoding> encodingList = new ArrayList<>();
-    encodingList.add(encoding);
-    encodings.add(encodingList);
+    schemaNames.add(path);
+    measurements.add(Collections.singletonList(path));
+    dataTypes.add(Collections.singletonList(dataType));
+    encodings.add(Collections.singletonList(encoding));
     compressors.add(compressor);
 
 
@@ -1869,23 +1855,18 @@ public class Session {
           List<TSEncoding> encodingList,
           CompressionType compressor
   )throws IoTDBConnectionException, StatementExecutionException{
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add(prefixPath);
+    List<String> schemaNames = Collections.singletonList(prefixPath);
 
     List<List<String>> measurements = new ArrayList<>();
     List<String> vectorMeasurements = new ArrayList<>();
     for (String measurement : measurementNames) {
-      vectorMeasurements.add(prefixPath + measurement);
+      vectorMeasurements.add(prefixPath + "." + measurement);
     }
     measurements.add(vectorMeasurements);
 
-    List<List<TSDataType>> dataTypes = new ArrayList<>();
-    List<List<TSEncoding>> encodings = new ArrayList<>();
-    dataTypes.add(dataTypeList);
-    encodings.add(encodingList);
-
-    List<CompressionType> compressors = new ArrayList<>();
-    compressors.add(compressor);
+    List<List<TSDataType>> dataTypes = Collections.singletonList(dataTypeList);
+    List<List<TSEncoding>> encodings = Collections.singletonList(encodingList);
+    List<CompressionType> compressors = Collections.singletonList(compressor);
 
     TSCreateSchemaTemplateReq request =
             getTSCreateSchemaTemplateReq(

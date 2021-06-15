@@ -213,7 +213,6 @@ public class SessionUT {
     for (int i = 0; i < 10; i++) {
       measurements.add("s" + i);
     }
-    measurementList.add(measurements);
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
@@ -221,7 +220,6 @@ public class SessionUT {
     for (int i = 0; i < 10; i++) {
       dataTypes.add(TSDataType.INT64);
     }
-    dataTypeList.add(dataTypes);
 
     List<List<TSEncoding>> encodingList = new ArrayList<>();
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
@@ -229,6 +227,27 @@ public class SessionUT {
     for (int i = 0; i < 10; i++) {
       encodings.add(TSEncoding.RLE);
     }
+
+    session.createMeasurementSchemaTemplate(
+            "template0",
+            "s11",
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY
+    );
+
+
+    session.createVectorSchemaTemplate(
+            "template1",
+            "root.sg.v",
+            measurements,
+            dataTypes,
+            encodings,
+            CompressionType.SNAPPY
+    );
+
+    measurementList.add(measurements);
+    dataTypeList.add(dataTypes);
     encodingList.add(encodings);
 
     List<CompressionType> compressionTypes = new ArrayList<>();
@@ -241,7 +260,9 @@ public class SessionUT {
     schemaNames.add("test_vector");
 
     session.createSchemaTemplate(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+        "template2", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
     session.setSchemaTemplate("template1", "root.sg.1");
   }
+
+
 }
