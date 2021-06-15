@@ -99,7 +99,7 @@ Monitor下有几个属性，包括数据文件目录，写入数据统计信息�
 
 #### 开启/关闭监控
 
-用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[第3.4节](../Server/Config%20Manual.md)）。
+用户可以选择开启或关闭数据统计监控功能（您可以设定配置文件中的`enable_stat_monitor`项，详细信息参见[附录1：配置参数](http://iotdb.apache.org/zh/UserGuide/Master/Appendix/Config-Manual.html)）。
 
 ### 统计数据存储
 
