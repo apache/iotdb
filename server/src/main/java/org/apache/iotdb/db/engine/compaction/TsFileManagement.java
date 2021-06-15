@@ -135,11 +135,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  protected void readLock() {
+  public void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  protected void readUnLock() {
+  public void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -237,9 +237,7 @@ public abstract class TsFileManagement {
           "{} too much unseq files to be merged, reduce it to {}",
           storageGroupName,
           maxOpenFileNumInEachUnseqCompaction);
-      unSeqMergeList =
-          unSeqMergeList.subList(
-              unSeqMergeList.size() - maxOpenFileNumInEachUnseqCompaction, unSeqMergeList.size());
+      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();

@@ -85,6 +85,11 @@ public class TimeSeriesMetadataCache {
                   int count = 0;
                   int averageSize = 0;
 
+                  /**
+                   * The calculation is time consuming, so we won't calculate each entry' size each
+                   * time. Every 100,000 entry, we will calculate the average size of the first 10
+                   * entries, and use that to represent the next 99,990 entries' size.
+                   */
                   @Override
                   public int weigh(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
                     int currentSize;
@@ -228,6 +233,14 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  /**
+   * Support for vector
+   *
+   * @param key vector's own fullPath, e.g. root.sg1.d1.vector
+   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param allSensors all sensors of the device in one device, to vector, this should contain both
+   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   */
   // Suppress synchronize warning
   // Suppress high Cognitive Complexity warning
   @SuppressWarnings({"squid:S1860", "squid:S3776"})
@@ -237,6 +250,8 @@ public class TimeSeriesMetadataCache {
       Set<String> allSensors,
       boolean debug)
       throws IOException {
+    // put all sub sensors into allSensors
+    allSensors.addAll(subSensorList);
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -280,6 +295,10 @@ public class TimeSeriesMetadataCache {
           // put TimeSeriesMetadata of all sensors used in this query into cache
           timeSeriesMetadataList.forEach(
               metadata -> {
+                // for root.sg1.d1.vector1.s1, key.device of vector will only return root.sg1.d1
+                // metadata.getMeasurementId() will return s1, the vector1 is saved in
+                // key.measurement
+                // so we should concat them to get the deviceId for root.sg1.d1.vector1.s1
                 TimeSeriesMetadataCacheKey k =
                     new TimeSeriesMetadataCacheKey(
                         key.filePath, key.device, metadata.getMeasurementId());
@@ -313,6 +332,16 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  /**
+   * !!!Attention!!!
+   *
+   * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
+   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
+   * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
+   * device: root.sg1.d1.vector1, measurement: s2}
+   */
   private void getVectorTimeSeriesMetadataListFromMap(
       TimeSeriesMetadataCacheKey key,
       List<String> subSensorList,
@@ -334,6 +363,16 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  /**
+   * !!!Attention!!!
+   *
+   * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
+   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
+   * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
+   * device: root.sg1.d1.vector1, measurement: s2}
+   */
   private void getVectorTimeSeriesMetadataListFromCache(
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);

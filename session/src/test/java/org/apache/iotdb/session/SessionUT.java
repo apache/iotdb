@@ -203,14 +203,6 @@ public class SessionUT {
   }
 
   @Test
-  public void setDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
-    session.open();
-
-    session.setDeviceTemplate("template1", "root.sg.1");
-  }
-
-  @Test
   public void createDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
@@ -244,7 +236,12 @@ public class SessionUT {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
-    session.createDeviceTemplate(
-        "template1", measurementList, dataTypeList, encodingList, compressionTypes);
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+    schemaNames.add("test_vector");
+
+    session.createSchemaTemplate(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    session.setSchemaTemplate("template1", "root.sg.1");
   }
 }

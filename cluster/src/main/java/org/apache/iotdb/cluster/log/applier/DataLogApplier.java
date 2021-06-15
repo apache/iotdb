@@ -118,7 +118,7 @@ public class DataLogApplier extends BaseApplier {
     PartialPath sg;
     long time = plan.getMinTime();
     try {
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
@@ -127,7 +127,7 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getDeviceId());
+      sg = IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
     }
     int slotId =
         SlotPartitionTable.getSlotStrategy()

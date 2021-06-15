@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.io.File;
 
-public class LoadFilesOperator extends RootOperator {
+public class LoadFilesOperator extends Operator {
 
   private File file;
   private boolean autoCreateSchema;
@@ -47,5 +51,11 @@ public class LoadFilesOperator extends RootOperator {
 
   public int getSgLevel() {
     return sgLevel;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new OperateFilePlan(file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel);
   }
 }

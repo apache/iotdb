@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
@@ -45,14 +43,6 @@ public class TimeSeriesOperand implements Expression {
 
   public void setPath(PartialPath path) {
     this.path = path;
-  }
-
-  @Override
-  public TSDataType dataType() throws MetadataException {
-    if (dataType == null) {
-      dataType = IoTDB.metaManager.getSeriesType(path);
-    }
-    return dataType;
   }
 
   @Override

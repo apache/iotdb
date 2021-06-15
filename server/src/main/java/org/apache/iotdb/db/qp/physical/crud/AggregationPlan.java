@@ -104,14 +104,6 @@ public class AggregationPlan extends RawDataQueryPlan {
   }
 
   @Override
-  public void setAlignByTime(boolean align) throws QueryProcessException {
-    if (!align) {
-      throw new QueryProcessException(
-          getOperatorType().name() + " doesn't support disable align clause.");
-    }
-  }
-
-  @Override
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     return resultColumns.get(pathIndex).getResultColumnName();
   }

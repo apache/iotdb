@@ -19,22 +19,20 @@
 
 package org.apache.iotdb.db.query.expression.unary;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class MinusExpression implements Expression {
+public class NegationExpression implements Expression {
 
   protected Expression expression;
 
-  public MinusExpression(Expression expression) {
+  public NegationExpression(Expression expression) {
     this.expression = expression;
   }
 
@@ -43,8 +41,8 @@ public class MinusExpression implements Expression {
   }
 
   @Override
-  public TSDataType dataType() throws MetadataException {
-    return expression.dataType();
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return true;
   }
 
   @Override
@@ -52,7 +50,7 @@ public class MinusExpression implements Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.concat(prefixPaths, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new MinusExpression(resultExpression));
+      resultExpressions.add(new NegationExpression(resultExpression));
     }
   }
 
@@ -62,7 +60,7 @@ public class MinusExpression implements Expression {
     List<Expression> resultExpressionsForRecursion = new ArrayList<>();
     expression.removeWildcards(wildcardsRemover, resultExpressionsForRecursion);
     for (Expression resultExpression : resultExpressionsForRecursion) {
-      resultExpressions.add(new MinusExpression(resultExpression));
+      resultExpressions.add(new NegationExpression(resultExpression));
     }
   }
 

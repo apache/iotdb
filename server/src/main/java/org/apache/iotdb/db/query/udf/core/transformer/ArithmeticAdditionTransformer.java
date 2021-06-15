@@ -16,30 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+package org.apache.iotdb.db.query.udf.core.transformer;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
-/** this class maintains information of {@code FROM} clause. */
-public class FromOperator extends Operator {
+public class ArithmeticAdditionTransformer extends ArithmeticBinaryTransformer {
 
-  private List<PartialPath> prefixList;
-
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FROM;
-    prefixList = new ArrayList<>();
+  public ArithmeticAdditionTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
   }
 
-  public void addPrefixTablePath(PartialPath prefixPath) {
-    prefixList.add(prefixPath);
-  }
-
-  public List<PartialPath> getPrefixPaths() {
-    return prefixList;
+  @Override
+  protected double evaluate(double leftOperand, double rightOperand) {
+    return leftOperand + rightOperand;
   }
 }

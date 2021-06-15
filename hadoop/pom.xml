@@ -50,6 +50,24 @@
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
                 </exclusion>
+                <!--commons-configuration uses  commons-lang:commons-lang:2.4
+                while others use commons-lang 2.6-->
+                <exclusion>
+                    <groupId>commons-configuration</groupId>
+                    <artifactId>commons-configuration</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- this is just used by hadoop-common-->
+        <dependency>
+            <groupId>commons-configuration</groupId>
+            <artifactId>commons-configuration</artifactId>
+            <version>1.6</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <!-- many of hadoop dependencies use guava11, but org.apache.curator from hadoop-common uses
@@ -116,6 +134,7 @@
                         <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                     </execution>
                 </executions>

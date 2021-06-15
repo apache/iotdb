@@ -91,15 +91,6 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-We could also create **aligned** timeseries:
-
-```
-IoTDB > create aligned timeseries root.sg.d1.(s1 FLOAT, s2 INT32)
-IoTDB > create aligned timeseries root.sg.d1.(s3 FLOAT, s4 INT32) with encoding=(RLE, Grollia), compression=SNAPPY
-```
-
-Attention: Aligned timeseries must have the same compression type.
-
 Notice that when in the CREATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
 
 ```
@@ -108,22 +99,6 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
-
-### Create and set device template
-```
-
-IoTDB > set storage group root.beijing
-
-// create a device templat
-IoTDB > create device template temp1(
-  (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
-  (s2 FLOAT with encoding=RLE, compression=SNAPPY)
- )
-
-// set device template to storage group "root.beijing"
-IoTDB > set device template temp1 to root.beijing
-
-```
 
 #### Delete Timeseries
 
