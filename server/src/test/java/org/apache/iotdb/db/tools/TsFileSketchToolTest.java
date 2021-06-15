@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.tools;
 
-import java.nio.file.Files;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -31,6 +29,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -123,7 +122,7 @@ public class TsFileSketchToolTest {
   }
 
   @After
-  public void tearDown(){
+  public void tearDown() {
     try {
       FileUtils.forceDelete(new File(path));
       FileUtils.forceDelete(new File(sketchOut));
