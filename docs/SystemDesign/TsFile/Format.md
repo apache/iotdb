@@ -267,7 +267,7 @@ Congratulations! You have finished the journey of discovering TsFile.
 
 ### 3.1 IoTDB Data Directory Overview Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -286,7 +286,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.11.1-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 ```
 
 Starting Printing the IoTDB Data Directory Overview
@@ -317,7 +317,7 @@ TsFile data dir num:1
 
 ### 3.2 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `tools\tsfileToolSet` directory.
 
 Command:
 
@@ -336,7 +336,7 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.11.1\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-{version}\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ```
 
 Starting Printing the TsFileResources
@@ -349,7 +349,7 @@ analyzing the resource file finished.
 
 ### 3.3 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -372,7 +372,7 @@ For Linux or MacOs:
 An example on macOS:
 
 ```
-/iotdb/server/target/iotdb-server-0.11.1/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+/iotdb/server/target/iotdb-server-{version}/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ```
 
 Starting Printing the TsFile Sketch
@@ -626,7 +626,7 @@ Simply put, you first run `TsFileExtractVisdata.java` and then run `vis.m`.
 
 `TsFileExtractVisdata.java` extracts visdata [tsName, fileName, versionNum, startTime, endTime, countNum] from every chunk of the input TsFiles and write them to the specified output path.
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.11.1\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -724,11 +724,11 @@ Use the tsfiles written by `IoTDBLargeDataIT.insertData` with a little modificat
 Step 1: run `TsFileExtractVisdata.java`
 
 ```
-.\print-tsfile-visdata.bat D:\rel0.11\iotdb\server\target\data\sequence true D:\rel0.11\iotdb\server\target\data\unsequence false D:\visdata1.csv
+.\print-tsfile-visdata.bat data\sequence true data\unsequence false D:\visdata1.csv
 ```
 or equivalently:
 ```
-.\print-tsfile-visdata.bat D:\rel0.11\iotdb\server\target\data\sequence\root.vehicle\0\1622743492580-1-0.tsfile true D:\rel0.11\iotdb\server\target\data\sequence\root.vehicle\0\1622743505092-2-0.tsfile true D:\rel0.11\iotdb\server\target\data\sequence\root.vehicle\0\1622743505573-3-0.tsfile true D:\rel0.11\iotdb\server\target\data\unsequence\root.vehicle\0\1622743505901-4-0.tsfile false D:\visdata1.csv
+.\print-tsfile-visdata.bat data\sequence\root.vehicle\0\1622743492580-1-0.tsfile true data\sequence\root.vehicle\0\1622743505092-2-0.tsfile true data\sequence\root.vehicle\0\1622743505573-3-0.tsfile true data\unsequence\root.vehicle\0\1622743505901-4-0.tsfile false D:\visdata1.csv
 ```
 
 Step 2: run `vis.m`
