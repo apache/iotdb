@@ -126,7 +126,7 @@ public class MergeManager implements IService, MergeManagerMBean {
   public void start() {
     JMXService.registerMBean(this, mbeanName);
     if (mergeTaskPool == null) {
-      int threadNum = IoTDBDescriptor.getInstance().getConfig().getMergeThreadNum();
+      int threadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
       if (threadNum <= 0) {
         threadNum = 1;
       }

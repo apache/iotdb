@@ -89,6 +89,12 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
+  /**
+   * Used in {@link TsFileList FileList}
+   */
+  protected TsFileResource prev;
+  protected TsFileResource next;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
