@@ -291,7 +291,7 @@
         {
           avatar:'/img/contributor-avatar/user.svg',
           name: 'Stefanie Zhao',
-          role: 'PPMC, Committer',
+          role: 'PMC, Committer',
           id: 'zhaoxinyi',
           date: '2018/11/18'
         },
