@@ -90,7 +90,7 @@ public class TsFileResource {
   public static final byte VERSION_NUMBER = 1;
 
   /**
-   * Used in {@link TsFileList FileList}
+   * Used in {@link TsFileResourceList FileList}
    */
   protected TsFileResource prev;
   protected TsFileResource next;

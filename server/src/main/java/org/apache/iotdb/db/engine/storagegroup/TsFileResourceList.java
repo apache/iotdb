@@ -1,14 +1,50 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
-public class TsFileList implements List<TsFileResource> {
+public class TsFileResourceList implements List<TsFileResource> {
   private TsFileResource header;
   private TsFileResource tail;
   private int count = 0;
+
+  /**
+   * Insert a new node before an existing node
+   *
+   * @param node    the existing node
+   * @param newNode the new node to insert
+   */
+  public void insertBefore(TsFileResource node, TsFileResource newNode) {
+    newNode.prev = node.prev;
+    newNode.next = node;
+    if (node.prev == null) {
+      header = newNode;
+    } else {
+      node.prev.next = newNode;
+    }
+    node.prev = newNode;
+  }
+
+  /**
+   * Insert a new node after an existing node
+   *
+   * @param node    the existing node
+   * @param newNode the new node to insert
+   */
+  public void insertAfter(TsFileResource node, TsFileResource newNode) {
+    newNode.prev = node;
+    newNode.next = node.next;
+    if (node.next == null) {
+      tail = newNode;
+    } else {
+      node.next.prev = newNode;
+    }
+    node.next = newNode;
+  }
 
   @Override
   public int size() {
@@ -32,6 +68,7 @@ public class TsFileList implements List<TsFileResource> {
         contain = true;
         break;
       }
+      current = current.next;
     }
     return contain;
   }
@@ -39,16 +76,6 @@ public class TsFileList implements List<TsFileResource> {
   @Override
   public Iterator<TsFileResource> iterator() {
     return new TsFileResourceIterator();
-  }
-
-  @Override
-  public Object[] toArray() {
-    return new Object[0];
-  }
-
-  @Override
-  public <T> T[] toArray(T[] a) {
-    return null;
   }
 
   /**
@@ -90,108 +117,96 @@ public class TsFileList implements List<TsFileResource> {
     return false;
   }
 
+  /**
+   * Only List type parameter is legal, because it is in order.
+   */
   @Override
   public boolean addAll(Collection<? extends TsFileResource> c) {
-    return false;
-  }
-
-  @Override
-  public boolean addAll(int index, Collection<? extends TsFileResource> c) {
-    return false;
-  }
-
-  @Override
-  public boolean removeAll(Collection<?> c) {
-    return false;
-  }
-
-  @Override
-  public boolean retainAll(Collection<?> c) {
-    return false;
+    if (c instanceof List) {
+      for (TsFileResource resource : c) {
+        add(resource);
+      }
+      return true;
+    }
+    throw new NotImplementedException();
   }
 
   @Override
   public void clear() {
-
+    header = null;
+    tail = null;
+    count = 0;
   }
 
   @Override
+  public Object[] toArray() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public <T> T[] toArray(T[] a) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public boolean addAll(int index, Collection<? extends TsFileResource> c) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public boolean removeAll(Collection<?> c) {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public boolean retainAll(Collection<?> c) {
+    throw new NotImplementedException();
+  }
+
+
+  @Override
   public TsFileResource get(int index) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public TsFileResource set(int index, TsFileResource element) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public void add(int index, TsFileResource element) {
-
+    throw new NotImplementedException();
   }
 
   @Override
   public TsFileResource remove(int index) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public int indexOf(Object o) {
-    return 0;
+    throw new NotImplementedException();
   }
 
   @Override
   public int lastIndexOf(Object o) {
-    return 0;
+    throw new NotImplementedException();
   }
 
   @Override
   public ListIterator<TsFileResource> listIterator() {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public ListIterator<TsFileResource> listIterator(int index) {
-    return null;
+    throw new NotImplementedException();
   }
 
   @Override
   public List<TsFileResource> subList(int fromIndex, int toIndex) {
-    return null;
-  }
-
-  /**
-   * Insert a new node before an existing node
-   *
-   * @param node    the existing node
-   * @param newNode the new node to insert
-   */
-  public void insertBefore(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node.prev;
-    newNode.next = node;
-    if (node.prev == null) {
-      header = newNode;
-    } else {
-      node.prev.next = newNode;
-    }
-    node.prev = newNode;
-  }
-
-  /**
-   * Insert a new node after an existing node
-   *
-   * @param node    the existing node
-   * @param newNode the new node to insert
-   */
-  public void insertAfter(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node;
-    newNode.next = node.next;
-    if (node.next == null) {
-      tail = newNode;
-    } else {
-      node.next.prev = newNode;
-    }
-    node.next = newNode;
+    throw new NotImplementedException();
   }
 
   private class TsFileResourceIterator implements Iterator<TsFileResource> {
@@ -214,10 +229,4 @@ public class TsFileList implements List<TsFileResource> {
     }
   }
 
-  public static void main(String[] args) {
-    TsFileList list = new TsFileList();
-    for (TsFileResource i : list) {
-      i.calculateRamSize();
-    }
-  }
 }
