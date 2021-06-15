@@ -93,15 +93,6 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
-我们也可以创建**对齐**时间序列：
-
-```
-IoTDB > create aligned timeseries root.sg.d1.(s1 FLOAT, s2 INT32)
-IoTDB > create aligned timeseries root.sg.d1.(s3 FLOAT, s4 INT32) with encoding=(RLE, Grollia), compression=SNAPPY
-```
-
-注意：对齐时间序列必须拥有相同的压缩方式。
-
 需要注意的是，当创建时间序列时指定的编码方式与数据类型不对应时，系统会给出相应的错误提示，如下所示：
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -109,22 +100,6 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Data-Concept/Encoding.md)。
-
-### 创建和挂载设备模板
-```
-
-IoTDB > set storage group root.beijing
-
-// 创建设备模板
-IoTDB > create device template temp1(
-  (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
-  (s2 FLOAT with encoding=RLE, compression=SNAPPY)
- )
-
-// 将设备模板挂载到root.beijing存储组上
-IoTDB > set device template temp1 to root.beijing
-
-```
 
 #### 删除时间序列
 
