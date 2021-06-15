@@ -229,22 +229,10 @@ public class SessionUT {
     }
 
     session.createMeasurementSchemaTemplate(
-            "template0",
-            "s11",
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY
-    );
-
+        "template0", "s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     session.createVectorSchemaTemplate(
-            "template1",
-            "root.sg.v",
-            measurements,
-            dataTypes,
-            encodings,
-            CompressionType.SNAPPY
-    );
+        "template1", "root.sg.v", measurements, dataTypes, encodings, CompressionType.SNAPPY);
 
     measurementList.add(measurements);
     dataTypeList.add(dataTypes);
@@ -262,7 +250,9 @@ public class SessionUT {
     session.createSchemaTemplate(
         "template2", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
     session.setSchemaTemplate("template1", "root.sg.1");
+
+    MeasurementSchema testMeasurementSchema =
+            new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
+    session.createSchemaTemplate("template3", Collections.singletonList(testMeasurementSchema));
   }
-
-
 }

@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -50,7 +49,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1793,7 +1791,7 @@ public class Session {
   }
 
   public void createSchemaTemplate(String templateName, List<IMeasurementSchema> measurementSchemas)
-          throws IoTDBConnectionException, StatementExecutionException{
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> schemaNames = new ArrayList<>();
     List<List<String>> measurements = new ArrayList<>();
     List<List<TSDataType>> dataTypes = new ArrayList<>();
@@ -1810,24 +1808,18 @@ public class Session {
     }
 
     TSCreateSchemaTemplateReq request =
-            getTSCreateSchemaTemplateReq(
-                    templateName,
-                    schemaNames,
-                    measurements,
-                    dataTypes,
-                    encodings,
-                    compressors
-            );
+        getTSCreateSchemaTemplateReq(
+            templateName, schemaNames, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
   public void createMeasurementSchemaTemplate(
-          String name,
-          String path,
-          TSDataType dataType,
-          TSEncoding encoding,
-          CompressionType compressor)
-          throws IoTDBConnectionException, StatementExecutionException {
+      String name,
+      String path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> schemaNames = new ArrayList<>();
     List<List<String>> measurements = new ArrayList<>();
     List<List<TSDataType>> dataTypes = new ArrayList<>();
@@ -1840,21 +1832,20 @@ public class Session {
     encodings.add(Collections.singletonList(encoding));
     compressors.add(compressor);
 
-
     TSCreateSchemaTemplateReq request =
-            getTSCreateSchemaTemplateReq(
-                    name, schemaNames, measurements, dataTypes, encodings, compressors);
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
   }
 
   public void createVectorSchemaTemplate(
-          String name,
-          String prefixPath,
-          List<String> measurementNames,
-          List<TSDataType> dataTypeList,
-          List<TSEncoding> encodingList,
-          CompressionType compressor
-  )throws IoTDBConnectionException, StatementExecutionException{
+      String name,
+      String prefixPath,
+      List<String> measurementNames,
+      List<TSDataType> dataTypeList,
+      List<TSEncoding> encodingList,
+      CompressionType compressor)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> schemaNames = Collections.singletonList(prefixPath);
 
     List<List<String>> measurements = new ArrayList<>();
@@ -1869,10 +1860,9 @@ public class Session {
     List<CompressionType> compressors = Collections.singletonList(compressor);
 
     TSCreateSchemaTemplateReq request =
-            getTSCreateSchemaTemplateReq(
-                    name, schemaNames, measurements, dataTypes, encodings, compressors);
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
     defaultSessionConnection.createSchemaTemplate(request);
-
   }
 
   private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
