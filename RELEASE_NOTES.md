@@ -22,6 +22,23 @@
 # Apache IoTDB 0.12.1
 
 ## Bug Fixes
+* [GITHUB-3373] Remove the broken cached leader connection & optimize the insertRecords method in session
+* [IOTDB-1433] Fix bug in getMetadataAndEndOffset when querying non-exist device
+* [IOTDB-1432] fix level compaction loss data
+* [IOTDB-1427] Fix compaction lock with query  
+* [IOTDB-1420] Fix compaction ttl bug
+* [IOTDB-1419] Remove redundant clearCompactionStatus, fix continuous compaction doesn't take effect when enablePartition
+* [IOTDB-1415] Fix OOM caused by ChunkCache
+* [IOTDB-1414] NPE occurred when call getStorageGroupNodeByPath() method using not exist path  
+* [IOTDB-1412] Unclear exception message thrown when executing empty InsertTabletPlan
+* [IOTDB-1411] Fix thriftMaxFrameSize and thriftDefaultBufferSize does not in effect  
+* [IOTDB-1398] Do not select unseq files when there are uncompacted old unseq files
+* [IOTDB-1390] Fix unseq compaction loss data bug
+* [IOTDB-1384] Fix group by bug  
+* [ISSUE-3378] Fix NPE when clear upgrade folder; Fix some upgraded pageHeader missing statistics  
+* [GITHUB-3339] Try to fix sg dead lock
+* [GITHUB-3329] Fix upgrade NPE and DeadLock  
+* [GITHUB-3319] Fix upgrade tool cannot close file reader  
 * [IOTDB-1212] Fix The given error message is not right when executing select sin(non_existence) from root.sg1.d1 
 * [IOTDB-1219] Fix a potential NPE issue in UDF module
 * [IOTDB-1286] Fix 4 C++ mem-leak points
@@ -34,6 +51,7 @@
 * [IOTDB-1330] Fix the load tsfile bug when the cross multi partition's tsfile only have one page
 * [IOTDB-1348] Fix Last plan not work in cluster mode
 * [IOTDB-1376] Fix BatchProcessException was not correctly handled in BaseApplier
+* [ISSUE-3277] Fix TotalSeriesNumber in MManager counted twice when recovering
 * [ISSUE-3116] Fix bug when using natural month unit in time interval in group by query
 * [ISSUE-3309] Fix InsertRecordsOfOneDevice runs too slow
 * Fix the plan index is always zero when using insertRecords interface to run the cluster
@@ -44,6 +62,9 @@
 * Fix upgrade tool cannot close file reader
 
 ## Improvements
+* [GITHUB-3399] Change the default primitive array size to 32
+* [IOTDB-1387] Support Without Null ALL in align by device clause, Filter RowRecord automatically if any column in it is null or all columns are null
+* [IOTDB-1385] Extract the super user to the configuration
 * [IOTDB-1315] ExportCsvTool should support timestamp `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
 * [IOTDB-1339] optimize TimeoutChangeableTSnappyFramedTransport
 * [IOTDB-1356] Separate unseq_file_num_in_each_level from selecting candidate file in unseq compaction
@@ -52,12 +73,15 @@
 * Optimize sync leader for meta
 
 ## New Features
+* [GITHUB-3389] TTL can be set to any path
+* [GITHUB-3387] Add parameter compaction_interval=10000ms
 * [IOTDB-1190] Fully support HTTP URL char set in timeseries path
 * [IOTDB-1321][IOTDB-1322] Filter RowRecord automatically if any column in it is null or all columns are null
 * [IOTDB-1357] Compaction use append chunk merge strategy when chunk is already large
 * [ISSUE-3089] Make it possible for storage groups to have name with hyphen
 
 ## Miscellaneous changes
+* [GITHUB-3346] upgrade netty and claim exclusion for enforcer check
 * [IOTDB-1259] upgrade libthrift from 0.12.0/0.13.0 to 0.14.1
 * Uncomment the less used configurations
 * Enable the configration `concurrent_writing_time_partition`
