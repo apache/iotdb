@@ -310,7 +310,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_page_point_number",
                   Integer.toString(conf.getMergePagePointNumberThreshold()))));
-
       conf.setCompactionInterval(
           Long.parseLong(
               properties.getProperty(

@@ -41,7 +41,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Each storage group that set by users corresponds to a StorageGroupManager */
+
+/**
+ * Each storage group that set by users corresponds to a StorageGroupManager
+ */
 public class StorageGroupManager {
 
   /** logger of this class */
