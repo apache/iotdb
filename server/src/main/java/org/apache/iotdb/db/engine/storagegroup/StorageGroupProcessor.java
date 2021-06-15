@@ -400,7 +400,11 @@ public class StorageGroupProcessor {
     } else if (!storageGroupSysDir.exists()) {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
-    // TODO: new TsFileManagement
+    this.tsFileManagement =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getCompactionStrategy()
+            .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
 
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(
@@ -530,7 +534,6 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
-
   }
 
   private void recoverCompaction() {

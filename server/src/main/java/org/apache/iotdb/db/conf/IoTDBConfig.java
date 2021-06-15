@@ -298,34 +298,28 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /**
-   * Only compact the sequence files
-   */
+  /** Only compact the sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /**
-   * Only compact the unsequence files
-   */
+  /** Only compact the unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
-  /**
-   * Compact the unseqence files into the overlapped sequence files
-   */
+  /** Compact the unseqence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
   /**
-   * The priority of compaction task execution. There are three priority strategy
-   * INNER_CROSS: prioritize inner space compaction, reduce the number of files first
-   * CROSS INNER: prioritize cross space compaction, eliminate the unsequence files first
-   * BALANCE: alternate two compaction types
+   * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
+   * prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
+   * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
+   * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   /**
-   * When merge point number reaches this, merge the files to the last level. During a merge,
-   * if a chunk with less number of chunks than this parameter, the chunk will be merged with
-   * its succeeding chunks even if it is not overflowed,
-   * until the merged chunks reach this threshold and the new chunk will be flushed.
+   * When merge point number reaches this, merge the files to the last level. During a merge, if a
+   * chunk with less number of chunks than this parameter, the chunk will be merged with its
+   * succeeding chunks even if it is not overflowed, until the merged chunks reach this threshold
+   * and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 
@@ -334,15 +328,13 @@ public class IoTDBConfig {
    */
   private int mergePagePointNumberThreshold = 100;
 
-  /**
-   * The interval of compaction task submission in each virtual storage group. The unit is ms.
-   */
+  /** The interval of compaction task submission in each virtual storage group. The unit is ms. */
   private long compactionInterval = 10_000L;
 
   /**
-   * The max open file num in each unseq compaction task. We use the unseq file num as the open
-   * file num # This parameters have to be much smaller than the permitted max open file num of
-   * each process controlled by operator system(65535 in most system).
+   * The max open file num in each unseq compaction task. We use the unseq file num as the open file
+   * num # This parameters have to be much smaller than the permitted max open file num of each
+   * process controlled by operator system(65535 in most system).
    */
   private int maxOpenFileNumInCrossSpaceCompaction = 2000;
 
@@ -503,9 +495,9 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are re-written
-   * despite how much they are overflowed). This may increase merge overhead depending on how much
-   * the SeqFiles are overflowed.
+   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
+   * re-written despite how much they are overflowed). This may increase merge overhead depending on
+   * how much the SeqFiles are overflowed.
    */
   private boolean forceFullMerge = true;
 
@@ -1455,7 +1447,6 @@ public class IoTDBConfig {
   public void setMergeFileStrategy(MergeFileStrategy mergeFileStrategy) {
     this.mergeFileStrategy = mergeFileStrategy;
   }
-
 
   public int getMaxOpenFileNumInCrossSpaceCompaction() {
     return maxOpenFileNumInCrossSpaceCompaction;
