@@ -266,7 +266,7 @@ public class IoTDBConfig {
   private String indexRootFolder = "data" + File.separator + "index";
 
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long tsFileSizeThreshold = 100000000L;
+  private long tsFileSizeThreshold = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
