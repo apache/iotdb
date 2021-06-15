@@ -43,9 +43,13 @@ import java.util.List;
 
 public class VectorChunkReader implements IChunkReader {
 
+  // chunk header of the time column
   private final ChunkHeader timeChunkHeader;
+  // chunk headers of all the sub sensors
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
+  // chunk data of the time column
   private final ByteBuffer timeChunkDataBuffer;
+  // chunk data of all the sub sensors
   private final List<ByteBuffer> valueChunkDataBufferList = new ArrayList<>();
   private final IUnCompressor unCompressor;
   private final Decoder timeDecoder =
@@ -83,6 +87,7 @@ public class VectorChunkReader implements IChunkReader {
     initAllPageReaders(timeChunk.getChunkStatistic(), valueChunkStatisticsList);
   }
 
+  /** construct all the page readers in this chunk */
   private void initAllPageReaders(
       Statistics timeChunkStatistics, List<Statistics> valueChunkStatisticsList)
       throws IOException {
@@ -91,6 +96,8 @@ public class VectorChunkReader implements IChunkReader {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader timePageHeader;
       List<PageHeader> valuePageHeaderList = new ArrayList<>();
+      // mask the two highest bit
+      // this chunk has only one page
       if ((timeChunkHeader.getChunkType() & 0x3F) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
         timePageHeader = PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkStatistics);
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
@@ -98,7 +105,7 @@ public class VectorChunkReader implements IChunkReader {
               PageHeader.deserializeFrom(
                   valueChunkDataBufferList.get(i), valueChunkStatisticsList.get(i)));
         }
-      } else {
+      } else { // this chunk has more than one page
         timePageHeader =
             PageHeader.deserializeFrom(timeChunkDataBuffer, timeChunkHeader.getDataType());
         for (int i = 0; i < valueChunkDataBufferList.size(); i++) {
@@ -145,6 +152,7 @@ public class VectorChunkReader implements IChunkReader {
     List<TSDataType> valueDataTypeList = new ArrayList<>();
     List<Decoder> valueDecoderList = new ArrayList<>();
     for (int i = 0; i < valuePageHeader.size(); i++) {
+      // if the page is satisfied, deserialize it
       if (pageSatisfied(valuePageHeader.get(i), valueDeleteIntervalList.get(i))) {
         getPageInfo(
             valuePageHeader.get(i),
@@ -155,7 +163,7 @@ public class VectorChunkReader implements IChunkReader {
         valuePageDataList.add(valuePageInfo.pageData);
         valueDataTypeList.add(valuePageInfo.dataType);
         valueDecoderList.add(valuePageInfo.decoder);
-      } else {
+      } else { // if the page is not satisfied, just skip it
         valueChunkDataBufferList
             .get(i)
             .position(
@@ -181,6 +189,14 @@ public class VectorChunkReader implements IChunkReader {
     return vectorPageReader;
   }
 
+  /**
+   * deserialize the page
+   *
+   * @param pageHeader PageHeader for current page
+   * @param chunkBuffer current chunk data buffer
+   * @param chunkHeader current chunk header
+   * @param pageInfo A struct to put the deserialized page into.
+   */
   private void getPageInfo(
       PageHeader pageHeader, ByteBuffer chunkBuffer, ChunkHeader chunkHeader, PageInfo pageInfo)
       throws IOException {

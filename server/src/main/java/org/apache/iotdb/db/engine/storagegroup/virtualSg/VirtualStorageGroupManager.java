@@ -43,6 +43,7 @@ import java.util.Map;
 
 public class VirtualStorageGroupManager {
 
+  /** logger of this class */
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupManager.class);
 
   /** virtual storage group partitioner */
@@ -393,6 +394,7 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** release resource of direct wal buffer */
   public void releaseWalDirectByteBufferPool() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {

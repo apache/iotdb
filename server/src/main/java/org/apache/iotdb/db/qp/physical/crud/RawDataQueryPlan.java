@@ -46,7 +46,9 @@ public class RawDataQueryPlan extends QueryPlan {
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
+  /** used to group all the sub sensors of one vector into VectorPartialPath */
   private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
+
   private List<TSDataType> deduplicatedVectorDataTypes = new ArrayList<>();
 
   public RawDataQueryPlan() {
@@ -93,9 +95,15 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
+    // TODO Maybe we should get VectorPartialPath above from MTree
+    // Currently, the above processing will only produce PartialPath instead of VectorPartialPath
+    // even if the queried time series is vector
+    // So, we need to transform the PartialPath to VectorPartialPath if is is a vector.
     if (!isRawQuery()) {
       transformPaths(IoTDB.metaManager);
     } else {
+      // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
+      // vector into one VectorPartialPath
       transformVectorPaths(physicalGenerator, columnForDisplaySet);
     }
   }
@@ -178,6 +186,12 @@ public class RawDataQueryPlan extends QueryPlan {
     }
   }
 
+  /**
+   * Group all the subSensors of one vector into one VectorPartialPath save the grouped
+   * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
+   * them directly into deduplicatedPaths and deduplicatedDataTypes, because we don't know whether
+   * the raw query has value filter here.
+   */
   public void transformVectorPaths(
       PhysicalGenerator physicalGenerator, Set<String> columnForDisplaySet)
       throws MetadataException {
@@ -214,6 +228,10 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedVectorDataTypes = deduplicatedVectorDataTypes;
   }
 
+  /**
+   * RawQueryWithoutValueFilter should call this method to use grouped vector partial path to
+   * replace the previous deduplicatedPaths and deduplicatedDataTypes
+   */
   public void transformToVector() {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;

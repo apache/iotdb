@@ -71,9 +71,13 @@ public class VectorPageReader implements IPageReader {
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
     long[] timeBatch = timePageReader.nexTimeBatch();
+    // if the vector contains only one sub sensor, just return a common BatchData whose DataType is
+    // same as the only one sub sensor.
     if (valuePageReaderList.size() == 1) {
       return valuePageReaderList.get(0).nextBatch(timeBatch, ascending, filter);
     }
+
+    // if the vector contains more than on sub sensor, the BatchData's DataType is Vector
     List<TsPrimitiveType[]> valueBatchList = new ArrayList<>(valueCount);
     for (ValuePageReader valuePageReader : valuePageReaderList) {
       valueBatchList.add(valuePageReader.nextValueBatch(timeBatch));
@@ -81,6 +85,7 @@ public class VectorPageReader implements IPageReader {
     BatchData pageData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     boolean isNull;
     for (int i = 0; i < timeBatch.length; i++) {
+      // used to record whether the sub sensors are all null in current time
       isNull = true;
       TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
       for (int j = 0; j < v.length; j++) {
@@ -89,6 +94,8 @@ public class VectorPageReader implements IPageReader {
           isNull = false;
         }
       }
+      // if all the sub sensors' value are null in current time
+      // or current row is not satisfied with the filter, just discard it
       // TODO fix value filter v[0].getValue()
       if (!isNull && (filter == null || filter.satisfy(timeBatch[i], v[0].getValue()))) {
         pageData.putVector(timeBatch[i], v);
