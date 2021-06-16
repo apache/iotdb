@@ -17,6 +17,7 @@ import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,7 +54,24 @@ public class AsyncMetaClientTest {
             new Factory(),
             new TAsyncClientManager(),
             new TNonblockingSocket(
-                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
+                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS())) {
+          @Override
+          public void onComplete() {
+            super.onComplete();
+          }
+
+          @SuppressWarnings("squid:S1135")
+          @Override
+          public void onError(Exception e) {
+            try {
+              // Simulate the time to do the task when an exception occurs,
+              Thread.sleep(3000);
+            } catch (InterruptedException ie) {
+              Assert.fail(ie.getMessage());
+            }
+            super.onError(e);
+          }
+        };
     assertTrue(client.isReady());
 
     client = (AsyncMetaClient) asyncClientPool.getClient(TestUtils.getNode(0));
@@ -75,6 +93,9 @@ public class AsyncMetaClientTest {
             // do nothing
           }
         });
+    // When the above code calls client.matchTerm(), the previous task has not been completed
+    // because the time of doing the task is simulated in onError(Exception e), so
+    // client.isReady()=false
     assertFalse(client.isReady());
 
     client.onError(new Exception());
