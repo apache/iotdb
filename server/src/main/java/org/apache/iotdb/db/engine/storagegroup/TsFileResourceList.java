@@ -99,7 +99,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     return new TsFileIterator();
   }
 
-  public Iterator<TsFileResource> reverseIterator() {
+  public Iterator<TsFileResourceListNode> reverseIterator() {
     return new TsFileReverseIterator();
   }
 
@@ -253,7 +253,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     }
   }
 
-  private class TsFileReverseIterator implements Iterator<TsFileResource> {
+  private class TsFileReverseIterator implements Iterator<TsFileResourceListNode> {
     TsFileResourceListNode current;
 
     public TsFileReverseIterator() {
@@ -266,10 +266,10 @@ public class TsFileResourceList implements List<TsFileResource> {
     }
 
     @Override
-    public TsFileResource next() {
+    public TsFileResourceListNode next() {
       TsFileResourceListNode temp = current;
       current = current.prev;
-      return temp.getTsFileResource();
+      return temp;
     }
   }
 }

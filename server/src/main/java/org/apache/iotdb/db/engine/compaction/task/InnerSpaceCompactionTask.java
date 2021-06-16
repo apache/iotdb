@@ -20,16 +20,18 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
-  private TsFileResourceList tsFileResourceList;
+  private List<TsFileResourceListNode> tsFileResourceList;
   private boolean sequence;
   private String storageGroup;
 
   public InnerSpaceCompactionTask(
-      TsFileResourceList tsFileResourceList,
+      List<TsFileResourceListNode> tsFileResourceList,
       boolean sequence,
       String storageGroup,
       AtomicInteger globalActiveTaskNum) {
@@ -40,5 +42,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  protected void doCompaction() throws Exception {}
+  protected void doCompaction() throws Exception {
+  }
 }

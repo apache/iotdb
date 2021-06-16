@@ -24,13 +24,16 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionScheduler {
@@ -126,25 +129,26 @@ public class CompactionScheduler {
       boolean isSequence,
       Class clazz) {
     boolean taskSubmitted = false;
-    TsFileResourceList selectedFileList = new TsFileResourceList();
+    List<TsFileResourceListNode> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
     boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+    Iterator<TsFileResourceListNode> iterator = tsFileResources.reverseIterator();
     Constructor constructor = null;
     try {
       constructor =
           clazz.getConstructor(
-              TsFileResourceList.class, Boolean.class, String.class, AtomicInteger.class);
+              List.class, Boolean.class, String.class, AtomicInteger.class);
     } catch (NoSuchMethodException e) {
       LOGGER.warn(e.getMessage(), e);
       return false;
     }
     while (iterator.hasNext()) {
-      TsFileResource currentFile = iterator.next();
+      TsFileResourceListNode currentNode = iterator.next();
+      TsFileResource currentFile = currentNode.getTsFileResource();
       if ((currentTaskNum.get() >= concurrentCompactionThread)
           || (!enableSeqSpaceCompaction && isSequence)
           || (!enableUnseqSpaceCompaction && !isSequence)) {
@@ -156,7 +160,7 @@ public class CompactionScheduler {
         selectedFileList.clear();
         continue;
       }
-      selectedFileList.add(currentFile);
+      selectedFileList.add(currentNode);
       selectedFileSize += currentFile.getTsFileSize();
       if (selectedFileSize > targetCompactionFileSize) {
         // submit the task
@@ -168,7 +172,7 @@ public class CompactionScheduler {
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
           currentTaskNum.incrementAndGet();
-          selectedFileList = new TsFileResourceList();
+          selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
