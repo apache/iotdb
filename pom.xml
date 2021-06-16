@@ -613,6 +613,7 @@
                             <exclude>.pytest_cache/**</exclude>
                             <exclude>venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
+                            <exclude>client-py/iotdb/thrift/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
