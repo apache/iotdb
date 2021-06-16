@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -145,7 +144,8 @@ public class CompactionScheduler {
     Constructor constructor = null;
     try {
       constructor =
-          clazz.getConstructor(TsFileResourceList.class, Boolean.class, AtomicInteger.class);
+          clazz.getConstructor(
+              TsFileResourceList.class, Boolean.class, String.class, AtomicInteger.class);
     } catch (NoSuchMethodException e) {
       LOGGER.warn(e.getMessage(), e);
       return false;
@@ -170,7 +170,8 @@ public class CompactionScheduler {
         try {
           InnerSpaceCompactionTask innerSpaceCompactionTask =
               (InnerSpaceCompactionTask)
-                  constructor.newInstance(selectedFileList, isSequence, currentTaskNum);
+                  constructor.newInstance(
+                      selectedFileList, isSequence, storageGroup, currentTaskNum);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
           currentTaskNum.incrementAndGet();
@@ -184,11 +185,16 @@ public class CompactionScheduler {
     }
     // if some files are selected but the total size is smaller than target size, submit a task
     if (selectedFileList.size() > 0) {
-      AbstractCompactionTask innerSpaceCompactionTask =
-          new InnerSpaceCompactionTask(selectedFileList, isSequence, currentTaskNum);
-      CompactionTaskManager.getInstance()
-          .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
-      currentTaskNum.incrementAndGet();
+      try {
+        InnerSpaceCompactionTask innerSpaceCompactionTask =
+            (InnerSpaceCompactionTask)
+                constructor.newInstance(selectedFileList, isSequence, storageGroup, currentTaskNum);
+        CompactionTaskManager.getInstance()
+            .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
+        currentTaskNum.incrementAndGet();
+      } catch (Exception e) {
+        LOGGER.warn(e.getMessage(), e);
+      }
     }
     return taskSubmitted;
   }

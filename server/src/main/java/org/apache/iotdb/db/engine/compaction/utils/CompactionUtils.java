@@ -251,7 +251,7 @@ public class CompactionUtils {
    * @param devices the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static void merge(
+  public static void compact(
       TsFileResource targetResource,
       List<TsFileResource> tsFileResources,
       String storageGroup,
