@@ -474,6 +474,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "concurrent_compaction_thread",
                   Integer.toString(conf.getConcurrentCompactionThread()))));
+      conf.setTargetCompactionFileSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_compaction_file_size",
+                  Long.toString(conf.getTargetCompactionFileSize()))));
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
