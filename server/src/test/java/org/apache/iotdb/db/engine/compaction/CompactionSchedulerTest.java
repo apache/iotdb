@@ -16,26 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup;
+package org.apache.iotdb.db.engine.compaction;
 
-public class FakedTsFileResource extends TsFileResource {
+import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.junit.Test;
 
-  private long tsFileSize;
+public class CompactionSchedulerTest {
 
-  public FakedTsFileResource(long tsFileSize) {
-    this.tsFileSize = tsFileSize;
-    super.closed = false;
-    super.isMerging = false;
+  @Test
+  private void testFileSelecter() {
+    TsFileResourceList tsFileResources = new TsFileResourceList();
+    tsFileResources.add(new FakedTsFileResource(100));
+    tsFileResources.add(new FakedTsFileResource(100));
+    tsFileResources.add(new FakedTsFileResource(100, true, true));
+
   }
 
-  public FakedTsFileResource(long tsFileSize, boolean isClosed, boolean isMerging) {
-    this.tsFileSize = tsFileSize;
-    super.closed = isClosed;
-    super.isMerging = isMerging;
-  }
-
-  @Override
-  public long getTsFileSize() {
-    return tsFileSize;
-  }
 }

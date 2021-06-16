@@ -52,72 +52,79 @@ public class CompactionScheduler {
           tsFileResourceManager.getUnsequenceListByTimePartition(timePartition);
       CompactionPriority compactionPriority = config.getCompactionPriority();
       if (compactionPriority == CompactionPriority.BALANCE) {
-        boolean taskSubmitted = false;
-        int concurrentCompactionThread = config.getConcurrentCompactionThread();
-        while (taskSubmitted && currentTaskNum.get() < concurrentCompactionThread) {
-          taskSubmitted =
-              tryToSubmitInnerSpaceCompactionTask(
-                  tsFileResourceManager.getStorageGroupName(),
-                  timePartition,
-                  sequenceFileList,
-                  true,
-                  InnerSpaceCompactionTask.class);
-          taskSubmitted =
-              tryToSubmitInnerSpaceCompactionTask(
-                      tsFileResourceManager.getStorageGroupName(),
-                      timePartition,
-                      unsequenceFileList,
-                      false,
-                      InnerSpaceCompactionTask.class)
-                  | taskSubmitted;
-          taskSubmitted =
-              tryToSubmitCrossSpaceCompactionTask(
-                      tsFileResourceManager.getStorageGroupName(),
-                      timePartition,
-                      sequenceFileList,
-                      unsequenceFileList)
-                  | taskSubmitted;
-        }
-      } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
-        tryToSubmitInnerSpaceCompactionTask(
+        doCompactionBalancePriority(
             tsFileResourceManager.getStorageGroupName(),
             timePartition,
             sequenceFileList,
-            true,
-            InnerSpaceCompactionTask.class);
-        tryToSubmitInnerSpaceCompactionTask(
-            tsFileResourceManager.getStorageGroupName(),
-            timePartition,
-            unsequenceFileList,
-            false,
-            InnerSpaceCompactionTask.class);
-        tryToSubmitCrossSpaceCompactionTask(
+            unsequenceFileList);
+      } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
+        doCompactionInnerCrossPrioirty(
             tsFileResourceManager.getStorageGroupName(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.CROSS_INNER) {
-        tryToSubmitCrossSpaceCompactionTask(
+        doCompactionCrossInnerPrioirty(
             tsFileResourceManager.getStorageGroupName(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
-        tryToSubmitInnerSpaceCompactionTask(
-            tsFileResourceManager.getStorageGroupName(),
-            timePartition,
-            sequenceFileList,
-            true,
-            InnerSpaceCompactionTask.class);
-        tryToSubmitInnerSpaceCompactionTask(
-            tsFileResourceManager.getStorageGroupName(),
-            timePartition,
-            unsequenceFileList,
-            false,
-            InnerSpaceCompactionTask.class);
       }
     } finally {
       tsFileResourceManager.readUnlock();
     }
+  }
+
+  private static void doCompactionBalancePriority(
+      String storageGroup,
+      long timePartition,
+      TsFileResourceList sequenceFileList,
+      TsFileResourceList unsequenceFileList) {
+    boolean taskSubmitted = false;
+    int concurrentCompactionThread = config.getConcurrentCompactionThread();
+    while (taskSubmitted && currentTaskNum.get() < concurrentCompactionThread) {
+      taskSubmitted =
+          tryToSubmitInnerSpaceCompactionTask(
+              storageGroup, timePartition, sequenceFileList, true, InnerSpaceCompactionTask.class);
+      taskSubmitted =
+          tryToSubmitInnerSpaceCompactionTask(
+                  storageGroup,
+                  timePartition,
+                  unsequenceFileList,
+                  false,
+                  InnerSpaceCompactionTask.class)
+              | taskSubmitted;
+      taskSubmitted =
+          tryToSubmitCrossSpaceCompactionTask(
+                  storageGroup, timePartition, sequenceFileList, unsequenceFileList)
+              | taskSubmitted;
+    }
+  }
+
+  private static void doCompactionInnerCrossPrioirty(
+      String storageGroup,
+      long timePartition,
+      TsFileResourceList sequenceFileList,
+      TsFileResourceList unsequenceFileList) {
+    tryToSubmitInnerSpaceCompactionTask(
+        storageGroup, timePartition, sequenceFileList, true, InnerSpaceCompactionTask.class);
+    tryToSubmitInnerSpaceCompactionTask(
+        storageGroup, timePartition, unsequenceFileList, false, InnerSpaceCompactionTask.class);
+    tryToSubmitCrossSpaceCompactionTask(
+        storageGroup, timePartition, sequenceFileList, unsequenceFileList);
+  }
+
+  private static void doCompactionCrossInnerPrioirty(
+      String storageGroup,
+      long timePartition,
+      TsFileResourceList sequenceFileList,
+      TsFileResourceList unsequenceFileList) {
+    tryToSubmitCrossSpaceCompactionTask(
+        storageGroup, timePartition, sequenceFileList, unsequenceFileList);
+    tryToSubmitInnerSpaceCompactionTask(
+        storageGroup, timePartition, sequenceFileList, true, InnerSpaceCompactionTask.class);
+    tryToSubmitInnerSpaceCompactionTask(
+        storageGroup, timePartition, unsequenceFileList, false, InnerSpaceCompactionTask.class);
   }
 
   public static boolean tryToSubmitInnerSpaceCompactionTask(

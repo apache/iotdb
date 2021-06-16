@@ -685,7 +685,6 @@ public class TsFileResource {
     return upgradedResources;
   }
 
-
   public void setUpgradeTsFileResourceCallBack(
       UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
     this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
