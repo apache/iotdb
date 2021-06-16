@@ -52,7 +52,7 @@
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.sync.receiver.SyncServerManager" level="INFO"/>
     <logger name="DETAILED_FAILURE_QUERY_TRACE" level="ERROR"/>
-    <root level="info">
+    <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>
