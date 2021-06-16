@@ -69,24 +69,7 @@ public class AsyncMetaClientTest {
             new Factory(),
             new TAsyncClientManager(),
             new TNonblockingSocket(
-                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS())) {
-          @Override
-          public void onComplete() {
-            super.onComplete();
-          }
-
-          @SuppressWarnings("squid:S1135")
-          @Override
-          public void onError(Exception e) {
-            try {
-              // Simulate the time to do the task when an exception occurs,
-              Thread.sleep(3000);
-            } catch (InterruptedException ie) {
-              Assert.fail(ie.getMessage());
-            }
-            super.onError(e);
-          }
-        };
+                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
     assertTrue(client.isReady());
 
     client = (AsyncMetaClient) asyncClientPool.getClient(TestUtils.getNode(0));
@@ -105,7 +88,12 @@ public class AsyncMetaClientTest {
 
           @Override
           public void onError(Exception e) {
-            // do nothing
+            try {
+              // Simulate the time to do the task when an exception occurs,
+              Thread.sleep(3000);
+            } catch (InterruptedException ie) {
+              Assert.fail(ie.getMessage());
+            }
           }
         });
     // When the above code calls client.matchTerm(), the previous task has not been completed
