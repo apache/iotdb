@@ -68,7 +68,9 @@ public class FileLoaderTest {
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
     compactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
