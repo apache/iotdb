@@ -32,10 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -43,7 +40,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
@@ -52,8 +48,10 @@ public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
   private ExecutorService pool;
+  // TODO: record the task in time partition
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
-  private AtomicInteger currentTaskNum = new AtomicInteger(0);
+  private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
+      new ConcurrentHashMap<>();
   private final int CONCURRENT_COMPACTION_THREAD =
       IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
@@ -162,14 +160,23 @@ public class CompactionTaskManager implements IService {
 
   public void submitTask(String storageGroupName, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null
-        && !pool.isTerminated()
-        && currentTaskNum.intValue() < CONCURRENT_COMPACTION_THREAD) {
+    if (pool != null && !pool.isTerminated()) {
       Future<Void> future = pool.submit(compactionMergeTask);
       storageGroupTasks
           .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
           .add(future);
-      currentTaskNum.getAndIncrement();
+    }
+  }
+
+  public void submitTask(
+      String storageGroupName, long timePartition, Callable<Void> compactionMergeTask)
+      throws RejectedExecutionException {
+    if (pool != null && !pool.isTerminated()) {
+      Future<Void> future = pool.submit(compactionMergeTask);
+      compactionTaskFutures
+          .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(timePartition, k -> new HashSet<>())
+          .add(future);
     }
   }
 

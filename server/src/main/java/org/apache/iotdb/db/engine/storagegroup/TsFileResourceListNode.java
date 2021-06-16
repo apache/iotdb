@@ -17,11 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.engine.storagegroup;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+/** This class is the node of {@link TsFileResourceList}, which is a double linked list. */
+public class TsFileResourceListNode {
+  protected TsFileResource tsFileResource;
+  protected TsFileResourceListNode prev = null;
+  protected TsFileResourceListNode next = null;
 
-public class TsFileResourceManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceManager.class);
+  protected TsFileResourceListNode(TsFileResource tsFileResource) {
+    this.tsFileResource = tsFileResource;
+  }
+
+  public TsFileResource getTsFileResource() {
+    return tsFileResource;
+  }
 }

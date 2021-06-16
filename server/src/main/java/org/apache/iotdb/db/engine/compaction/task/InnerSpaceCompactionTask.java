@@ -19,31 +19,21 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public abstract class AbstractCompactionTask implements Callable<Void> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
-  private AtomicInteger globalActiveCompactionTaskNum;
+public class InnerSpaceCompactionTask extends AbstractCompactionTask {
+  private TsFileResourceList tsFileResourceList;
+  private boolean sequence;
 
-  public AbstractCompactionTask(AtomicInteger compactionTaskNum) {
-    globalActiveCompactionTaskNum = compactionTaskNum;
+  public InnerSpaceCompactionTask(
+      TsFileResourceList tsFileResourceList, boolean sequence, AtomicInteger globalActiveTaskNum) {
+    super(globalActiveTaskNum);
+    this.tsFileResourceList = tsFileResourceList;
+    this.sequence = sequence;
   }
-
-  protected abstract void doCompaction() throws Exception;
 
   @Override
-  public Void call() throws Exception {
-    try {
-      doCompaction();
-    } catch (Exception e) {
-      LOGGER.warn(e.getMessage(), e);
-    } finally {
-      globalActiveCompactionTaskNum.decrementAndGet();
-    }
-    return null;
-  }
+  protected void doCompaction() throws Exception {}
 }

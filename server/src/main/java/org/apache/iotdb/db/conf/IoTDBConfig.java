@@ -315,6 +315,9 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
+  /** The target tsfile size in compaction. */
+  private long targetCompactionFileSize = 2147483648L;
+
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
@@ -2131,6 +2134,14 @@ public class IoTDBConfig {
 
   public void setCompactionPriority(CompactionPriority compactionPriority) {
     this.compactionPriority = compactionPriority;
+  }
+
+  public long getTargetCompactionFileSize() {
+    return targetCompactionFileSize;
+  }
+
+  public void setTargetCompactionFileSize(long targetCompactionFileSize) {
+    this.targetCompactionFileSize = targetCompactionFileSize;
   }
 
   public long getCompactionInterval() {
