@@ -148,7 +148,11 @@ public class CompactionScheduler {
     try {
       constructor =
           clazz.getConstructor(
-              List.class, Boolean.class, String.class, AtomicInteger.class);
+              TsFileResourceList.class,
+              List.class,
+              Boolean.class,
+              String.class,
+              AtomicInteger.class);
     } catch (NoSuchMethodException e) {
       LOGGER.warn(e.getMessage(), e);
       return false;
@@ -175,7 +179,7 @@ public class CompactionScheduler {
           InnerSpaceCompactionTask innerSpaceCompactionTask =
               (InnerSpaceCompactionTask)
                   constructor.newInstance(
-                      selectedFileList, isSequence, storageGroup, currentTaskNum);
+                      tsFileResources, selectedFileList, isSequence, storageGroup, currentTaskNum);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
           currentTaskNum.incrementAndGet();
@@ -192,7 +196,8 @@ public class CompactionScheduler {
       try {
         InnerSpaceCompactionTask innerSpaceCompactionTask =
             (InnerSpaceCompactionTask)
-                constructor.newInstance(selectedFileList, isSequence, storageGroup, currentTaskNum);
+                constructor.newInstance(
+                    tsFileResources, selectedFileList, isSequence, storageGroup, currentTaskNum);
         CompactionTaskManager.getInstance()
             .submitTask(storageGroup, timePartition, innerSpaceCompactionTask);
         currentTaskNum.incrementAndGet();

@@ -18,8 +18,4 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-public class FakedInnerSpaceCompactionTask {
-
-
-
-}
+public class FakedInnerSpaceCompactionTask {}

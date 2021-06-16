@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+
 import org.junit.Test;
 
 public class CompactionSchedulerTest {
@@ -30,7 +31,5 @@ public class CompactionSchedulerTest {
     tsFileResources.add(new FakedTsFileResource(100));
     tsFileResources.add(new FakedTsFileResource(100));
     tsFileResources.add(new FakedTsFileResource(100, true, true));
-
   }
-
 }

@@ -26,22 +26,24 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
-  private List<TsFileResourceListNode> tsFileResourceList;
+  private List<TsFileResourceListNode> selectedTsFileResourceList;
+  private TsFileResourceList tsFileResourceList;
   private boolean sequence;
   private String storageGroup;
 
   public InnerSpaceCompactionTask(
-      List<TsFileResourceListNode> tsFileResourceList,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResourceListNode> selectedTsFileResourceList,
       boolean sequence,
       String storageGroup,
       AtomicInteger globalActiveTaskNum) {
     super(globalActiveTaskNum);
     this.tsFileResourceList = tsFileResourceList;
+    this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.storageGroup = storageGroup;
   }
 
   @Override
-  protected void doCompaction() throws Exception {
-  }
+  protected void doCompaction() throws Exception {}
 }
