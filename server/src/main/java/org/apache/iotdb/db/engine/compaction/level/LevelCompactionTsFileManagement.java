@@ -449,7 +449,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             List<Modification> modifications = new ArrayList<>();
-            CompactionUtils.merge(
+            CompactionUtils.compact(
                 targetTsFileResource,
                 getTsFileList(isSeq),
                 storageGroupName,
@@ -483,7 +483,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             List<Modification> modifications = new ArrayList<>();
-            CompactionUtils.merge(
+            CompactionUtils.compact(
                 targetResource,
                 sourceTsFileResources,
                 storageGroupName,
@@ -676,7 +676,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             TsFileResource newResource = new TsFileResource(newLevelFile);
             List<Modification> modifications = new ArrayList<>();
             // merge, read from source files and write to target file
-            CompactionUtils.merge(
+            CompactionUtils.compact(
                 newResource,
                 toMergeTsFiles,
                 storageGroupName,

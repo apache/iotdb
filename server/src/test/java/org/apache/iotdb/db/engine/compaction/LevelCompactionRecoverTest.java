@@ -130,7 +130,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
+    CompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -221,7 +221,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
+    CompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -336,7 +336,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
+    CompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -457,7 +457,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
+    CompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -663,7 +663,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
+    CompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,

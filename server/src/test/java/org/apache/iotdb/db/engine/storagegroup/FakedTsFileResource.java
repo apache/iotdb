@@ -38,5 +38,4 @@ public class FakedTsFileResource extends TsFileResource {
   public long getTsFileSize() {
     return tsFileSize;
   }
-
 }

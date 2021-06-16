@@ -93,7 +93,6 @@ public class DeletionFileNodeTest {
     EnvironmentUtils.cleanEnv();
   }
 
-
   @Test
   public void testDeleteInBufferWriteCache()
       throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
