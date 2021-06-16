@@ -169,6 +169,7 @@ public class CompactionScheduler {
           || currentFile.isMerging()
           || !currentFile.isClosed()) {
         selectedFileList.clear();
+        selectedFileSize = 0L;
         continue;
       }
       selectedFileList.add(currentNode);
@@ -214,5 +215,9 @@ public class CompactionScheduler {
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     return false;
+  }
+
+  public static int getCnt() {
+    return currentTaskNum.get();
   }
 }

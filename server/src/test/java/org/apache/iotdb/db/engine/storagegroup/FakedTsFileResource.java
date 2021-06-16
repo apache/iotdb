@@ -24,7 +24,7 @@ public class FakedTsFileResource extends TsFileResource {
 
   public FakedTsFileResource(long tsFileSize) {
     this.tsFileSize = tsFileSize;
-    super.closed = false;
+    super.closed = true;
     super.isMerging = false;
   }
 
@@ -37,5 +37,14 @@ public class FakedTsFileResource extends TsFileResource {
   @Override
   public long getTsFileSize() {
     return tsFileSize;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(tsFileSize).append(",");
+    builder.append(closed).append(",");
+    builder.append(isMerging);
+    return builder.toString();
   }
 }

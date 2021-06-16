@@ -30,15 +30,18 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
-      List<TsFileResourceListNode> compactionCandidateTsFileResourceList,
-      boolean sequence, String storageGroup,
-      AtomicInteger globalActiveTaskNum) {
-    super(compactionCandidateTsFileResourceList, sequence, storageGroup, globalActiveTaskNum);
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResourceListNode> selectedTsFileResourceList, Boolean sequence,
+      String storageGroup, AtomicInteger globalActiveTaskNum) {
+    super(tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup,
+        globalActiveTaskNum);
   }
 
   @Override
   protected void doCompaction() throws Exception {
-
+    for (TsFileResourceListNode tsFileResourceListNode: selectedTsFileResourceList) {
+      this.tsFileResourceList.remove(tsFileResourceListNode);
+    }
   }
 
 }
