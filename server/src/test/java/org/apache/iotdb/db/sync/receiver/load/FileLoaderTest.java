@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
@@ -61,10 +62,15 @@ public class FileLoaderTest {
   private static final String SG_NAME = "root.sg";
   private String dataDir;
   private IFileLoader fileLoader;
+  private CompactionStrategy compactionStrategy;
 
   @Before
   public void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
+    compactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
@@ -87,6 +93,7 @@ public class FileLoaderTest {
   public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(compactionStrategy);
     HashVirtualPartitioner.getInstance()
         .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
   }
