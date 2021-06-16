@@ -38,7 +38,7 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 | :--------: | :-----------: | :-----------: |
 | >=`0.12.0` | >=`1.8.0_271` |   `>=0.9.0`   |
 
-安装 IoTDB：参考 [Quick Start](QuickStart/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
+安装 IoTDB：参考 [快速上手](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
 
 安装 Zeppelin：
 > 方法1 直接下载：下载 [Zeppelin](https://zeppelin.apache.org/download.html#) 并解压二进制文件。推荐下载 [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) 二进制包，此包由于未编译不相关的interpreter，因此大小相对较小。
