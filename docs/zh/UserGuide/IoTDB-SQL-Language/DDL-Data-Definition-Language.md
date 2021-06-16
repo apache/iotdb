@@ -19,13 +19,11 @@
 
 -->
 
-# IoTDB-SQL 语言
+# 数据定义语言（DDL）
 
-## 数据定义语言（DDL）
+## 存储组管理
 
-### 存储组管理
-
-#### 创建存储组
+### 创建存储组
 
 我们可以根据存储模型建立相应的存储组。创建存储组的SQL语句如下所示：
 
@@ -46,7 +44,7 @@ Msg: 300: root.ln has already been set to storage group.
 
 还需注意，如果在Windows系统上部署，存储组名是大小写不敏感的。例如同时创建`root.ln` 和 `root.LN` 是不被允许的。
 
-#### 查看存储组
+### 查看存储组
 
 在存储组创建后，我们可以使用[SHOW STORAGE GROUP](../Appendix/SQL-Reference.md)语句和[SHOW STORAGE GROUP \<PrefixPath>](../Appendix/SQL-Reference.md)来查看存储组，SQL语句如下所示：
 
@@ -68,7 +66,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-#### 删除存储组
+### 删除存储组
 
 用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
@@ -78,9 +76,9 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 // 删除所有数据，时间序列以及存储组
 IoTDB > DELETE STORAGE GROUP root.*
 ```
-### 时间序列管理
+## 时间序列管理
 
-#### 创建时间序列
+### 创建时间序列
 
 根据建立的数据模型，我们可以分别在两个存储组中创建相应的时间序列。创建时间序列的SQL语句如下所示：
 
@@ -101,7 +99,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见[编码方式](../Data-Concept/Encoding.md)。
 
-#### 删除时间序列
+### 删除时间序列
 
 我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL语句如下所示：
 
@@ -125,7 +123,7 @@ error: Not support deleting part of aligned timeseies!
 ```
 
 
-#### 查看时间序列
+### 查看时间序列
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
@@ -220,7 +218,7 @@ It costs 0.004s
   
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
-#### 统计时间序列总数
+### 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：
 ```
@@ -295,7 +293,7 @@ It costs 0.001s
 
 > 注意：时间序列的路径只是过滤条件，与level的定义无关。
 
-#### 标签点管理
+### 标签点管理
 
 我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
 所用到的扩展的创建时间序列的SQL语句如下所示：
@@ -341,9 +339,9 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
-### 节点管理
+## 节点管理
 
-#### 查看子路径
+### 查看子路径
 
 ```
 SHOW CHILD PATHS prefixPath
@@ -375,7 +373,7 @@ SHOW CHILD PATHS prefixPath
 +---------------+
 ```
 
-#### 查看子节点
+### 查看子节点
 
 ```
 SHOW CHILD NODES prefixPath
@@ -406,7 +404,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-#### 统计节点数
+### 统计节点数
 
 IoTDB支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前Metadata树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
 
@@ -448,7 +446,7 @@ It costs 0.002s
 其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
 
-#### 查看设备
+### 查看设备
 
 * SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
 
@@ -524,13 +522,13 @@ Total line number = 2
 It costs 0.001s
 ```
 
-### 数据存活时间（TTL）
+## 数据存活时间（TTL）
 
 IoTDB支持对存储组级别设置数据存活时间（TTL），这使得IoTDB可以定期、自动地删除一定时间之前的数据。合理使用TTL
 可以帮助您控制IoTDB占用的总磁盘空间以避免出现磁盘写满等异常。并且，随着文件数量的增多，查询性能往往随之下降,
 内存占用也会有所提高。及时地删除一些较老的文件有助于使查询性能维持在一个较高的水平和减少内存资源的占用。
 
-#### 设置 TTL
+### 设置 TTL
 
 设置TTL的SQL语句如下所示：
 ```
@@ -538,7 +536,7 @@ IoTDB> set ttl to root.ln 3600000
 ```
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
 
-#### 取消 TTL
+### 取消 TTL
 
 取消TTL的SQL语句如下所示：
 
@@ -548,7 +546,7 @@ IoTDB> unset ttl to root.ln
 
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
-#### 显示 TTL
+### 显示 TTL
 
 显示TTL的SQL语句如下所示：
 

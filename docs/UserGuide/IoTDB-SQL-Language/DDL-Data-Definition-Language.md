@@ -19,12 +19,10 @@
 
 -->
 
-# IoTDB-SQL Language
+# Data Definition Language (DDL)
 
-## Data Definition Language (DDL) 
-
-### Stroage Group Management
-#### Create Storage Group
+## Stroage Group Management
+### Create Storage Group
 
 According to the storage model we can set up the corresponding storage group. The SQL statements for creating storage groups are as follows:
 
@@ -45,7 +43,7 @@ The LayerName of storage group can only be characters, numbers, underscores and 
  
 Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
-#### Show Storage Group
+### Show Storage Group
 
 After creating the storage group, we can use the [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Appendix/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
 
@@ -67,7 +65,7 @@ Total line number = 2
 It costs 0.060s
 ```
 
-#### Delete Storage Group
+### Delete Storage Group
 
 User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
 
@@ -77,8 +75,8 @@ IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
 IoTDB > DELETE STORAGE GROUP root.*
 ```
-### Timeseries Management
-#### Create Timeseries
+## Timeseries Management
+### Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
@@ -100,7 +98,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
 
-#### Delete Timeseries
+### Delete Timeseries
 
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
 
@@ -125,7 +123,7 @@ IoTDB > delete timeseries root.sg.d1.s1
 error: Not support deleting part of aligned timeseies!
 ```
 
-#### Show Timeseries
+### Show Timeseries
 
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
@@ -221,7 +219,7 @@ It costs 0.004s
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
 
-#### Count Timeseries
+### Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
 
@@ -297,7 +295,7 @@ It costs 0.002s
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 
-#### Tag and attribute management
+### Tag and Attribute Management
 
 We can also add an alias, extra tag and attribute information while creating one timeseries.
 The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
@@ -342,8 +340,8 @@ ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
-### Node Management
-#### Show Child Paths
+## Node Management
+### Show Child Paths
 
 ```
 SHOW CHILD PATHS prefixPath
@@ -368,7 +366,7 @@ It costs 0.002s
 
 > get all paths in form of root.xx.xx.xx：show child paths root.xx.xx
 
-#### Show Child Nodes
+### Show Child Nodes
 
 ```
 SHOW CHILD NODES prefixPath
@@ -399,7 +397,7 @@ Example：
 +------------+
 ```
 
-#### Count Nodes
+### Count Nodes
 
 IoTDB is able to use `COUNT NODES <PrefixPath> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
 
@@ -440,7 +438,7 @@ It costs 0.002s
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
 `PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
 
-#### Show Devices
+### Show Devices
 
 * SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
 
@@ -517,11 +515,11 @@ Total line number = 2
 It costs 0.001s
 ```
 
-### TTL
+## TTL
 
 IoTDB supports storage-level TTL settings, which means it is able to delete old data automatically and periodically. The benefit of using TTL is that hopefully you can control the total disk space usage and prevent the machine from running out of disks. Moreover, the query performance may downgrade as the total number of files goes up and the memory usage also increase as there are more files. Timely removing such files helps to keep at a high query performance level and reduce memory usage.
 
-#### Set TTL
+### Set TTL
 
 The SQL Statement for setting TTL is as follow:
 
@@ -531,7 +529,7 @@ IoTDB> set ttl to root.ln 3600000
 
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
-#### Unset TTL
+### Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
 
@@ -541,7 +539,7 @@ IoTDB> unset ttl to root.ln
 
 After unset TTL, all data will be accepted in `root.ln`
 
-#### Show TTL
+### Show TTL
 
 To Show TTL, we can use following SQL statement:
 
