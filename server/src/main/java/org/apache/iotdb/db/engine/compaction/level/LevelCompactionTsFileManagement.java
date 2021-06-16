@@ -64,9 +64,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
 
   private final int seqLevelNum = 0;
-  private final int seqFileNumInEachLevel = 0;
   private final int unseqLevelNum = 0;
-  private final int unseqFileNumInEachLevel = 0;
 
   private final boolean enableUnseqCompaction = false;
 
@@ -588,6 +586,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
+    int seqFileNumInEachLevel = 0;
     isMergeExecutedInCurrentTask =
         merge(
             forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
@@ -601,6 +600,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           forkedUnSequenceTsFileResources.get(0),
           Long.MAX_VALUE);
     } else {
+      int unseqFileNumInEachLevel = 0;
       isMergeExecutedInCurrentTask =
           merge(
               forkedUnSequenceTsFileResources,

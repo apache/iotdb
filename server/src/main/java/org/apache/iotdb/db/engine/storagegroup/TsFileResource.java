@@ -108,9 +108,9 @@ public class TsFileResource {
 
   private ModificationFile modFile;
 
-  private volatile boolean closed = false;
+  protected volatile boolean closed = false;
   private volatile boolean deleted = false;
-  private volatile boolean isMerging = false;
+  volatile boolean isMerging = false;
 
   private TsFileLock tsFileLock = new TsFileLock();
 
@@ -138,12 +138,6 @@ public class TsFileResource {
    * 0.12/v3
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
-
-  /**
-   * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
-   * v0.9.x/v1 -> 0.10/v2
-   */
-  private boolean isSeq;
 
   /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
@@ -691,13 +685,6 @@ public class TsFileResource {
     return upgradedResources;
   }
 
-  public void setSeq(boolean isSeq) {
-    this.isSeq = isSeq;
-  }
-
-  public boolean isSeq() {
-    return isSeq;
-  }
 
   public void setUpgradeTsFileResourceCallBack(
       UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {

@@ -38,7 +38,6 @@ import java.sql.Statement;
 public class IoTDBDeleteTimeseriesIT {
 
   private long memtableSizeThreshold;
-  private CompactionStrategy tsFileManagementStrategy;
 
   @Before
   public void setUp() {
@@ -46,16 +45,11 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.envSetUp();
     memtableSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(16);
-    tsFileManagementStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
   }
 
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(memtableSizeThreshold);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(tsFileManagementStrategy);
     EnvironmentUtils.cleanEnv();
   }
 

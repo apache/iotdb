@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -37,15 +36,9 @@ import static org.junit.Assert.assertEquals;
 
 public class IoTDBLevelCompactionIT {
 
-  CompactionStrategy prevCompactionStrategy;
-
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    prevCompactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -53,16 +46,11 @@ public class IoTDBLevelCompactionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(prevCompactionStrategy);
   }
 
   /** test compaction files num > MAX_FILE_NUM_IN_LEVEL * MAX_LEVEL_NUM */
   @Test
   public void test() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -105,20 +93,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(flushCount, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction first use deserialize merge and then use append merge */
   @Test
   public void testAppendMergeAfterDeserializeMerge() throws SQLException {
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -167,21 +146,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(1, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   /** test compaction first use append merge and then use deserialize merge */
   @Test
   public void testDeserializeMergeAfterAppendMerge() throws SQLException {
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -239,16 +208,9 @@ public class IoTDBLevelCompactionIT {
           .getConfig()
           .setMergePagePointNumberThreshold(prevMergePagePointNumberThreshold);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   private void testCompactionNoUnseq(int mergeCount) throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -290,8 +252,6 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(mergeCount, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction just once, no unseq */
@@ -303,10 +263,6 @@ public class IoTDBLevelCompactionIT {
   /** test compaction to just once, with unseq */
   @Test
   public void testCompactionOnceWithUnseq() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -351,8 +307,6 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(2, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction to second level once, no unseq */
@@ -364,10 +318,6 @@ public class IoTDBLevelCompactionIT {
   /** test compaction to second level once, with unseq */
   @Test
   public void testCompactionToSecondLevelWithUnseq() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -425,19 +375,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(5, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction to second level once, with unseq, disable unseqCompaction */
   @Test
   public void testCompactionToSecondLevelWithUnseqDisableUnseqCompaction() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -495,9 +437,6 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(5, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   /** test compaction to stable level once, No unseq */
@@ -509,10 +448,6 @@ public class IoTDBLevelCompactionIT {
   /** test compaction to stable level once, with unseq */
   @Test
   public void testCompactionToStableLevelWithUnseq() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -570,19 +505,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction to stable level once, with unseq, disable unseqCompaction */
   @Test
   public void testCompactionToStableLevelWithUnseqDisableUnseqCompaction() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -640,18 +567,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
   }
 
   /** test seq max level num = 0 */
   @Test
   public void testCompactionSeqMaxLevelNumError0() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(0);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -709,17 +629,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test seq max level num = -1 */
   @Test
   public void testCompactionSeqMaxLevelNumError1() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(-1);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -777,17 +691,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test seq file num in each level = 0 */
   @Test
   public void testCompactionSeqFileNumInEachLevelError0() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(0);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -845,17 +753,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test seq max level num = -1 */
   @Test
   public void testCompactionSeqFileNumInEachLevelError1() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(-1);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -913,25 +815,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(12, cnt);
     }
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /** test compaction with unseq compaction */
   @Test
   public void testCompactionWithUnseqCompaction() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    int prevUnSeqLevelFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel();
-    int prevUnSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -989,7 +877,6 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(55, cnt);
 
-      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
       for (int i = 10010; i < 10055; i++) {
         statement.execute(
             String.format(
@@ -1013,29 +900,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(100, cnt);
     }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(prevUnSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnSeqLevelNum);
   }
 
   /** test compaction with deletion timeseries */
   @Test
   public void testCompactionWithDeletionTimeseries() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    int prevUnSeqLevelFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel();
-    int prevUnSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1084,29 +953,11 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(2, cnt);
     }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(prevUnSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnSeqLevelNum);
   }
 
   /** test compaction with deletion timeseries and create different type */
   @Test
   public void testCompactionWithDeletionTimeseriesAndCreateDifferentTypeTest() throws SQLException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    int prevUnSeqLevelFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel();
-    int prevUnSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    boolean prevEnableUnseqCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(3);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(3);
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1168,7 +1019,6 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(55, cnt);
 
-      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(true);
       for (int i = 10010; i < 10055; i++) {
         statement.execute(
             String.format(
@@ -1190,11 +1040,5 @@ public class IoTDBLevelCompactionIT {
       }
       assertEquals(100, cnt);
     }
-
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqCompaction(prevEnableUnseqCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqFileNumInEachLevel(prevUnSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnSeqLevelNum);
   }
 }

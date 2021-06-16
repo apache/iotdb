@@ -46,11 +46,8 @@ import static org.junit.Assert.fail;
 
 public class IoTDBNewTsFileCompactionIT {
 
-  private int prevSeqLevelFileNum;
-  private int prevSeqLevelNum;
   private int prevMergePagePointNumber;
   private int preMaxNumberOfPointsInPage;
-  private CompactionStrategy preCompactionStrategy;
   private PartialPath storageGroupPath;
   // the unit is ns
   private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
@@ -59,21 +56,13 @@ public class IoTDBNewTsFileCompactionIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
     prevMergePagePointNumber =
         IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     preMaxNumberOfPointsInPage =
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    preCompactionStrategy = IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
     storageGroupPath = new PartialPath("root.sg1");
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -89,15 +78,12 @@ public class IoTDBNewTsFileCompactionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMergePagePointNumberThreshold(prevMergePagePointNumber);
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(preCompactionStrategy);
   }
 
   /**
