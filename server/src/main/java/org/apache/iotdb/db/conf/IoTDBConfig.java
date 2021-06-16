@@ -309,7 +309,7 @@ public class IoTDBConfig {
   private boolean enableUnseqSpaceCompaction = true;
 
   /**
-   * Compact the unseqence files into the overlapped sequence files
+   * Compact the unsequence files into the overlapped sequence files
    */
   private boolean enableCrossSpaceCompaction = true;
 
@@ -334,15 +334,13 @@ public class IoTDBConfig {
    */
   private int mergePagePointNumberThreshold = 100;
 
-  /**
-   * The interval of compaction task submission in each virtual storage group. The unit is ms.
-   */
+  /** The interval of compaction task submission in each virtual storage group. The unit is ms. */
   private long compactionInterval = 10_000L;
 
   /**
-   * The max open file num in each unseq compaction task. We use the unseq file num as the open
-   * file num # This parameters have to be much smaller than the permitted max open file num of
-   * each process controlled by operator system(65535 in most system).
+   * The max open file num in each unseq compaction task. We use the unseq file num as the open file
+   * num # This parameters have to be much smaller than the permitted max open file num of each
+   * process controlled by operator system(65535 in most system).
    */
   private int maxOpenFileNumInCrossSpaceCompaction = 2000;
 
@@ -503,9 +501,9 @@ public class IoTDBConfig {
   private long mergeIntervalSec = 0L;
 
   /**
-   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are re-written
-   * despite how much they are overflowed). This may increase merge overhead depending on how much
-   * the SeqFiles are overflowed.
+   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
+   * re-written despite how much they are overflowed). This may increase merge overhead depending on
+   * how much the SeqFiles are overflowed.
    */
   private boolean forceFullMerge = true;
 
@@ -1455,7 +1453,6 @@ public class IoTDBConfig {
   public void setMergeFileStrategy(MergeFileStrategy mergeFileStrategy) {
     this.mergeFileStrategy = mergeFileStrategy;
   }
-
 
   public int getMaxOpenFileNumInCrossSpaceCompaction() {
     return maxOpenFileNumInCrossSpaceCompaction;

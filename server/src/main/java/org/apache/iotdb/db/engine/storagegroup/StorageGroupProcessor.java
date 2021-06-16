@@ -530,7 +530,6 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
-
   }
 
   private void recoverCompaction() {

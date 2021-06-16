@@ -43,18 +43,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
-
   private static final Logger logger =
       LoggerFactory.getLogger(CompactionTaskManager.class);
   private static final CompactionTaskManager INSTANCE =
       new CompactionTaskManager();
   private ExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private AtomicInteger currentTaskNum = new AtomicInteger(0);
+  private final int CONCURRENT_COMPACTION_THREAD =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -161,11 +164,14 @@ public class CompactionTaskManager implements IService {
 
   public void submitTask(String storageGroupName, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
+    if (pool != null
+        && !pool.isTerminated()
+        && currentTaskNum.intValue() < CONCURRENT_COMPACTION_THREAD) {
       Future<Void> future = pool.submit(compactionMergeTask);
       storageGroupTasks
           .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
           .add(future);
+      currentTaskNum.getAndIncrement();
     }
   }
 

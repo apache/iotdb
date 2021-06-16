@@ -310,41 +310,33 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_page_point_number",
                   Integer.toString(conf.getMergePagePointNumberThreshold()))));
-
-      conf.setCompactionInterval(Long.parseLong(
+      conf.setCompactionInterval(
+          Long.parseLong(
               properties.getProperty(
-                      "compaction_interval",
-                      Long.toString(conf.getCompactionInterval())
-              )
-      ));
+                  "compaction_interval", Long.toString(conf.getCompactionInterval()))));
 
-      conf.setEnableCrossSpaceCompaction(Boolean.parseBoolean(
+      conf.setEnableCrossSpaceCompaction(
+          Boolean.parseBoolean(
               properties.getProperty(
-                      "enable_cross_space_compaction",
-                      Boolean.toString(conf.isEnableCrossSpaceCompaction())
-              )
-      ));
+                  "enable_cross_space_compaction",
+                  Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
 
-      conf.setEnableSeqSpaceCompaction(Boolean.parseBoolean(
+      conf.setEnableSeqSpaceCompaction(
+          Boolean.parseBoolean(
               properties.getProperty(
-                      "enable_seq_space_compaction",
-                      Boolean.toString(conf.isEnableSeqSpaceCompaction())
-              )
-      ));
+                  "enable_seq_space_compaction",
+                  Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
 
-      conf.setEnableUnseqSpaceCompaction(Boolean.parseBoolean(
+      conf.setEnableUnseqSpaceCompaction(
+          Boolean.parseBoolean(
               properties.getProperty(
-                      "enable_unseq_space_compaction",
-                      Boolean.toString(conf.isEnableUnseqSpaceCompaction())
-              )
-      ));
+                  "enable_unseq_space_compaction",
+                  Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
-      conf.setCompactionPriority(CompactionPriority.valueOf(
+      conf.setCompactionPriority(
+          CompactionPriority.valueOf(
               properties.getProperty(
-                      "compaction_priority",
-                      conf.getCompactionPriority().toString()
-              )
-      ));
+                  "compaction_priority", conf.getCompactionPriority().toString())));
 
       conf.setMaxOpenFileNumInCrossSpaceCompaction(
           Integer.parseInt(
@@ -480,7 +472,8 @@ public class IoTDBDescriptor {
       conf.setConcurrentCompactionThread(
           Integer.parseInt(
               properties.getProperty(
-                  "concurrent_compaction_thread", Integer.toString(conf.getConcurrentCompactionThread()))));
+                  "concurrent_compaction_thread",
+                  Integer.toString(conf.getConcurrentCompactionThread()))));
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
