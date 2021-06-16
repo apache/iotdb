@@ -30,6 +30,12 @@ public class CompactionSchedulerTest {
     TsFileResourceList tsFileResources = new TsFileResourceList();
     tsFileResources.add(new FakedTsFileResource(100));
     tsFileResources.add(new FakedTsFileResource(100));
+    tsFileResources.add(new FakedTsFileResource(100));
     tsFileResources.add(new FakedTsFileResource(100, true, true));
+    tsFileResources.add(new FakedTsFileResource(100));
+    tsFileResources.add(new FakedTsFileResource(100));
+
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testsg", 0L, tsFileResources, true, FakedInnerSpaceCompactionTask.class);
+
   }
 }
