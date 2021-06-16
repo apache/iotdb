@@ -56,9 +56,6 @@ public class IoTDBLargeDataIT {
   public static void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     // use small page setting
     // origin value
@@ -85,9 +82,6 @@ public class IoTDBLargeDataIT {
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
 
     EnvironmentUtils.cleanEnv();
   }

@@ -34,7 +34,7 @@ public class TsFileResourceList implements List<TsFileResource> {
   /**
    * Insert a new node before an existing node
    *
-   * @param node    the existing node
+   * @param node the existing node
    * @param newNode the new node to insert
    */
   public void insertBefore(TsFileResource node, TsFileResource newNode) {
@@ -97,9 +97,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     return new TsFileResourceIterator();
   }
 
-  /**
-   * Insert a new tsFileResource node to the end of List
-   */
+  /** Insert a new tsFileResource node to the end of List */
   @Override
   public boolean add(TsFileResource tsFileResource) {
     if (tail == null) {
@@ -113,9 +111,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     return true;
   }
 
-  /**
-   * The tsFileResource to be removed must be in the list, otherwise may cause unknown behavior
-   */
+  /** The tsFileResource to be removed must be in the list, otherwise may cause unknown behavior */
   @Override
   public boolean remove(Object o) {
     TsFileResource tsFileResource = (TsFileResource) o;
@@ -136,9 +132,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     return false;
   }
 
-  /**
-   * Only List type parameter is legal, because it is in order.
-   */
+  /** Only List type parameter is legal, because it is in order. */
   @Override
   public boolean addAll(Collection<? extends TsFileResource> c) {
     if (c instanceof List) {

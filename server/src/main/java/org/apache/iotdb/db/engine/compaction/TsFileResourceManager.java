@@ -24,5 +24,4 @@ import org.slf4j.LoggerFactory;
 
 public class TsFileResourceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceManager.class);
-
 }

@@ -54,25 +54,23 @@ import java.util.Arrays;
 
 public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
-  String DOT = ".";
-  String tempDir = "temp";
+  private String DOT = ".";
+  private String tempDir = "temp";
 
-  String STORAGE_GROUP = "root.ln";
-  String[] devices = new String[] {"d1", "d2"};
-  String[] measurements = new String[] {"s1", "s2"};
+  private String STORAGE_GROUP = "root.ln";
+  private String[] devices = new String[] {"d1", "d2"};
+  private String[] measurements = new String[] {"s1", "s2"};
 
   // generate several tsFiles, with timestamp from startTime(inclusive) to endTime(exclusive)
-  long startTime = 0;
-  long endTime = 1000_000;
+  private long startTime = 0;
+  private long endTime = 1000_000;
 
-  long timePartition = 100; // unit s
+  private long timePartition = 100; // unit s
 
-  long recordTimeGap = 1000;
+  private int originalTsFileNum = 0;
 
-  int originalTsFileNum = 0;
-
-  boolean originalIsEnablePartition;
-  long originalPartitionInterval;
+  private boolean originalIsEnablePartition;
+  private long originalPartitionInterval;
 
   IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -93,9 +91,6 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     StorageEngine.setEnablePartition(originalIsEnablePartition);
     StorageEngine.setTimePartitionInterval(originalPartitionInterval);
     File f = new File(tempDir);
@@ -105,12 +100,12 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   /** get the name of tsfile given counter */
-  String getName(int counter) {
+  private String getName(int counter) {
     return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0.tsfile";
   }
 
   /** write a record, given timestamp */
-  void writeData(TsFileWriter tsFileWriter, long timestamp)
+  private void writeData(TsFileWriter tsFileWriter, long timestamp)
       throws IOException, WriteProcessException {
     for (String deviceId : devices) {
       TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + deviceId);
@@ -123,7 +118,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   /** register all timeseries in tsfiles */
-  void register(TsFileWriter tsFileWriter) {
+  private void register(TsFileWriter tsFileWriter) {
     try {
       for (String deviceId : devices) {
         for (String measurement : measurements) {
@@ -148,6 +143,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       File f;
       TsFileWriter tsFileWriter = null;
       int counter = 0;
+      long recordTimeGap = 1000;
       for (long timestamp = startTime; timestamp < endTime; timestamp += recordTimeGap) {
         if (timestamp % (timePartition * recordTimeGap) == 0) {
           if (tsFileWriter != null) {

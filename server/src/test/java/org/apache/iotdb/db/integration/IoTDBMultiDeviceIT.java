@@ -55,9 +55,6 @@ public class IoTDBMultiDeviceIT {
   public void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     // use small page setting
     // origin value
@@ -89,9 +86,6 @@ public class IoTDBMultiDeviceIT {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     TSFileDescriptor.getInstance().getConfig().setCompressor("SNAPPY");
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private static void insertData() throws ClassNotFoundException {

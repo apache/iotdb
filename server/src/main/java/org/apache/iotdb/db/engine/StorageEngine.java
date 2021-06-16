@@ -440,8 +440,7 @@ public class StorageEngine implements IService {
   private StorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-    StorageGroupManager storageGroupManager =
-        processorMap.get(storageGroupMNode.getPartialPath());
+    StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
     if (storageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
@@ -616,7 +615,7 @@ public class StorageEngine implements IService {
   }
 
   private void updateMonitorStatistics(
-          StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
+      StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
     int successPointsNum =
         insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
@@ -812,8 +811,7 @@ public class StorageEngine implements IService {
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
     StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroup(
-        systemDir + File.pathSeparator + storageGroupPath);
+    storageGroupManager.deleteStorageGroup(systemDir + File.pathSeparator + storageGroupPath);
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)

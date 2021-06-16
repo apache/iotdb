@@ -117,9 +117,6 @@ public class IoTDBAggregationLargeDataIT {
   public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     EnvironmentUtils.envSetUp();
   }
 
@@ -127,9 +124,6 @@ public class IoTDBAggregationLargeDataIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   @Test

@@ -43,18 +43,12 @@ public class IoTDBMergeIT {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMergeIT.class);
   private long prevPartitionInterval;
-  private CompactionStrategy prevTsFileManagementStrategy;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    prevTsFileManagementStrategy =
-        IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
@@ -63,7 +57,6 @@ public class IoTDBMergeIT {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(prevTsFileManagementStrategy);
   }
 
   @Test

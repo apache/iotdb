@@ -298,34 +298,28 @@ public class IoTDBConfig {
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
-  /**
-   * Only compact the sequence files
-   */
+  /** Only compact the sequence files */
   private boolean enableSeqSpaceCompaction = true;
 
-  /**
-   * Only compact the unsequence files
-   */
+  /** Only compact the unsequence files */
   private boolean enableUnseqSpaceCompaction = true;
 
-  /**
-   * Compact the unsequence files into the overlapped sequence files
-   */
+  /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
   /**
-   * The priority of compaction task execution. There are three priority strategy
-   * INNER_CROSS: prioritize inner space compaction, reduce the number of files first
-   * CROSS INNER: prioritize cross space compaction, eliminate the unsequence files first
-   * BALANCE: alternate two compaction types
+   * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
+   * prioritize inner space compaction, reduce the number of files first CROSS INNER: prioritize
+   * cross space compaction, eliminate the unsequence files first BALANCE: alternate two compaction
+   * types
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   /**
-   * When merge point number reaches this, merge the files to the last level. During a merge,
-   * if a chunk with less number of chunks than this parameter, the chunk will be merged with
-   * its succeeding chunks even if it is not overflowed,
-   * until the merged chunks reach this threshold and the new chunk will be flushed.
+   * When merge point number reaches this, merge the files to the last level. During a merge, if a
+   * chunk with less number of chunks than this parameter, the chunk will be merged with its
+   * succeeding chunks even if it is not overflowed, until the merged chunks reach this threshold
+   * and the new chunk will be flushed.
    */
   private int mergeChunkPointNumberThreshold = 100000;
 

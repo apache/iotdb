@@ -116,10 +116,6 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   /** just compaction stable list */
   @Test
   public void testCompactionMergeStableList() throws IllegalPathException, IOException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -158,8 +154,6 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
       }
     }
     assertEquals(500, count);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
   /**
@@ -308,10 +302,6 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   @Test
   public void testCompactionDiffTimeSeries()
       throws IOException, WriteProcessException, IllegalPathException {
-    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
-    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
     List<TsFileResource> compactionFiles = prepareTsFileResources();
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
@@ -369,7 +359,5 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
       }
     }
     assertEquals(count, 1);
-    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
-    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 }
