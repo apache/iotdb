@@ -89,8 +89,8 @@ public class AsyncMetaClientTest {
           @Override
           public void onError(Exception e) {
             try {
-              // Simulate the time to do the task when an exception occurs,
-              Thread.sleep(3000);
+              // Simulate the time to do the task when an exception occurs
+              Thread.sleep(Long.MAX_VALUE / 2);
             } catch (InterruptedException ie) {
               Assert.fail(ie.getMessage());
             }
