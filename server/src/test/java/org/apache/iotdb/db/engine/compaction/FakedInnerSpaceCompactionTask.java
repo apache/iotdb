@@ -18,8 +18,27 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-public class FakedInnerSpaceCompactionTask {
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
+/**
+ * doCompaction 只修改 tsFileResourceList
+ */
+public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
+  public FakedInnerSpaceCompactionTask(
+      List<TsFileResourceListNode> compactionCandidateTsFileResourceList,
+      boolean sequence, String storageGroup,
+      AtomicInteger globalActiveTaskNum) {
+    super(compactionCandidateTsFileResourceList, sequence, storageGroup, globalActiveTaskNum);
+  }
+
+  @Override
+  protected void doCompaction() throws Exception {
+
+  }
 
 }
