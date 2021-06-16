@@ -41,10 +41,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class VirtualStorageGroupManager {
+/**
+ * Each storage group that set by users corresponds to a StorageGroupManager
+ */
+public class StorageGroupManager {
 
   /** logger of this class */
-  private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
 
   /** virtual storage group partitioner */
   VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
@@ -55,7 +58,7 @@ public class VirtualStorageGroupManager {
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
-  public VirtualStorageGroupManager() {
+  public StorageGroupManager() {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
   }
 

@@ -64,17 +64,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private static final Logger logger =
       LoggerFactory.getLogger(LevelCompactionTsFileManagement.class);
 
-  private final int seqLevelNum =
-      Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum(), 1);
-  private final int seqFileNumInEachLevel =
-      Math.max(IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel(), 1);
-  private final int unseqLevelNum =
-      Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum(), 1);
-  private final int unseqFileNumInEachLevel =
-      Math.max(IoTDBDescriptor.getInstance().getConfig().getUnseqFileNumInEachLevel(), 1);
+  private final int seqLevelNum = 0;
+  private final int seqFileNumInEachLevel = 0;
+  private final int unseqLevelNum = 0;
+  private final int unseqFileNumInEachLevel = 0;
 
-  private final boolean enableUnseqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
+  private final boolean enableUnseqCompaction = false;
 
   // First map is partition list; Second list is level list; Third list is file list in level;
   private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =

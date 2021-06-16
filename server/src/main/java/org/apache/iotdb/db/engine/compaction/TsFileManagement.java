@@ -77,7 +77,7 @@ public abstract class TsFileManagement {
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
   private final int maxOpenFileNumInEachUnseqCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInCrossSpaceCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;

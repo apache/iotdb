@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.flush.pool;
+package org.apache.iotdb.db.rescon;
 
 import org.slf4j.Logger;
 
