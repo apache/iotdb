@@ -108,6 +108,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     } else {
       insertAfter(tail, tsFileResource);
     }
+    count++;
     return true;
   }
 
@@ -124,6 +125,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     } else {
       tsFileResource.prev.next = tsFileResource.next;
     }
+    count--;
     return true;
   }
 
