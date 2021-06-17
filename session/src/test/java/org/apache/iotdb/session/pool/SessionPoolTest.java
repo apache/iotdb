@@ -49,14 +49,9 @@ import static org.junit.Assert.fail;
 public class SessionPoolTest {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionPoolTest.class);
-  private final CompactionStrategy defaultCompaction =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
 
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
@@ -65,7 +60,6 @@ public class SessionPoolTest {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setCompactionStrategy(defaultCompaction);
   }
 
   @Test

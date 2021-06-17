@@ -826,8 +826,8 @@ public class StorageGroupProcessor {
       boolean isSequence =
           insertRowPlan.getTime()
               > partitionLatestFlushedTimeForEachDevice
-                  .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+              .get(timePartitionId)
+              .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -913,7 +913,7 @@ public class StorageGroupProcessor {
               || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
             noFailure =
                 insertTabletToTsFileProcessor(
-                        insertTabletPlan, before, loc, isSequence, results, beforeTimePartition)
+                    insertTabletPlan, before, loc, isSequence, results, beforeTimePartition)
                     && noFailure;
           }
           // re initialize
@@ -934,7 +934,7 @@ public class StorageGroupProcessor {
             if (!IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
               noFailure =
                   insertTabletToTsFileProcessor(
-                          insertTabletPlan, before, loc, false, results, beforeTimePartition)
+                      insertTabletPlan, before, loc, false, results, beforeTimePartition)
                       && noFailure;
             }
             before = loc;
@@ -947,10 +947,10 @@ public class StorageGroupProcessor {
       // do not forget last part
       if (before < loc
           && (isSequence
-              || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData())) {
+          || !IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData())) {
         noFailure =
             insertTabletToTsFileProcessor(
-                    insertTabletPlan, before, loc, isSequence, results, beforeTimePartition)
+                insertTabletPlan, before, loc, isSequence, results, beforeTimePartition)
                 && noFailure;
       }
       long globalLatestFlushedTime =
@@ -1023,9 +1023,9 @@ public class StorageGroupProcessor {
     // try to update the latest time of the device of this tsRecord
     if (sequence
         && latestTimeForEachDevice
-                .get(timePartitionId)
-                .getOrDefault(insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
-            < insertTabletPlan.getTimes()[end - 1]) {
+        .get(timePartitionId)
+        .getOrDefault(insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
+        < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice
           .get(timePartitionId)
           .put(
@@ -1086,8 +1086,8 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice
-            .get(timePartitionId)
-            .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
+        .get(timePartitionId)
+        .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
         < insertRowPlan.getTime()) {
       latestTimeForEachDevice
           .get(timePartitionId)
@@ -2042,7 +2042,7 @@ public class StorageGroupProcessor {
             .submitTask(
                 logicalStorageGroupName,
                 tsFileManagement
-                .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
+                    .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
       } catch (IOException | RejectedExecutionException e) {
         this.closeCompactionMergeCallBack(false, timePartition);
         logger.error(
@@ -2572,8 +2572,8 @@ public class StorageGroupProcessor {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = StorageEngine.getTimePartition(endTime);
       if (!latestTimeForEachDevice
-              .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-              .containsKey(device)
+          .computeIfAbsent(timePartitionId, id -> new HashMap<>())
+          .containsKey(device)
           || latestTimeForEachDevice.get(timePartitionId).get(device) < endTime) {
         latestTimeForEachDevice.get(timePartitionId).put(device, endTime);
       }
@@ -2849,9 +2849,9 @@ public class StorageGroupProcessor {
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
     // examine working processor first as they have the largest plan index
     return isFileAlreadyExistInWorking(
-            tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
+        tsFileResource, partitionNum, getWorkSequenceTsFileProcessors())
         || isFileAlreadyExistInWorking(
-            tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
+        tsFileResource, partitionNum, getWorkUnsequenceTsFileProcessors())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getSequenceFileTreeSet())
         || isFileAlreadyExistInClosed(tsFileResource, partitionNum, getUnSequenceFileList());
   }
@@ -2988,8 +2988,8 @@ public class StorageGroupProcessor {
           isSequence =
               plan.getTime()
                   > partitionLatestFlushedTimeForEachDevice
-                      .get(timePartitionId)
-                      .getOrDefault(plan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+                  .get(timePartitionId)
+                  .getOrDefault(plan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence
