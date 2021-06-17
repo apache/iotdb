@@ -19,21 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeContext;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +29,20 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.manage.MergeContext;
+import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.MergeUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
@@ -56,7 +55,7 @@ public class MergeTask implements Callable<Void> {
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
 
-  MergeResource resource;
+  CrossSpaceCompactionResource resource;
   String storageGroupSysDir;
   String storageGroupName;
   MergeLogger mergeLogger;
@@ -68,6 +67,7 @@ public class MergeTask implements Callable<Void> {
   MergeMultiChunkTask chunkTask;
   MergeFileTask fileTask;
   private MergeCallback callback;
+  public ModificationFile mergingModification;
 
   MergeTask(
       List<TsFileResource> seqFiles,
@@ -77,7 +77,7 @@ public class MergeTask implements Callable<Void> {
       String taskName,
       boolean fullMerge,
       String storageGroupName) {
-    this.resource = new MergeResource(seqFiles, unseqFiles);
+    this.resource = new CrossSpaceCompactionResource(seqFiles, unseqFiles);
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
@@ -87,7 +87,7 @@ public class MergeTask implements Callable<Void> {
   }
 
   public MergeTask(
-      MergeResource mergeResource,
+      CrossSpaceCompactionResource mergeResource,
       String storageGroupSysDir,
       MergeCallback callback,
       String taskName,

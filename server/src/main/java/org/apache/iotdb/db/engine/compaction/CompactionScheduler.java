@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactory;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-
+import org.apache.iotdb.db.exception.MergeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionScheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
@@ -109,6 +112,7 @@ public class CompactionScheduler {
               | taskSubmitted;
       taskSubmitted =
           tryToSubmitCrossSpaceCompactionTask(
+                  tsFileResourceManager,
                   storageGroup,
                   timePartition,
                   sequenceFileList,
@@ -139,6 +143,7 @@ public class CompactionScheduler {
         false,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
+        tsFileResourceManager,
         storageGroup,
         timePartition,
         sequenceFileList,
@@ -153,6 +158,7 @@ public class CompactionScheduler {
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitCrossSpaceCompactionTask(
+        tsFileResourceManager,
         storageGroup,
         timePartition,
         sequenceFileList,
@@ -257,6 +263,7 @@ public class CompactionScheduler {
   }
 
   private static boolean tryToSubmitCrossSpaceCompactionTask(
+      TsFileResourceManager tsFileResourceManager,
       String storageGroup,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -268,9 +275,58 @@ public class CompactionScheduler {
       return taskSubmitted;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
-    Iterator<TsFileResource> unSeqIterator = sequenceFileList.iterator();
+    Iterator<TsFileResource> unSeqIterator = unsequenceFileList.iterator();
     List<TsFileResource> seqFileList = new ArrayList<>();
-    //    List<TsFileResource> seqF
+    List<TsFileResource> unSeqFileList = new ArrayList<>();
+    while (seqIterator.hasNext()) {
+      seqFileList.add(seqIterator.next());
+    }
+    while(unSeqIterator.hasNext()) {
+      unSeqFileList.add(unSeqIterator.next());
+    }
+    if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
+      return taskSubmitted;
+    }
+    if (unSeqFileList.size() > config.getMaxOpenFileNumInCrossSpaceCompaction()) {
+      unSeqFileList = unSeqFileList.subList(0, config.getMaxOpenFileNumInCrossSpaceCompaction());
+    }
+    long budget = config.getMergeMemoryBudget();
+    long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    CrossSpaceCompactionResource compactionResource = new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
+
+    ICrossSpaceCompactionFileSelector fileSelector = CompactionUtils.getCrossSpaceFileSelector(budget, compactionResource);
+    try {
+      List[] mergeFiles = fileSelector.select();
+      if (mergeFiles.length == 0) {
+        return taskSubmitted;
+      }
+      // avoid pending tasks holds the metadata and streams
+      compactionResource.clear();
+      // do not cache metadata until true candidates are chosen, or too much metadata will be
+      // cached during selection
+      compactionResource.setCacheDeviceMeta(true);
+
+      for (TsFileResource tsFileResource : compactionResource.getSeqFiles()) {
+        tsFileResource.setMerging(true);
+      }
+      for (TsFileResource tsFileResource : compactionResource.getUnseqFiles()) {
+        tsFileResource.setMerging(true);
+      }
+
+      CompactionContext context = new CompactionContext();
+      context.setTsFileResourceManager(tsFileResourceManager);
+      context.setSequenceFileResourceList(sequenceFileList);
+      context.setSelectedSequenceFiles(compactionResource.getSeqFiles());
+      context.setUnsequenceFileResourceList(unsequenceFileList);
+      context.setSelectedUnsequenceFiles(compactionResource.getUnseqFiles());
+      context.setGlobalActiveTaskNum(currentTaskNum);
+
+      AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+      CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
+    } catch (MergeException | IOException e) {
+      LOGGER.error("{} cannot select file for cross space compaction", storageGroup, e);
+    }
+
     return false;
   }
 

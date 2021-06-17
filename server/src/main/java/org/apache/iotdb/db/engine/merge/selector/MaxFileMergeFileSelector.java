@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.merge.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -41,12 +41,12 @@ import java.util.Map;
  * merged without exceeding given memory budget. It always assume the number of timeseries being
  * queried at the same time is 1 to maximize the number of file merged.
  */
-public class MaxFileMergeFileSelector implements IMergeFileSelector {
+public class MaxFileMergeFileSelector implements ICrossSpaceCompactionFileSelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MaxFileMergeFileSelector.class);
   private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
 
-  MergeResource resource;
+  CrossSpaceCompactionResource resource;
 
   long totalCost;
   private long memoryBudget;
@@ -69,7 +69,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public MaxFileMergeFileSelector(MergeResource resource, long memoryBudget) {
+  public MaxFileMergeFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
   }

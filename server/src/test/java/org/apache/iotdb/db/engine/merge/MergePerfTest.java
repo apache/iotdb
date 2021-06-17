@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.merge;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,7 +44,7 @@ public class MergePerfTest extends MergeTest {
     tempSGDir.mkdirs();
     setUp();
     timeConsumption = System.currentTimeMillis();
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
     resource.setCacheDeviceMeta(true);
     MergeTask mergeTask =
         new MergeTask(

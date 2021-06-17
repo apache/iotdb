@@ -54,7 +54,7 @@ import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
  * to avoid unnecessary object creations and file openings.
  */
-public class MergeResource {
+public class CrossSpaceCompactionResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
@@ -72,7 +72,7 @@ public class MergeResource {
 
   private boolean cacheDeviceMeta = false;
 
-  public MergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public CrossSpaceCompactionResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
@@ -84,7 +84,7 @@ public class MergeResource {
         && (!res.isClosed() || res.stillLives(timeLowerBound));
   }
 
-  public MergeResource(
+  public CrossSpaceCompactionResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
     this.timeLowerBound = timeLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());

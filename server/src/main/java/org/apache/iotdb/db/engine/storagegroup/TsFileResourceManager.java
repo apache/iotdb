@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
@@ -42,6 +43,7 @@ public class TsFileResourceManager {
   // time partition -> double linked list of tsfiles
   private Map<Long, TsFileResourceList> sequenceFiles = new HashMap<>();
   private Map<Long, TsFileResourceList> unsequenceFiles = new HashMap<>();
+  private Map<Long, Long> compactionCountInPartition = new ConcurrentHashMap<>();
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
     return sequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
@@ -86,5 +88,9 @@ public class TsFileResourceManager {
 
   public String getStorageGroupName() {
     return storageGroupName;
+  }
+
+  public Map<Long, Long> getCompactionCountInPartition() {
+    return compactionCountInPartition;
   }
 }
