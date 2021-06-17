@@ -33,37 +33,24 @@ import java.util.List;
 
 public class TsFileResourceListTest {
 
-  private TsFileResourceList tsFileResourceList;
-  private List<TsFileResource> tsFileResources;
-
-  private TsFileResource generateTsFileResource(int fileVersion) {
+  private TsFileResource generateTsFileResource(int id) {
     File file =
-        new File(
-            TsFileNameGenerator.generateNewTsFilePath(
-                TestConstant.BASE_OUTPUT_PATH, 0, fileVersion, 0, 0));
-    TsFileResource tsFileResource = new TsFileResource(file);
-    tsFileResources.add(tsFileResource);
-    return tsFileResource;
-  }
-
-  @Before
-  public void setUp() {
-    tsFileResourceList = new TsFileResourceList();
-    tsFileResources = new ArrayList<>();
-    tsFileResourceList.add(generateTsFileResource(0));
-    tsFileResourceList.add(generateTsFileResource(1));
-    tsFileResourceList.add(generateTsFileResource(2));
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    tsFileResourceList.clear();
+        new File(TsFileNameGenerator
+            .generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, id, id, id, id)
+        );
+    return new TsFileResource(file);
   }
 
   @Test
   public void testAdd() {
-    tsFileResourceList.add(generateTsFileResource(3));
-    Assert.assertEquals(4, tsFileResourceList.size());
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      TsFileResource resource = generateTsFileResource(i);
+      tsFileResources.add(resource);
+      tsFileResourceList.add(resource);
+    }
+    Assert.assertEquals(5, tsFileResourceList.size());
     Iterator<TsFileResource> iterator = tsFileResourceList.iterator();
     int index = 0;
     while (iterator.hasNext()) {
@@ -73,13 +60,43 @@ public class TsFileResourceListTest {
 
   @Test
   public void testRemove() {
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      TsFileResource resource = generateTsFileResource(i);
+      tsFileResources.add(resource);
+      tsFileResourceList.add(resource);
+    }
+
+    // remove the first resource
     tsFileResourceList.remove(tsFileResources.get(0));
     tsFileResources.remove(0);
-    Assert.assertEquals(2, tsFileResourceList.size());
+    Assert.assertEquals(4, tsFileResourceList.size());
+
+    // remove the last resource
+    TsFileResource toBeRemoved = tsFileResources.get(3);
+    tsFileResourceList.remove(toBeRemoved);
+    tsFileResources.remove(toBeRemoved);
+
+    // compare each resource
     Iterator<TsFileResource> iterator = tsFileResourceList.iterator();
     int index = 0;
     while (iterator.hasNext()) {
       Assert.assertSame(tsFileResources.get(index++), iterator.next());
     }
   }
+
+  @Test
+  public void removeNotIncludedResourceTest() {
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    TsFileResource resource = new TsFileResource();
+    tsFileResourceList.add(resource);
+
+    tsFileResourceList.remove(resource);
+    Assert.assertEquals(0, tsFileResourceList.size());
+
+    TsFileResource notIncluded = new TsFileResource();
+    Assert.assertFalse(tsFileResourceList.remove(notIncluded));
+  }
+
 }
