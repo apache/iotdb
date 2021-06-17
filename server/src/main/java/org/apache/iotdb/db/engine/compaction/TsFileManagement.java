@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelect
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
@@ -49,7 +49,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.task.CrossSpaceTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -269,8 +269,8 @@ public abstract class TsFileManagement {
       }
 
       mergeStartTime = System.currentTimeMillis();
-      MergeTask mergeTask =
-          new MergeTask(
+      CrossSpaceTask mergeTask =
+          new CrossSpaceTask(
               mergeResource,
               storageGroupDir,
               this::mergeEndAction,

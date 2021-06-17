@@ -23,8 +23,8 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
@@ -107,7 +107,7 @@ public class MergeManager implements IService, MergeManagerMBean {
     return INSTANCE;
   }
 
-  public void submitMainTask(MergeTask mergeTask) {
+  public void submitMainTask(CrossSpaceTask mergeTask) {
     MergeFuture future = (MergeFuture) mergeTaskPool.submit(mergeTask);
     storageGroupMainTasks
         .computeIfAbsent(mergeTask.getStorageGroupName(), k -> new ConcurrentSkipListSet<>())

@@ -94,6 +94,14 @@ public class TsFileResourceManager {
     return storageGroupName;
   }
 
+  public String getStorageGroupDir() {
+    return storageGroupDir;
+  }
+
+  public void setStorageGroupDir(String storageGroupDir) {
+    this.storageGroupDir = storageGroupDir;
+  }
+
   public Map<Long, Long> getCompactionCountInPartition() {
     return compactionCountInPartition;
   }
