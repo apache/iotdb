@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -105,4 +106,6 @@ public class TsFileResourceManager {
   public Map<Long, Long> getCompactionCountInPartition() {
     return compactionCountInPartition;
   }
+
+  public Set<Long> getTimePartitions() {return sequenceFiles.keySet();}
 }

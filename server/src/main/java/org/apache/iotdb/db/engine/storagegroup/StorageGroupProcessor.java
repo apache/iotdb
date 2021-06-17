@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
@@ -228,6 +229,10 @@ public class StorageGroupProcessor {
 
   /** manage seqFileList and unSeqFileList */
   private TsFileManagement tsFileManagement;
+
+  /** use tsFileResourceManager to replace TsFileManagement */
+  private TsFileResourceManager tsFileResourceManager;
+
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
@@ -294,6 +299,10 @@ public class StorageGroupProcessor {
    * one holds the insertWriteLock
    */
   private String insertWriteLockHolder = "";
+
+  private ScheduledExecutorService timedCompactionScheduleTask = Executors.newSingleThreadScheduledExecutor();
+
+  public static final long COMPACTION_TASK_SUBMIT_DELAY = 60L * 1000L;
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
@@ -492,7 +501,7 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
-      recoverCompaction();
+      submitTimedCompactionTask();
       for (TsFileResource resource : tsFileManagement.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -557,6 +566,17 @@ public class StorageGroupProcessor {
           "{} compaction pool not started ,recover failed",
           logicalStorageGroupName + "-" + virtualStorageGroupId);
     }
+  }
+
+  private void submitTimedCompactionTask() {
+    timedCompactionScheduleTask.scheduleWithFixedDelay(() -> {
+      List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
+      // sort the time partition from largest to smallest
+      Collections.sort(timePartitions, (o1, o2) -> (int) (o2 - o1));
+      for(long timePartition : timePartitions) {
+        CompactionScheduler.compactionSchedule(tsFileResourceManager, timePartition);
+      }
+    }, COMPACTION_TASK_SUBMIT_DELAY, COMPACTION_TASK_SUBMIT_DELAY, TimeUnit.MILLISECONDS);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
