@@ -19,17 +19,20 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-import java.util.List;
+public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
-public interface ICompactionTaskFactory {
-  AbstractCompactionTask createTask(
-      TsFileResourceList seqTsFileResourceList,
+  @Override
+  public AbstractCompactionTask createTask(TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      Boolean sequence,
-      String storageGroup);
+      List<TsFileResource> selectedUnSeqTsFileResourceList, Boolean sequence, String storageGroup) {
+    return new CrossSpaceCompactionTask(
+        seqTsFileResourceList, unSeqTsFileResourceList, selectedSeqTsFileResourceList,
+        selectedUnSeqTsFileResourceList,
+        sequence, storageGroup);
+  }
 }

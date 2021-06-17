@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -102,8 +103,9 @@ public class CompactionScheduler {
               | taskSubmitted;
       taskSubmitted =
           tryToSubmitCrossSpaceCompactionTask(
-                  storageGroup, timePartition, sequenceFileList, unsequenceFileList)
-              | taskSubmitted;
+          storageGroup, timePartition, sequenceFileList, unsequenceFileList,
+          new CrossSpaceCompactionTaskFactory())
+          | taskSubmitted;
     }
   }
 
@@ -121,7 +123,8 @@ public class CompactionScheduler {
         false,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
-        storageGroup, timePartition, sequenceFileList, unsequenceFileList);
+        storageGroup, timePartition, sequenceFileList, unsequenceFileList,
+        new CrossSpaceCompactionTaskFactory());
   }
 
   private static void doCompactionCrossInnerPrioirty(
@@ -130,7 +133,8 @@ public class CompactionScheduler {
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitCrossSpaceCompactionTask(
-        storageGroup, timePartition, sequenceFileList, unsequenceFileList);
+        storageGroup, timePartition, sequenceFileList, unsequenceFileList,
+        new CrossSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         storageGroup, timePartition, sequenceFileList, true, new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
@@ -175,8 +179,11 @@ public class CompactionScheduler {
       if (selectedFileSize > targetCompactionFileSize) {
         // submit the task
         try {
-          AbstractCompactionTask compactionTask =
-              taskFactory.createTask(tsFileResources, selectedFileList, isSequence, storageGroup);
+          AbstractCompactionTask compactionTask = isSequence ? taskFactory
+              .createTask(tsFileResources, null, selectedFileList, null, isSequence, storageGroup) :
+              taskFactory
+                  .createTask(null, tsFileResources, null, selectedFileList, isSequence,
+                      storageGroup);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, compactionTask);
           currentTaskNum.incrementAndGet();
@@ -191,8 +198,11 @@ public class CompactionScheduler {
     // if some files are selected but the total size is smaller than target size, submit a task
     if (selectedFileList.size() > 0) {
       try {
-        AbstractCompactionTask compactionTask =
-            taskFactory.createTask(tsFileResources, selectedFileList, isSequence, storageGroup);
+        AbstractCompactionTask compactionTask = isSequence ? taskFactory
+            .createTask(tsFileResources, null, selectedFileList, null, isSequence, storageGroup) :
+            taskFactory
+                .createTask(null, tsFileResources, null, selectedFileList, isSequence,
+                    storageGroup);
         CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
       } catch (Exception e) {
         LOGGER.warn(e.getMessage(), e);
@@ -205,7 +215,16 @@ public class CompactionScheduler {
       String storageGroup,
       long timePartition,
       TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList) {
+      TsFileResourceList unsequenceFileList, ICompactionTaskFactory taskFactory) {
+    boolean taskSubmitted = false;
+    if ((currentTaskNum.get() >= config.getConcurrentCompactionThread())
+        || (!config.isEnableCrossSpaceCompaction())) {
+      return taskSubmitted;
+    }
+    Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
+    Iterator<TsFileResource> unSeqIterator = sequenceFileList.iterator();
+    List<TsFileResource> seqFileList = new ArrayList<>();
+//    List<TsFileResource> seqF
     return false;
   }
 

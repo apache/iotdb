@@ -25,14 +25,16 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import java.util.List;
 
 public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
-
   @Override
-  public AbstractCompactionTask createTask(
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      Boolean sequence,
-      String storageGroup) {
-    return new InnerSpaceCompactionTask(
-        tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
+  public AbstractCompactionTask createTask(TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unSeqTsFileResourceList,
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList, Boolean sequence, String storageGroup) {
+    TsFileResourceList tsFileResourceList =
+        sequence ? seqTsFileResourceList : unSeqTsFileResourceList;
+    List<TsFileResource> selectedTsFileResourceList =
+        sequence ? selectedSeqTsFileResourceList : selectedUnSeqTsFileResourceList;
+    return new InnerSpaceCompactionTask(tsFileResourceList, selectedTsFileResourceList,
+        sequence, storageGroup);
   }
 }
