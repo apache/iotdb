@@ -104,6 +104,10 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Insert a new tsFileResource node to the end of List */
   @Override
   public boolean add(TsFileResource newNode) {
+    if (newNode.prev != null || newNode.next != null) {
+      // this node already in a list
+      return false;
+    }
     if (tail == null) {
       header = newNode;
       tail = newNode;
@@ -123,6 +127,10 @@ public class TsFileResourceList implements List<TsFileResource> {
   @Override
   public boolean remove(Object o) {
     TsFileResource tsFileResource = (TsFileResource) o;
+    if (tsFileResource.prev == null && tsFileResource.next == null && tsFileResource != header) {
+      // the tsFileResource does not exist in this list
+      return false;
+    }
     if (tsFileResource.prev == null) {
       header = header.next;
       header.prev = null;
