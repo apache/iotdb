@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
@@ -32,19 +33,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected boolean sequence;
   protected String logicalStorageGroup;
 
-  public CrossSpaceCompactionTask(
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      Boolean sequence,
-      String logicalStorageGroup) {
-    this.seqTsFileResourceList = seqTsFileResourceList;
-    this.unSeqTsFileResourceList = unSeqTsFileResourceList;
-    this.selectedSeqTsFileResourceList = selectedSeqTsFileResourceList;
-    this.selectedUnSeqTsFileResourceList = selectedUnSeqTsFileResourceList;
-    this.sequence = sequence;
-    this.logicalStorageGroup = logicalStorageGroup;
+  public CrossSpaceCompactionTask(CompactionContext context) {
+    this.seqTsFileResourceList = context.getSequenceFileResourceList();
+    this.unSeqTsFileResourceList = context.getUnsequenceFileResourceList();
+    this.selectedSeqTsFileResourceList = context.getSelectedSequenceFiles();
+    this.selectedUnSeqTsFileResourceList = context.getSelectedUnsequenceFiles();
+    this.sequence = context.isSequence();
+    this.logicalStorageGroup = context.getLogicalStorageGroupName();
   }
 
   @Override

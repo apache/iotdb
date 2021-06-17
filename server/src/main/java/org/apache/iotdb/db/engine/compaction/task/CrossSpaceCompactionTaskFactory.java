@@ -25,12 +25,6 @@ public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    return new CrossSpaceCompactionTask(
-        context.getSequenceFileResourceList(),
-        context.getUnsequenceFileResourceList(),
-        context.getSelectedSequenceFiles(),
-        context.getSelectedUnsequenceFiles(),
-        context.isSequence(),
-        context.getTsFileResourceManager().getStorageGroupName());
+    return new CrossSpaceCompactionTask(context);
   }
 }
