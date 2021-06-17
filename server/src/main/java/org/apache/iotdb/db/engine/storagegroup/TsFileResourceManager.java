@@ -66,6 +66,10 @@ public class TsFileResourceManager {
     writeLockHolder = holder;
   }
 
+  /**
+   * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
+   * The unit of timeout is ms.
+   */
   public void writeLockWithTimeout(String holder, long timeout) throws WriteLockFailedException {
     try {
       if (resourceListLock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
@@ -81,9 +85,9 @@ public class TsFileResourceManager {
     }
   }
 
-  public void writeUnlock(String holder) {
+  public void writeUnlock() {
     resourceListLock.writeLock().unlock();
-    writeLockHolder = holder;
+    writeLockHolder = "";
   }
 
   public String getStorageGroupName() {
