@@ -38,9 +38,9 @@ public class TsFileResourceListTest {
 
   private TsFileResource generateTsFileResource(int fileVersion) {
     File file =
-        new File(TsFileNameGenerator
-            .generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 0, fileVersion, 0, 0)
-        );
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH, 0, fileVersion, 0, 0));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResources.add(tsFileResource);
     return tsFileResource;

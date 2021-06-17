@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -28,6 +27,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
+import java.io.IOException;
 
 public class TsFileNameGenerator {
 
@@ -55,10 +55,12 @@ public class TsFileNameGenerator {
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
       throws DiskSpaceInsufficientException {
-    String tsFileDir = generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup,
-        timePartitionId);
-    return tsFileDir + File.separator + generateNewTsFileName(time, version,
-        innerSpaceCompactionCount, crossSpaceCompactionCount);
+    String tsFileDir =
+        generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
+    return tsFileDir
+        + File.separator
+        + generateNewTsFileName(
+            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
   }
 
   public static String generateNewTsFilePath(
@@ -67,8 +69,10 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount) {
-    return tsFileDir + File.separator + generateNewTsFileName(time, version,
-        innerSpaceCompactionCount, crossSpaceCompactionCount);
+    return tsFileDir
+        + File.separator
+        + generateNewTsFileName(
+            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
   }
 
   public static String generateNewTsFilePatWithMkdir(
@@ -81,14 +85,16 @@ public class TsFileNameGenerator {
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
       throws DiskSpaceInsufficientException, IOException {
-    String tsFileDir = generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup,
-        timePartitionId);
+    String tsFileDir =
+        generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
     boolean result = fsFactory.getFile(tsFileDir).mkdirs();
     if (!result) {
       throw new IOException(String.format("mkdirs %s failed!", tsFileDir));
     }
-    return tsFileDir + File.separator + generateNewTsFileName(time, version,
-        innerSpaceCompactionCount, crossSpaceCompactionCount);
+    return tsFileDir
+        + File.separator
+        + generateNewTsFileName(
+            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
   }
 
   private static String generateTsFileDir(
@@ -102,8 +108,13 @@ public class TsFileNameGenerator {
         sequence
             ? directoryManager.getNextFolderForSequenceFile()
             : directoryManager.getNextFolderForUnSequenceFile();
-    return baseDir + File.separator + logicalStorageGroup + File.separator + virtualStorageGroup
-        + File.separator + timePartitionId;
+    return baseDir
+        + File.separator
+        + logicalStorageGroup
+        + File.separator
+        + virtualStorageGroup
+        + File.separator
+        + timePartitionId;
   }
 
   public static String generateNewTsFileName(

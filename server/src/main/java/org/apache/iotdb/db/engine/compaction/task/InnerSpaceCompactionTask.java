@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -42,21 +43,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
-  protected String logicalStorageGroup;
   private TsFileResourceManager resourceManager;
   public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
-  public InnerSpaceCompactionTask(
-      TsFileResourceManager resourceManager,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      Boolean sequence,
-      String logicalStorageGroup) {
-    this.resourceManager = resourceManager;
-    this.tsFileResourceList = tsFileResourceList;
-    this.selectedTsFileResourceList = selectedTsFileResourceList;
-    this.sequence = sequence;
-    this.logicalStorageGroup = logicalStorageGroup;
+  public InnerSpaceCompactionTask(CompactionContext context) {
+    this.resourceManager = context.getTsFileResourceManager();
+    this.tsFileResourceList =
+        context.isSequence()
+            ? context.getSequenceFileResourceList()
+            : context.getUnsequenceFileResourceList();
+    this.selectedTsFileResourceList =
+        context.isSequence()
+            ? context.getSelectedSequenceFiles()
+            : context.getSelectedUnsequenceFiles();
+    this.sequence = context.isSequence();
   }
 
   @Override
@@ -72,7 +72,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       tsFileResource.readLock();
       tsFileResource.setMerging(true);
       LOGGER.info(
-          "{} [Compaction] start to compact TsFile {}", logicalStorageGroup, tsFileResource);
+          "{} [Compaction] start to compact TsFile {}",
+          resourceManager.getStorageGroupName(),
+          tsFileResource);
     }
     try {
       File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
@@ -81,7 +83,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.compact(
           targetTsFileResource,
           sourceFiles,
-          logicalStorageGroup,
+          resourceManager.getStorageGroupName(),
           new CompactionLogger(logFile.getPath()),
           new HashSet<>(),
           sequence,
@@ -92,7 +94,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
     LOGGER.info(
-        "{} [Compaction] compaction finish, start to delete old files", logicalStorageGroup);
+        "{} [Compaction] compaction finish, start to delete old files",
+        resourceManager.getStorageGroupName());
 
     // TODO: clean the old file, add the new file to the list
   }

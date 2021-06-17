@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,14 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
 
-public class FakedInnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
+public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    return new FakedInnerSpaceCompactionTask(context);
+    return new CrossSpaceCompactionTask(
+        context.getSequenceFileResourceList(),
+        context.getUnsequenceFileResourceList(),
+        context.getSelectedSequenceFiles(),
+        context.getSelectedUnsequenceFiles(),
+        context.isSequence(),
+        context.getTsFileResourceManager().getStorageGroupName());
   }
 }

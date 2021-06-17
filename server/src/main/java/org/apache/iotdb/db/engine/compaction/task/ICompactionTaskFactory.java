@@ -19,17 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-
-import java.util.List;
+import org.apache.iotdb.db.engine.compaction.CompactionContext;
 
 public interface ICompactionTaskFactory {
-  AbstractCompactionTask createTask(
-      TsFileResourceManager resourceManager,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      Boolean sequence,
-      String storageGroup);
+  AbstractCompactionTask createTask(CompactionContext context);
 }

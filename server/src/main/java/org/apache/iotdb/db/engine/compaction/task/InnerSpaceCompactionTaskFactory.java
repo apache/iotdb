@@ -19,22 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-
-import java.util.List;
+import org.apache.iotdb.db.engine.compaction.CompactionContext;
 
 public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
-
   @Override
-  public AbstractCompactionTask createTask(
-      TsFileResourceManager manager,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> selectedTsFileResourceList,
-      Boolean sequence,
-      String storageGroup) {
-    return new InnerSpaceCompactionTask(
-        manager, tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
+  public AbstractCompactionTask createTask(CompactionContext context) {
+    return new InnerSpaceCompactionTask(context);
   }
 }
