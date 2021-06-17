@@ -23,13 +23,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public interface ICompactionTaskFactory {
   AbstractCompactionTask createTask(
       TsFileResourceList tsFileResourceList,
       List<TsFileResourceListNode> selectedTsFileResourceList,
       Boolean sequence,
-      String storageGroup,
-      AtomicInteger globalActiveTaskNum);
+      String storageGroup);
 }

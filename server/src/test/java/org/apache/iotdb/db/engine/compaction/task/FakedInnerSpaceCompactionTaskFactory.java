@@ -16,36 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
-/** doCompaction 只修改 tsFileResourceList */
-public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
+public class FakedInnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
-  public FakedInnerSpaceCompactionTask(
+  @Override
+  public AbstractCompactionTask createTask(
       TsFileResourceList tsFileResourceList,
       List<TsFileResourceListNode> selectedTsFileResourceList,
       Boolean sequence,
-      String storageGroup,
-      AtomicInteger globalActiveTaskNum) {
-    super(
-        tsFileResourceList,
-        selectedTsFileResourceList,
-        sequence,
-        storageGroup,
-        globalActiveTaskNum);
-  }
-
-  @Override
-  protected void doCompaction() throws Exception {
-    for (TsFileResourceListNode tsFileResourceListNode : selectedTsFileResourceList) {
-      this.tsFileResourceList.remove(tsFileResourceListNode);
-    }
+      String storageGroup) {
+    return new FakedInnerSpaceCompactionTask(
+        tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
   }
 }

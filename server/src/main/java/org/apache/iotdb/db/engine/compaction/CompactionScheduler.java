@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionScheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
-  private static AtomicInteger currentTaskNum = new AtomicInteger(0);
+  public static AtomicInteger currentTaskNum = new AtomicInteger(0);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public static void compactionSchedule(
@@ -178,8 +178,7 @@ public class CompactionScheduler {
         // submit the task
         try {
           AbstractCompactionTask compactionTask =
-              taskFactory.createTask(
-                  tsFileResources, selectedFileList, isSequence, storageGroup, currentTaskNum);
+              taskFactory.createTask(tsFileResources, selectedFileList, isSequence, storageGroup);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, compactionTask);
           currentTaskNum.incrementAndGet();
@@ -195,10 +194,8 @@ public class CompactionScheduler {
     if (selectedFileList.size() > 0) {
       try {
         AbstractCompactionTask compactionTask =
-            taskFactory.createTask(
-                tsFileResources, selectedFileList, isSequence, storageGroup, currentTaskNum);
+            taskFactory.createTask(tsFileResources, selectedFileList, isSequence, storageGroup);
         CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
-        currentTaskNum.incrementAndGet();
       } catch (Exception e) {
         LOGGER.warn(e.getMessage(), e);
       }

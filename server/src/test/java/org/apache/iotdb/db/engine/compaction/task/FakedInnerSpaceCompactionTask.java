@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -24,15 +23,21 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
 import java.util.List;
 
-public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
+/** doCompaction 只修改 tsFileResourceList */
+public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
-  @Override
-  public AbstractCompactionTask createTask(
+  public FakedInnerSpaceCompactionTask(
       TsFileResourceList tsFileResourceList,
       List<TsFileResourceListNode> selectedTsFileResourceList,
       Boolean sequence,
       String storageGroup) {
-    return new InnerSpaceCompactionTask(
-        tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
+    super(tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
+  }
+
+  @Override
+  protected void doCompaction() {
+    for (TsFileResourceListNode tsFileResourceListNode : selectedTsFileResourceList) {
+      this.tsFileResourceList.remove(tsFileResourceListNode);
+    }
   }
 }
