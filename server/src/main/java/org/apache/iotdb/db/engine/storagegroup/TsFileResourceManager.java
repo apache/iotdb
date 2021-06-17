@@ -45,7 +45,6 @@ public class TsFileResourceManager {
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
-
   public TsFileResourceManager(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
@@ -56,7 +55,7 @@ public class TsFileResourceManager {
     try {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
-      for(Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+      for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
         allResources.addAll(entry.getValue());
       }
       return allResources;
@@ -98,7 +97,7 @@ public class TsFileResourceManager {
   }
 
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
-    for(TsFileResource resource : tsFileResourceList) {
+    for (TsFileResource resource : tsFileResourceList) {
       remove(resource, sequence);
     }
   }
@@ -107,7 +106,9 @@ public class TsFileResourceManager {
     writeLock("add");
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
-      selectedMap.computeIfAbsent(tsFileResource.getTimePartition(), o->new TsFileResourceList()).add(tsFileResource);
+      selectedMap
+          .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
+          .add(tsFileResource);
     } finally {
       writeUnlock();
     }
@@ -170,5 +171,7 @@ public class TsFileResourceManager {
     this.storageGroupDir = storageGroupDir;
   }
 
-  public Set<Long> getTimePartitions() {return sequenceFiles.keySet();}
+  public Set<Long> getTimePartitions() {
+    return sequenceFiles.keySet();
+  }
 }

@@ -84,14 +84,20 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertBefore(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node.prev;
-    newNode.next = node;
-    if (node.prev == null) {
-      header = newNode;
-    } else {
-      node.prev.next = newNode;
+    writeLock();
+    try {
+      newNode.prev = node.prev;
+      newNode.next = node;
+      if (node.prev == null) {
+        header = newNode;
+      } else {
+        node.prev.next = newNode;
+      }
+      node.prev = newNode;
+      count++;
+    } finally {
+      writeUnlock();
     }
-    node.prev = newNode;
   }
 
   /**
@@ -101,14 +107,20 @@ public class TsFileResourceList implements List<TsFileResource> {
    * @param newNode the file to insert
    */
   public void insertAfter(TsFileResource node, TsFileResource newNode) {
-    newNode.prev = node;
-    newNode.next = node.next;
-    if (node.next == null) {
-      tail = newNode;
-    } else {
-      node.next.prev = newNode;
+    writeLock();
+    try {
+      newNode.prev = node;
+      newNode.next = node.next;
+      if (node.next == null) {
+        tail = newNode;
+      } else {
+        node.next.prev = newNode;
+      }
+      node.next = newNode;
+      count++;
+    } finally {
+      writeUnlock();
     }
-    node.next = newNode;
   }
 
   @Override
@@ -150,18 +162,23 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Insert a new tsFileResource node to the end of List */
   @Override
   public boolean add(TsFileResource newNode) {
-    if (newNode.prev != null || newNode.next != null) {
-      // this node already in a list
-      return false;
+    writeLock();
+    try {
+      if (newNode.prev != null || newNode.next != null) {
+        // this node already in a list
+        return false;
+      }
+      if (tail == null) {
+        header = newNode;
+        tail = newNode;
+        count++;
+      } else {
+        insertAfter(tail, newNode);
+      }
+      return true;
+    } finally {
+      writeUnlock();
     }
-    if (tail == null) {
-      header = newNode;
-      tail = newNode;
-    } else {
-      insertAfter(tail, newNode);
-    }
-    count++;
-    return true;
   }
 
   /**
@@ -170,24 +187,29 @@ public class TsFileResourceList implements List<TsFileResource> {
    */
   @Override
   public boolean remove(Object o) {
-    TsFileResource tsFileResource = (TsFileResource) o;
-    if (tsFileResource.prev == null && tsFileResource.next == null && tsFileResource != header) {
-      // the tsFileResource does not exist in this list
-      return false;
-    }
-    if (tsFileResource.prev == null) {
-      header = header.next;
-      if (header != null) {
-        header.prev = null;
+    writeLock();
+    try {
+      TsFileResource tsFileResource = (TsFileResource) o;
+      if (tsFileResource.prev == null && tsFileResource.next == null && tsFileResource != header) {
+        // the tsFileResource does not exist in this list
+        return false;
       }
-    } else if (tsFileResource.next == null) {
-      tail = tail.prev;
-      tail.next = null;
-    } else {
-      tsFileResource.prev.next = tsFileResource.next;
+      if (tsFileResource.prev == null) {
+        header = header.next;
+        if (header != null) {
+          header.prev = null;
+        }
+      } else if (tsFileResource.next == null) {
+        tail = tail.prev;
+        tail.next = null;
+      } else {
+        tsFileResource.prev.next = tsFileResource.next;
+      }
+      count--;
+      return true;
+    } finally {
+      writeUnlock();
     }
-    count--;
-    return true;
   }
 
   @Override

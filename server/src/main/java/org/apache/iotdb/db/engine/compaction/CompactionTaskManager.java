@@ -172,7 +172,8 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       CompactionScheduler.currentTaskNum.incrementAndGet();
-      logger.warn("submitted a compaction task, currentTaskNum={}",
+      logger.warn(
+          "submitted a compaction task, currentTaskNum={}",
           CompactionScheduler.currentTaskNum.get());
       Future<Void> future = pool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(storageGroupName, timePartition);

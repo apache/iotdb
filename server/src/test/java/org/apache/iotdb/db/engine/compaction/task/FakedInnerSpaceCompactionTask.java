@@ -33,7 +33,7 @@ public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
   protected void doCompaction() {
     FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0);
     long targetFileSize = 0;
-    for (TsFileResource resource: selectedTsFileResourceList) {
+    for (TsFileResource resource : selectedTsFileResourceList) {
       targetFileSize += resource.getTsFileSize();
     }
     targetTsFileResource.setTsFileSize(targetFileSize);

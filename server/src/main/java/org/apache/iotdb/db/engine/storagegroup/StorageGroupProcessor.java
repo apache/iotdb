@@ -300,7 +300,8 @@ public class StorageGroupProcessor {
    */
   private String insertWriteLockHolder = "";
 
-  private ScheduledExecutorService timedCompactionScheduleTask = Executors.newSingleThreadScheduledExecutor();
+  private ScheduledExecutorService timedCompactionScheduleTask =
+      Executors.newSingleThreadScheduledExecutor();
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 60L * 1000L;
 
@@ -569,14 +570,18 @@ public class StorageGroupProcessor {
   }
 
   private void submitTimedCompactionTask() {
-    timedCompactionScheduleTask.scheduleWithFixedDelay(() -> {
-      List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
-      // sort the time partition from largest to smallest
-      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-      for(long timePartition : timePartitions) {
-        CompactionScheduler.compactionSchedule(tsFileResourceManager, timePartition);
-      }
-    }, COMPACTION_TASK_SUBMIT_DELAY, COMPACTION_TASK_SUBMIT_DELAY, TimeUnit.MILLISECONDS);
+    timedCompactionScheduleTask.scheduleWithFixedDelay(
+        () -> {
+          List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
+          // sort the time partition from largest to smallest
+          timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+          for (long timePartition : timePartitions) {
+            CompactionScheduler.compactionSchedule(tsFileResourceManager, timePartition);
+          }
+        },
+        COMPACTION_TASK_SUBMIT_DELAY,
+        COMPACTION_TASK_SUBMIT_DELAY,
+        TimeUnit.MILLISECONDS);
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

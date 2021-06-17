@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentTaskNum;
-
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
+
+import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentTaskNum;
 
 public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
