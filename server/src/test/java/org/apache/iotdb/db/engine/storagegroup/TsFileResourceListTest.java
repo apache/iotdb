@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 
 import org.junit.After;
@@ -37,18 +36,11 @@ public class TsFileResourceListTest {
   private TsFileResourceList tsFileResourceList;
   private List<TsFileResource> tsFileResources;
 
-  private TsFileResource generateTsFileResource(int fileNum) {
+  private TsFileResource generateTsFileResource(int fileVersion) {
     File file =
-        new File(
-            TestConstant.BASE_OUTPUT_PATH.concat(
-                0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + fileNum
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile"));
+        new File(TsFileNameGenerator
+            .generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 0, fileVersion, 0, 0)
+        );
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResources.add(tsFileResource);
     return tsFileResource;

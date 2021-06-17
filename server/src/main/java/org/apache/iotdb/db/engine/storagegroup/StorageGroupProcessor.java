@@ -1221,7 +1221,7 @@ public class StorageGroupProcessor {
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     String filePath =
-        TsFileNameGenerator.generateNewTsFilePath(
+        TsFileNameGenerator.generateNewTsFilePatWithMkdir(
             sequence,
             logicalStorageGroupName,
             virtualStorageGroupId,

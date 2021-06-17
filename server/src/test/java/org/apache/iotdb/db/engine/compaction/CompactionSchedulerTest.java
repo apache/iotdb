@@ -59,7 +59,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
         "testSG", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
-    while (CompactionScheduler.getCnt() != 0) {
+    while (CompactionScheduler.getCount() != 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
