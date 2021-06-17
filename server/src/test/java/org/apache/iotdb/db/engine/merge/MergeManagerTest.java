@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.merge;
 
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.junit.Test;
@@ -93,7 +93,7 @@ public class MergeManagerTest extends MergeTest {
     }
   }
 
-  static class FakedMainMergeTask extends MergeTask {
+  static class FakedMainMergeTask extends CrossSpaceTask {
 
     private int serialNum;
     private String progress = "0";

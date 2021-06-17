@@ -319,6 +319,7 @@ public class CompactionScheduler {
       context.setSelectedSequenceFiles(compactionResource.getSeqFiles());
       context.setUnsequenceFileResourceList(unsequenceFileList);
       context.setSelectedUnsequenceFiles(compactionResource.getUnseqFiles());
+      context.setConcurrentCompactionCount(fileSelector.getConcurrentMergeNum());
       context.setGlobalActiveTaskNum(currentTaskNum);
 
       AbstractCompactionTask compactionTask = taskFactory.createTask(context);

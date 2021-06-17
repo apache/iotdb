@@ -45,15 +45,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
+ * CrossSpaceTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
  * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
  * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
  * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
-public class MergeTask implements Callable<Void> {
+public class CrossSpaceTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(MergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(CrossSpaceTask.class);
 
   CrossSpaceCompactionResource resource;
   String storageGroupSysDir;
@@ -69,7 +69,7 @@ public class MergeTask implements Callable<Void> {
   private MergeCallback callback;
   public ModificationFile mergingModification;
 
-  MergeTask(
+  CrossSpaceTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
@@ -86,7 +86,7 @@ public class MergeTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public MergeTask(
+  public CrossSpaceTask(
       CrossSpaceCompactionResource mergeResource,
       String storageGroupSysDir,
       MergeCallback callback,
