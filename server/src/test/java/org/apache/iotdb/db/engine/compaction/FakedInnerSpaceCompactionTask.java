@@ -18,30 +18,34 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
-/**
- * doCompaction 只修改 tsFileResourceList
- */
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/** doCompaction 只修改 tsFileResourceList */
 public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
       TsFileResourceList tsFileResourceList,
-      List<TsFileResourceListNode> selectedTsFileResourceList, Boolean sequence,
-      String storageGroup, AtomicInteger globalActiveTaskNum) {
-    super(tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup,
+      List<TsFileResourceListNode> selectedTsFileResourceList,
+      Boolean sequence,
+      String storageGroup,
+      AtomicInteger globalActiveTaskNum) {
+    super(
+        tsFileResourceList,
+        selectedTsFileResourceList,
+        sequence,
+        storageGroup,
         globalActiveTaskNum);
   }
 
   @Override
   protected void doCompaction() throws Exception {
-    for (TsFileResourceListNode tsFileResourceListNode: selectedTsFileResourceList) {
+    for (TsFileResourceListNode tsFileResourceListNode : selectedTsFileResourceList) {
       this.tsFileResourceList.remove(tsFileResourceListNode);
     }
   }
-
 }
