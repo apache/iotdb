@@ -31,8 +31,8 @@ import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionTaskFactor
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -65,14 +65,14 @@ public class CompactionScheduler {
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
-        doCompactionInnerCrossPrioirty(
+        doCompactionInnerCrossPriority(
             tsFileResourceManager,
             tsFileResourceManager.getStorageGroupName(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.CROSS_INNER) {
-        doCompactionCrossInnerPrioirty(
+        doCompactionCrossInnerPriority(
             tsFileResourceManager,
             tsFileResourceManager.getStorageGroupName(),
             timePartition,
@@ -86,7 +86,7 @@ public class CompactionScheduler {
 
   private static void doCompactionBalancePriority(
       TsFileResourceManager tsFileResourceManager,
-      String storageGroup,
+      String storageGroupName,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
@@ -96,7 +96,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
               tsFileResourceManager,
-              storageGroup,
+              storageGroupName,
               timePartition,
               sequenceFileList,
               true,
@@ -104,7 +104,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
                   tsFileResourceManager,
-                  storageGroup,
+                  storageGroupName,
                   timePartition,
                   unsequenceFileList,
                   false,
@@ -113,7 +113,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitCrossSpaceCompactionTask(
                   tsFileResourceManager,
-                  storageGroup,
+                  storageGroupName,
                   timePartition,
                   sequenceFileList,
                   unsequenceFileList,
@@ -122,7 +122,7 @@ public class CompactionScheduler {
     }
   }
 
-  private static void doCompactionInnerCrossPrioirty(
+  private static void doCompactionInnerCrossPriority(
       TsFileResourceManager tsFileResourceManager,
       String storageGroup,
       long timePartition,
@@ -151,7 +151,7 @@ public class CompactionScheduler {
         new CrossSpaceCompactionTaskFactory());
   }
 
-  private static void doCompactionCrossInnerPrioirty(
+  private static void doCompactionCrossInnerPriority(
       TsFileResourceManager tsFileResourceManager,
       String storageGroup,
       long timePartition,
@@ -286,34 +286,35 @@ public class CompactionScheduler {
     }
     long budget = config.getMergeMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceCompactionResource compactionResource = new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
+    CrossSpaceMergeResource mergeResource = new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
 
-    ICrossSpaceCompactionFileSelector fileSelector = CompactionUtils.getCrossSpaceFileSelector(budget, compactionResource);
+    ICrossSpaceMergeFileSelector fileSelector = CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
         return taskSubmitted;
       }
       // avoid pending tasks holds the metadata and streams
-      compactionResource.clear();
+      mergeResource.clear();
       // do not cache metadata until true candidates are chosen, or too much metadata will be
       // cached during selection
-      compactionResource.setCacheDeviceMeta(true);
+      mergeResource.setCacheDeviceMeta(true);
 
-      for (TsFileResource tsFileResource : compactionResource.getSeqFiles()) {
+      for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
         tsFileResource.setMerging(true);
       }
-      for (TsFileResource tsFileResource : compactionResource.getUnseqFiles()) {
+      for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
         tsFileResource.setMerging(true);
       }
 
       CompactionContext context = new CompactionContext();
       context.setTsFileResourceManager(tsFileResourceManager);
+      context.setMergeResource(mergeResource);
       context.setSequenceFileResourceList(sequenceFileList);
-      context.setSelectedSequenceFiles(compactionResource.getSeqFiles());
+      context.setSelectedSequenceFiles(mergeResource.getSeqFiles());
       context.setUnsequenceFileResourceList(unsequenceFileList);
-      context.setSelectedUnsequenceFiles(compactionResource.getUnseqFiles());
-      context.setConcurrentCompactionCount(fileSelector.getConcurrentMergeNum());
+      context.setSelectedUnsequenceFiles(mergeResource.getUnseqFiles());
+      context.setConcurrentMergeCount(fileSelector.getConcurrentMergeNum());
       context.setGlobalActiveTaskNum(currentTaskNum);
 
       AbstractCompactionTask compactionTask = taskFactory.createTask(context);

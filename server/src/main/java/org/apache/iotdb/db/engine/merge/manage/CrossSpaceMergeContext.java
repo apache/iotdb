@@ -28,8 +28,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** MergeContext records the shared information between merge sub-tasks. */
-public class MergeContext {
+/** CrossSpaceMergeContext records the shared information between merge sub-tasks. */
+public class CrossSpaceMergeContext {
 
   private Map<TsFileResource, Integer> mergedChunkCnt = new HashMap<>();
   private Map<TsFileResource, Integer> unmergedChunkCnt = new HashMap<>();

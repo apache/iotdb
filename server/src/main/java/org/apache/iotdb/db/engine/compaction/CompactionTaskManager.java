@@ -52,8 +52,6 @@ public class CompactionTaskManager implements IService {
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
-  private final int CONCURRENT_COMPACTION_THREAD =
-      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;

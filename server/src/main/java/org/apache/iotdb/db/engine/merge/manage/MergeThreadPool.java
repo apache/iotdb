@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.merge.manage;
 import org.apache.iotdb.db.engine.merge.manage.MergeFuture.MainMergeFuture;
 import org.apache.iotdb.db.engine.merge.manage.MergeFuture.SubMergeFuture;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,8 +45,8 @@ public class MergeThreadPool extends ThreadPoolExecutor {
 
   @Override
   protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
-    if (callable instanceof CrossSpaceTask) {
-      return (RunnableFuture<T>) new MainMergeFuture((CrossSpaceTask) callable);
+    if (callable instanceof CrossSpaceMergeTask) {
+      return (RunnableFuture<T>) new MainMergeFuture((CrossSpaceMergeTask) callable);
     } else {
       return (RunnableFuture<T>) new SubMergeFuture((MergeChunkHeapTask) callable);
     }

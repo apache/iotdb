@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.merge.manage;
 
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -71,9 +71,9 @@ public abstract class MergeFuture extends FutureTask<Void> implements Comparable
 
   public static class MainMergeFuture extends MergeFuture {
 
-    private CrossSpaceTask bindingTask;
+    private CrossSpaceMergeTask bindingTask;
 
-    public MainMergeFuture(CrossSpaceTask task) {
+    public MainMergeFuture(CrossSpaceMergeTask task) {
       super(task);
       bindingTask = task;
     }

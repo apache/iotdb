@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -40,8 +40,8 @@ public class CompactionContext {
   protected List<TsFileResource> selectedUnsequenceFiles;
   protected AtomicInteger globalActiveTaskNum;
   protected ModificationFile compactionModification;
-  protected CrossSpaceCompactionResource mergeResource;
-  protected int concurrentCompactionCount;
+  protected CrossSpaceMergeResource mergeResource;
+  protected int concurrentMergeCount;
 
   public CompactionContext() {}
 
@@ -157,20 +157,20 @@ public class CompactionContext {
     this.compactionModification = compactionModification;
   }
 
-  public CrossSpaceCompactionResource getMergeResource() {
+  public CrossSpaceMergeResource getMergeResource() {
     return mergeResource;
   }
 
   public void setMergeResource(
-      CrossSpaceCompactionResource mergeResource) {
+      CrossSpaceMergeResource mergeResource) {
     this.mergeResource = mergeResource;
   }
 
-  public int getConcurrentCompactionCount() {
-    return concurrentCompactionCount;
+  public int getConcurrentMergeCount() {
+    return concurrentMergeCount;
   }
 
-  public void setConcurrentCompactionCount(int concurrentCompactionCount) {
-    this.concurrentCompactionCount = concurrentCompactionCount;
+  public void setConcurrentMergeCount(int concurrentMergeCount) {
+    this.concurrentMergeCount = concurrentMergeCount;
   }
 }

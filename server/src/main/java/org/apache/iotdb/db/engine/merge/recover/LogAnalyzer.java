@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -63,7 +63,7 @@ public class LogAnalyzer {
 
   private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
 
-  private CrossSpaceCompactionResource resource;
+  private CrossSpaceMergeResource resource;
   private String taskName;
   private File logFile;
   private String storageGroupName;
@@ -79,7 +79,7 @@ public class LogAnalyzer {
   private Status status;
 
   public LogAnalyzer(
-      CrossSpaceCompactionResource resource, String taskName, File logFile, String storageGroupName) {
+      CrossSpaceMergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
@@ -187,7 +187,7 @@ public class LogAnalyzer {
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile =
-          SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + CrossSpaceTask.MERGE_SUFFIX);
+          SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + CrossSpaceMergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -260,7 +260,7 @@ public class LogAnalyzer {
           throw new IOException("Illegal merge files");
         }
         fileLastPositions.remove(currFile);
-        String seqFilePath = currFile.getAbsolutePath().replace(CrossSpaceTask.MERGE_SUFFIX, "");
+        String seqFilePath = currFile.getAbsolutePath().replace(CrossSpaceMergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();

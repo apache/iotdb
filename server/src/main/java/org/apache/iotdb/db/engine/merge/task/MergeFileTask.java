@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.merge.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.merge.manage.MergeContext;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeContext;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -62,9 +62,9 @@ public class MergeFileTask {
   private static final Logger logger = LoggerFactory.getLogger(MergeFileTask.class);
 
   private String taskName;
-  private MergeContext context;
+  private CrossSpaceMergeContext context;
   private MergeLogger mergeLogger;
-  private CrossSpaceCompactionResource resource;
+  private CrossSpaceMergeResource resource;
   private List<TsFileResource> unmergedFiles;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -74,9 +74,9 @@ public class MergeFileTask {
 
   MergeFileTask(
       String taskName,
-      MergeContext context,
+      CrossSpaceMergeContext context,
       MergeLogger mergeLogger,
-      CrossSpaceCompactionResource resource,
+      CrossSpaceMergeResource resource,
       List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;

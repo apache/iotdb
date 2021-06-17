@@ -23,12 +23,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
@@ -49,7 +49,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.merge.task.CrossSpaceTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -242,9 +242,9 @@ public abstract class TsFileManagement {
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    CrossSpaceCompactionResource mergeResource = new CrossSpaceCompactionResource(seqMergeList, unSeqMergeList, timeLowerBound);
+    CrossSpaceMergeResource mergeResource = new CrossSpaceMergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
 
-    ICrossSpaceCompactionFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+    ICrossSpaceMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
@@ -268,8 +268,8 @@ public abstract class TsFileManagement {
       }
 
       mergeStartTime = System.currentTimeMillis();
-      CrossSpaceTask mergeTask =
-          new CrossSpaceTask(
+      CrossSpaceMergeTask mergeTask =
+          new CrossSpaceMergeTask(
               mergeResource,
               storageGroupDir,
               this::mergeEndAction,
@@ -294,7 +294,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  private ICrossSpaceCompactionFileSelector getMergeFileSelector(long budget, CrossSpaceCompactionResource resource) {
+  private ICrossSpaceMergeFileSelector getMergeFileSelector(long budget, CrossSpaceMergeResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:

@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.merge.manage.MergeContext;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -45,21 +45,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * CrossSpaceTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
+ * CrossSpaceMergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
  * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
  * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
  * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
-public class CrossSpaceTask implements Callable<Void> {
+public class CrossSpaceMergeTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(CrossSpaceTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(CrossSpaceMergeTask.class);
 
-  CrossSpaceCompactionResource resource;
+  CrossSpaceMergeResource resource;
   String storageGroupSysDir;
   String storageGroupName;
   MergeLogger mergeLogger;
-  MergeContext mergeContext = new MergeContext();
+  CrossSpaceMergeContext mergeContext = new CrossSpaceMergeContext();
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
@@ -69,7 +69,7 @@ public class CrossSpaceTask implements Callable<Void> {
   private MergeCallback callback;
   public ModificationFile mergingModification;
 
-  CrossSpaceTask(
+  CrossSpaceMergeTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
@@ -77,7 +77,7 @@ public class CrossSpaceTask implements Callable<Void> {
       String taskName,
       boolean fullMerge,
       String storageGroupName) {
-    this.resource = new CrossSpaceCompactionResource(seqFiles, unseqFiles);
+    this.resource = new CrossSpaceMergeResource(seqFiles, unseqFiles);
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
@@ -86,8 +86,8 @@ public class CrossSpaceTask implements Callable<Void> {
     this.storageGroupName = storageGroupName;
   }
 
-  public CrossSpaceTask(
-      CrossSpaceCompactionResource mergeResource,
+  public CrossSpaceMergeTask(
+      CrossSpaceMergeResource mergeResource,
       String storageGroupSysDir,
       MergeCallback callback,
       String taskName,

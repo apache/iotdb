@@ -19,20 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import static org.apache.iotdb.db.engine.merge.task.CrossSpaceTask.MERGE_SUFFIX;
-
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceTask;
+import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-
-import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,10 +57,10 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected void doCompaction() throws Exception {
     String taskName =
         tsFileResourceManager.getStorageGroupName() + "-" + System.currentTimeMillis();
-    CrossSpaceTask mergeTask = new CrossSpaceTask(context.getMergeResource(),
+    CrossSpaceMergeTask mergeTask = new CrossSpaceMergeTask(context.getMergeResource(),
         context.getTsFileResourceManager().getStorageGroupDir(), this::mergeEndAction, taskName,
         IoTDBDescriptor
-            .getInstance().getConfig().isForceFullMerge(), context.getConcurrentCompactionCount(),
+            .getInstance().getConfig().isForceFullMerge(), context.getConcurrentMergeCount(),
         tsFileResourceManager.getStorageGroupName());
     mergeTask.call();
   }

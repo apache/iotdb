@@ -48,13 +48,13 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.engine.merge.task.CrossSpaceTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 
 /**
- * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
+ * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
  * to avoid unnecessary object creations and file openings.
  */
-public class CrossSpaceCompactionResource {
+public class CrossSpaceMergeResource {
 
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> unseqFiles;
@@ -72,7 +72,7 @@ public class CrossSpaceCompactionResource {
 
   private boolean cacheDeviceMeta = false;
 
-  public CrossSpaceCompactionResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public CrossSpaceMergeResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }
@@ -84,7 +84,7 @@ public class CrossSpaceCompactionResource {
         && (!res.isClosed() || res.stillLives(timeLowerBound));
   }
 
-  public CrossSpaceCompactionResource(
+  public CrossSpaceMergeResource(
       Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
     this.timeLowerBound = timeLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
