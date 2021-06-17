@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import org.slf4j.Logger;
@@ -149,17 +148,16 @@ public class CompactionScheduler {
       boolean isSequence,
       ICompactionTaskFactory taskFactory) {
     boolean taskSubmitted = false;
-    List<TsFileResourceListNode> selectedFileList = new ArrayList<>();
+    List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
     boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    Iterator<TsFileResourceListNode> iterator = tsFileResources.reverseIterator();
+    Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
     while (iterator.hasNext()) {
-      TsFileResourceListNode currentNode = iterator.next();
-      TsFileResource currentFile = currentNode.getTsFileResource();
+      TsFileResource currentFile = iterator.next();
       if ((currentTaskNum.get() >= concurrentCompactionThread)
           || (!enableSeqSpaceCompaction && isSequence)
           || (!enableUnseqSpaceCompaction && !isSequence)) {
@@ -172,7 +170,7 @@ public class CompactionScheduler {
         selectedFileSize = 0L;
         continue;
       }
-      selectedFileList.add(currentNode);
+      selectedFileList.add(currentFile);
       selectedFileSize += currentFile.getTsFileSize();
       if (selectedFileSize > targetCompactionFileSize) {
         // submit the task

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
@@ -28,7 +28,7 @@ public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
       TsFileResourceList tsFileResourceList,
-      List<TsFileResourceListNode> selectedTsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
       Boolean sequence,
       String storageGroup) {
     super(tsFileResourceList, selectedTsFileResourceList, sequence, storageGroup);
@@ -36,8 +36,8 @@ public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected void doCompaction() {
-    for (TsFileResourceListNode tsFileResourceListNode : selectedTsFileResourceList) {
-      this.tsFileResourceList.remove(tsFileResourceListNode);
+    for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+      this.tsFileResourceList.remove(tsFileResource);
     }
   }
 }

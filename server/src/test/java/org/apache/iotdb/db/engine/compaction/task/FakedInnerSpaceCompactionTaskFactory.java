@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import java.util.List;
 
@@ -28,7 +28,7 @@ public class FakedInnerSpaceCompactionTaskFactory implements ICompactionTaskFact
   @Override
   public AbstractCompactionTask createTask(
       TsFileResourceList tsFileResourceList,
-      List<TsFileResourceListNode> selectedTsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
       Boolean sequence,
       String storageGroup) {
     return new FakedInnerSpaceCompactionTask(

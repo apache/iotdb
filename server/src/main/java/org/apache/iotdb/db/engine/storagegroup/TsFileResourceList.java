@@ -27,18 +27,17 @@ import java.util.List;
 import java.util.ListIterator;
 
 public class TsFileResourceList implements List<TsFileResource> {
-  private TsFileResourceListNode header;
-  private TsFileResourceListNode tail;
+  private TsFileResource header;
+  private TsFileResource tail;
   private int count = 0;
 
   /**
    * Insert a new node before an existing node
    *
    * @param node the existing node
-   * @param tsFileResource the file to insert
+   * @param newNode the file to insert
    */
-  public void insertBefore(TsFileResourceListNode node, TsFileResource tsFileResource) {
-    TsFileResourceListNode newNode = new TsFileResourceListNode(tsFileResource);
+  public void insertBefore(TsFileResource node, TsFileResource newNode) {
     newNode.prev = node.prev;
     newNode.next = node;
     if (node.prev == null) {
@@ -53,10 +52,9 @@ public class TsFileResourceList implements List<TsFileResource> {
    * Insert a new node after an existing node
    *
    * @param node the existing node
-   * @param tsFileResource the file to insert
+   * @param newNode the file to insert
    */
-  public void insertAfter(TsFileResourceListNode node, TsFileResource tsFileResource) {
-    TsFileResourceListNode newNode = new TsFileResourceListNode(tsFileResource);
+  public void insertAfter(TsFileResource node, TsFileResource newNode) {
     newNode.prev = node;
     newNode.next = node.next;
     if (node.next == null) {
@@ -83,7 +81,7 @@ public class TsFileResourceList implements List<TsFileResource> {
       return false;
     }
     boolean contain = false;
-    TsFileResourceListNode current = header;
+    TsFileResource current = header;
     while (current != null) {
       if (current.equals(o)) {
         contain = true;
@@ -99,21 +97,20 @@ public class TsFileResourceList implements List<TsFileResource> {
     return new TsFileIterator();
   }
 
-  public Iterator<TsFileResourceListNode> reverseIterator() {
+  public Iterator<TsFileResource> reverseIterator() {
     return new TsFileReverseIterator();
   }
 
   /** Insert a new tsFileResource node to the end of List */
   @Override
-  public boolean add(TsFileResource tsFileResource) {
-    TsFileResourceListNode newNode = new TsFileResourceListNode(tsFileResource);
+  public boolean add(TsFileResource newNode) {
     if (tail == null) {
       header = newNode;
       tail = newNode;
       newNode.prev = null;
       newNode.next = null;
     } else {
-      insertAfter(tail, tsFileResource);
+      insertAfter(tail, newNode);
     }
     count++;
     return true;
@@ -125,7 +122,7 @@ public class TsFileResourceList implements List<TsFileResource> {
    */
   @Override
   public boolean remove(Object o) {
-    TsFileResourceListNode tsFileResource = (TsFileResourceListNode) o;
+    TsFileResource tsFileResource = (TsFileResource) o;
     if (tsFileResource.prev == null) {
       header = header.next;
       header.prev = null;
@@ -234,7 +231,7 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {
-    TsFileResourceListNode current;
+    TsFileResource current;
 
     public TsFileIterator() {
       this.current = header;
@@ -247,14 +244,14 @@ public class TsFileResourceList implements List<TsFileResource> {
 
     @Override
     public TsFileResource next() {
-      TsFileResourceListNode temp = current;
+      TsFileResource temp = current;
       current = current.next;
-      return temp.getTsFileResource();
+      return temp;
     }
   }
 
-  private class TsFileReverseIterator implements Iterator<TsFileResourceListNode> {
-    TsFileResourceListNode current;
+  private class TsFileReverseIterator implements Iterator<TsFileResource> {
+    TsFileResource current;
 
     public TsFileReverseIterator() {
       current = tail;
@@ -266,8 +263,8 @@ public class TsFileResourceList implements List<TsFileResource> {
     }
 
     @Override
-    public TsFileResourceListNode next() {
-      TsFileResourceListNode temp = current;
+    public TsFileResource next() {
+      TsFileResource temp = current;
       current = current.prev;
       return temp;
     }
