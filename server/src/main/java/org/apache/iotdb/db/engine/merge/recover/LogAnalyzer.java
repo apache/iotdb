@@ -187,7 +187,8 @@ public class LogAnalyzer {
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile =
-          SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + CrossSpaceMergeTask.MERGE_SUFFIX);
+          SystemFileFactory.INSTANCE.getFile(
+              seqFile.getTsFilePath() + CrossSpaceMergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -260,7 +261,8 @@ public class LogAnalyzer {
           throw new IOException("Illegal merge files");
         }
         fileLastPositions.remove(currFile);
-        String seqFilePath = currFile.getAbsolutePath().replace(CrossSpaceMergeTask.MERGE_SUFFIX, "");
+        String seqFilePath =
+            currFile.getAbsolutePath().replace(CrossSpaceMergeTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();

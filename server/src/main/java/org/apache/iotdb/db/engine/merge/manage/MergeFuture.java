@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
 import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

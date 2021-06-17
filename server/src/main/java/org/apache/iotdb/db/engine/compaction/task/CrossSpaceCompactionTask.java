@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import java.io.File;
-import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
@@ -30,6 +28,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.util.List;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
@@ -57,11 +58,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected void doCompaction() throws Exception {
     String taskName =
         tsFileResourceManager.getStorageGroupName() + "-" + System.currentTimeMillis();
-    CrossSpaceMergeTask mergeTask = new CrossSpaceMergeTask(context.getMergeResource(),
-        context.getStorageGroupName(), this::mergeEndAction, taskName,
-        IoTDBDescriptor
-            .getInstance().getConfig().isForceFullMerge(), context.getConcurrentMergeCount(),
-        tsFileResourceManager.getStorageGroupName());
+    CrossSpaceMergeTask mergeTask =
+        new CrossSpaceMergeTask(
+            context.getMergeResource(),
+            context.getStorageGroupName(),
+            this::mergeEndAction,
+            taskName,
+            IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
+            context.getConcurrentMergeCount(),
+            tsFileResourceManager.getStorageGroupName());
     mergeTask.call();
   }
 

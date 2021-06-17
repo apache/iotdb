@@ -19,18 +19,8 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeContext;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -45,11 +35,22 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.Callable;
+
 /**
- * CrossSpaceMergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
- * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
- * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
+ * CrossSpaceMergeTask merges given seqFiles and unseqFiles into new ones, which basically consists
+ * of three steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2.
+ * move the merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the
+ * seqFiles into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class CrossSpaceMergeTask implements Callable<Void> {
 

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.merge.manage;
 
 import org.apache.iotdb.db.engine.merge.manage.MergeFuture.MainMergeFuture;
 import org.apache.iotdb.db.engine.merge.manage.MergeFuture.SubMergeFuture;
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
 import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;

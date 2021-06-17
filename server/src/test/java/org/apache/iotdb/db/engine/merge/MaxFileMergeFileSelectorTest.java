@@ -46,7 +46,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
   @Test
   public void testFullSelection() throws MergeException, IOException {
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
@@ -141,7 +142,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, newUnseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
     resource.clear();
@@ -231,7 +233,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     unseqResources.add(largeUnseqTsFileResource);
 
     CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqResources, unseqResources);
-    ICrossSpaceMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result[0].size());
     resource.clear();
@@ -289,7 +292,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       CrossSpaceMergeResource resource = new CrossSpaceMergeResource(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
-      ICrossSpaceMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
+      ICrossSpaceMergeFileSelector mergeFileSelector =
+          new MaxFileMergeFileSelector(resource, 29000);
       List[] result = mergeFileSelector.select();
       assertEquals(1, result[0].size());
       assertEquals(1, result[1].size());

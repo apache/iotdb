@@ -51,8 +51,8 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 
 /**
- * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
- * to avoid unnecessary object creations and file openings.
+ * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and
+ * modifications to avoid unnecessary object creations and file openings.
  */
 public class CrossSpaceMergeResource {
 

@@ -125,8 +125,7 @@ public class CompactionContext {
     return mergeResource;
   }
 
-  public void setMergeResource(
-      CrossSpaceMergeResource mergeResource) {
+  public void setMergeResource(CrossSpaceMergeResource mergeResource) {
     this.mergeResource = mergeResource;
   }
 

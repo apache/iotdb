@@ -266,9 +266,11 @@ public class CompactionScheduler {
     }
     long budget = config.getMergeMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    CrossSpaceMergeResource mergeResource = new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
+    CrossSpaceMergeResource mergeResource =
+        new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
 
-    ICrossSpaceMergeFileSelector fileSelector = CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
+    ICrossSpaceMergeFileSelector fileSelector =
+        CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
