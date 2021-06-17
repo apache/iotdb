@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,11 +97,41 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     LOGGER.info(
         "{} [Compaction] compaction finish, start to delete old files",
         resourceManager.getStorageGroupName());
-
-    // TODO: clean the old file, add the new file to the list
+    try {
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", resourceManager.getStorageGroupName()));
+      }
+      resourceManager.writeLockWithTimeout("InnerCompactionTask", 5000);
+    } catch (WriteLockFailedException e) {
+      // if the thread of time partition deletion get the write lock,
+      // current thread will catch a WriteLockFailException, then terminate the thread itself
+      throw new InterruptedException(
+          String.format(
+              "%s [Compaction] compaction abort because cannot acquire write lock",
+              resourceManager.getStorageGroupName()));
+    }
+    try {
+      // replace the old files with new file, the new is in same position as the old
+      tsFileResourceList.insertBefore(sourceFiles.get(0), targetTsFileResource);
+      for (TsFileResource resource : sourceFiles) {
+        tsFileResourceList.remove(resource);
+      }
+      // delete the old files
+      CompactionUtils.deleteTsFilesInDisk(sourceFiles, resourceManager.getStorageGroupName());
+    } finally {
+      resourceManager.writeUnlock();
+    }
   }
 
-  public static String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
+  /**
+   * This method receive a list of TsFileResource to be compacted, return the name of compaction
+   * target file.
+   *
+   * @return target file name as {minTimestamp}-{minVersionNum}-{maxInnerMergeTimes +
+   *     1}-{maxCrossMergeTimes}
+   */
+  public String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
     long minTimestamp = Long.MAX_VALUE;
     long minVersionNum = Long.MAX_VALUE;
     int maxInnerMergeTimes = Integer.MIN_VALUE;
@@ -123,6 +154,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
 
     return TsFileNameGenerator.generateNewTsFileName(
-        minTimestamp, minVersionNum, maxInnerMergeTimes, maxCrossMergeTimes);
+        minTimestamp, minVersionNum, maxInnerMergeTimes + 1, maxCrossMergeTimes);
   }
 }

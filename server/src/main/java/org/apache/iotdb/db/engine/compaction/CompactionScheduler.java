@@ -208,28 +208,22 @@ public class CompactionScheduler {
       selectedFileSize += currentFile.getTsFileSize();
       if (selectedFileSize > targetCompactionFileSize) {
         // submit the task
-        try {
-          CompactionContext context = new CompactionContext();
-          context.setSequence(sequence);
-          context.setTsFileResourceManager(tsFileResourceManager);
-          if (sequence) {
-            context.setSequenceFileResourceList(tsFileResources);
-            context.setSelectedSequenceFiles(selectedFileList);
-          } else {
-            context.setUnsequenceFileResourceList(tsFileResources);
-            context.setSelectedUnsequenceFiles(selectedFileList);
-          }
-          context.setGlobalActiveTaskNum(currentTaskNum);
-          AbstractCompactionTask compactionTask = taskFactory.createTask(context);
-          CompactionTaskManager.getInstance()
-              .submitTask(storageGroup, timePartition, compactionTask);
-          currentTaskNum.incrementAndGet();
-          selectedFileList = new ArrayList<>();
-          selectedFileSize = 0L;
-        } catch (Exception e) {
-          LOGGER.warn(e.getMessage(), e);
-          return false;
+        CompactionContext context = new CompactionContext();
+        context.setSequence(sequence);
+        context.setTsFileResourceManager(tsFileResourceManager);
+        if (sequence) {
+          context.setSequenceFileResourceList(tsFileResources);
+          context.setSelectedSequenceFiles(selectedFileList);
+        } else {
+          context.setUnsequenceFileResourceList(tsFileResources);
+          context.setSelectedUnsequenceFiles(selectedFileList);
         }
+        context.setGlobalActiveTaskNum(currentTaskNum);
+        AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+        CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
+        currentTaskNum.incrementAndGet();
+        selectedFileList = new ArrayList<>();
+        selectedFileSize = 0L;
       }
     }
     // if some files are selected but the total size is smaller than target size, submit a task
