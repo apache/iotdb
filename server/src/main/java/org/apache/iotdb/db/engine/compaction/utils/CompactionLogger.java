@@ -47,6 +47,11 @@ public class CompactionLogger {
                 true));
   }
 
+  public CompactionLogger(String logFile) throws IOException {
+    logStream =
+        new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
+  }
+
   public void close() throws IOException {
     logStream.close();
   }

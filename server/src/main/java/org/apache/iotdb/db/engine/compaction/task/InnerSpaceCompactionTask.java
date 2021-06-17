@@ -19,31 +19,100 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceListNode;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResourceListNode> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
-  protected String storageGroup;
+  protected String logicalStorageGroup;
+  public final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(
       TsFileResourceList tsFileResourceList,
       List<TsFileResourceListNode> selectedTsFileResourceList,
       Boolean sequence,
-      String storageGroup,
+      String logicalStorageGroup,
       AtomicInteger globalActiveTaskNum) {
     super(globalActiveTaskNum);
     this.tsFileResourceList = tsFileResourceList;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
-    this.storageGroup = storageGroup;
+    this.logicalStorageGroup = logicalStorageGroup;
   }
 
   @Override
-  protected void doCompaction() throws Exception {}
+  protected void doCompaction() throws Exception {
+    String dataDirectory =
+        selectedTsFileResourceList.get(0).getTsFileResource().getTsFile().getParent();
+    String targetFileName = generateTargetFileName(selectedTsFileResourceList);
+    TsFileResource targetTsFileResource =
+        new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
+
+    // transfer List<TsFileResourceListNode> to List<TsFileResource>
+    List<TsFileResource> sourceFiles = new ArrayList<>();
+    for (TsFileResourceListNode node : selectedTsFileResourceList) {
+      sourceFiles.add(node.getTsFileResource());
+      node.getTsFileResource().readLock();
+      node.getTsFileResource().setMerging(true);
+    }
+    try {
+      File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
+      // compaction execution
+
+      CompactionUtils.compact(
+          targetTsFileResource,
+          sourceFiles,
+          logicalStorageGroup,
+          new CompactionLogger(logFile.getPath()),
+          new HashSet<>(),
+          sequence,
+          new ArrayList<>());
+
+    } finally {
+      for (TsFileResource resource : sourceFiles) {
+        resource.readUnlock();
+      }
+    }
+  }
+
+  private String generateTargetFileName(List<TsFileResourceListNode> tsFileResourceListNodes) {
+    long minTimestamp = Long.MAX_VALUE;
+    long minVersionNum = Long.MAX_VALUE;
+    int maxInnerMergeTimes = Integer.MIN_VALUE;
+    int maxCrossMergeTimes = Integer.MIN_VALUE;
+    Pattern tsFilePattern = Pattern.compile(fileNameRegex);
+
+    for (TsFileResourceListNode node : tsFileResourceListNodes) {
+      TsFileResource resource = node.getTsFileResource();
+      String tsFileName = resource.getTsFile().getName();
+      Matcher matcher = tsFilePattern.matcher(tsFileName);
+      if (matcher.find()) {
+        long currentTimestamp = Long.parseLong(matcher.group(1));
+        long currentVersionNum = Long.parseLong(matcher.group(2));
+        int currentInnerMergeTimes = Integer.parseInt(matcher.group(3));
+        int currentCrossMergeTimes = Integer.parseInt(matcher.group(4));
+        minTimestamp = Math.min(minTimestamp, currentTimestamp);
+        minVersionNum = Math.min(minVersionNum, currentVersionNum);
+        maxInnerMergeTimes = Math.max(maxInnerMergeTimes, currentInnerMergeTimes);
+        maxCrossMergeTimes = Math.max(maxCrossMergeTimes, currentCrossMergeTimes);
+      }
+    }
+
+    return TsFileNameGenerator.generateNewTsFileName(
+        minTimestamp, minVersionNum, maxInnerMergeTimes, maxCrossMergeTimes);
+  }
 }

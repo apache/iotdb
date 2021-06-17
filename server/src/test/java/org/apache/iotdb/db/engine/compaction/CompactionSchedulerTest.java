@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class CompactionSchedulerTest {
 
@@ -54,8 +56,8 @@ public class CompactionSchedulerTest {
     tsFileResources.add(new FakedTsFileResource(100));
     tsFileResources.add(new FakedTsFileResource(100));
 
-    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", 0L, tsFileResources, true,
-        FakedInnerSpaceCompactionTask.class);
+    CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
+        "testSG", 0L, tsFileResources, true, FakedInnerSpaceCompactionTask.class);
     while (CompactionScheduler.getCnt() != 0) {
       //
     }

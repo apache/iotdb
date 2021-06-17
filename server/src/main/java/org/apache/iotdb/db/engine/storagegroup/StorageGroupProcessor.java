@@ -1217,25 +1217,19 @@ public class StorageGroupProcessor {
 
   private TsFileProcessor newTsFileProcessor(boolean sequence, long timePartitionId)
       throws IOException, DiskSpaceInsufficientException {
-    DirectoryManager directoryManager = DirectoryManager.getInstance();
-    String baseDir =
-        sequence
-            ? directoryManager.getNextFolderForSequenceFile()
-            : directoryManager.getNextFolderForUnSequenceFile();
-    fsFactory
-        .getFile(baseDir + File.separator + logicalStorageGroupName, virtualStorageGroupId)
-        .mkdirs();
 
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
+    partitionMaxFileVersions.put(timePartitionId, version);
     String filePath =
-        baseDir
-            + File.separator
-            + logicalStorageGroupName
-            + File.separator
-            + virtualStorageGroupId
-            + File.separator
-            + timePartitionId
-            + File.separator
-            + getNewTsFileName(timePartitionId);
+        TsFileNameGenerator.generateNewTsFilePath(
+            sequence,
+            logicalStorageGroupName,
+            virtualStorageGroupId,
+            timePartitionId,
+            System.currentTimeMillis(),
+            version,
+            0,
+            0);
 
     return getTsFileProcessor(sequence, filePath, timePartitionId);
   }
@@ -1290,7 +1284,7 @@ public class StorageGroupProcessor {
   }
 
   private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return TsFileResource.getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
+    return TsFileNameGenerator.generateNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
   /**
@@ -2565,7 +2559,7 @@ public class StorageGroupProcessor {
       return tsfileName;
     }
 
-    return TsFileResource.getNewTsFileName(
+    return TsFileNameGenerator.generateNewTsFileName(
         preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0, 0);
   }
 
