@@ -50,6 +50,8 @@ public class TsFileResourceManager {
     this.storageGroupDir = storageGroupDir;
   }
 
+  public void recover() {}
+
   public List<TsFileResource> getTsFileList(boolean sequence) {
     readLock();
     try {
@@ -119,6 +121,66 @@ public class TsFileResourceManager {
       sequenceRecoverTsFileResources.add(tsFileResource);
     } else {
       unsequenceRecoverTsFileResources.add(tsFileResource);
+    }
+  }
+
+  public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
+    writeLock("add");
+    try {
+      for (TsFileResource resource : tsFileResourceList) {
+        add(resource, sequence);
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public boolean contains(TsFileResource tsFileResource, boolean sequence) {
+    readLock();
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      TsFileResourceList list = selectedMap.getOrDefault(tsFileResource.getTimePartition(), null);
+      return list != null && list.contains(tsFileResource);
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public void clear() {
+    writeLock("clear");
+    try {
+      sequenceFiles.clear();
+      unsequenceFiles.clear();
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public boolean isEmpty(boolean sequence) {
+    readLock();
+    boolean notEmpty = false;
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
+        notEmpty = notEmpty | (!entry.getValue().isEmpty());
+      }
+      return !notEmpty;
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public int size(boolean sequence) {
+    readLock();
+    try {
+      int totalSize = 0;
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
+        totalSize += entry.getValue().size();
+      }
+      return totalSize;
+    } finally {
+      readUnlock();
     }
   }
 
