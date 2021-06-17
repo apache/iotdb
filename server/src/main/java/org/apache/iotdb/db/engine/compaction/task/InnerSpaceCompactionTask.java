@@ -25,6 +25,8 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,13 +43,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
   protected String logicalStorageGroup;
+  private TsFileResourceManager resourceManager;
   public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(
+      TsFileResourceManager resourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       Boolean sequence,
       String logicalStorageGroup) {
+    this.resourceManager = resourceManager;
     this.tsFileResourceList = tsFileResourceList;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
@@ -56,8 +61,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   protected void doCompaction() throws Exception {
-    String dataDirectory =
-        selectedTsFileResourceList.get(0).getTsFile().getParent();
+    String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName = generateTargetFileName(selectedTsFileResourceList);
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
@@ -67,7 +71,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource tsFileResource : selectedTsFileResourceList) {
       tsFileResource.readLock();
       tsFileResource.setMerging(true);
-      LOGGER.info("{} [Compaction] start to merge TsFile {}", logicalStorageGroup, tsFileResource);
+      LOGGER.info(
+          "{} [Compaction] start to compact TsFile {}", logicalStorageGroup, tsFileResource);
     }
     try {
       File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
@@ -81,17 +86,18 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           new HashSet<>(),
           sequence,
           modifications);
-
-      // TODO: clean the old file, add the new file to the list
     } finally {
       for (TsFileResource resource : sourceFiles) {
         resource.readUnlock();
       }
     }
+    LOGGER.info(
+        "{} [Compaction] compaction finish, start to delete old files", logicalStorageGroup);
+
+    // TODO: clean the old file, add the new file to the list
   }
 
-  public static String generateTargetFileName(
-      List<TsFileResource> tsFileResourceList) {
+  public static String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
     long minTimestamp = Long.MAX_VALUE;
     long minVersionNum = Long.MAX_VALUE;
     int maxInnerMergeTimes = Integer.MIN_VALUE;
