@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;

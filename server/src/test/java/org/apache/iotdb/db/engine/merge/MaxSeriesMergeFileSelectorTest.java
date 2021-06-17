@@ -35,7 +35,8 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector =
         new MaxSeriesMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
@@ -72,7 +73,8 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testNonSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
@@ -82,7 +84,8 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 400000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
@@ -96,7 +99,8 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection2() throws MergeException, IOException {
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 100000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
@@ -242,7 +242,8 @@ public abstract class TsFileManagement {
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    CrossSpaceCompactionResource mergeResource = new CrossSpaceCompactionResource(seqMergeList, unSeqMergeList, timeLowerBound);
+    CrossSpaceCompactionResource mergeResource =
+        new CrossSpaceCompactionResource(seqMergeList, unSeqMergeList, timeLowerBound);
 
     ICrossSpaceCompactionFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
     try {
@@ -294,7 +295,8 @@ public abstract class TsFileManagement {
     }
   }
 
-  private ICrossSpaceCompactionFileSelector getMergeFileSelector(long budget, CrossSpaceCompactionResource resource) {
+  private ICrossSpaceCompactionFileSelector getMergeFileSelector(
+      long budget, CrossSpaceCompactionResource resource) {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:

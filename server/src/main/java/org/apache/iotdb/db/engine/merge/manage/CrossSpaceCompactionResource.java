@@ -72,7 +72,8 @@ public class CrossSpaceCompactionResource {
 
   private boolean cacheDeviceMeta = false;
 
-  public CrossSpaceCompactionResource(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public CrossSpaceCompactionResource(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }

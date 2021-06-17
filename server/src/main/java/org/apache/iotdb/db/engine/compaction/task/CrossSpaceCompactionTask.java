@@ -31,7 +31,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unSeqTsFileResourceList;
   protected boolean sequence;
-  protected String logicalStorageGroup;
+  protected String storageGroupName;
 
   public CrossSpaceCompactionTask(CompactionContext context) {
     this.seqTsFileResourceList = context.getSequenceFileResourceList();
@@ -39,7 +39,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.selectedSeqTsFileResourceList = context.getSelectedSequenceFiles();
     this.selectedUnSeqTsFileResourceList = context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
-    this.logicalStorageGroup = context.getLogicalStorageGroupName();
+    this.storageGroupName = context.getStorageGroupName();
   }
 
   @Override

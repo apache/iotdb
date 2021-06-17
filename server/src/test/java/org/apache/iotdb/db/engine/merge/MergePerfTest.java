@@ -44,7 +44,8 @@ public class MergePerfTest extends MergeTest {
     tempSGDir.mkdirs();
     setUp();
     timeConsumption = System.currentTimeMillis();
-    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
     resource.setCacheDeviceMeta(true);
     MergeTask mergeTask =
         new MergeTask(

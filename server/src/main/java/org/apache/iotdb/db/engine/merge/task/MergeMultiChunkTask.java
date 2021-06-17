@@ -21,9 +21,9 @@ package org.apache.iotdb.db.engine.merge.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;

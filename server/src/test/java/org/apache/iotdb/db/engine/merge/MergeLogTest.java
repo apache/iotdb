@@ -66,7 +66,8 @@ public class MergeLogTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(
-            new CrossSpaceCompactionResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
+            new CrossSpaceCompactionResource(
+                seqResources.subList(0, 1), unseqResources.subList(0, 1)),
             tempSGDir.getPath(),
             this::testCallBack,
             "test",

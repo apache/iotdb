@@ -79,7 +79,10 @@ public class LogAnalyzer {
   private Status status;
 
   public LogAnalyzer(
-      CrossSpaceCompactionResource resource, String taskName, File logFile, String storageGroupName) {
+      CrossSpaceCompactionResource resource,
+      String taskName,
+      File logFile,
+      String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;

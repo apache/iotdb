@@ -166,7 +166,9 @@ public class MergeUtils {
    * @param paths names of the timeseries
    */
   public static List<Chunk>[] collectUnseqChunks(
-      List<PartialPath> paths, List<TsFileResource> unseqResources, CrossSpaceCompactionResource mergeResource)
+      List<PartialPath> paths,
+      List<TsFileResource> unseqResources,
+      CrossSpaceCompactionResource mergeResource)
       throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
