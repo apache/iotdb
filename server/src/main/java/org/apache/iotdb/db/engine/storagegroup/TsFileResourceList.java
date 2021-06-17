@@ -51,6 +51,10 @@ public class TsFileResourceList implements List<TsFileResource> {
     lock.writeLock().lock();
   }
 
+  public boolean tryWriteLock() {
+    return lock.writeLock().tryLock();
+  }
+
   /**
    * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
    * The unit of timeout is ms.
