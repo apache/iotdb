@@ -22,8 +22,8 @@ package org.apache.iotdb.db.engine.merge;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
@@ -45,8 +45,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
@@ -54,7 +54,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(unseqResources, unseqSelected);
     resource.clear();
 
-    resource = new MergeResource(seqResources.subList(0, 1), unseqResources);
+    resource = new CrossSpaceCompactionResource(seqResources.subList(0, 1), unseqResources);
     mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     result = mergeFileSelector.select();
     seqSelected = result[0];
@@ -63,7 +63,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(unseqResources, unseqSelected);
     resource.clear();
 
-    resource = new MergeResource(seqResources, unseqResources.subList(0, 1));
+    resource = new CrossSpaceCompactionResource(seqResources, unseqResources.subList(0, 1));
     mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     result = mergeFileSelector.select();
     seqSelected = result[0];
@@ -75,8 +75,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testNonSelection() throws MergeException, IOException {
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
     resource.clear();
@@ -84,8 +84,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testRestrictedSelection() throws MergeException, IOException {
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 400000);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 400000);
     List[] result = mergeFileSelector.select();
     List<TsFileResource> seqSelected = result[0];
     List<TsFileResource> unseqSelected = result[1];
@@ -140,8 +140,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
 
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
-    MergeResource resource = new MergeResource(seqResources, newUnseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, newUnseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(0, result.length);
     resource.clear();
@@ -193,8 +193,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     newUnseqResources.add(largeUnseqTsFileResource);
 
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    MergeResource mergeResource =
-        new MergeResource(seqResources, newUnseqResources, timeLowerBound);
+    CrossSpaceCompactionResource mergeResource =
+        new CrossSpaceCompactionResource(seqResources, newUnseqResources, timeLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
     mergeResource.clear();
@@ -230,8 +230,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     unseqResources.clear();
     unseqResources.add(largeUnseqTsFileResource);
 
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
-    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result[0].size());
     resource.clear();
@@ -286,10 +286,10 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       prepareFile(unseqList.get(1), 0, 100, 20);
       prepareFile(unseqList.get(2), 99, 1, 30);
 
-      MergeResource resource = new MergeResource(seqList, unseqList);
+      CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqList, unseqList);
       // the budget is enough to select unseq0 and unseq2, but not unseq1
       // the first selection should only contain seq0 and unseq0
-      IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
+      ICrossSpaceCompactionFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
       List[] result = mergeFileSelector.select();
       assertEquals(1, result[0].size());
       assertEquals(1, result[1].size());
@@ -298,7 +298,7 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       resource.clear();
 
       resource =
-          new MergeResource(
+          new CrossSpaceCompactionResource(
               seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
       // the second selection should be empty
       mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);

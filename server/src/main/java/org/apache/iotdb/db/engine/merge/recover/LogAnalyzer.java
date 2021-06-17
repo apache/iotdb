@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -63,7 +63,7 @@ public class LogAnalyzer {
 
   private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
 
-  private MergeResource resource;
+  private CrossSpaceCompactionResource resource;
   private String taskName;
   private File logFile;
   private String storageGroupName;
@@ -79,7 +79,7 @@ public class LogAnalyzer {
   private Status status;
 
   public LogAnalyzer(
-      MergeResource resource, String taskName, File logFile, String storageGroupName) {
+      CrossSpaceCompactionResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;

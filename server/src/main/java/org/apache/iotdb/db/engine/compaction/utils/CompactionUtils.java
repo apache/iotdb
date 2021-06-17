@@ -24,6 +24,11 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceCompactionFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
+import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -510,4 +515,17 @@ public class CompactionUtils {
       seqFile.writeUnlock();
     }
   }
+
+  public static ICrossSpaceCompactionFileSelector getCrossSpaceFileSelector(long budget, CrossSpaceCompactionResource resource) {
+    MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
+    switch (strategy) {
+      case MAX_FILE_NUM:
+        return new MaxFileMergeFileSelector(resource, budget);
+      case MAX_SERIES_NUM:
+        return new MaxSeriesMergeFileSelector(resource, budget);
+      default:
+        throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
+    }
+  }
+
 }

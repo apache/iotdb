@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.merge;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -77,7 +77,7 @@ public class MergeUpgradeTest {
 
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
-    MergeResource resource = new MergeResource(seqResources, unseqResources);
+    CrossSpaceCompactionResource resource = new CrossSpaceCompactionResource(seqResources, unseqResources);
     MaxFileMergeFileSelector mergeFileSelector =
         new MaxFileMergeFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();

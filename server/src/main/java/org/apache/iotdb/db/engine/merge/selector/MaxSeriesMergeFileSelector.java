@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.selector;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 
@@ -43,7 +43,7 @@ public class MaxSeriesMergeFileSelector extends MaxFileMergeFileSelector {
   private List<TsFileResource> lastSelectedUnseqFiles = Collections.emptyList();
   private long lastTotalMemoryCost;
 
-  public MaxSeriesMergeFileSelector(MergeResource mergeResource, long memoryBudget) {
+  public MaxSeriesMergeFileSelector(CrossSpaceCompactionResource mergeResource, long memoryBudget) {
     super(mergeResource, memoryBudget);
   }
 

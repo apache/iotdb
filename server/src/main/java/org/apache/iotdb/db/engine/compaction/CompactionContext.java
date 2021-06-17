@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -37,6 +38,7 @@ public class CompactionContext {
   protected List<TsFileResource> selectedSequenceFiles;
   protected List<TsFileResource> selectedUnsequenceFiles;
   protected AtomicInteger globalActiveTaskNum;
+  protected ModificationFile compactionModification;
 
   public CompactionContext() {}
 
@@ -141,5 +143,14 @@ public class CompactionContext {
 
   public void setGlobalActiveTaskNum(AtomicInteger globalActiveTaskNum) {
     this.globalActiveTaskNum = globalActiveTaskNum;
+  }
+
+  public ModificationFile getCompactionModification() {
+    return compactionModification;
+  }
+
+  public void setCompactionModification(
+      ModificationFile compactionModification) {
+    this.compactionModification = compactionModification;
   }
 }

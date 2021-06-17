@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -166,7 +166,7 @@ public class MergeUtils {
    * @param paths names of the timeseries
    */
   public static List<Chunk>[] collectUnseqChunks(
-      List<PartialPath> paths, List<TsFileResource> unseqResources, MergeResource mergeResource)
+      List<PartialPath> paths, List<TsFileResource> unseqResources, CrossSpaceCompactionResource mergeResource)
       throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -189,7 +189,7 @@ public class MergeUtils {
   private static void buildMetaHeap(
       List<PartialPath> paths,
       TsFileSequenceReader tsFileReader,
-      MergeResource resource,
+      CrossSpaceCompactionResource resource,
       TsFileResource tsFileResource,
       PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {

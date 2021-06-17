@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceCompactionResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 
@@ -98,7 +98,7 @@ public class MergeLogger {
     logStream.flush();
   }
 
-  public void logFiles(MergeResource resource) throws IOException {
+  public void logFiles(CrossSpaceCompactionResource resource) throws IOException {
     logSeqFiles(resource.getSeqFiles());
     logUnseqFiles(resource.getUnseqFiles());
   }
