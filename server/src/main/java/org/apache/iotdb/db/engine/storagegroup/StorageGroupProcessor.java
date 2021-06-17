@@ -572,7 +572,7 @@ public class StorageGroupProcessor {
     timedCompactionScheduleTask.scheduleWithFixedDelay(() -> {
       List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
       // sort the time partition from largest to smallest
-      Collections.sort(timePartitions, (o1, o2) -> (int) (o2 - o1));
+      timePartitions.sort((o1, o2) -> (int) (o2 - o1));
       for(long timePartition : timePartitions) {
         CompactionScheduler.compactionSchedule(tsFileResourceManager, timePartition);
       }

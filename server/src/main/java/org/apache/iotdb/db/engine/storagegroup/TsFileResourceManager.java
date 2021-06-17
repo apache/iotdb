@@ -46,6 +46,7 @@ public class TsFileResourceManager {
   private Map<Long, TsFileResourceList> unsequenceFiles = new HashMap<>();
   private Map<Long, Long> compactionCountInPartition = new ConcurrentHashMap<>();
 
+
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
     return sequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
   }
