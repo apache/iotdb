@@ -24,9 +24,7 @@ import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -41,9 +39,31 @@ public class TsFileResourceManager {
 
   private String writeLockHolder;
   // time partition -> double linked list of tsfiles
-  private Map<Long, TsFileResourceList> sequenceFiles = new HashMap<>();
-  private Map<Long, TsFileResourceList> unsequenceFiles = new HashMap<>();
+  private Map<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
+  private Map<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
 
+  private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
+  private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
+
+
+  public TsFileResourceManager(String storageGroupName, String storageGroupDir) {
+    this.storageGroupName = storageGroupName;
+    this.storageGroupDir = storageGroupDir;
+  }
+
+  public List<TsFileResource> getTsFileList(boolean sequence) {
+    readLock();
+    try {
+      List<TsFileResource> allResources = new ArrayList<>();
+      Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
+      for(Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+        allResources.addAll(entry.getValue());
+      }
+      return allResources;
+    } finally {
+      readUnlock();
+    }
+  }
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
     return sequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
@@ -51,6 +71,54 @@ public class TsFileResourceManager {
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
     return unsequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
+  }
+
+  public Iterator<TsFileResource> getIterator(boolean sequence) {
+    readLock();
+    try {
+      return getTsFileList(sequence).iterator();
+    } finally {
+      readUnlock();
+    }
+  }
+
+  public void remove(TsFileResource tsFileResource, boolean sequence) {
+    writeLock("remove");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
+        if (entry.getValue().contains(tsFileResource)) {
+          entry.getValue().remove(tsFileResource);
+          break;
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
+    for(TsFileResource resource : tsFileResourceList) {
+      remove(resource, sequence);
+    }
+  }
+
+  public void add(TsFileResource tsFileResource, boolean sequence) {
+    writeLock("add");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      selectedMap.computeIfAbsent(tsFileResource.getTimePartition(), o->new TsFileResourceList()).add(tsFileResource);
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+    if (sequence) {
+      sequenceRecoverTsFileResources.add(tsFileResource);
+    } else {
+      unsequenceRecoverTsFileResources.add(tsFileResource);
+    }
   }
 
   public void readLock() {
