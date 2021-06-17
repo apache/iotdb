@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,17 +41,16 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unSeqTsFileResourceList;
   protected boolean sequence;
-  protected String logicalStorageGroup;
+  protected String storageGroupName;
 
   public CrossSpaceCompactionTask(CompactionContext context) {
     this.context = context;
-    this.tsFileResourceManager = context.getTsFileResourceManager();
     this.seqTsFileResourceList = context.getSequenceFileResourceList();
     this.unSeqTsFileResourceList = context.getUnsequenceFileResourceList();
     this.selectedSeqTsFileResourceList = context.getSelectedSequenceFiles();
     this.selectedUnSeqTsFileResourceList = context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
-    this.logicalStorageGroup = context.getLogicalStorageGroupName();
+    this.storageGroupName = context.getStorageGroupName();
   }
 
   @Override
@@ -58,7 +58,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     String taskName =
         tsFileResourceManager.getStorageGroupName() + "-" + System.currentTimeMillis();
     CrossSpaceMergeTask mergeTask = new CrossSpaceMergeTask(context.getMergeResource(),
-        context.getTsFileResourceManager().getStorageGroupDir(), this::mergeEndAction, taskName,
+        context.getStorageGroupName(), this::mergeEndAction, taskName,
         IoTDBDescriptor
             .getInstance().getConfig().isForceFullMerge(), context.getConcurrentMergeCount(),
         tsFileResourceManager.getStorageGroupName());

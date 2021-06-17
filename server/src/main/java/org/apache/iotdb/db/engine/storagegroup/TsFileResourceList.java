@@ -19,17 +19,62 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResourceList implements List<TsFileResource> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceList.class);
   private TsFileResource header;
   private TsFileResource tail;
+  private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  private String writeLockHolder;
   private int count = 0;
+
+  public void readLock() {
+    lock.readLock().lock();
+  }
+
+  public void readUnlock() {
+    lock.readLock().unlock();
+  }
+
+  public void writeLock(String holder) {
+    lock.writeLock().lock();
+    writeLockHolder = holder;
+  }
+
+  /**
+   * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
+   * The unit of timeout is ms.
+   */
+  public void writeLockWithTimeout(String holder, long timeout) throws WriteLockFailedException {
+    try {
+      if (lock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
+        writeLockHolder = holder;
+      } else {
+        throw new WriteLockFailedException(
+            String.format("cannot get write lock in %d ms", timeout));
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn(e.getMessage(), e);
+      Thread.interrupted();
+      throw new WriteLockFailedException("thread is interrupted");
+    }
+  }
+
+  public void writeUnlock() {
+    lock.writeLock().unlock();
+  }
 
   /**
    * Insert a new node before an existing node

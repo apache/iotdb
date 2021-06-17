@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
@@ -44,11 +43,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
-  private TsFileResourceManager resourceManager;
+  protected String storageGroupName;
   public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(CompactionContext context) {
-    this.resourceManager = context.getTsFileResourceManager();
     this.tsFileResourceList =
         context.isSequence()
             ? context.getSequenceFileResourceList()
@@ -58,6 +56,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             ? context.getSelectedSequenceFiles()
             : context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
+    this.storageGroupName = context.getStorageGroupName();
   }
 
   @Override
@@ -72,10 +71,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (TsFileResource tsFileResource : selectedTsFileResourceList) {
       tsFileResource.readLock();
       tsFileResource.setMerging(true);
-      LOGGER.info(
-          "{} [Compaction] start to compact TsFile {}",
-          resourceManager.getStorageGroupName(),
-          tsFileResource);
+      LOGGER.info("{} [Compaction] start to compact TsFile {}", storageGroupName, tsFileResource);
     }
     try {
       File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
@@ -84,7 +80,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       CompactionUtils.compact(
           targetTsFileResource,
           sourceFiles,
-          resourceManager.getStorageGroupName(),
+          storageGroupName,
           new CompactionLogger(logFile.getPath()),
           new HashSet<>(),
           sequence,
@@ -94,22 +90,19 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         resource.readUnlock();
       }
     }
-    LOGGER.info(
-        "{} [Compaction] compaction finish, start to delete old files",
-        resourceManager.getStorageGroupName());
+    LOGGER.info("{} [Compaction] compaction finish, start to delete old files", storageGroupName);
     try {
       if (Thread.currentThread().isInterrupted()) {
-        throw new InterruptedException(
-            String.format("%s [Compaction] abort", resourceManager.getStorageGroupName()));
+        throw new InterruptedException(String.format("%s [Compaction] abort", storageGroupName));
       }
-      resourceManager.writeLockWithTimeout("InnerCompactionTask", 5000);
+      tsFileResourceList.writeLockWithTimeout("Compaction", 5000);
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
       // current thread will catch a WriteLockFailException, then terminate the thread itself
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
-              resourceManager.getStorageGroupName()));
+              storageGroupName));
     }
     try {
       // replace the old files with new file, the new is in same position as the old
@@ -118,9 +111,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(sourceFiles, resourceManager.getStorageGroupName());
+      CompactionUtils.deleteTsFilesInDisk(sourceFiles, storageGroupName);
     } finally {
-      resourceManager.writeUnlock();
+      tsFileResourceList.writeUnlock();
     }
   }
 

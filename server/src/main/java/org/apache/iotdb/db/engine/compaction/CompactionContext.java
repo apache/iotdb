@@ -23,22 +23,17 @@ import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CompactionContext {
-  protected String logicalStorageGroupName;
-  protected String virtualStorageGroupName;
+  protected String storageGroupName;
   protected long timePartitionId;
-  protected TsFileResourceManager tsFileResourceManager;
   protected boolean sequence;
   protected TsFileResourceList sequenceFileResourceList;
   protected TsFileResourceList unsequenceFileResourceList;
   protected List<TsFileResource> selectedSequenceFiles;
   protected List<TsFileResource> selectedUnsequenceFiles;
-  protected AtomicInteger globalActiveTaskNum;
   protected ModificationFile compactionModification;
   protected CrossSpaceMergeResource mergeResource;
   protected int concurrentMergeCount;
@@ -46,42 +41,28 @@ public class CompactionContext {
   public CompactionContext() {}
 
   public CompactionContext(
-      String logicalStorageGroupName,
-      String virtualStorageGroupName,
+      String storageGroupName,
       long timePartitionId,
-      TsFileResourceManager tsFileResourceManager,
       boolean sequence,
       TsFileResourceList sequenceFileResourceList,
       TsFileResourceList unsequenceFileResourceList,
       List<TsFileResource> selectedSequenceFiles,
-      List<TsFileResource> selectedUnsequenceFiles,
-      AtomicInteger globalActiveTaskNum) {
-    this.logicalStorageGroupName = logicalStorageGroupName;
-    this.virtualStorageGroupName = virtualStorageGroupName;
+      List<TsFileResource> selectedUnsequenceFiles) {
+    this.storageGroupName = storageGroupName;
     this.timePartitionId = timePartitionId;
-    this.tsFileResourceManager = tsFileResourceManager;
     this.sequence = sequence;
     this.sequenceFileResourceList = sequenceFileResourceList;
     this.unsequenceFileResourceList = unsequenceFileResourceList;
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-    this.globalActiveTaskNum = globalActiveTaskNum;
   }
 
-  public String getLogicalStorageGroupName() {
-    return logicalStorageGroupName;
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
-  public void setLogicalStorageGroupName(String logicalStorageGroupName) {
-    this.logicalStorageGroupName = logicalStorageGroupName;
-  }
-
-  public String getVirtualStorageGroupName() {
-    return virtualStorageGroupName;
-  }
-
-  public void setVirtualStorageGroupName(String virtualStorageGroupName) {
-    this.virtualStorageGroupName = virtualStorageGroupName;
+  public void setStorageGroupName(String storageGroupName) {
+    this.storageGroupName = storageGroupName;
   }
 
   public long getTimePartitionId() {
@@ -90,14 +71,6 @@ public class CompactionContext {
 
   public void setTimePartitionId(long timePartitionId) {
     this.timePartitionId = timePartitionId;
-  }
-
-  public TsFileResourceManager getTsFileResourceManager() {
-    return tsFileResourceManager;
-  }
-
-  public void setTsFileResourceManager(TsFileResourceManager tsFileResourceManager) {
-    this.tsFileResourceManager = tsFileResourceManager;
   }
 
   public boolean isSequence() {
@@ -140,20 +113,11 @@ public class CompactionContext {
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
   }
 
-  public AtomicInteger getGlobalActiveTaskNum() {
-    return globalActiveTaskNum;
-  }
-
-  public void setGlobalActiveTaskNum(AtomicInteger globalActiveTaskNum) {
-    this.globalActiveTaskNum = globalActiveTaskNum;
-  }
-
   public ModificationFile getCompactionModification() {
     return compactionModification;
   }
 
-  public void setCompactionModification(
-      ModificationFile compactionModification) {
+  public void setCompactionModification(ModificationFile compactionModification) {
     this.compactionModification = compactionModification;
   }
 

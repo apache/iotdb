@@ -21,9 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.constant.TestConstant;
 
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -35,9 +33,9 @@ public class TsFileResourceListTest {
 
   private TsFileResource generateTsFileResource(int id) {
     File file =
-        new File(TsFileNameGenerator
-            .generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, id, id, id, id)
-        );
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH, id, id, id, id));
     return new TsFileResource(file);
   }
 
@@ -98,5 +96,4 @@ public class TsFileResourceListTest {
     TsFileResource notIncluded = new TsFileResource();
     Assert.assertFalse(tsFileResourceList.remove(notIncluded));
   }
-
 }

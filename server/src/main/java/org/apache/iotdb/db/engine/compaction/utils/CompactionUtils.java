@@ -527,5 +527,4 @@ public class CompactionUtils {
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
     }
   }
-
 }
