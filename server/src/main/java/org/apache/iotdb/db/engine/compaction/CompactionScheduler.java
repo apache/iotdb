@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -46,6 +49,8 @@ public class CompactionScheduler {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
   public static AtomicInteger currentTaskNum = new AtomicInteger(0);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  // storageGroupName -> timePartition -> compactionCount
+  private static Map<String, Map<Long, Long>> compactionCountInPartition = new ConcurrentHashMap<>();
 
   public static void compactionSchedule(
       TsFileResourceManager tsFileResourceManager, long timePartition) {
@@ -62,18 +67,21 @@ public class CompactionScheduler {
       if (compactionPriority == CompactionPriority.BALANCE) {
         doCompactionBalancePriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
         doCompactionInnerCrossPriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
       } else if (compactionPriority == CompactionPriority.CROSS_INNER) {
         doCompactionCrossInnerPriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
             unsequenceFileList);
@@ -84,7 +92,8 @@ public class CompactionScheduler {
   }
 
   private static void doCompactionBalancePriority(
-      String storageGroup,
+      String storageGroupName,
+      String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
@@ -93,45 +102,49 @@ public class CompactionScheduler {
     while (taskSubmitted && currentTaskNum.get() < concurrentCompactionThread) {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
-              storageGroup,
+              storageGroupName,
               timePartition,
               sequenceFileList,
               true,
               new InnerSpaceCompactionTaskFactory());
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
-                  storageGroup,
-                  timePartition,
-                  unsequenceFileList,
-                  false,
-                  new InnerSpaceCompactionTaskFactory())
+              storageGroupName,
+              timePartition,
+              unsequenceFileList,
+              false,
+              new InnerSpaceCompactionTaskFactory())
               | taskSubmitted;
       taskSubmitted =
           tryToSubmitCrossSpaceCompactionTask(
-                  storageGroup,
-                  timePartition,
-                  sequenceFileList,
-                  unsequenceFileList,
-                  new CrossSpaceCompactionTaskFactory())
+              storageGroupName,
+              storageGroupDir,
+              timePartition,
+              sequenceFileList,
+              unsequenceFileList,
+              new CrossSpaceCompactionTaskFactory())
               | taskSubmitted;
     }
   }
 
   private static void doCompactionInnerCrossPriority(
-      String storageGroup,
+      String storageGroupName,
+      String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitInnerSpaceCompactionTask(
-        storageGroup, timePartition, sequenceFileList, true, new InnerSpaceCompactionTaskFactory());
+        storageGroupName, timePartition, sequenceFileList, true,
+        new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
-        storageGroup,
+        storageGroupName,
         timePartition,
         unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
-        storageGroup,
+        storageGroupName,
+        storageGroupDir,
         timePartition,
         sequenceFileList,
         unsequenceFileList,
@@ -139,20 +152,23 @@ public class CompactionScheduler {
   }
 
   private static void doCompactionCrossInnerPriority(
-      String storageGroup,
+      String storageGroupName,
+      String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitCrossSpaceCompactionTask(
-        storageGroup,
+        storageGroupName,
+        storageGroupDir,
         timePartition,
         sequenceFileList,
         unsequenceFileList,
         new CrossSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
-        storageGroup, timePartition, sequenceFileList, true, new InnerSpaceCompactionTaskFactory());
+        storageGroupName, timePartition, sequenceFileList, true,
+        new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
-        storageGroup,
+        storageGroupName,
         timePartition,
         unsequenceFileList,
         false,
@@ -160,7 +176,7 @@ public class CompactionScheduler {
   }
 
   public static boolean tryToSubmitInnerSpaceCompactionTask(
-      String storageGroup,
+      String storageGroupName,
       long timePartition,
       TsFileResourceList tsFileResources,
       boolean sequence,
@@ -195,6 +211,8 @@ public class CompactionScheduler {
         if (selectedFileSize > targetCompactionFileSize) {
           // submit the task
           CompactionContext context = new CompactionContext();
+          context.setStorageGroupName(storageGroupName);
+          context.setTimePartitionId(timePartition);
           context.setSequence(sequence);
           if (sequence) {
             context.setSequenceFileResourceList(tsFileResources);
@@ -205,8 +223,7 @@ public class CompactionScheduler {
           }
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
-              .submitTask(storageGroup, timePartition, compactionTask);
-          currentTaskNum.incrementAndGet();
+              .submitTask(storageGroupName, timePartition, compactionTask);
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
@@ -215,6 +232,8 @@ public class CompactionScheduler {
       if (selectedFileList.size() > 0) {
         try {
           CompactionContext context = new CompactionContext();
+          context.setStorageGroupName(storageGroupName);
+          context.setTimePartitionId(timePartition);
           context.setSequence(sequence);
           if (sequence) {
             context.setSelectedSequenceFiles(selectedFileList);
@@ -226,7 +245,7 @@ public class CompactionScheduler {
 
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
-              .submitTask(storageGroup, timePartition, compactionTask);
+              .submitTask(storageGroupName, timePartition, compactionTask);
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
         }
@@ -238,14 +257,16 @@ public class CompactionScheduler {
   }
 
   private static boolean tryToSubmitCrossSpaceCompactionTask(
-      String storageGroup,
+      String storageGroupName,
+      String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       ICompactionTaskFactory taskFactory) {
     boolean taskSubmitted = false;
     if ((currentTaskNum.get() >= config.getConcurrentCompactionThread())
-        || (!config.isEnableCrossSpaceCompaction())) {
+        || (!config.isEnableCrossSpaceCompaction()) || isPartitionCompacting(storageGroupName,
+        timePartition)) {
       return taskSubmitted;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
@@ -290,6 +311,10 @@ public class CompactionScheduler {
       }
 
       CompactionContext context = new CompactionContext();
+      context.setStorageGroupName(storageGroupName);
+      context.setStorageGroupDir(storageGroupDir);
+      context.setTimePartitionId(timePartition);
+
       context.setMergeResource(mergeResource);
       context.setSequenceFileResourceList(sequenceFileList);
       context.setSelectedSequenceFiles(mergeResource.getSeqFiles());
@@ -298,9 +323,9 @@ public class CompactionScheduler {
       context.setConcurrentMergeCount(fileSelector.getConcurrentMergeNum());
 
       AbstractCompactionTask compactionTask = taskFactory.createTask(context);
-      CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
+      CompactionTaskManager.getInstance().submitTask(storageGroupName, timePartition, compactionTask);
     } catch (MergeException | IOException e) {
-      LOGGER.error("{} cannot select file for cross space compaction", storageGroup, e);
+      LOGGER.error("{} cannot select file for cross space compaction", storageGroupName, e);
     }
 
     return false;
@@ -308,5 +333,26 @@ public class CompactionScheduler {
 
   public static int getCount() {
     return currentTaskNum.get();
+  }
+
+  public static Map<String, Map<Long, Long>> getCompactionCountInPartition() {
+    return compactionCountInPartition;
+  }
+
+  public static void addPartitionCompaction(String storageGroupName, long timePartition) {
+    compactionCountInPartition.computeIfAbsent(storageGroupName, l -> new HashMap<>())
+        .put(timePartition,
+            compactionCountInPartition.get(storageGroupName).getOrDefault(timePartition, 0L) + 1);
+  }
+
+  public static void decPartitionCompaction(String storageGroupName, long timePartition) {
+    compactionCountInPartition.get(storageGroupName)
+        .put(timePartition,
+            compactionCountInPartition.get(storageGroupName).get(timePartition) - 1);
+  }
+
+  public static boolean isPartitionCompacting(String storageGroupName, long timePartition) {
+    return compactionCountInPartition.computeIfAbsent(storageGroupName, l -> new HashMap<>())
+        .getOrDefault(timePartition, 0L) > 0L;
   }
 }

@@ -21,10 +21,10 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,38 +35,39 @@ import java.util.List;
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CrossSpaceCompactionTask.class);
-  protected TsFileResourceManager tsFileResourceManager;
   protected CompactionContext context;
+  protected CrossSpaceMergeResource mergeResource;
+  protected String storageGroupDir;
   protected List<TsFileResource> selectedSeqTsFileResourceList;
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unSeqTsFileResourceList;
   protected boolean sequence;
-  protected String storageGroupName;
 
   public CrossSpaceCompactionTask(CompactionContext context) {
+    super(context.getStorageGroupName(), context.getTimePartitionId());
     this.context = context;
+    this.mergeResource = context.getMergeResource();
+    this.storageGroupDir = context.getStorageGroupDir();
     this.seqTsFileResourceList = context.getSequenceFileResourceList();
     this.unSeqTsFileResourceList = context.getUnsequenceFileResourceList();
     this.selectedSeqTsFileResourceList = context.getSelectedSequenceFiles();
     this.selectedUnSeqTsFileResourceList = context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
-    this.storageGroupName = context.getStorageGroupName();
   }
 
   @Override
   protected void doCompaction() throws Exception {
-    String taskName =
-        tsFileResourceManager.getStorageGroupName() + "-" + System.currentTimeMillis();
+    String taskName = storageGroupName + "-" + System.currentTimeMillis();
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            context.getMergeResource(),
-            context.getStorageGroupName(),
+            mergeResource,
+            storageGroupDir,
             this::mergeEndAction,
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             context.getConcurrentMergeCount(),
-            tsFileResourceManager.getStorageGroupName());
+            storageGroupName);
     mergeTask.call();
   }
 

@@ -173,6 +173,7 @@ public class CompactionTaskManager implements IService {
     if (pool != null && !pool.isTerminated()) {
       Future<Void> future = pool.submit(compactionMergeTask);
       CompactionScheduler.currentTaskNum.incrementAndGet();
+      CompactionScheduler.addPartitionCompaction(storageGroupName, timePartition);
       compactionTaskFutures
           .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())

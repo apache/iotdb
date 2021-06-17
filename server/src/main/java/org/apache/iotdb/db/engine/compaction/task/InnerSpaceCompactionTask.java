@@ -43,10 +43,10 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
-  protected String storageGroupName;
   public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(CompactionContext context) {
+    super(context.getStorageGroupName(), context.getTimePartitionId());
     this.tsFileResourceList =
         context.isSequence()
             ? context.getSequenceFileResourceList()
@@ -56,7 +56,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             ? context.getSelectedSequenceFiles()
             : context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
-    this.storageGroupName = context.getStorageGroupName();
   }
 
   @Override

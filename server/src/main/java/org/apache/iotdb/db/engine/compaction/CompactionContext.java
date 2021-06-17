@@ -28,6 +28,7 @@ import java.util.List;
 
 public class CompactionContext {
   protected String storageGroupName;
+  protected String storageGroupDir;
   protected long timePartitionId;
   protected boolean sequence;
   protected TsFileResourceList sequenceFileResourceList;
@@ -135,5 +136,13 @@ public class CompactionContext {
 
   public void setConcurrentMergeCount(int concurrentMergeCount) {
     this.concurrentMergeCount = concurrentMergeCount;
+  }
+
+  public String getStorageGroupDir() {
+    return storageGroupDir;
+  }
+
+  public void setStorageGroupDir(String storageGroupDir) {
+    this.storageGroupDir = storageGroupDir;
   }
 }
