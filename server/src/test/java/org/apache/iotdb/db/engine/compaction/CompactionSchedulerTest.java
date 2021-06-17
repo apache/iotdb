@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -34,28 +35,31 @@ import java.io.IOException;
 
 public class CompactionSchedulerTest {
 
+  private long originFileSize;
+
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     CompactionTaskManager.getInstance().start();
+    originFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(100);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     CompactionTaskManager.getInstance().stop();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(originFileSize);
   }
 
   @Test
-  public void testFileSelecter() {
+  public void testFileSelector1() {
     TsFileResourceList tsFileResources = new TsFileResourceList();
-    for (int i = 0; i < 3; i++) {
-      tsFileResources.add(new FakedTsFileResource(100));
-    }
-    tsFileResources.add(new FakedTsFileResource(100, false, true));
-    for (int i = 0; i < 2; i++) {
-      tsFileResources.add(new FakedTsFileResource(100));
-    }
+    tsFileResources.add(new FakedTsFileResource(30));
+    tsFileResources.add(new FakedTsFileResource(30));
+    tsFileResources.add(new FakedTsFileResource(30));
     tsFileResources.add(new FakedTsFileResource(100));
-    tsFileResources.add(new FakedTsFileResource(100));
+    tsFileResources.add(new FakedTsFileResource(30));
+    tsFileResources.add(new FakedTsFileResource(40));
+    tsFileResources.add(new FakedTsFileResource(40));
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
         "testSG", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
@@ -66,6 +70,6 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
-    Assert.assertEquals(5, tsFileResources.size());
+    Assert.assertEquals(3, tsFileResources.size());
   }
 }
