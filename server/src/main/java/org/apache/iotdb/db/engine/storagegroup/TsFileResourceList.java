@@ -36,8 +36,7 @@ public class TsFileResourceList implements List<TsFileResource> {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceList.class);
   private TsFileResource header;
   private TsFileResource tail;
-  private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-  private String writeLockHolder;
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   private int count = 0;
 
   public void readLock() {
@@ -48,19 +47,17 @@ public class TsFileResourceList implements List<TsFileResource> {
     lock.readLock().unlock();
   }
 
-  public void writeLock(String holder) {
+  public void writeLock() {
     lock.writeLock().lock();
-    writeLockHolder = holder;
   }
 
   /**
    * Acquire write lock with timeout, {@link WriteLockFailedException} will be thrown after timeout.
    * The unit of timeout is ms.
    */
-  public void writeLockWithTimeout(String holder, long timeout) throws WriteLockFailedException {
+  public void writeLockWithTimeout(long timeout) throws WriteLockFailedException {
     try {
       if (lock.writeLock().tryLock(timeout, TimeUnit.MILLISECONDS)) {
-        writeLockHolder = holder;
       } else {
         throw new WriteLockFailedException(
             String.format("cannot get write lock in %d ms", timeout));

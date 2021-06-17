@@ -173,61 +173,68 @@ public class CompactionScheduler {
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
-    while (iterator.hasNext()) {
-      TsFileResource currentFile = iterator.next();
-      if ((currentTaskNum.get() >= concurrentCompactionThread)
-          || (!enableSeqSpaceCompaction && sequence)
-          || (!enableUnseqSpaceCompaction && !sequence)) {
-        return taskSubmitted;
-      }
-      if (currentFile.getTsFileSize() > targetCompactionFileSize
-          || currentFile.isMerging()
-          || !currentFile.isClosed()) {
-        selectedFileList.clear();
-        selectedFileSize = 0L;
-        continue;
-      }
-      selectedFileList.add(currentFile);
-      selectedFileSize += currentFile.getTsFileSize();
-      if (selectedFileSize > targetCompactionFileSize) {
-        // submit the task
-        CompactionContext context = new CompactionContext();
-        context.setSequence(sequence);
-        if (sequence) {
-          context.setSequenceFileResourceList(tsFileResources);
-          context.setSelectedSequenceFiles(selectedFileList);
-        } else {
-          context.setUnsequenceFileResourceList(tsFileResources);
-          context.setSelectedUnsequenceFiles(selectedFileList);
+    tsFileResources.readLock();
+    try {
+      Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+      while (iterator.hasNext()) {
+        TsFileResource currentFile = iterator.next();
+        if ((currentTaskNum.get() >= concurrentCompactionThread)
+            || (!enableSeqSpaceCompaction && sequence)
+            || (!enableUnseqSpaceCompaction && !sequence)) {
+          return taskSubmitted;
         }
-        AbstractCompactionTask compactionTask = taskFactory.createTask(context);
-        CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
-        currentTaskNum.incrementAndGet();
-        selectedFileList = new ArrayList<>();
-        selectedFileSize = 0L;
-      }
-    }
-    // if some files are selected but the total size is smaller than target size, submit a task
-    if (selectedFileList.size() > 0) {
-      try {
-        CompactionContext context = new CompactionContext();
-        context.setSequence(sequence);
-        if (sequence) {
-          context.setSelectedSequenceFiles(selectedFileList);
-          context.setSequenceFileResourceList(tsFileResources);
-        } else {
-          context.setSelectedUnsequenceFiles(selectedFileList);
-          context.setUnsequenceFileResourceList(tsFileResources);
+        if (currentFile.getTsFileSize() > targetCompactionFileSize
+            || currentFile.isMerging()
+            || !currentFile.isClosed()) {
+          selectedFileList.clear();
+          selectedFileSize = 0L;
+          continue;
         }
+        selectedFileList.add(currentFile);
+        selectedFileSize += currentFile.getTsFileSize();
+        if (selectedFileSize > targetCompactionFileSize) {
+          // submit the task
+          CompactionContext context = new CompactionContext();
+          context.setSequence(sequence);
+          if (sequence) {
+            context.setSequenceFileResourceList(tsFileResources);
+            context.setSelectedSequenceFiles(selectedFileList);
+          } else {
+            context.setUnsequenceFileResourceList(tsFileResources);
+            context.setSelectedUnsequenceFiles(selectedFileList);
+          }
+          AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+          CompactionTaskManager.getInstance()
+              .submitTask(storageGroup, timePartition, compactionTask);
+          currentTaskNum.incrementAndGet();
+          selectedFileList = new ArrayList<>();
+          selectedFileSize = 0L;
+        }
+      }
+      // if some files are selected but the total size is smaller than target size, submit a task
+      if (selectedFileList.size() > 0) {
+        try {
+          CompactionContext context = new CompactionContext();
+          context.setSequence(sequence);
+          if (sequence) {
+            context.setSelectedSequenceFiles(selectedFileList);
+            context.setSequenceFileResourceList(tsFileResources);
+          } else {
+            context.setSelectedUnsequenceFiles(selectedFileList);
+            context.setUnsequenceFileResourceList(tsFileResources);
+          }
 
-        AbstractCompactionTask compactionTask = taskFactory.createTask(context);
-        CompactionTaskManager.getInstance().submitTask(storageGroup, timePartition, compactionTask);
-      } catch (Exception e) {
-        LOGGER.warn(e.getMessage(), e);
+          AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+          CompactionTaskManager.getInstance()
+              .submitTask(storageGroup, timePartition, compactionTask);
+        } catch (Exception e) {
+          LOGGER.warn(e.getMessage(), e);
+        }
       }
+      return taskSubmitted;
+    } finally {
+      tsFileResources.readUnlock();
     }
-    return taskSubmitted;
   }
 
   private static boolean tryToSubmitCrossSpaceCompactionTask(

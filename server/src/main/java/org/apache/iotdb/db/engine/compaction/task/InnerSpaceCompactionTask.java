@@ -95,7 +95,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(String.format("%s [Compaction] abort", storageGroupName));
       }
-      tsFileResourceList.writeLockWithTimeout("Compaction", 5000);
+      tsFileResourceList.writeLockWithTimeout(5000);
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
       // current thread will catch a WriteLockFailException, then terminate the thread itself
