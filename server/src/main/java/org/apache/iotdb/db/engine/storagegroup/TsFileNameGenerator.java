@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -54,28 +55,55 @@ public class TsFileNameGenerator {
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
       throws DiskSpaceInsufficientException {
+    String tsFileDir = generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup,
+        timePartitionId);
+    return tsFileDir + File.separator + generateNewTsFileName(time, version,
+        innerSpaceCompactionCount, crossSpaceCompactionCount);
+  }
+
+  public static String generateNewTsFilePath(
+      String tsFileDir,
+      long time,
+      long version,
+      int innerSpaceCompactionCount,
+      int crossSpaceCompactionCount) {
+    return tsFileDir + File.separator + generateNewTsFileName(time, version,
+        innerSpaceCompactionCount, crossSpaceCompactionCount);
+  }
+
+  public static String generateNewTsFilePatWithMkdir(
+      boolean sequence,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
+      long timePartitionId,
+      long time,
+      long version,
+      int innerSpaceCompactionCount,
+      int crossSpaceCompactionCount)
+      throws DiskSpaceInsufficientException, IOException {
+    String tsFileDir = generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup,
+        timePartitionId);
+    boolean result = fsFactory.getFile(tsFileDir).mkdirs();
+    if (!result) {
+      throw new IOException(String.format("mkdirs %s failed!", tsFileDir));
+    }
+    return tsFileDir + File.separator + generateNewTsFileName(time, version,
+        innerSpaceCompactionCount, crossSpaceCompactionCount);
+  }
+
+  private static String generateTsFileDir(
+      boolean sequence,
+      String logicalStorageGroup,
+      String virtualStorageGroup,
+      long timePartitionId)
+      throws DiskSpaceInsufficientException {
     DirectoryManager directoryManager = DirectoryManager.getInstance();
     String baseDir =
         sequence
             ? directoryManager.getNextFolderForSequenceFile()
             : directoryManager.getNextFolderForUnSequenceFile();
-
-    fsFactory
-        .getFile(
-            baseDir + File.separator + logicalStorageGroup + File.separator + virtualStorageGroup,
-            String.valueOf(timePartitionId))
-        .mkdirs();
-
-    return baseDir
-        + File.separator
-        + logicalStorageGroup
-        + File.separator
-        + virtualStorageGroup
-        + File.separator
-        + timePartitionId
-        + File.separator
-        + generateNewTsFileName(
-            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
+    return baseDir + File.separator + logicalStorageGroup + File.separator + virtualStorageGroup
+        + File.separator + timePartitionId;
   }
 
   public static String generateNewTsFileName(
