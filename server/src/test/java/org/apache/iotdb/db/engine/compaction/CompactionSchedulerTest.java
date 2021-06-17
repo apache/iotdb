@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -57,9 +58,13 @@ public class CompactionSchedulerTest {
     tsFileResources.add(new FakedTsFileResource(100));
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", 0L, tsFileResources, true, FakedInnerSpaceCompactionTask.class);
+        "testSG", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
     while (CompactionScheduler.getCnt() != 0) {
-      //
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
     }
     Assert.assertEquals(5, tsFileResources.size());
   }

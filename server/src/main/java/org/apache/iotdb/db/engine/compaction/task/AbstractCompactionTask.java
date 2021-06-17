@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
-  private AtomicInteger globalActiveCompactionTaskNum;
 
-  public AbstractCompactionTask(AtomicInteger compactionTaskNum) {
-    globalActiveCompactionTaskNum = compactionTaskNum;
-  }
+  public AbstractCompactionTask() {}
 
   protected abstract void doCompaction() throws Exception;
 
@@ -42,7 +40,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
     } finally {
-      globalActiveCompactionTaskNum.decrementAndGet();
+      CompactionScheduler.currentTaskNum.decrementAndGet();
     }
     return null;
   }

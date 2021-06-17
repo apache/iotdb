@@ -30,7 +30,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,15 +38,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
   protected String logicalStorageGroup;
-  public final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
+  public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(
       TsFileResourceList tsFileResourceList,
       List<TsFileResourceListNode> selectedTsFileResourceList,
       Boolean sequence,
-      String logicalStorageGroup,
-      AtomicInteger globalActiveTaskNum) {
-    super(globalActiveTaskNum);
+      String logicalStorageGroup) {
     this.tsFileResourceList = tsFileResourceList;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
@@ -89,7 +86,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  private String generateTargetFileName(List<TsFileResourceListNode> tsFileResourceListNodes) {
+  public static String generateTargetFileName(
+      List<TsFileResourceListNode> tsFileResourceListNodes) {
     long minTimestamp = Long.MAX_VALUE;
     long minVersionNum = Long.MAX_VALUE;
     int maxInnerMergeTimes = Integer.MIN_VALUE;

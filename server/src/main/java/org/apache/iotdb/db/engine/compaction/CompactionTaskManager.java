@@ -162,6 +162,7 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       Future<Void> future = pool.submit(compactionMergeTask);
+      CompactionScheduler.currentTaskNum.incrementAndGet();
       storageGroupTasks
           .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
           .add(future);
@@ -173,6 +174,7 @@ public class CompactionTaskManager implements IService {
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       Future<Void> future = pool.submit(compactionMergeTask);
+      CompactionScheduler.currentTaskNum.incrementAndGet();
       compactionTaskFutures
           .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())
