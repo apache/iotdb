@@ -82,6 +82,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           sequence,
           new ArrayList<>());
 
+      // TODO: clean the old file, add the new file to the list
     } finally {
       for (TsFileResource resource : sourceFiles) {
         resource.readUnlock();

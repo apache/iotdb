@@ -214,7 +214,7 @@ public class CompactionScheduler {
     return false;
   }
 
-  public static int getCnt() {
+  public static int getCount() {
     return currentTaskNum.get();
   }
 }
