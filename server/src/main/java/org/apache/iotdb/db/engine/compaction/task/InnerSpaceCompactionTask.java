@@ -21,9 +21,12 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,6 +36,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InnerSpaceCompactionTask.class);
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
@@ -60,14 +64,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     // transfer List<TsFileResourceListNode> to List<TsFileResource>
     List<TsFileResource> sourceFiles = new ArrayList<>();
-    for (TsFileResource node : selectedTsFileResourceList) {
-      node.readLock();
-      node.setMerging(true);
+    for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+      tsFileResource.readLock();
+      tsFileResource.setMerging(true);
+      LOGGER.info("{} [Compaction] start to merge TsFile {}", logicalStorageGroup, tsFileResource);
     }
     try {
       File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
       // compaction execution
-
+      List<Modification> modifications = new ArrayList<>();
       CompactionUtils.compact(
           targetTsFileResource,
           sourceFiles,
@@ -75,7 +80,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           new CompactionLogger(logFile.getPath()),
           new HashSet<>(),
           sequence,
-          new ArrayList<>());
+          modifications);
 
       // TODO: clean the old file, add the new file to the list
     } finally {

@@ -111,8 +111,6 @@ public class TsFileResourceList implements List<TsFileResource> {
     if (tail == null) {
       header = newNode;
       tail = newNode;
-      newNode.prev = null;
-      newNode.next = null;
     } else {
       insertAfter(tail, newNode);
     }
@@ -133,7 +131,9 @@ public class TsFileResourceList implements List<TsFileResource> {
     }
     if (tsFileResource.prev == null) {
       header = header.next;
-      header.prev = null;
+      if (header != null) {
+        header.prev = null;
+      }
     } else if (tsFileResource.next == null) {
       tail = tail.prev;
       tail.next = null;
