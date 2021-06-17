@@ -69,9 +69,9 @@
 
 #### 移出tsfile文件至指定目录
 
-移出tsfile文件的指令为：`remove "<path>" "<dir>"`
+移出tsfile文件的指令为：`move "<path>" "<dir>"`
 
-该指令将指定路径的tsfile文件移动至目标文件夹(绝对路径)中，具体做法是在引擎中移除该tsfile，并将该tsfile文件和其对应的`.resource`文件移动到目标文件夹下
+该指令将指定路径的tsfile文件移动至目标文件夹(绝对路径)中，具体做法是在引擎中移出该tsfile，并将该tsfile文件和其对应的`.resource`文件移动到目标文件夹下
 
 示例：
 

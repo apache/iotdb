@@ -18,8 +18,9 @@
     under the License.
 
 -->
-## Maintenance Command
-### FLUSH
+
+# Maintenance Command
+## FLUSH
 
 Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
 
@@ -29,7 +30,7 @@ IoTDB> FLUSH root.ln
 IoTDB> FLUSH root.sg1,root.sg2
 ```
 
-### MERGE
+## MERGE
 
 Merge sequence and unsequence data. Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
 
@@ -41,7 +42,7 @@ IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
 
-### CLEAR CACHE
+## CLEAR CACHE
 
 Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
 
@@ -49,7 +50,7 @@ Clear the cache of chunk, chunk metadata and timeseries metadata to release the 
 IoTDB> CLEAR CACHE
 ```
 
-### SCHEMA SNAPSHOT
+## SCHEMA SNAPSHOT
 
 To speed up restarting of IoTDB, users can create snapshot of schema and avoid recovering schema from mlog file.
 
@@ -58,12 +59,12 @@ IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
 
-### Kill Query
+## Kill Query
 
 When using IoTDB, you may encounter the following situations: you have entered a query statement, but can not get the result for a long time, as this query contains too much data or some other reasons, and have to wait until the query ends.
 Since version 0.12, IoTDB has provided two solutions for queries with long execution time: query timeout and query abort.
 
-#### Query timeout
+### Query timeout
 
 For queries that take too long to execute, IoTDB will forcibly interrupt the query and throw a timeout exception, as shown in the figure: 
 
@@ -83,7 +84,7 @@ E.g. session.executeQueryStatement(String sql, long timeout)
 
 If the timeout parameter is not configured or with value 0, the default timeout time will be used.
 
-#### Query abort
+### Query abort
 
 In addition to waiting for the query to time out passively, IoTDB also supports stopping the query actively:
 

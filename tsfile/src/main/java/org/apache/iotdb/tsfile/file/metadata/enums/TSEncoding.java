@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.file.metadata.enums;
 
 public enum TSEncoding {
   PLAIN((byte) 0),
-  PLAIN_DICTIONARY((byte) 1),
+  DICTIONARY((byte) 1),
   RLE((byte) 2),
   DIFF((byte) 3),
   TS_2DIFF((byte) 4),
@@ -50,7 +50,7 @@ public enum TSEncoding {
       case 0:
         return TSEncoding.PLAIN;
       case 1:
-        return TSEncoding.PLAIN_DICTIONARY;
+        return TSEncoding.DICTIONARY;
       case 2:
         return TSEncoding.RLE;
       case 3:

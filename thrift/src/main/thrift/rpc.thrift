@@ -194,10 +194,11 @@ struct TSSetTimeZoneReq {
 // for session
 struct TSInsertRecordReq {
   1: required i64 sessionId
-  2: required string deviceId
+  2: required string prefixPath
   3: required list<string> measurements
   4: required binary values
   5: required i64 timestamp
+  6: optional bool isAligned
 }
 
 struct TSInsertStringRecordReq {
@@ -210,12 +211,13 @@ struct TSInsertStringRecordReq {
 
 struct TSInsertTabletReq {
   1: required i64 sessionId
-  2: required string deviceId
+  2: required string prefixPath
   3: required list<string> measurements
   4: required binary values
   5: required binary timestamps
   6: required list<i32> types
   7: required i32 size
+  8: optional bool isAligned
 }
 
 struct TSInsertTabletsReq {
@@ -273,7 +275,7 @@ struct TSCreateTimeseriesReq {
 
 struct TSCreateAlignedTimeseriesReq {
   1: required i64 sessionId
-  2: required string devicePath
+  2: required string prefixPath
   3: required list<string> measurements
   4: required list<i32> dataTypes
   5: required list<i32> encodings
@@ -289,6 +291,15 @@ struct TSRawDataQueryReq {
   5: required i64 endTime
   6: required i64 statementId
   7: optional bool enableRedirectQuery;
+}
+
+struct TSLastDataQueryReq {
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: optional i32 fetchSize
+  4: required i64 time
+  5: required i64 statementId
+  6: optional bool enableRedirectQuery;
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -309,19 +320,20 @@ struct ServerProperties {
   3: required string timestampPrecision;
 }
 
-struct TSSetDeviceTemplateReq {
+struct TSSetSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
   3: required string prefixPath
 }
 
-struct TSCreateDeviceTemplateReq {
+struct TSCreateSchemaTemplateReq {
   1: required i64 sessionId
   2: required string name
-  3: required list<list<string>> measurements
-  4: required list<list<i32>> dataTypes
-  5: required list<list<i32>> encodings
-  6: required list<i32> compressors
+  3: required list<string> schemaNames
+  4: required list<list<string>> measurements
+  5: required list<list<i32>> dataTypes
+  6: required list<list<i32>> encodings
+  7: required list<i32> compressors
 }
 
 service TSIService {
@@ -395,9 +407,11 @@ service TSIService {
 
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
+  TSExecuteStatementResp executeLastDataQuery(1:TSLastDataQueryReq req);
+
   i64 requestStatementId(1:i64 sessionId);
 
-  TSStatus createDeviceTemplate(1:TSCreateDeviceTemplateReq req);
+  TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
 
-  TSStatus setDeviceTemplate(1:TSSetDeviceTemplateReq req);
+  TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 }

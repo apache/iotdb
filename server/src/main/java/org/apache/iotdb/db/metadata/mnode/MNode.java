@@ -108,7 +108,6 @@ public class MNode implements Serializable {
         }
       }
     }
-
     child.parent = this;
     children.putIfAbsent(name, child);
   }
@@ -180,7 +179,7 @@ public class MNode implements Serializable {
   public MNode getChildOfAlignedTimeseries(String name) throws MetadataException {
     MNode node = null;
     // for aligned timeseries
-    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(name);
+    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
     for (String measurement : measurementList) {
       MNode nodeOfMeasurement = getChild(measurement);
       if (node == null) {
@@ -238,6 +237,11 @@ public class MNode implements Serializable {
     return fullPath;
   }
 
+  /**
+   * get partial path of this node
+   *
+   * @return partial path
+   */
   public PartialPath getPartialPath() {
     List<String> detachedPath = new ArrayList<>();
     MNode temp = this;
@@ -279,19 +283,6 @@ public class MNode implements Serializable {
     return children;
   }
 
-  public List<MNode> getDistinctMNodes() {
-    if (children == null) {
-      return Collections.emptyList();
-    }
-    List<MNode> distinctList = new ArrayList<>();
-    for (MNode child : children.values()) {
-      if (!distinctList.contains(child)) {
-        distinctList.add(child);
-      }
-    }
-    return distinctList;
-  }
-
   public Map<String, MNode> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
@@ -330,6 +321,12 @@ public class MNode implements Serializable {
     }
   }
 
+  /**
+   * replace a child of this mnode
+   *
+   * @param measurement measurement name
+   * @param newChildNode new child node
+   */
   public void replaceChild(String measurement, MNode newChildNode) {
     MNode oldChildNode = this.getChild(measurement);
     if (oldChildNode == null) {
@@ -357,6 +354,11 @@ public class MNode implements Serializable {
     this.fullPath = fullPath;
   }
 
+  /**
+   * get upper template of this node, remember we get nearest template alone this node to root
+   *
+   * @return upper template
+   */
   public Template getUpperTemplate() {
     MNode cur = this;
     while (cur != null) {

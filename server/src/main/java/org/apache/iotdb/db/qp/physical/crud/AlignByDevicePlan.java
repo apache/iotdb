@@ -121,7 +121,7 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
     this.groupByTimePlan = groupByTimePlan;
-    this.setOperatorType(OperatorType.GROUPBYTIME);
+    this.setOperatorType(OperatorType.GROUP_BY_TIME);
   }
 
   public FillQueryPlan getFillQueryPlan() {
