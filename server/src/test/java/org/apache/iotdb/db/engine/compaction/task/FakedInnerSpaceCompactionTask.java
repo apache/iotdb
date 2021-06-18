@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /** doCompaction 只修改 tsFileResourceList */
@@ -30,6 +31,13 @@ public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected void doCompaction() {
+    FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0);
+    long targetFileSize = 0;
+    for (TsFileResource resource: selectedTsFileResourceList) {
+      targetFileSize += resource.getTsFileSize();
+    }
+    targetTsFileResource.setTsFileSize(targetFileSize);
+    this.tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
     for (TsFileResource tsFileResource : selectedTsFileResourceList) {
       this.tsFileResourceList.remove(tsFileResource);
     }

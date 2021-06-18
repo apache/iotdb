@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentTaskNum;
+
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 
 import org.slf4j.Logger;
@@ -40,7 +42,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.warn(e.getMessage(), e);
     } finally {
-      CompactionScheduler.currentTaskNum.decrementAndGet();
+      currentTaskNum.decrementAndGet();
+      LOGGER.warn("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
     }
     return null;
   }

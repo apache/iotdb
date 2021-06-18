@@ -183,7 +183,7 @@ public class CompactionScheduler {
             || (!enableUnseqSpaceCompaction && !sequence)) {
           return taskSubmitted;
         }
-        if (currentFile.getTsFileSize() > targetCompactionFileSize
+        if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
           selectedFileList.clear();
@@ -192,7 +192,7 @@ public class CompactionScheduler {
         }
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
-        if (selectedFileSize > targetCompactionFileSize) {
+        if (selectedFileSize >= targetCompactionFileSize) {
           // submit the task
           CompactionContext context = new CompactionContext();
           context.setSequence(sequence);
@@ -206,7 +206,6 @@ public class CompactionScheduler {
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroup, timePartition, compactionTask);
-          currentTaskNum.incrementAndGet();
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }

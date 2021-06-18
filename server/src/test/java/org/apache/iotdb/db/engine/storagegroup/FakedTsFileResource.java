@@ -34,6 +34,10 @@ public class FakedTsFileResource extends TsFileResource {
     super.isMerging = isMerging;
   }
 
+  public void setTsFileSize(long tsFileSize) {
+    this.tsFileSize = tsFileSize;
+  }
+
   @Override
   public long getTsFileSize() {
     return tsFileSize;
