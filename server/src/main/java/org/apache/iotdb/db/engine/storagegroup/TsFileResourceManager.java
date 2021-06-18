@@ -58,7 +58,7 @@ public class TsFileResourceManager {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        allResources.addAll(entry.getValue());
+        allResources.addAll(entry.getValue().getArrayList());
       }
       return allResources;
     } finally {

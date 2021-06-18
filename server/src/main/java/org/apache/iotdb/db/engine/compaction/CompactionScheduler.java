@@ -234,9 +234,17 @@ public class CompactionScheduler {
             context.setSelectedUnsequenceFiles(selectedFileList);
           }
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+          for (TsFileResource resource : selectedFileList) {
+            resource.readLock();
+            resource.setMerging(true);
+            LOGGER.info("{} [Compaction] start to compact TsFile {}", storageGroupName, resource);
+          }
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
-          LOGGER.info("{} [Compaction] submit a inner compaction task of {} files", storageGroupName, selectedFileList.size());
+          LOGGER.info(
+              "{} [Compaction] submit a inner compaction task of {} files",
+              storageGroupName,
+              selectedFileList.size());
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
@@ -259,7 +267,10 @@ public class CompactionScheduler {
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
-          LOGGER.info("{} [Compaction] submit a inner compaction task of {} files", storageGroupName, selectedFileList.size());
+          LOGGER.info(
+              "{} [Compaction] submit a inner compaction task of {} files",
+              storageGroupName,
+              selectedFileList.size());
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
         }

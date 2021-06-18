@@ -87,10 +87,7 @@ public class TsFileNameGenerator {
       throws DiskSpaceInsufficientException, IOException {
     String tsFileDir =
         generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
-    boolean result = fsFactory.getFile(tsFileDir).mkdirs();
-    if (!result) {
-      throw new IOException(String.format("mkdirs %s failed!", tsFileDir));
-    }
+    fsFactory.getFile(tsFileDir).mkdirs();
     return tsFileDir
         + File.separator
         + generateNewTsFileName(

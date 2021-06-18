@@ -64,28 +64,24 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     String targetFileName = generateTargetFileName(selectedTsFileResourceList);
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-
-    // transfer List<TsFileResourceListNode> to List<TsFileResource>
-    List<TsFileResource> sourceFiles = new ArrayList<>();
-    for (TsFileResource tsFileResource : selectedTsFileResourceList) {
-      tsFileResource.readLock();
-      tsFileResource.setMerging(true);
-      LOGGER.info("{} [Compaction] start to compact TsFile {}", storageGroupName, tsFileResource);
-    }
+    LOGGER.info(
+        "{} [Compaction] starting compaction task with {} files",
+        storageGroupName,
+        selectedTsFileResourceList.size());
     try {
       File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
       // compaction execution
       List<Modification> modifications = new ArrayList<>();
       CompactionUtils.compact(
           targetTsFileResource,
-          sourceFiles,
+          selectedTsFileResourceList,
           storageGroupName,
           new CompactionLogger(logFile.getPath()),
           new HashSet<>(),
           sequence,
           modifications);
     } finally {
-      for (TsFileResource resource : sourceFiles) {
+      for (TsFileResource resource : selectedTsFileResourceList) {
         resource.readUnlock();
       }
     }
@@ -105,12 +101,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
     try {
       // replace the old files with new file, the new is in same position as the old
-      tsFileResourceList.insertBefore(sourceFiles.get(0), targetTsFileResource);
-      for (TsFileResource resource : sourceFiles) {
+      tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+      for (TsFileResource resource : selectedTsFileResourceList) {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(sourceFiles, storageGroupName);
+      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, storageGroupName);
     } finally {
       tsFileResourceList.writeUnlock();
     }

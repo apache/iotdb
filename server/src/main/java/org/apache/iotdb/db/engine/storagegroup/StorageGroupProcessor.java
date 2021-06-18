@@ -300,7 +300,7 @@ public class StorageGroupProcessor {
   private ScheduledExecutorService timedCompactionScheduleTask =
       Executors.newSingleThreadScheduledExecutor();
 
-  public static final long COMPACTION_TASK_SUBMIT_DELAY = 60L * 1000L;
+  public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
@@ -400,7 +400,9 @@ public class StorageGroupProcessor {
     this.fileFlushPolicy = fileFlushPolicy;
 
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
-    this.tsFileResourceManager = new TsFileResourceManager(logicalStorageGroupName + "-" + virtualStorageGroupId, storageGroupSysDir.getPath());
+    this.tsFileResourceManager =
+        new TsFileResourceManager(
+            logicalStorageGroupName + "-" + virtualStorageGroupId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
           "Storage Group system Directory {} doesn't exist, create it",

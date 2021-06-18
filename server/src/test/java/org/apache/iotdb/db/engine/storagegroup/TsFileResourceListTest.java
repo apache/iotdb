@@ -106,7 +106,7 @@ public class TsFileResourceListTest {
   }
 
   @Test
-  public void  testGetList() {
+  public void testGetList() {
     TsFileResourceList tsFileResourceList = new TsFileResourceList();
     List<TsFileResource> tsFileResources = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
@@ -116,12 +116,12 @@ public class TsFileResourceListTest {
     }
     Iterator<TsFileResource> iterator = tsFileResourceList.iterator();
     int i = 0;
-    while(iterator.hasNext()) {
+    while (iterator.hasNext()) {
       Assert.assertEquals(tsFileResources.get(i++), iterator.next());
     }
 
     Iterator<TsFileResource> reverseIterator = tsFileResourceList.reverseIterator();
-    i = tsFileResourceList.size()-1;
+    i = tsFileResourceList.size() - 1;
     while (reverseIterator.hasNext()) {
       Assert.assertEquals(tsFileResources.get(i--), reverseIterator.next());
     }

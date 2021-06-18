@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.util.ArrayList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -309,6 +309,9 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   public List<TsFileResource> getArrayList() {
     List<TsFileResource> list = new ArrayList<>();
+    if (header == null) {
+      return list;
+    }
     TsFileResource current = header;
     while (current.next != null) {
       list.add(current);
