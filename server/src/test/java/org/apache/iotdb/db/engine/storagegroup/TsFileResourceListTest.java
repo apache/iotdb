@@ -104,4 +104,26 @@ public class TsFileResourceListTest {
     TsFileResource notIncluded = new TsFileResource();
     Assert.assertFalse(tsFileResourceList.remove(notIncluded));
   }
+
+  @Test
+  public void  testGetList() {
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      TsFileResource resource = generateTsFileResource(i);
+      tsFileResources.add(resource);
+      tsFileResourceList.add(resource);
+    }
+    Iterator<TsFileResource> iterator = tsFileResourceList.iterator();
+    int i = 0;
+    while(iterator.hasNext()) {
+      Assert.assertEquals(tsFileResources.get(i++), iterator.next());
+    }
+
+    Iterator<TsFileResource> reverseIterator = tsFileResourceList.reverseIterator();
+    i = tsFileResourceList.size()-1;
+    while (reverseIterator.hasNext()) {
+      Assert.assertEquals(tsFileResources.get(i--), reverseIterator.next());
+    }
+  }
 }
