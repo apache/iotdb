@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -214,16 +215,6 @@ public class Coordinator {
               || plan instanceof CreateTimeSeriesPlan
               || plan instanceof CreateMultiTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-
-        // no permission to create on any sg, end loop
-        if (plan instanceof CreateMultiTimeSeriesPlan) {
-          CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
-          if (createMultiTimeSeriesPlan.getResults().size()
-              == createMultiTimeSeriesPlan.getPaths().size()) {
-            return forwardMultiSubPlan(planGroupMap, plan);
-          }
-        }
-
         logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
         try {
           ((CMManager) IoTDB.metaManager).createSchema(plan);
@@ -546,7 +537,24 @@ public class Coordinator {
         }
       }
     }
+    return concludeFinalStatus(
+        parentPlan,
+        totalRowNum,
+        noFailure,
+        endPoint,
+        isBatchFailure,
+        subStatus,
+        errorCodePartitionGroups);
+  }
 
+  private TSStatus concludeFinalStatus(
+      PhysicalPlan parentPlan,
+      int totalRowNum,
+      boolean noFailure,
+      EndPoint endPoint,
+      boolean isBatchFailure,
+      TSStatus[] subStatus,
+      List<String> errorCodePartitionGroups) {
     if (parentPlan instanceof InsertMultiTabletPlan
         && !((InsertMultiTabletPlan) parentPlan).getResults().isEmpty()) {
       if (subStatus == null) {
@@ -589,16 +597,6 @@ public class Coordinator {
       }
     }
 
-    return concludeFinalStatus(
-        noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
-  }
-
-  private TSStatus concludeFinalStatus(
-      boolean noFailure,
-      EndPoint endPoint,
-      boolean isBatchFailure,
-      TSStatus[] subStatus,
-      List<String> errorCodePartitionGroups) {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;

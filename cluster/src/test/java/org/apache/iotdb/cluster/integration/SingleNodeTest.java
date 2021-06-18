@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -122,10 +123,9 @@ public class SingleNodeTest extends BaseSingleNodeTest {
                 + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
                 + System.lineSeparator(),
             e.getMessage());
-        System.out.println(e.getMessage());
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      Assert.fail(e.getMessage());
     }
   }
 }
