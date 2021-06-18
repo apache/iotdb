@@ -296,7 +296,7 @@
           date: '2018/11/18'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/wc.jpg',
           name: 'Chao Wang',
           role: 'PMC, Committer',
           id: 'chaow',
