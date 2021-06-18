@@ -48,6 +48,14 @@ public class TsFileResourceListTest {
       tsFileResources.add(resource);
       tsFileResourceList.add(resource);
     }
+    TsFileResource resourceHasNext = new TsFileResource();
+    resourceHasNext.next = resourceHasNext;
+    Assert.assertFalse(tsFileResourceList.add(resourceHasNext));
+
+    TsFileResource resourceHasPre = new TsFileResource();
+    resourceHasPre.prev = resourceHasPre;
+    Assert.assertFalse(tsFileResourceList.add(resourceHasPre));
+
     Assert.assertEquals(5, tsFileResourceList.size());
     Iterator<TsFileResource> iterator = tsFileResourceList.iterator();
     int index = 0;

@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -99,4 +100,6 @@ public class TsFileResourceManager {
   public void setStorageGroupDir(String storageGroupDir) {
     this.storageGroupDir = storageGroupDir;
   }
+
+  public Set<Long> getTimePartitions() {return sequenceFiles.keySet();}
 }
