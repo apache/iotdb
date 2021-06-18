@@ -1201,4 +1201,9 @@ public class SeriesReader {
   public TimeOrderUtils getOrderUtils() {
     return orderUtils;
   }
+
+  @TestOnly
+  public Filter getValueFilter() {
+    return valueFilter;
+  }
 }
