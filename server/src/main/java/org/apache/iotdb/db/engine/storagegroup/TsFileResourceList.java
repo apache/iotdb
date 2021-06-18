@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -304,6 +305,17 @@ public class TsFileResourceList implements List<TsFileResource> {
   @Override
   public List<TsFileResource> subList(int fromIndex, int toIndex) {
     throw new NotImplementedException();
+  }
+
+  public List<TsFileResource> getArrayList() {
+    List<TsFileResource> list = new ArrayList<>();
+    TsFileResource current = header;
+    while (current.next != null) {
+      list.add(current);
+      current = current.next;
+    }
+    list.add(current);
+    return list;
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {
