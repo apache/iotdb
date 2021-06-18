@@ -19,9 +19,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -37,7 +34,6 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -1022,21 +1018,22 @@ public class IoTDBNewTsFileCompactionIT {
 
   /** wait until merge is finished */
   private boolean waitForMergeFinish() throws StorageEngineException, InterruptedException {
-    StorageGroupProcessor storageGroupProcessor =
-        StorageEngine.getInstance().getProcessor(storageGroupPath);
-    LevelCompactionTsFileManagement tsFileManagement =
-        (LevelCompactionTsFileManagement) storageGroupProcessor.getTsFileManagement();
-
-    long startTime = System.nanoTime();
-    // get the size of level 1's tsfile list to judge whether merge is finished
-    while (tsFileManagement.getSequenceTsFileResources().get(0L).size() < 2
-        || tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() != 1) {
-      TimeUnit.MILLISECONDS.sleep(100);
-      // wait too long, just break
-      if ((System.nanoTime() - startTime) >= MAX_WAIT_TIME_FOR_MERGE) {
-        break;
-      }
-    }
-    return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;
+    //    StorageGroupProcessor storageGroupProcessor =
+    //        StorageEngine.getInstance().getProcessor(storageGroupPath);
+    //    LevelCompactionTsFileManagement tsFileManagement =
+    //        (LevelCompactionTsFileManagement) storageGroupProcessor.getTsFileResourceManager();
+    //
+    //    long startTime = System.nanoTime();
+    //    // get the size of level 1's tsfile list to judge whether merge is finished
+    //    while (tsFileManagement.getSequenceTsFileResources().get(0L).size() < 2
+    //        || tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() != 1) {
+    //      TimeUnit.MILLISECONDS.sleep(100);
+    //      // wait too long, just break
+    //      if ((System.nanoTime() - startTime) >= MAX_WAIT_TIME_FOR_MERGE) {
+    //        break;
+    //      }
+    //    }
+    //    return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;
+    return false;
   }
 }

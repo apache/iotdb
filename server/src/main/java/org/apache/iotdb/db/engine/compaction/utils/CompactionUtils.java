@@ -491,6 +491,10 @@ public class CompactionUtils {
     modifyChunkMetaData(chunkMetadataList, seriesModifications);
   }
 
+  public static ModificationFile getModificationByPath(String filePath) {
+    return new ModificationFile(filePath);
+  }
+
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);

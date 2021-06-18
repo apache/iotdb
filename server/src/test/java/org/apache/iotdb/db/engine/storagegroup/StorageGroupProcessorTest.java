@@ -604,9 +604,9 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    while (processor.getTsFileManagement().isUnseqMerging) {
-      // wait
-    }
+    //    while (processor.getTsFileResourceManager().isUnseqMerging) {
+    //      // wait
+    //    }
 
     QueryDataSource queryDataSource =
         processor.query(new PartialPath(deviceId, measurementId), context, null, null);

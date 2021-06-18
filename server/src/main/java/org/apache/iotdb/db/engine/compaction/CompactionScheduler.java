@@ -236,12 +236,13 @@ public class CompactionScheduler {
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
+          LOGGER.info("{} [Compaction] submit a inner compaction task of {} files", storageGroupName, selectedFileList.size());
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
       }
       // if some files are selected but the total size is smaller than target size, submit a task
-      if (selectedFileList.size() > 0) {
+      if (selectedFileList.size() > 1) {
         try {
           CompactionContext context = new CompactionContext();
           context.setStorageGroupName(storageGroupName);
@@ -258,6 +259,7 @@ public class CompactionScheduler {
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
+          LOGGER.info("{} [Compaction] submit a inner compaction task of {} files", storageGroupName, selectedFileList.size());
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
         }
