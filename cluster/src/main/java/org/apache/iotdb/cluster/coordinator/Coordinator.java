@@ -69,7 +69,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -228,12 +228,13 @@ public class Coordinator {
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
-    // no permission or not allowed to create sgs
+    // not allowed to create sgs
     if (plan instanceof CreateMultiTimeSeriesPlan) {
       CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
       if (createMultiTimeSeriesPlan.getResults().size()
           == createMultiTimeSeriesPlan.getPaths().size()) {
-        return forwardMultiSubPlan(new HashMap<>(), plan);
+        return concludeFinalStatus(
+            plan, plan.getPaths().size(), true, null, false, null, Collections.emptyList());
       }
     }
 
@@ -658,7 +659,24 @@ public class Coordinator {
         }
       }
     }
+    return concludeFinalStatus(
+        parentPlan,
+        totalRowNum,
+        noFailure,
+        endPoint,
+        isBatchFailure,
+        subStatus,
+        errorCodePartitionGroups);
+  }
 
+  private TSStatus concludeFinalStatus(
+      PhysicalPlan parentPlan,
+      int totalRowNum,
+      boolean noFailure,
+      EndPoint endPoint,
+      boolean isBatchFailure,
+      TSStatus[] subStatus,
+      List<String> errorCodePartitionGroups) {
     if (parentPlan instanceof InsertMultiTabletPlan
         && !((InsertMultiTabletPlan) parentPlan).getResults().isEmpty()) {
       if (subStatus == null) {
@@ -701,16 +719,6 @@ public class Coordinator {
       }
     }
 
-    return concludeFinalStatus(
-        noFailure, endPoint, isBatchFailure, subStatus, errorCodePartitionGroups);
-  }
-
-  private TSStatus concludeFinalStatus(
-      boolean noFailure,
-      EndPoint endPoint,
-      boolean isBatchFailure,
-      TSStatus[] subStatus,
-      List<String> errorCodePartitionGroups) {
     TSStatus status;
     if (noFailure) {
       status = StatusUtils.OK;
