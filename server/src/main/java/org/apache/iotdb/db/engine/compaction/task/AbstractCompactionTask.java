@@ -30,8 +30,13 @@ import java.util.concurrent.Callable;
 
 public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
+  protected String storageGroupName;
+  protected long timePartition;
 
-  public AbstractCompactionTask() {}
+  public AbstractCompactionTask(String storageGroupName, long timePartition) {
+    this.storageGroupName = storageGroupName;
+    this.timePartition = timePartition;
+  }
 
   protected abstract void doCompaction() throws Exception;
 
@@ -44,6 +49,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } finally {
       currentTaskNum.decrementAndGet();
       LOGGER.warn("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
+      CompactionScheduler.decPartitionCompaction(storageGroupName, timePartition);
     }
     return null;
   }

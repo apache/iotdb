@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -43,7 +43,6 @@ public class TsFileResourceManager {
   // time partition -> double linked list of tsfiles
   private Map<Long, TsFileResourceList> sequenceFiles = new HashMap<>();
   private Map<Long, TsFileResourceList> unsequenceFiles = new HashMap<>();
-  private Map<Long, Long> compactionCountInPartition = new ConcurrentHashMap<>();
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
     return sequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
@@ -102,7 +101,5 @@ public class TsFileResourceManager {
     this.storageGroupDir = storageGroupDir;
   }
 
-  public Map<Long, Long> getCompactionCountInPartition() {
-    return compactionCountInPartition;
-  }
+  public Set<Long> getTimePartitions() {return sequenceFiles.keySet();}
 }
