@@ -53,16 +53,16 @@
             <td><a href="https://downloads.apache.org/iotdb/0.12.0/apache-iotdb-0.12.0-grafana-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.12.0/apache-iotdb-0.12.0-grafana-bin.zip.asc">ASC</a></td>
       </tr>
-      <!-- 0.11.3 -->
+      <!-- 0.11.4 -->
 	  <tr>
-            <td>0.11.3</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.3/apache-iotdb-0.11.3-bin.zip">Release</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.3/apache-iotdb-0.11.3-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.3/apache-iotdb-0.11.3-bin.zip.asc">ASC</a></td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.3/apache-iotdb-0.11.3-source-release.zip">Sources</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.3/apache-iotdb-0.11.3-source-release.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.11.3/apache-iotdb-0.11.3-source-release.zip.asc">ASC</a></td>
-            <td><a href="https://raw.githubusercontent.com/apache/iotdb/v0.11.3/RELEASE_NOTES.md">release notes</a></td>
+            <td>0.11.4</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.4/apache-iotdb-0.11.4-bin.zip">Release</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip">Sources</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip.asc">ASC</a></td>
+            <td><a href="https://raw.githubusercontent.com/apache/iotdb/v0.11.4/RELEASE_NOTES.md">release notes</a></td>
       </tr>
 </table>
 
