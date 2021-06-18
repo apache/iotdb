@@ -28,6 +28,7 @@ import java.util.List;
 
 public class CompactionContext {
   protected String storageGroupName;
+  protected String virtualStorageGroupName;
   protected String storageGroupDir;
   protected long timePartitionId;
   protected boolean sequence;
@@ -144,5 +145,13 @@ public class CompactionContext {
 
   public void setStorageGroupDir(String storageGroupDir) {
     this.storageGroupDir = storageGroupDir;
+  }
+
+  public String getVirtualStorageGroupName() {
+    return virtualStorageGroupName;
+  }
+
+  public void setVirtualStorageGroupName(String virtualStorageGroupName) {
+    this.virtualStorageGroupName = virtualStorageGroupName;
   }
 }

@@ -73,6 +73,7 @@ public class CompactionScheduler {
       if (compactionPriority == CompactionPriority.BALANCE) {
         doCompactionBalancePriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getVirtualStorageGroup(),
             tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
@@ -80,6 +81,7 @@ public class CompactionScheduler {
       } else if (compactionPriority == CompactionPriority.INNER_CROSS) {
         doCompactionInnerCrossPriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getVirtualStorageGroup(),
             tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
@@ -87,6 +89,7 @@ public class CompactionScheduler {
       } else if (compactionPriority == CompactionPriority.CROSS_INNER) {
         doCompactionCrossInnerPriority(
             tsFileResourceManager.getStorageGroupName(),
+            tsFileResourceManager.getVirtualStorageGroup(),
             tsFileResourceManager.getStorageGroupDir(),
             timePartition,
             sequenceFileList,
@@ -99,6 +102,7 @@ public class CompactionScheduler {
 
   private static void doCompactionBalancePriority(
       String storageGroupName,
+      String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -109,6 +113,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
               storageGroupName,
+              virtualStorageGroupName,
               timePartition,
               sequenceFileList,
               true,
@@ -116,6 +121,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
                   storageGroupName,
+                  virtualStorageGroupName,
                   timePartition,
                   unsequenceFileList,
                   false,
@@ -135,18 +141,21 @@ public class CompactionScheduler {
 
   private static void doCompactionInnerCrossPriority(
       String storageGroupName,
+      String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
     tryToSubmitInnerSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         timePartition,
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         timePartition,
         unsequenceFileList,
         false,
@@ -162,6 +171,7 @@ public class CompactionScheduler {
 
   private static void doCompactionCrossInnerPriority(
       String storageGroupName,
+      String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -175,12 +185,14 @@ public class CompactionScheduler {
         new CrossSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         timePartition,
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         timePartition,
         unsequenceFileList,
         false,
@@ -189,6 +201,7 @@ public class CompactionScheduler {
 
   public static boolean tryToSubmitInnerSpaceCompactionTask(
       String storageGroupName,
+      String virtualStorageGroupName,
       long timePartition,
       TsFileResourceList tsFileResources,
       boolean sequence,

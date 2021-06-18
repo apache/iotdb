@@ -35,6 +35,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,10 +44,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
+  protected Set<String> skippedDevicesSet;
   public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(CompactionContext context) {
-    super(context.getStorageGroupName(), context.getTimePartitionId());
+    super(
+        context.getStorageGroupName() + "-" + context.getVirtualStorageGroupName(),
+        context.getTimePartitionId());
     this.tsFileResourceList =
         context.isSequence()
             ? context.getSequenceFileResourceList()
@@ -56,6 +60,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             ? context.getSelectedSequenceFiles()
             : context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
+    this.skippedDevicesSet = new HashSet<>();
   }
 
   @Override
@@ -77,7 +82,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           selectedTsFileResourceList,
           storageGroupName,
           new CompactionLogger(logFile.getPath()),
-          new HashSet<>(),
+          this.skippedDevicesSet,
           sequence,
           modifications);
     } finally {

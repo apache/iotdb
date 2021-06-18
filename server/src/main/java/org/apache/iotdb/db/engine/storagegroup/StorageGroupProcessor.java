@@ -402,7 +402,7 @@ public class StorageGroupProcessor {
     storageGroupSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, virtualStorageGroupId);
     this.tsFileResourceManager =
         new TsFileResourceManager(
-            logicalStorageGroupName + "-" + virtualStorageGroupId, storageGroupSysDir.getPath());
+            logicalStorageGroupName, virtualStorageGroupId, storageGroupSysDir.getPath());
     if (storageGroupSysDir.mkdirs()) {
       logger.info(
           "Storage Group system Directory {} doesn't exist, create it",

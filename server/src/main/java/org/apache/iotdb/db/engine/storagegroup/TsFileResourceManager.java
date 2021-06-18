@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TsFileResourceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResourceManager.class);
   private String storageGroupName;
+  private String virtualStorageGroup;
   private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
@@ -45,9 +46,11 @@ public class TsFileResourceManager {
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
-  public TsFileResourceManager(String storageGroupName, String storageGroupDir) {
+  public TsFileResourceManager(
+      String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
+    this.virtualStorageGroup = virtualStorageGroup;
   }
 
   public void recover() {}
@@ -235,5 +238,13 @@ public class TsFileResourceManager {
 
   public Set<Long> getTimePartitions() {
     return sequenceFiles.keySet();
+  }
+
+  public String getVirtualStorageGroup() {
+    return virtualStorageGroup;
+  }
+
+  public void setVirtualStorageGroup(String virtualStorageGroup) {
+    this.virtualStorageGroup = virtualStorageGroup;
   }
 }

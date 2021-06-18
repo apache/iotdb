@@ -64,7 +64,7 @@ public class CompactionSchedulerTest {
     tsFileResources.add(new FakedTsFileResource(40));
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
+        "testSG", "0", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
     while (CompactionScheduler.getCount() != 0) {
       try {
         Thread.sleep(10);
@@ -87,7 +87,7 @@ public class CompactionSchedulerTest {
     tsFileResources.add(new FakedTsFileResource(40, true, true));
     tsFileResources.add(new FakedTsFileResource(40));
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask(
-        "testSG", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
+        "testSG", "0", 0L, tsFileResources, true, new FakedInnerSpaceCompactionTaskFactory());
     while (CompactionScheduler.getCount() != 0) {
       try {
         Thread.sleep(10);
