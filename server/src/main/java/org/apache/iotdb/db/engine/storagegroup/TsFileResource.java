@@ -840,16 +840,23 @@ public class TsFileResource {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
     tsFileName.setTime(tsFileName.time + offset);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
+    int i = 0;
+    File newFile;
+    do {
+      newFile =
+          new File(
+              path,
+              tsFileName.time
+                  + FILE_NAME_SEPARATOR
+                  + tsFileName.version
+                  + FILE_NAME_SEPARATOR
+                  + (tsFileName.mergeCnt + i)
+                  + FILE_NAME_SEPARATOR
+                  + tsFileName.unSeqMergeCnt
+                  + TSFILE_SUFFIX);
+      i++;
+    } while (newFile.exists());
+    return newFile;
   }
 
   public static class TsFileName {

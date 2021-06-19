@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
-import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -301,9 +300,8 @@ public abstract class TsFileManagement {
     MergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig().getMergeFileStrategy();
     switch (strategy) {
       case MAX_FILE_NUM:
-        return new MaxFileMergeFileSelector(resource, budget);
       case MAX_SERIES_NUM:
-        return new MaxSeriesMergeFileSelector(resource, budget);
+        return new MaxFileMergeFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown MergeFileStrategy " + strategy);
     }
