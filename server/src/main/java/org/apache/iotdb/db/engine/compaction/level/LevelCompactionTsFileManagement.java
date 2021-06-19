@@ -417,7 +417,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   /** recover files */
   @Override
-  @SuppressWarnings("squid:S3776")
+  @SuppressWarnings({"squid:S3776", "squid:S2142"})
   public void recover() {
     File logFile =
         FSFactoryProducer.getFSFactory()
@@ -660,6 +660,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : mergeResources.get(i)) {
+              mergeResource.setMerging(true);
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
             File newLevelFile =
@@ -844,10 +845,18 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
         String targetFilePath = logAnalyzer.getTargetFile();
+        List<String> sourceFileList = logAnalyzer.getSourceFiles();
+        boolean isSeq = logAnalyzer.isSeq();
+        for (String file : sourceFileList) {
+          TsFileResource fileResource = getTsFileResource(file, isSeq);
+          fileResource.setMerging(false);
+        }
         if (targetFilePath != null) {
           File targetFile = new File(targetFilePath);
           if (targetFile.exists()) {
-            targetFile.delete();
+            if (!targetFile.delete()) {
+              logger.warn("Delete file {} failed", targetFile);
+            }
           }
         }
       }

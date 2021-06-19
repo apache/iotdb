@@ -76,6 +76,8 @@ public abstract class TsFileManagement {
   protected boolean isMergeExecutedInCurrentTask = false;
 
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+  private final int maxOpenFileNumInEachUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -133,11 +135,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  protected void readLock() {
+  public void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  protected void readUnLock() {
+  public void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -228,6 +230,14 @@ public abstract class TsFileManagement {
       logger.info("{} no unseq files to be merged", storageGroupName);
       isUnseqMerging = false;
       return;
+    }
+
+    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
+      logger.info(
+          "{} too much unseq files to be merged, reduce it to {}",
+          storageGroupName,
+          maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -408,7 +418,9 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          if (!mergedFile.delete()) {
+            logger.warn("Delete file {} failed", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {

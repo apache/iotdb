@@ -53,9 +53,12 @@ Regular data encoding is more suitable for time encoding regular sequence increa
 
 Regular data encoding method is not suitable for the data with fluctuations (irregular data), and TS_2DIFF is recommended to deal with it.
 
+* DICTIONARY
+
+DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 * Correspondence between data type and encoding
 
-The four encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
+The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
 <center> **The correspondence between the data type and its supported encodings**
 
@@ -66,6 +69,6 @@ The four encodings described in the previous sections are applicable to differen
 |INT64	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |FLOAT	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
-|TEXT	|PLAIN|
+|TEXT	|PLAIN, DICTIONARY|
 
 </center>

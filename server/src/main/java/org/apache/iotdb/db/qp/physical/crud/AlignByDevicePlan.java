@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -51,6 +52,11 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public AlignByDevicePlan() {
     super();
+  }
+
+  @Override
+  public void deduplicate(PhysicalGenerator physicalGenerator) {
+    // do nothing
   }
 
   public void setMeasurements(List<String> measurements) {
@@ -115,7 +121,7 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
     this.groupByTimePlan = groupByTimePlan;
-    this.setOperatorType(OperatorType.GROUPBYTIME);
+    this.setOperatorType(OperatorType.GROUP_BY_TIME);
   }
 
   public FillQueryPlan getFillQueryPlan() {

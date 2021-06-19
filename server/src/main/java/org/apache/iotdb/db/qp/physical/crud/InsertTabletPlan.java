@@ -77,29 +77,39 @@ public class InsertTabletPlan extends InsertPlan {
   private List<Object> failedColumns;
 
   public InsertTabletPlan() {
-    super(OperatorType.BATCHINSERT);
+    super(OperatorType.BATCH_INSERT);
   }
 
-  public InsertTabletPlan(PartialPath deviceId, List<String> measurements) {
-    super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+  public InsertTabletPlan(PartialPath prefixPath, List<String> measurements) {
+    super(OperatorType.BATCH_INSERT);
+    this.prefixPath = prefixPath;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements) {
-    super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+  public InsertTabletPlan(PartialPath prefixPath, String[] measurements) {
+    super(OperatorType.BATCH_INSERT);
+    this.prefixPath = prefixPath;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
-  public InsertTabletPlan(PartialPath deviceId, String[] measurements, List<Integer> dataTypes) {
-    super(OperatorType.BATCHINSERT);
-    this.deviceId = deviceId;
+  public InsertTabletPlan(PartialPath prefixPath, String[] measurements, List<Integer> dataTypes) {
+    super(OperatorType.BATCH_INSERT);
+    this.prefixPath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;
+  }
+
+  public InsertTabletPlan(
+      PartialPath prefixPath, String[] measurements, List<Integer> dataTypes, boolean isAligned) {
+    super(OperatorType.BATCH_INSERT);
+    this.prefixPath = prefixPath;
+    this.measurements = measurements;
+    setDataTypes(dataTypes);
+    this.canBeSplit = true;
+    this.isAligned = isAligned;
   }
 
   public int getStart() {
@@ -135,7 +145,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = deviceId.concatNode(m);
+      PartialPath fullPath = prefixPath.concatNode(m);
       ret.add(fullPath);
     }
     paths = ret;
@@ -150,12 +160,13 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    putString(stream, deviceId.getFullPath());
+    putString(stream, prefixPath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
     writeBitMaps(stream);
     writeValues(stream);
+    stream.write((byte) (isAligned ? 1 : 0));
   }
 
   private void writeMeasurements(DataOutputStream stream) throws IOException {
@@ -236,12 +247,13 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, prefixPath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
     writeBitMaps(buffer);
     writeValues(buffer);
+    buffer.put((byte) (isAligned ? 1 : 0));
   }
 
   private void writeMeasurements(ByteBuffer buffer) {
@@ -438,7 +450,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.deviceId = new PartialPath(readString(buffer));
+    this.prefixPath = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];
@@ -463,6 +475,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, dataTypeSize, rows);
     this.index = buffer.getLong();
+    this.isAligned = buffer.get() == 1;
   }
 
   public void setDataTypes(List<Integer> dataTypes) {
@@ -557,8 +570,8 @@ public class InsertTabletPlan extends InsertPlan {
   @Override
   public String toString() {
     return "InsertTabletPlan {"
-        + "deviceId:"
-        + deviceId
+        + "prefixPath:"
+        + prefixPath
         + ", timesRange["
         + times[0]
         + ","

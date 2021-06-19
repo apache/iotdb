@@ -90,6 +90,10 @@ public class TestConstant {
     return String.format("max_value(%s)", path);
   }
 
+  public static String extreme(String path) {
+    return String.format("extreme(%s)", path);
+  }
+
   public static String min_value(String path) {
     return String.format("min_value(%s)", path);
   }

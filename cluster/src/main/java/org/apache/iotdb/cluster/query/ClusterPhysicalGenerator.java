@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -47,7 +47,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 public class ClusterPhysicalGenerator extends PhysicalGenerator {
 
@@ -58,37 +57,27 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
       List<PartialPath> paths, String aggregation) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, aggregation);
   }
 
   @Override
-  protected List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
+  public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
     return getCMManager().getSeriesTypesByPaths(paths, null).left;
   }
 
   @Override
-  protected Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
+  public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchema(List<PartialPath> paths)
       throws MetadataException {
     return getCMManager().getSeriesSchemas(paths);
-  }
-
-  @Override
-  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedPaths(path);
-  }
-
-  @Override
-  protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
-    return getCMManager().getMatchedDevices(path);
   }
 
   @Override
   public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
       throws QueryProcessException {
     // update storage groups before parsing query plans
-    if (operator instanceof SFWOperator) {
+    if (operator instanceof QueryOperator) {
       try {
         getCMManager().syncMetaLeader();
       } catch (MetadataException e) {
@@ -99,7 +88,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
+  public PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
     if (type == LoadConfigurationOperatorType.GLOBAL) {
       Properties[] properties = new Properties[2];

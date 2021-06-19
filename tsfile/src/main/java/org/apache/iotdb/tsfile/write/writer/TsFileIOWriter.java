@@ -262,7 +262,8 @@ public class TsFileIOWriter {
           Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
           chunkMetadataListMap.computeIfAbsent(series, k -> new ArrayList<>()).add(chunkMetadata);
           idx++;
-          Map<Path, List<IChunkMetadata>> chunkMetadataListMapInVector = new TreeMap<>();
+          Map<Path, List<IChunkMetadata>> chunkMetadataListMapInVector =
+              vectorToPathsMap.computeIfAbsent(series, key -> new TreeMap<>());
 
           // value columns of a vector series
           while (idx < chunkMetadatas.size() && chunkMetadatas.get(idx).isValueColumn()) {
@@ -274,7 +275,6 @@ public class TsFileIOWriter {
                 .add(chunkMetadata);
             idx++;
           }
-          vectorToPathsMap.put(series, chunkMetadataListMapInVector);
         }
       }
     }

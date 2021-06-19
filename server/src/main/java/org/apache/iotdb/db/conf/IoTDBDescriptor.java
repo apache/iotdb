@@ -342,6 +342,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "unseq_level_num", Integer.toString(conf.getUnseqLevelNum()))));
 
+      conf.setMaxOpenFileNumInEachUnseqCompaction(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_open_file_num_in_each_unseq_compaction",
+                  Integer.toString(conf.getMaxOpenFileNumInEachUnseqCompaction()))));
+
       conf.setUnseqFileNumInEachLevel(
           Integer.parseInt(
               properties.getProperty(
@@ -590,20 +596,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
-      //      conf.setEnablePartition(Boolean.parseBoolean(
-      //          properties.getProperty("enable_partition",
-      // String.valueOf(conf.isEnablePartition()))));
-
-      // Time range for dividing storage group
-      //      conf.setPartitionInterval(Long.parseLong(properties
-      //              .getProperty("partition_interval",
-      // String.valueOf(conf.getPartitionInterval()))));
-
-      // the num of memtables in each storage group
-      //      conf.setConcurrentWritingTimePartition(
-      //          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
-      //              String.valueOf(conf.getConcurrentWritingTimePartition()))));
-
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
@@ -695,19 +687,23 @@ public class IoTDBDescriptor {
       }
 
       conf.setAuthorizerProvider(
-          properties.getProperty(
-              "authorizer_provider_class",
-              "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
+          properties.getProperty("authorizer_provider_class", conf.getAuthorizerProvider()));
       // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
-      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
+      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", conf.getOpenIdProviderUrl()));
 
       conf.setEnablePartition(
           Boolean.parseBoolean(
-              properties.getProperty("enable_partition", conf.isEnablePartition() + "")));
+              properties.getProperty(
+                  "enable_partition", String.valueOf(conf.isEnablePartition()))));
 
       conf.setPartitionInterval(
           Long.parseLong(
-              properties.getProperty("partition_interval", conf.getPartitionInterval() + "")));
+              properties.getProperty(
+                  "partition_interval", String.valueOf(conf.getPartitionInterval()))));
+
+      conf.setAdminName(properties.getProperty("admin_name", conf.getAdminName()));
+
+      conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()

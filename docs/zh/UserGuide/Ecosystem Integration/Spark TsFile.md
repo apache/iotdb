@@ -53,6 +53,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 - \<spark-shell-path\>是您的spark-shell的真实路径。
 - 多个jar包用逗号分隔，没有任何空格。
 - 有关如何获取TsFile的信息，请参见https://github.com/apache/iotdb/tree/master/tsfile。
+- 获取到dependency 包：```mvn clean package -DskipTests -P get-jar-with-dependencies```
 
 #### 分布式模式
 

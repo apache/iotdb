@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.cluster.query;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.qp.strategy.LogicalChecker;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
+import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
 
@@ -36,23 +37,43 @@ public class ClusterPlanner extends Planner {
   @Override
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
-    Operator operator = logicalGenerator.generate(sqlStr, zoneId);
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
-      // while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
-      // set it to Integer.MAX_VALUE - 1
-      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    }
-    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
-    PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
+    // from SQL to logical operator
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, fetchSize);
+    // from logical operator to physical plan
+    return new ClusterPhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
   @Override
-  protected ConcatPathOptimizer getConcatPathOptimizer() {
-    return new ClusterConcatPathOptimizer();
+  public PhysicalPlan rawDataQueryReqToPhysicalPlan(
+      TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
+      throws IllegalPathException, QueryProcessException {
+    // from TSRawDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(rawDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, rawDataQueryReq.fetchSize);
+    // from logical operator to physical plan
+    return new ClusterPhysicalGenerator()
+        .transformToPhysicalPlan(operator, rawDataQueryReq.fetchSize);
+  }
+
+  @Override
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
+      throws QueryProcessException, IllegalPathException {
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, lastDataQueryReq.fetchSize);
+    // from logical operator to physical plan
+    return new ClusterPhysicalGenerator()
+        .transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
   }
 }

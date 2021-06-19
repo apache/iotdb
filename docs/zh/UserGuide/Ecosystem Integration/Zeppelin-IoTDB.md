@@ -38,7 +38,7 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 | :--------: | :-----------: | :-----------: |
 | >=`0.12.0` | >=`1.8.0_271` |   `>=0.9.0`   |
 
-安装 IoTDB：参考 [Quick Start](QuickStart/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
+安装 IoTDB：参考 [快速上手](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html). 假设 IoTDB 安装在 `$IoTDB_HOME`.
 
 安装 Zeppelin：
 > 方法1 直接下载：下载 [Zeppelin](https://zeppelin.apache.org/download.html#) 并解压二进制文件。推荐下载 [netinst](http://www.apache.org/dyn/closer.cgi/zeppelin/zeppelin-0.9.0/zeppelin-0.9.0-bin-netinst.tgz) 二进制包，此包由于未编译不相关的interpreter，因此大小相对较小。
@@ -53,7 +53,7 @@ Apache Zeppelin 是一个基于网页的交互式数据分析系统。用户可�
 
 ```shell
 cd $IoTDB_HOME
-mvn clean package -pl zeppelin-interpreter -am -DskipTests
+mvn clean package -pl zeppelin-interpreter -am -DskipTests -P get-jar-with-dependencies
 ```
 
 编译后的解释器位于如下目录：
@@ -152,7 +152,7 @@ WHERE time >= 1
 
 ![iotdb-note-snapshot2](https://user-images.githubusercontent.com/5548915/102752948-52a2d500-43a5-11eb-9156-0c55667eb4cd.png)
 
-用户也可以参考 [[1]](https://zeppelin.apache.org/docs/0.9.0-SNAPSHOT/usage/display_system/basic.html) 编写更丰富多彩的文档。
+用户也可以参考 [[1]](https://zeppelin.apache.org/docs/0.9.0/usage/display_system/basic.html) 编写更丰富多彩的文档。
 
 以上样例放置于 `$IoTDB_HOME/zeppelin-interpreter/Zeppelin-IoTDB-Demo.zpln`
 

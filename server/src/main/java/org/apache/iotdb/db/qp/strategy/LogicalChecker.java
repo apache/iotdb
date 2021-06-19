@@ -16,30 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+package org.apache.iotdb.db.qp.strategy;
+
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 
-import java.util.ArrayList;
-import java.util.List;
+public class LogicalChecker {
 
-/** this class maintains information of {@code FROM} clause. */
-public class FromOperator extends Operator {
+  private LogicalChecker() {}
 
-  private List<PartialPath> prefixList;
-
-  public FromOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.FROM;
-    prefixList = new ArrayList<>();
-  }
-
-  public void addPrefixTablePath(PartialPath prefixPath) {
-    prefixList.add(prefixPath);
-  }
-
-  public List<PartialPath> getPrefixPaths() {
-    return prefixList;
+  /** To check whether illegal component exists in specific operator. */
+  public static void check(Operator operator) throws LogicalOperatorException {
+    if (operator instanceof QueryOperator) {
+      ((QueryOperator) operator).check();
+    }
   }
 }

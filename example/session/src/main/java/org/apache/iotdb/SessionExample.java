@@ -78,6 +78,7 @@ public class SessionExample {
     query();
     queryWithTimeout();
     rawDataQuery();
+    lastDataQuery();
     queryByIterator();
     deleteData();
     deleteTimeseries();
@@ -137,7 +138,7 @@ public class SessionExample {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
       Map<String, String> attributes = new HashMap<>();
-      tags.put("description", "v1");
+      attributes.put("description", "v1");
       session.createTimeseries(
           ROOT_SG1_D1_S4,
           TSDataType.INT64,
@@ -596,6 +597,20 @@ public class SessionExample {
       System.out.println(dataSet.next());
     }
     dataSet.closeOperationHandle();
+  }
+
+  private static void lastDataQuery() throws IoTDBConnectionException, StatementExecutionException {
+    List<String> paths = new ArrayList<>();
+    paths.add(ROOT_SG1_D1_S1);
+    paths.add(ROOT_SG1_D1_S2);
+    paths.add(ROOT_SG1_D1_S3);
+    SessionDataSet sessionDataSet = session.executeLastDataQuery(paths, 3);
+    System.out.println(sessionDataSet.getColumnNames());
+    sessionDataSet.setFetchSize(1024);
+    while (sessionDataSet.hasNext()) {
+      System.out.println(sessionDataSet.next());
+    }
+    sessionDataSet.closeOperationHandle();
   }
 
   private static void queryByIterator()

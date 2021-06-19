@@ -16,6 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.page;
 
-public class VectorChunkReader {}
+package org.apache.iotdb.db.qp.physical;
+
+/** BatchPlan contains multiple sub-plans. */
+public interface BatchPlan {
+
+  /**
+   * Mark the sub-plan at position i as executed.
+   *
+   * @param i the position of the sub-plan
+   */
+  void setIsExecuted(int i);
+
+  /**
+   * Mark the sub-plan at position i as not executed.
+   *
+   * @param i the position of the sub-plan
+   */
+  void unsetIsExecuted(int i);
+
+  /**
+   * Whether the sub-plan at position i has been executed.
+   *
+   * @param i the position of the sub-plan
+   * @return whether the sub-plan at position i has been executed.
+   */
+  boolean isExecuted(int i);
+
+  /**
+   * Return how many sub-plans are in the plan
+   *
+   * @return how many sub-plans are in the plan.
+   */
+  int getBatchSize();
+}

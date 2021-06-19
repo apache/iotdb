@@ -112,6 +112,30 @@ public class SeriesReader {
   protected boolean hasCachedNextOverlappedPage;
   protected BatchData cachedBatchData;
 
+  /**
+   * @param seriesPath For querying vector, the seriesPath should be VectorPartialPath. If the query
+   *     is raw query without value filter, all sensors belonging to one vector should be all in
+   *     this one VectorPartialPath's subSensorsPathList, VectorPartialPath's own fullPath
+   *     represents the name of vector itself. Other queries, each sensor in one vector will have
+   *     its own SeriesReader, seriesPath's subSensorsPathList contains only one sensor.
+   * @param allSensors For querying vector, allSensors contains vector name and all subSensors'
+   *     names in the seriesPath
+   *     <p>e.g. we have two vectors: root.sg1.d1.vector1(s1, s2) and root.sg1.d1.vector2(s1, s2),
+   *     If the sql is select * from root, we will construct two SeriesReader, The first one's
+   *     seriesPath is VectorPartialPath(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1,
+   *     root.sg1.d1.vector1.s2]) The first one's allSensors is [vector1, s1, s2] The second one's
+   *     seriesPath is VectorPartialPath(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1,
+   *     root.sg1.d1.vector2.s2]) The second one's allSensors is [vector2, s1, s2]
+   *     <p>If the sql is not RawQueryWithoutValueFilter, like select count(*) from root group by
+   *     ([1, 100), 5ms), we will construct four SeriesReader The first one's seriesPath is
+   *     VectorPartialPath(root.sg1.d1.vector1, [root.sg1.d1.vector1.s1]) The first one's allSensors
+   *     is [vector1, s1] The second one's seriesPath is VectorPartialPath(root.sg1.d1.vector1,
+   *     [root.sg1.d1.vector1.s2]) The second one's allSensors is [vector1, s2] The third one's
+   *     seriesPath is VectorPartialPath(root.sg1.d1.vector2, [root.sg1.d1.vector2.s1]) The third
+   *     one's allSensors is [vector2, s1] The fourth one's seriesPath is
+   *     VectorPartialPath(root.sg1.d1.vector2, [root.sg1.d1.vector2.s2]) The fourth one's
+   *     allSensors is [vector2, s2]
+   */
   public SeriesReader(
       PartialPath seriesPath,
       Set<String> allSensors,
@@ -208,7 +232,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -269,7 +293,7 @@ public class SeriesReader {
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
       throw new IOException(
-          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+          "all cached pages should be consumed first unSeqPageReaders.isEmpty() is "
               + unSeqPageReaders.isEmpty()
               + " firstPageReader != null is "
               + (firstPageReader != null)
@@ -297,11 +321,12 @@ public class SeriesReader {
        * first time series metadata is already unpacked, consume cached ChunkMetadata
        */
       if (!cachedChunkMetadata.isEmpty()) {
-        firstChunkMetadata = cachedChunkMetadata.poll();
+        firstChunkMetadata = cachedChunkMetadata.peek();
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
+        firstChunkMetadata = cachedChunkMetadata.poll();
       }
     }
 
@@ -430,7 +455,7 @@ public class SeriesReader {
       return true;
     }
 
-    // make sure firstPageReader won't be null while the cachedPageReaders has more cached page
+    // make sure firstPageReader won't be null while the unSeqPageReaders has more cached page
     // readers
     while (firstPageReader == null && (!seqPageReaders.isEmpty() || !unSeqPageReaders.isEmpty())) {
 
@@ -482,7 +507,7 @@ public class SeriesReader {
                     firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
                 && mergeReader.currentTimeValuePair().getTimestamp()
-                    > firstPageReader.getStatistics().getStartTime()));
+                    >= firstPageReader.getStatistics().getStartTime()));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
@@ -684,6 +709,9 @@ public class SeriesReader {
               timeValuePair.getTimestamp(), false);
           unpackAllOverlappedChunkMetadataToPageReaders(timeValuePair.getTimestamp(), false);
           unpackAllOverlappedUnseqPageReadersToMergeReader(timeValuePair.getTimestamp());
+
+          // update if there are unpacked unSeqPageReaders
+          timeValuePair = mergeReader.currentTimeValuePair();
 
           // from now, the unsequence reader is all unpacked, so we don't need to consider it
           // we has first page reader now
@@ -1192,5 +1220,10 @@ public class SeriesReader {
 
   public TimeOrderUtils getOrderUtils() {
     return orderUtils;
+  }
+
+  @TestOnly
+  public Filter getValueFilter() {
+    return valueFilter;
   }
 }
