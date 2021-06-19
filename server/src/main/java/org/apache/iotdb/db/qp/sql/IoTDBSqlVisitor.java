@@ -1098,12 +1098,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     createContinuousQueryOperator.setQuerySql(sb.toString());
 
     if (createContinuousQueryOperator.getEveryInterval() == 0) {
-        createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
+      createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
     }
 
     if (createContinuousQueryOperator.getForInterval() == 0) {
-      createContinuousQueryOperator.setForInterval(
-              queryOperator.getUnit());
+      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
     }
 
     return createContinuousQueryOperator;
