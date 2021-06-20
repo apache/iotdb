@@ -61,6 +61,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
@@ -153,6 +155,8 @@ public class TsFileResource {
   protected long minPlanIndex = Long.MAX_VALUE;
 
   private long version = 0;
+
+  public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public TsFileResource() {}
 
@@ -940,6 +944,25 @@ public class TsFileResource {
     } else {
       return cmp;
     }
+  }
+
+  /**
+   * This method receive a list of TsFileResource to be compacted, return the name of compaction
+   * target file.
+   *
+   * @return target file name as {minTimestamp}-{minVersionNum}-{maxInnerMergeTimes +
+   *     1}-{maxCrossMergeTimes}
+   */
+  public static String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
+    Pattern tsFilePattern = Pattern.compile(fileNameRegex);
+    Matcher matcher = tsFilePattern.matcher(tsFileResourceList.get(0).getTsFile().getName());
+    long minTimestamp = Long.parseLong(matcher.group(1));
+    long minVersionNum = Long.parseLong(matcher.group(2));
+    int maxInnerMergeTimes = Integer.parseInt(matcher.group(3));
+    int maxCrossMergeTimes = Integer.parseInt(matcher.group(4));
+
+    return TsFileNameGenerator.generateNewTsFileName(
+        minTimestamp, minVersionNum, maxInnerMergeTimes + 1, maxCrossMergeTimes);
   }
 
   public static class TsFileName {

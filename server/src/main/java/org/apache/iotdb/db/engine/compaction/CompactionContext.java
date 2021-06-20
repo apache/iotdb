@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
+import java.io.File;
 import java.util.List;
 
 public class CompactionContext {
@@ -39,25 +40,9 @@ public class CompactionContext {
   protected ModificationFile compactionModification;
   protected CrossSpaceMergeResource mergeResource;
   protected int concurrentMergeCount;
+  protected File compactionLogFile;
 
   public CompactionContext() {}
-
-  public CompactionContext(
-      String storageGroupName,
-      long timePartitionId,
-      boolean sequence,
-      TsFileResourceList sequenceFileResourceList,
-      TsFileResourceList unsequenceFileResourceList,
-      List<TsFileResource> selectedSequenceFiles,
-      List<TsFileResource> selectedUnsequenceFiles) {
-    this.storageGroupName = storageGroupName;
-    this.timePartitionId = timePartitionId;
-    this.sequence = sequence;
-    this.sequenceFileResourceList = sequenceFileResourceList;
-    this.unsequenceFileResourceList = unsequenceFileResourceList;
-    this.selectedSequenceFiles = selectedSequenceFiles;
-    this.selectedUnsequenceFiles = selectedUnsequenceFiles;
-  }
 
   public String getStorageGroupName() {
     return storageGroupName;
@@ -153,5 +138,13 @@ public class CompactionContext {
 
   public void setVirtualStorageGroupName(String virtualStorageGroupName) {
     this.virtualStorageGroupName = virtualStorageGroupName;
+  }
+
+  public File getCompactionLogFile() {
+    return compactionLogFile;
+  }
+
+  public void setCompactionLogFile(File compactionLogFile) {
+    this.compactionLogFile = compactionLogFile;
   }
 }
