@@ -227,9 +227,6 @@ public class StorageGroupProcessor {
   /** manage seqFileList and unSeqFileList */
   private TsFileResourceManager tsFileResourceManager;
 
-  /** use tsFileResourceManager to replace TsFileManagement */
-  //  private TsFileResourceManager tsFileResourceManager;
-
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and

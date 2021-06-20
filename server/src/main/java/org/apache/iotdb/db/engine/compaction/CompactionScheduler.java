@@ -60,6 +60,9 @@ public class CompactionScheduler {
 
   public static void compactionSchedule(
       TsFileResourceManager tsFileResourceManager, long timePartition) {
+    LOGGER.info(
+        "{} [Compaction] start to schedule compaction",
+        tsFileResourceManager.getStorageGroupName());
     if (currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
       return;
     }

@@ -39,6 +39,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+
 public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(InnerSpaceCompactionTask.class);
   protected List<TsFileResource> selectedTsFileResourceList;
@@ -74,17 +77,30 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         storageGroupName,
         selectedTsFileResourceList.size());
     try {
-      File logFile = new File(dataDirectory + File.separator + targetFileName + ".log");
+      File logFile =
+          new File(dataDirectory + File.separator + targetFileName + COMPACTION_LOG_SUFFIX);
       // compaction execution
       List<Modification> modifications = new ArrayList<>();
+      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+      }
+      compactionLogger.logSequence(sequence);
+      compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+      LOGGER.info(
+          "{} [Compaction] compaction with {}", storageGroupName, selectedTsFileResourceList);
       CompactionUtils.compact(
           targetTsFileResource,
           selectedTsFileResourceList,
           storageGroupName,
-          new CompactionLogger(logFile.getPath()),
+          compactionLogger,
           this.skippedDevicesSet,
           sequence,
           modifications);
+      compactionLogger.close();
+      if (logFile.exists()) {
+        logFile.delete();
+      }
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
         resource.readUnlock();
