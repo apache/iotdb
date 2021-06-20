@@ -40,7 +40,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 * Create Timeseries
     * check if the storage group exists, if not and the auto create is enable, create it.
     * create a leafMNode in the MTree with alias
-	* if the dynamic parameter is enable, check if the memory is satisfied
+	* If dynamic parameters are turned on, check the memory is satisfied or not
 	* if not restart
 	    * persist tags/attributes into tlog, and return the offset
 		* set the offset of the leafMNode
@@ -66,7 +66,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 * Set Storage Group
     * add StorageGroupMNode in MTree
-	* if dynamic parameter is enable, check if the memory is satisfied
+	* If dynamic parameters are turned on, check the memory is satisfied or not
 	* if not restart, persist log into mlog
 
 * Delete Storage Group
@@ -92,7 +92,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
  
-> Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
+Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
 * Rename Tag/Attribute
 	* obtain the LeafMNode of that timeseries
@@ -173,7 +173,7 @@ The root node exists by default. Creating storage groups, deleting storage group
 	* create LeafMNode, and store the alias in LeafMNode if it has
 	* If it has alias, create another links with alias to LeafMNode
 
-* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; if in the deletion process, a node is found not to have any child node, needs to be deleted recursively.
+* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; If in the deletion process,it is found that a node does not have any child nodes, it also needs to delete this node recursively.
 	
 ## MTree checkpoint
 

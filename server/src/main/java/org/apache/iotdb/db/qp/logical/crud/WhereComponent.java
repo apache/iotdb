@@ -15,16 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.qp.logical;
 
-/**
- * RootOperator indicates the operator that could be executed as a entire command. RootOperator
- * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
- */
-public abstract class RootOperator extends Operator {
+package org.apache.iotdb.db.qp.logical.crud;
 
-  public RootOperator(int tokenIntType) {
-    super(tokenIntType);
+public class WhereComponent {
+
+  private FilterOperator filterOperator;
+
+  public WhereComponent() {}
+
+  public WhereComponent(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
+  }
+
+  public FilterOperator getFilterOperator() {
+    return filterOperator;
+  }
+
+  public void setFilterOperator(FilterOperator filterOperator) {
+    this.filterOperator = filterOperator;
   }
 }

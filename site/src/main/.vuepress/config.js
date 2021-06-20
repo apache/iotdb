@@ -679,6 +679,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL Language',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
@@ -1468,6 +1469,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL 语言',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
@@ -1554,6 +1556,12 @@ var config = {
 							['Appendix/Config-Manual','附录1: 配置参数'],
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
 							['Appendix/Status-Codes','附录3: 状态码']
+						]
+					},
+					{
+						title: '时间序列数据库比较',
+						children: [
+							['Comparison/TSDB-Comparison','比较']
 						]
 					}
 				],

@@ -16,6 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.page;
 
-public class VectorChunkReader {}
+package org.apache.iotdb.db.query.udf.core.transformer;
+
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+
+public class ArithmeticModuloTransformer extends ArithmeticBinaryTransformer {
+
+  public ArithmeticModuloTransformer(
+      LayerPointReader leftPointReader, LayerPointReader rightPointReader) {
+    super(leftPointReader, rightPointReader);
+  }
+
+  @Override
+  protected double evaluate(double leftOperand, double rightOperand) {
+    return leftOperand % rightOperand;
+  }
+}

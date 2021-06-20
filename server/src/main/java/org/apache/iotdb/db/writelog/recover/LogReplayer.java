@@ -156,22 +156,22 @@ public class LogReplayer {
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      long lastEndTime = currentTsFileResource.getEndTime(plan.getDeviceId().getFullPath());
+      long lastEndTime = currentTsFileResource.getEndTime(plan.getPrefixPath().getFullPath());
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(plan.getDeviceId().getFullPath());
+      Long startTime = tempStartTimeMap.get(plan.getPrefixPath().getFullPath());
       if (startTime == null || startTime > minTime) {
-        tempStartTimeMap.put(plan.getDeviceId().getFullPath(), minTime);
+        tempStartTimeMap.put(plan.getPrefixPath().getFullPath(), minTime);
       }
-      Long endTime = tempEndTimeMap.get(plan.getDeviceId().getFullPath());
+      Long endTime = tempEndTimeMap.get(plan.getPrefixPath().getFullPath());
       if (endTime == null || endTime < maxTime) {
-        tempEndTimeMap.put(plan.getDeviceId().getFullPath(), maxTime);
+        tempEndTimeMap.put(plan.getPrefixPath().getFullPath(), maxTime);
       }
     }
     MeasurementMNode[] mNodes;
     try {
-      mNodes = IoTDB.metaManager.getMNodes(plan.getDeviceId(), plan.getMeasurements());
+      mNodes = IoTDB.metaManager.getMNodes(plan.getPrefixPath(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -194,11 +194,11 @@ public class LogReplayer {
         tPlan.markFailedMeasurementInsertion(
             i,
             new PathNotExistException(
-                tPlan.getDeviceId().getFullPath()
+                tPlan.getPrefixPath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
         columnIndex++;
-      } else if (mNodes[i].getSchema().getType() == TSDataType.VECTOR) {
+      } else if (tPlan.isAligned()) {
         List<TSDataType> datatypes = mNodes[i].getSchema().getValueTSDataTypeList();
         for (int j = 0; j < datatypes.size(); j++) {
           if (tPlan.getDataTypes()[columnIndex] == null) {

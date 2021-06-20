@@ -18,9 +18,9 @@
     under the License.
 
 -->
-## 运维命令
+# 运维命令
 
-### FLUSH
+## FLUSH
 
 将指定存储组的内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
 
@@ -30,7 +30,7 @@ IoTDB> FLUSH root.ln
 IoTDB> FLUSH root.sg1,root.sg2
 ```
 
-### MERGE
+## MERGE
 
 合并顺序和乱序数据。当前IoTDB支持使用如下两种SQL手动触发数据文件的合并：
 
@@ -42,27 +42,27 @@ IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
 
-### CLEAR CACHE
+## CLEAR CACHE
 
 手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
 ```
 IoTDB> CLEAR CACHE
 ```
 
-### SCHEMA SNAPSHOT
+## SCHEMA SNAPSHOT
 
 为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
 ```
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
-### 中止查询
+## 中止查询
 
 当使用 IoTDB 时，您可能会遇到以下情形：输入了一个查询，但是由于其包含的数据量过大或是其他原因，导致长时间无法返回结果，但是迫于生产环境无法中止该命令，只能被迫等待。
 
 从 0.12 版本开始，IoTDB 对执行时间过长的查询给出了两种解决方案：查询超时和查询中止。
 
-#### 查询超时
+### 查询超时
 
 对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如下所示：
 
@@ -82,7 +82,7 @@ E.g. session.executeQueryStatement(String sql, long timeout)
 
 如果不配置超时时间参数或将超时时间设置为 0，将使用服务器端默认的超时时间.
 
-#### 查询中止
+### 查询中止
 
 除了被动地等待查询超时外，IoTDB 还支持主动地中止查询，命令为：
 

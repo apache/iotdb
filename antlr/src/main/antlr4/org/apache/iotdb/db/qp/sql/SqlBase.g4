@@ -76,6 +76,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -638,7 +639,7 @@ dateExpression
     ;
 
 encoding
-    : PLAIN | PLAIN_DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
+    : PLAIN | DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
     ;
 
 realLiteral
@@ -864,8 +865,8 @@ PLAIN
     : P L A I N
     ;
 
-PLAIN_DICTIONARY
-    : P L A I N '_' D I C T I O N A R Y
+DICTIONARY
+    : D I C T I O N A R Y
     ;
 
 RLE
@@ -883,7 +884,6 @@ TS_2DIFF
 GORILLA
     : G O R I L L A
     ;
-
 
 REGULAR
     : R E G U L A R
@@ -1234,6 +1234,10 @@ WITHOUT
 
 ANY
     : A N Y
+    ;
+
+LOCK
+    : L O C K
     ;
 
 //============================

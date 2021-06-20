@@ -40,12 +40,16 @@ public class MeasurementMNode extends MNode {
   /** measurement's Schema for one timeseries represented by current leaf node */
   private IMeasurementSchema schema;
 
+  /** alias name of this measurement */
   private String alias;
-  // tag/attribute's start offset in tag file
+
+  /** tag/attribute's start offset in tag file */
   private long offset = -1;
 
+  /** last value cache */
   private TimeValuePair cachedLastValuePair = null;
 
+  /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
 
   /** @param alias alias of measurementName */
@@ -77,6 +81,13 @@ public class MeasurementMNode extends MNode {
     return cachedLastValuePair;
   }
 
+  /**
+   * update last point cache
+   *
+   * @param timeValuePair last point
+   * @param highPriorityUpdate whether it's a high priority update
+   * @param latestFlushedTime latest flushed time
+   */
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -180,6 +191,12 @@ public class MeasurementMNode extends MNode {
     return node;
   }
 
+  /**
+   * get data type
+   *
+   * @param measurementId if it's a vector schema, we need sensor name of it
+   * @return measurement data type
+   */
   public TSDataType getDataType(String measurementId) {
     if (schema instanceof MeasurementSchema) {
       return schema.getType();

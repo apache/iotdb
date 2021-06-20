@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class DropTriggerOperator extends RootOperator {
+public class DropTriggerOperator extends Operator {
 
   private String triggerName;
 
@@ -36,5 +40,11 @@ public class DropTriggerOperator extends RootOperator {
 
   public String getTriggerName() {
     return triggerName;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new DropTriggerPlan(triggerName);
   }
 }
