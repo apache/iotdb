@@ -201,7 +201,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     } catch (IOException e) {
       LOGGER.error(
-          "{} cannot clean the ModificationFile of {} after merge",
+          "{} cannot clean the ModificationFile of {} after cross space merge",
           storageGroupName,
           seqFile.getTsFile(),
           e);
