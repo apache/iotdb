@@ -773,7 +773,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndex.getChildIndexEntry(name, false);
         ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
         return getMetadataAndEndOffset(
-            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, false);
+            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
       }
     } catch (BufferOverflowException e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);

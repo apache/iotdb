@@ -26,7 +26,12 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
 import java.util.List;
 
+/**
+ * The QueryDataSource contains all the seq and unseq TsFileResources for one timeseries in one
+ * query
+ */
 public class QueryDataSource {
+
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
 

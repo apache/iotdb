@@ -259,11 +259,10 @@ public class ClusterReaderFactory {
     for (PartialPath partialPath : paths) {
       List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(timeFilter, partialPath);
       partitionGroups.forEach(
-          partitionGroup -> {
-            partitionGroupListMap
-                .computeIfAbsent(partitionGroup, n -> new ArrayList<>())
-                .add(partialPath);
-          });
+          partitionGroup ->
+              partitionGroupListMap
+                  .computeIfAbsent(partitionGroup, n -> new ArrayList<>())
+                  .add(partialPath));
     }
 
     List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
@@ -551,6 +550,7 @@ public class ClusterReaderFactory {
     // holder, in order to assist the new holder to read the complete data.
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+    valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     return new SeriesReader(
         path,
         allSensors,
@@ -619,7 +619,7 @@ public class ClusterReaderFactory {
       return new MultEmptyReader(fullPaths);
     }
     throw new StorageEngineException(
-        new RequestTimeOutException("Query " + paths + " in " + partitionGroup));
+        new RequestTimeOutException("Query multi-series: " + paths + " in " + partitionGroup));
   }
 
   /**
@@ -702,9 +702,9 @@ public class ClusterReaderFactory {
           if (path instanceof VectorPartialPath) {
             StringBuilder builder = new StringBuilder(path.getFullPath());
             List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsPathList();
-            for (int i = 0; i < pathList.size(); i++) {
+            for (PartialPath partialPath : pathList) {
               builder.append(":");
-              builder.append(pathList.get(i).getFullPath());
+              builder.append(partialPath.getFullPath());
             }
             fullPaths.add(builder.toString());
           } else {
@@ -713,10 +713,7 @@ public class ClusterReaderFactory {
         });
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
-    dataTypes.forEach(
-        dataType -> {
-          dataTypeOrdinals.add(dataType.ordinal());
-        });
+    dataTypes.forEach(dataType -> dataTypeOrdinals.add(dataType.ordinal()));
 
     request.setPath(fullPaths);
     request.setHeader(partitionGroup.getHeader());
@@ -1097,7 +1094,7 @@ public class ClusterReaderFactory {
       QueryContext context,
       DataGroupMember dataGroupMember,
       boolean ascending)
-      throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);

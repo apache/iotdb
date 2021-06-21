@@ -97,6 +97,7 @@ import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
 public class LocalQueryExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalQueryExecutor.class);
+  public static final String DEBUG_SHOW_QUERY_ID = "{}: local queryId for {}#{} is {}";
   private DataGroupMember dataGroupMember;
   private ClusterReaderFactory readerFactory;
   private String name;
@@ -178,7 +179,7 @@ public class LocalQueryExecutor {
     Map<String, ByteBuffer> pathByteBuffers = Maps.newHashMap();
 
     for (String path : paths) {
-      ByteBuffer byteBuffer = null;
+      ByteBuffer byteBuffer;
       if (reader.hasNextBatch(path)) {
         BatchData batchData = reader.nextBatch(path);
 
@@ -242,7 +243,7 @@ public class LocalQueryExecutor {
             request.getFetchSize(),
             request.getDeduplicatedPathNum());
     logger.debug(
-        "{}: local queryId for {}#{} is {}",
+        DEBUG_SHOW_QUERY_ID,
         name,
         request.getQueryId(),
         request.getPath(),
@@ -326,12 +327,7 @@ public class LocalQueryExecutor {
             });
 
     List<TSDataType> dataTypes = Lists.newArrayList();
-    request
-        .getDataTypeOrdinal()
-        .forEach(
-            dataType -> {
-              dataTypes.add(TSDataType.values()[dataType]);
-            });
+    request.getDataTypeOrdinal().forEach(dataType -> dataTypes.add(TSDataType.values()[dataType]));
 
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -351,7 +347,7 @@ public class LocalQueryExecutor {
             request.getFetchSize(),
             request.getDeduplicatedPathNum());
     logger.debug(
-        "{}: local queryId for {}#{} is {}",
+        DEBUG_SHOW_QUERY_ID,
         name,
         request.getQueryId(),
         request.getPath(),
@@ -555,7 +551,7 @@ public class LocalQueryExecutor {
             request.getFetchSize(),
             request.getDeduplicatedPathNum());
     logger.debug(
-        "{}: local queryId for {}#{} is {}",
+        DEBUG_SHOW_QUERY_ID,
         name,
         request.getQueryId(),
         request.getPath(),
@@ -641,7 +637,7 @@ public class LocalQueryExecutor {
 
     List<String> aggregations = request.getAggregations();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
-    PartialPath path = null;
+    PartialPath path;
     try {
       path = new PartialPath(request.getPath());
     } catch (IllegalPathException e) {

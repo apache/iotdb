@@ -416,4 +416,10 @@ public class ClusterUtils {
     }
     return migrationStatus;
   }
+
+  public static boolean nodeEqual(Node node1, Node node2) {
+    ClusterNode clusterNode1 = new ClusterNode(node1);
+    ClusterNode clusterNode2 = new ClusterNode(node2);
+    return clusterNode1.equals(clusterNode2);
+  }
 }
