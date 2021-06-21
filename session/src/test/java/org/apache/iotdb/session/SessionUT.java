@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -228,12 +229,6 @@ public class SessionUT {
       encodings.add(TSEncoding.RLE);
     }
 
-    session.createMeasurementSchemaTemplate(
-        "template0", "s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-
-    session.createVectorSchemaTemplate(
-        "template1", "root.sg.v", measurements, dataTypes, encodings, CompressionType.SNAPPY);
-
     measurementList.add(measurements);
     dataTypeList.add(dataTypes);
     encodingList.add(encodings);
@@ -248,11 +243,20 @@ public class SessionUT {
     schemaNames.add("test_vector");
 
     session.createSchemaTemplate(
-        "template2", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
     session.setSchemaTemplate("template1", "root.sg.1");
 
     MeasurementSchema testMeasurementSchema =
         new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
-    session.createSchemaTemplate("template3", Collections.singletonList(testMeasurementSchema));
+    session.createSchemaTemplate("template2", Collections.singletonList(testMeasurementSchema));
+
+    String[] measurementArray = measurements.toArray(new String[measurements.size()]);
+    TSDataType[] dataTypeArray = dataTypes.toArray(new TSDataType[dataTypes.size()]);
+    TSEncoding[] encodingArray = encodings.toArray(new TSEncoding[encodings.size()]);
+    VectorMeasurementSchema testVectorMeasurementSchema =
+        new VectorMeasurementSchema(
+            "vector_1", measurementArray, dataTypeArray, encodingArray, CompressionType.SNAPPY);
+    session.createSchemaTemplate(
+        "template3", Collections.singletonList(testVectorMeasurementSchema));
   }
 }
