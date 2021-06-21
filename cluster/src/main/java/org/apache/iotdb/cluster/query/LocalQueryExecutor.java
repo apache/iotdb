@@ -408,9 +408,7 @@ public class LocalQueryExecutor {
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
-    for (String prefixPath : prefixPaths) {
-      getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
-    }
+    collectTimeseriesSchema(prefixPaths, timeseriesSchemas);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Collected {} schemas for {} and other {} paths",
@@ -515,6 +513,44 @@ public class LocalQueryExecutor {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<PartialPath> paths = partitionGroupListEntry.getValue();
       MetaPuller.getInstance().pullMeasurementSchemas(partitionGroup, paths, measurementSchemas);
+    }
+  }
+
+  private void collectTimeseriesSchema(
+      List<String> prefixPaths, List<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    // Due to add/remove node, some slots may in the state of PULLING, which will not contains the
+    // corresponding schemas.
+    // In this case, we need to pull series from previous holder.
+    Map<PartitionGroup, List<String>> prePartitionGroupPathMap = new HashMap<>();
+
+    RaftNode header = dataGroupMember.getHeader();
+    Map<Integer, PartitionGroup> slotPreviousHolderMap =
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getPreviousNodeMap()
+            .get(header);
+
+    for (String prefixPath : prefixPaths) {
+      int slot =
+          ClusterUtils.getSlotByPathTimeWithSync(
+              new PartialPath(prefixPath), dataGroupMember.getMetaGroupMember());
+      if (dataGroupMember.getSlotManager().checkSlotInMetaMigrationStatus(slot)
+          && slotPreviousHolderMap.containsKey(slot)) {
+        prePartitionGroupPathMap
+            .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
+            .add(prefixPath);
+      } else {
+        getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+      }
+    }
+
+    if (prePartitionGroupPathMap.isEmpty()) {
+      return;
+    }
+    for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry :
+        prePartitionGroupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
+      List<String> paths = partitionGroupListEntry.getValue();
+      MetaPuller.getInstance().pullTimeSeriesSchemas(partitionGroup, paths, timeseriesSchemas);
     }
   }
 

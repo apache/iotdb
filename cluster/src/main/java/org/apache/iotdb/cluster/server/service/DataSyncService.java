@@ -137,7 +137,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       try {
         return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
       } catch (CheckConsistencyException | MetadataException e) {
-        throw new TException(e);
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
+        } catch (CheckConsistencyException | MetadataException ex) {
+          throw new TException(ex);
+        }
       }
     }
 
@@ -173,7 +180,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       try {
         return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
       } catch (CheckConsistencyException | MetadataException e) {
-        throw new TException(e);
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
+        } catch (CheckConsistencyException | MetadataException ex) {
+          throw new TException(ex);
+        }
       }
     }
 

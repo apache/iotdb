@@ -132,7 +132,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
             dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
         return;
       } catch (CheckConsistencyException | MetadataException e) {
-        resultHandler.onError(e);
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          resultHandler.onComplete(
+              dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request));
+          return;
+        } catch (CheckConsistencyException | MetadataException ex) {
+          resultHandler.onError(ex);
+        }
       }
     }
 
@@ -169,7 +178,16 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
             dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
         return;
       } catch (CheckConsistencyException | MetadataException e) {
-        resultHandler.onError(e);
+        // maybe the partition table of this node is not up-to-date, try again after updating
+        // partition table
+        try {
+          dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
+          resultHandler.onComplete(
+              dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request));
+          return;
+        } catch (CheckConsistencyException | MetadataException ex) {
+          resultHandler.onError(ex);
+        }
       }
     }
 
