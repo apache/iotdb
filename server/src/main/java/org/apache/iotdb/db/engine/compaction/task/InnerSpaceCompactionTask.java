@@ -39,8 +39,6 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
@@ -51,7 +49,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected boolean sequence;
   protected Set<String> skippedDevicesSet;
-  public static final String fileNameRegex = "([0-9]+)-([0-9]+)-([0-9]+)-([0-9]+)";
 
   public InnerSpaceCompactionTask(CompactionContext context) {
     super(
@@ -101,7 +98,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
-    String targetFileName = generateTargetFileName(selectedTsFileResourceList);
+    String targetFileName = TsFileResource.generateTargetFileName(selectedTsFileResourceList);
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(
@@ -162,38 +159,5 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } finally {
       tsFileResourceList.writeUnlock();
     }
-  }
-
-  /**
-   * This method receive a list of TsFileResource to be compacted, return the name of compaction
-   * target file.
-   *
-   * @return target file name as {minTimestamp}-{minVersionNum}-{maxInnerMergeTimes +
-   *     1}-{maxCrossMergeTimes}
-   */
-  public String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
-    long minTimestamp = Long.MAX_VALUE;
-    long minVersionNum = Long.MAX_VALUE;
-    int maxInnerMergeTimes = Integer.MIN_VALUE;
-    int maxCrossMergeTimes = Integer.MIN_VALUE;
-    Pattern tsFilePattern = Pattern.compile(fileNameRegex);
-
-    for (TsFileResource resource : tsFileResourceList) {
-      String tsFileName = resource.getTsFile().getName();
-      Matcher matcher = tsFilePattern.matcher(tsFileName);
-      if (matcher.find()) {
-        long currentTimestamp = Long.parseLong(matcher.group(1));
-        long currentVersionNum = Long.parseLong(matcher.group(2));
-        int currentInnerMergeTimes = Integer.parseInt(matcher.group(3));
-        int currentCrossMergeTimes = Integer.parseInt(matcher.group(4));
-        minTimestamp = Math.min(minTimestamp, currentTimestamp);
-        minVersionNum = Math.min(minVersionNum, currentVersionNum);
-        maxInnerMergeTimes = Math.max(maxInnerMergeTimes, currentInnerMergeTimes);
-        maxCrossMergeTimes = Math.max(maxCrossMergeTimes, currentCrossMergeTimes);
-      }
-    }
-
-    return TsFileNameGenerator.generateNewTsFileName(
-        minTimestamp, minVersionNum, maxInnerMergeTimes + 1, maxCrossMergeTimes);
   }
 }

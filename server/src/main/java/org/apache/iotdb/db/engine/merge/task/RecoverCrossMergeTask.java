@@ -44,16 +44,16 @@ import java.util.List;
 import java.util.Map.Entry;
 
 /**
- * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by scanning
+ * RecoverCrossMergeTask is an extension of MergeTask, which resumes the last merge progress by scanning
  * merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverMergeTask extends CrossSpaceMergeTask {
+public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(RecoverMergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(RecoverCrossMergeTask.class);
 
   private LogAnalyzer analyzer;
 
-  public RecoverMergeTask(
+  public RecoverCrossMergeTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,

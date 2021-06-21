@@ -332,6 +332,8 @@ public class CompactionScheduler {
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
+        LOGGER.info(
+            "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
         return taskSubmitted;
       }
       // avoid pending tasks holds the metadata and streams
