@@ -19,6 +19,24 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+
+import com.google.common.util.concurrent.RateLimiter;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -49,28 +67,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class CompactionUtils {
 
@@ -106,15 +104,13 @@ public class CompactionUtils {
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap,
       Map<Long, TimeValuePair> timeValuePairMap,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
-      List<Modification> modifications)
+      PartialPath seriesPath)
       throws IOException {
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
-      modifyChunkMetaDataWithCache(
-          reader, chunkMetadataList, modificationCache, seriesPath, modifications);
+      modifyChunkMetaDataWithCache(reader, chunkMetadataList, modificationCache, seriesPath);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         IChunkReader chunkReader = new ChunkReaderByTimestamp(reader.readMemChunk(chunkMetadata));
         while (chunkReader.hasNextSatisfiedPage()) {
@@ -184,8 +180,7 @@ public class CompactionUtils {
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer,
-      Map<String, List<Modification>> modificationCache,
-      List<Modification> modifications)
+      Map<String, List<Modification>> modificationCache)
       throws IOException, IllegalPathException {
     Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
     Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = entry.getValue();
@@ -193,8 +188,7 @@ public class CompactionUtils {
         readerChunkMetadataMap,
         timeValuePairMap,
         modificationCache,
-        new PartialPath(device, entry.getKey()),
-        modifications);
+        new PartialPath(device, entry.getKey()));
     boolean isChunkMetadataEmpty = true;
     for (List<ChunkMetadata> chunkMetadataList : readerChunkMetadataMap.values()) {
       if (!chunkMetadataList.isEmpty()) {
@@ -265,8 +259,7 @@ public class CompactionUtils {
       String storageGroup,
       CompactionLogger compactionLogger,
       Set<String> devices,
-      boolean sequence,
-      List<Modification> modifications)
+      boolean sequence)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     try {
@@ -365,8 +358,7 @@ public class CompactionUtils {
                     sensorReaderChunkMetadataListEntry,
                     targetResource,
                     writer,
-                    modificationCache,
-                    modifications);
+                    modificationCache);
               } else {
                 boolean isChunkEnoughLarge = true;
                 boolean isPageEnoughLarge = true;
@@ -417,8 +409,7 @@ public class CompactionUtils {
                       sensorReaderChunkMetadataListEntry,
                       targetResource,
                       writer,
-                      modificationCache,
-                      modifications);
+                      modificationCache);
                 }
               }
             }
@@ -472,8 +463,7 @@ public class CompactionUtils {
       TsFileSequenceReader reader,
       List<ChunkMetadata> chunkMetadataList,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
-      List<Modification> usedModifications) {
+      PartialPath seriesPath) {
     List<Modification> modifications =
         modificationCache.computeIfAbsent(
             reader.getFileName(),
@@ -485,10 +475,18 @@ public class CompactionUtils {
     for (Modification modification : modifications) {
       if (modification.getPath().matchFullPath(seriesPath)) {
         seriesModifications.add(modification);
-        usedModifications.add(modification);
       }
     }
     modifyChunkMetaData(chunkMetadataList, seriesModifications);
+  }
+
+  private static List<Modification> getModifications(
+      TsFileSequenceReader reader, Map<String, List<Modification>> modificationCache) {
+    return modificationCache.computeIfAbsent(
+        reader.getFileName(),
+        fileName ->
+            new LinkedList<>(
+                new ModificationFile(fileName + ModificationFile.FILE_SUFFIX).getModifications()));
   }
 
   public static ModificationFile getModificationByPath(String filePath) {

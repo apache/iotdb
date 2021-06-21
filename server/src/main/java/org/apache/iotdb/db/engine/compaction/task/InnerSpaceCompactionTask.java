@@ -80,7 +80,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       File logFile =
           new File(dataDirectory + File.separator + targetFileName + COMPACTION_LOG_SUFFIX);
       // compaction execution
-      List<Modification> modifications = new ArrayList<>();
       CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
@@ -95,8 +94,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           storageGroupName,
           compactionLogger,
           this.skippedDevicesSet,
-          sequence,
-          modifications);
+          sequence);
       compactionLogger.close();
       if (logFile.exists()) {
         logFile.delete();
