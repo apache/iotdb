@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -41,7 +40,6 @@ import java.nio.file.Files;
 import java.util.List;
 
 import static org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 
 public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
@@ -54,7 +52,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unSeqTsFileResourceList;
   protected boolean sequence;
-  protected ModificationFile mergingModification;
 
   public CrossSpaceCompactionTask(CompactionContext context) {
     super(context.getStorageGroupName(), context.getTimePartitionId());
@@ -71,8 +68,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   @Override
   protected void doCompaction() throws Exception {
     String taskName = storageGroupName + "-" + System.currentTimeMillis();
-    String modFilePath = storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME;
-    CompactionScheduler.newModification(storageGroupName, timePartition, modFilePath);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
             mergeResource,
@@ -97,7 +92,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     removeUnseqFiles(unseqFiles);
 
-    mergingModification = CompactionScheduler.getModification(storageGroupName, timePartition);
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
       // get both seqFile lock and merge lock
@@ -119,7 +113,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
 
     try {
-      removeMergingModification();
+      removeMergingModification(seqFiles, unseqFiles);
       Files.delete(mergeLog.toPath());
     } catch (IOException e) {
       LOGGER.error(
@@ -185,19 +179,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
-      if (mergingModification != null) {
-        for (Modification modification : mergingModification.getModifications()) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          seqFile.getModFile().write(modification);
-        }
-        try {
-          seqFile.getModFile().close();
-        } catch (IOException e) {
-          LOGGER.error(
-              "Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
-        }
+      ModificationFile compactionModificationFile = ModificationFile.getCompactionMods(seqFile);
+      for (Modification modification : compactionModificationFile.getModifications()) {
+        seqFile.getModFile().write(modification);
+      }
+      try {
+        seqFile.getModFile().close();
+      } catch (IOException e) {
+        LOGGER.error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
       }
     } catch (IOException e) {
       LOGGER.error(
@@ -208,11 +197,14 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
   }
 
-  private void removeMergingModification() {
+  private void removeMergingModification(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     try {
-      if (mergingModification != null) {
-        mergingModification.remove();
-        mergingModification = null;
+      for (TsFileResource seqFile : seqFiles) {
+        ModificationFile.getCompactionMods(seqFile).remove();
+      }
+      for (TsFileResource unseqFile : unseqFiles) {
+        ModificationFile.getCompactionMods(unseqFile).remove();
       }
     } catch (IOException e) {
       LOGGER.error("{} cannot remove merging modification ", storageGroupName, e);

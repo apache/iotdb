@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactor
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceMergeFileSelector;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -53,9 +52,6 @@ public class CompactionScheduler {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // storageGroupName -> timePartition -> compactionCount
   private static Map<String, Map<Long, Long>> compactionCountInPartition =
-      new ConcurrentHashMap<>();
-  // storageGroupName -> timePartition -> modification
-  private static Map<String, Map<Long, ModificationFile>> modificationFileMap =
       new ConcurrentHashMap<>();
 
   public static void compactionSchedule(
@@ -401,15 +397,5 @@ public class CompactionScheduler {
             .computeIfAbsent(storageGroupName, l -> new HashMap<>())
             .getOrDefault(timePartition, 0L)
         > 0L;
-  }
-
-  public static void newModification(String storageGroupName, long timePartition, String filePath) {
-    modificationFileMap
-        .computeIfAbsent(storageGroupName, l -> new HashMap<>())
-        .put(timePartition, new ModificationFile(filePath));
-  }
-
-  public static ModificationFile getModification(String storageGroupName, long timePartition) {
-    return modificationFileMap.get(storageGroupName).get(timePartition);
   }
 }

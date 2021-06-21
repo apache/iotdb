@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -32,7 +33,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -64,6 +67,35 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             : context.getSelectedUnsequenceFiles();
     this.sequence = context.isSequence();
     this.skippedDevicesSet = new HashSet<>();
+  }
+
+  public void renameLevelFilesMods(
+      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
+    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+        if (sourceCompactionModificationFile.exists()) {
+          sourceCompactionModificationFile.remove();
+        }
+      }
+      ModificationFile sourceModificationFile = ModificationFile.getNormalMods(mergeTsFile);
+      if (sourceModificationFile.exists()) {
+        sourceModificationFile.remove();
+      }
+    }
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
+        }
+      }
+    }
   }
 
   @Override
@@ -126,6 +158,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
       // delete the old files
       CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, storageGroupName);
+      renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
     } finally {
       tsFileResourceList.writeUnlock();
     }

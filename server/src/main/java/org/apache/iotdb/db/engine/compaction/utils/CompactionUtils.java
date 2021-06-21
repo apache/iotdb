@@ -19,24 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
-
-import com.google.common.util.concurrent.RateLimiter;
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
@@ -67,8 +49,28 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
 public class CompactionUtils {
 
@@ -378,6 +380,12 @@ public class CompactionUtils {
                     }
                   }
                 }
+                if (isFileListHasModifications(
+                    readerChunkMetadataListMap.keySet(), modificationCache)) {
+                  isPageEnoughLarge = false;
+                  isChunkEnoughLarge = false;
+                }
+
                 // if a chunk is large enough, it's page must be large enough too
                 if (isChunkEnoughLarge) {
                   logger.debug(
@@ -478,6 +486,16 @@ public class CompactionUtils {
       }
     }
     modifyChunkMetaData(chunkMetadataList, seriesModifications);
+  }
+
+  private static boolean isFileListHasModifications(
+      Set<TsFileSequenceReader> readers, Map<String, List<Modification>> modificationCache) {
+    for (TsFileSequenceReader reader : readers) {
+      if (!getModifications(reader, modificationCache).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static List<Modification> getModifications(

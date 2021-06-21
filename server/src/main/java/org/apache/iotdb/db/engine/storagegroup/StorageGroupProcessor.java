@@ -137,7 +137,6 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  */
 public class StorageGroupProcessor {
 
-  public static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
@@ -171,8 +170,8 @@ public class StorageGroupProcessor {
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-  /** compactionMergeWorking is used to wait for last compaction to be done. */
-  private volatile boolean compactionMergeWorking = false;
+
+  private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -473,10 +472,12 @@ public class StorageGroupProcessor {
         recoverTsFiles(value, false);
       }
 
-      String taskName =
-          logicalStorageGroupName + "-" + virtualStorageGroupId + "-" + System.currentTimeMillis();
-      File mergingMods =
-          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, MERGING_MODIFICATION_FILE_NAME);
+      //      String taskName =
+      //          logicalStorageGroupName + "-" + virtualStorageGroupId + "-" +
+      // System.currentTimeMillis();
+      //      File mergingMods =
+      //          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
+      // MERGING_MODIFICATION_FILE_NAME);
       //      if (mergingMods.exists()) {
       //        this.tsFileResourceManager.mergingModification = new
       // ModificationFile(mergingMods.getPath());
@@ -1883,11 +1884,21 @@ public class StorageGroupProcessor {
         continue;
       }
 
-      deletion.setFileOffset(tsFileResource.getTsFileSize());
-      // write deletion into modification file
-      tsFileResource.getModFile().write(deletion);
-      // remember to close mod file
-      tsFileResource.getModFile().close();
+      if (tsFileResource.isMerging) {
+        // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+        // change after compaction
+        deletion.setFileOffset(Long.MAX_VALUE);
+        // write deletion into modification file
+        tsFileResource.getCompactionModFile().write(deletion);
+        // remember to close mod file
+        tsFileResource.getCompactionModFile().close();
+      } else {
+        deletion.setFileOffset(tsFileResource.getTsFileSize());
+        // write deletion into modification file
+        tsFileResource.getModFile().write(deletion);
+        // remember to close mod file
+        tsFileResource.getModFile().close();
+      }
       logger.info(
           "[Deletion] Deletion with path:{}, time:{}-{} written into mods file.",
           deletion.getPath(),
