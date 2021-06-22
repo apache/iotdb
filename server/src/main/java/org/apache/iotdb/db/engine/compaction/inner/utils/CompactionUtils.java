@@ -57,17 +57,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
@@ -75,6 +66,7 @@ import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 public class CompactionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(CompactionUtils.class);
+  public static final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
   private CompactionUtils() {
     throw new IllegalStateException("Utility class");
@@ -546,6 +538,15 @@ public class CompactionUtils {
         return new MaxSeriesMergeFileSelector(resource, budget);
       default:
         throw new UnsupportedOperationException("Unknown CrossSpaceFileStrategy " + strategy);
+    }
+  }
+
+  public static File[] findCompactionLogs(String directory) {
+    File timePartitionDir = new File(directory);
+    if (timePartitionDir.exists()) {
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_SUFFIX));
+    } else {
+      return new File[0];
     }
   }
 }

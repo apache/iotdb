@@ -257,6 +257,14 @@ public class TsFileResourceManager {
     this.virtualStorageGroup = virtualStorageGroup;
   }
 
+  public List<TsFileResource> getSequenceRecoverTsFileResources() {
+    return sequenceRecoverTsFileResources;
+  }
+
+  public List<TsFileResource> getUnsequenceRecoverTsFileResources() {
+    return unsequenceRecoverTsFileResources;
+  }
+
   // ({systemTime}-{versionNum}-{compactionNum}-{mergeNum}.tsfile)
   public static int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);

@@ -29,7 +29,7 @@ public class SizeTiredCompactionRecoverTask extends AbstractInnerSpaceCompaction
   protected List<TsFileResource> recoverTsFileResources;
 
   public SizeTiredCompactionRecoverTask(CompactionContext context) {
-    super(context);
+    super(context.getStorageGroupName(), context.getTimePartitionId());
     compactionLogFile = context.getCompactionLogFile();
     storageGroupDir = context.getStorageGroupDir();
     tsFileResourceList =

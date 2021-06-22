@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 
 public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactionTask {
-  public final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
   public AbstractInnerSpaceCompactionTask(String storageGroupName, long timePartition) {
     super(storageGroupName, timePartition);

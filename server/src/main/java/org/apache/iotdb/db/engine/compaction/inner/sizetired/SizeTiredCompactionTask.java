@@ -23,6 +23,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils.COMPACTION_LOG_SUFFIX;
 
 public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
