@@ -44,8 +44,8 @@ import java.util.List;
 import java.util.Map.Entry;
 
 /**
- * RecoverCrossMergeTask is an extension of MergeTask, which resumes the last merge progress by scanning
- * merge.log using LogAnalyzer and continue the unfinished merge.
+ * RecoverCrossMergeTask is an extension of MergeTask, which resumes the last merge progress by
+ * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
 public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
 

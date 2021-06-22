@@ -23,7 +23,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -67,7 +66,6 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
         long offset = logAnalyzer.getOffset();
         String targetFile = logAnalyzer.getTargetFile();
-        boolean fullMerge = logAnalyzer.isFullMerge();
         boolean isSeq = logAnalyzer.isSeq();
         if (targetFile == null || sourceFileList.isEmpty()) {
           return;
@@ -80,81 +78,48 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
           }
           return;
         }
-        if (fullMerge) {
+        // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+        TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
+        List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+        for (String file : sourceFileList) {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource targetTsFileResource = new TsFileResource(new File(targetFile));
-          long timePartition = targetTsFileResource.getTimePartition();
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
-          // if not complete compaction, resume merge
-          if (writer.hasCrashed()) {
-            if (offset > 0) {
-              writer.getIOWriterOut().truncate(offset - 1);
-            }
-            writer.close();
-            CompactionLogger compactionLogger =
-                new CompactionLogger(storageGroupDir, storageGroupName);
-            List<Modification> modifications = new ArrayList<>();
-            CompactionUtils.compact(
-                targetTsFileResource,
-                tsFileResourceList,
-                storageGroupName,
-                compactionLogger,
-                deviceSet,
-                isSeq,
-                modifications);
-            compactionLogger.close();
-          } else {
-            writer.close();
+          sourceTsFileResources.add(getSourceTsFile(file));
+        }
+        RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+        // if not complete compaction, resume merge
+        if (writer.hasCrashed()) {
+          if (offset > 0) {
+            writer.getIOWriterOut().truncate(offset - 1);
           }
+          writer.close();
+          CompactionLogger compactionLogger =
+              new CompactionLogger(storageGroupDir, storageGroupName);
+          CompactionUtils.compact(
+              targetResource,
+              sourceTsFileResources,
+              storageGroupName,
+              compactionLogger,
+              deviceSet,
+              isSeq);
+          // complete compaction and delete source file
+          tsFileResourceList.writeLock();
+          try {
+            if (Thread.currentThread().isInterrupted()) {
+              throw new InterruptedException(
+                  String.format("%s [Compaction] abort", storageGroupName));
+            }
+            tsFileResourceList.insertBefore(sourceTsFileResources.get(0), targetResource);
+            for (TsFileResource resource : tsFileResourceList) {
+              tsFileResourceList.remove(resource);
+            }
+          } finally {
+            tsFileResourceList.writeUnlock();
+          }
+          CompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, storageGroupName);
+          renameLevelFilesMods(sourceTsFileResources, targetResource);
+          compactionLogger.close();
         } else {
-          // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource targetResource = new TsFileResource(new File(targetFile));
-          long timePartition = targetResource.getTimePartition();
-          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (String file : sourceFileList) {
-            // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-            sourceTsFileResources.add(getSourceTsFile(file));
-          }
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
-          // if not complete compaction, resume merge
-          if (writer.hasCrashed()) {
-            if (offset > 0) {
-              writer.getIOWriterOut().truncate(offset - 1);
-            }
-            writer.close();
-            CompactionLogger compactionLogger =
-                new CompactionLogger(storageGroupDir, storageGroupName);
-            List<Modification> modifications = new ArrayList<>();
-            CompactionUtils.compact(
-                targetResource,
-                sourceTsFileResources,
-                storageGroupName,
-                compactionLogger,
-                deviceSet,
-                isSeq,
-                modifications);
-            // complete compaction and delete source file
-            tsFileResourceList.writeLock();
-            try {
-              if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException(
-                    String.format("%s [Compaction] abort", storageGroupName));
-              }
-              tsFileResourceList.insertBefore(sourceTsFileResources.get(0), targetResource);
-              for (TsFileResource resource : tsFileResourceList) {
-                tsFileResourceList.remove(resource);
-              }
-            } finally {
-              tsFileResourceList.writeUnlock();
-            }
-            CompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, storageGroupName);
-            // TODO: Operation with Modification
-            // renameLevelFilesMods(modifications, sourceTsFileResources,
-            // targetResource);
-            compactionLogger.close();
-          } else {
-            writer.close();
-          }
+          writer.close();
         }
       }
     } catch (IOException | IllegalPathException | InterruptedException e) {
@@ -168,6 +133,25 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
         }
       }
     }
+  }
+
+  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
+      throws IOException {
+    if (isSeq) {
+      for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
+        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+          return tsFileResource;
+        }
+      }
+    } else {
+      for (TsFileResource tsFileResource : unSequenceRecoverTsFileResources) {
+        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+          return tsFileResource;
+        }
+      }
+    }
+    logger.error("cannot get tsfile resource path: {}", filePath);
+    throw new IOException();
   }
 
   private TsFileResource getSourceTsFile(String filename) {
