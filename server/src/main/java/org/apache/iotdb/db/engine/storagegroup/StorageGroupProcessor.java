@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
@@ -513,38 +512,42 @@ public class StorageGroupProcessor {
   }
 
   private void recoverCompaction() {
-    // TODO: submit recover compaction task in each time partition
+    recoverInnerCompaction(true);
+    recoverInnerCompaction(false);
+  }
+
+  private void recoverInnerCompaction(boolean isSequence) {
     Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
-    List<String> sequenceDirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-
-    for(String sequenceDir : sequenceDirs) {
-      String storageGroupDir = sequenceDir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for(Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
-        File[] compactionLogs = CompactionUtils.findCompactionLogs(timePartitionDir);
-        for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setSequence(true);
-          context.setSequenceFileResourceList(tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-          context.setRecoverTsFileList(tsFileResourceManager.getSequenceRecoverTsFileResources());
-          CompactionTaskManager.getInstance().submitTask(logicalStorageGroupName, new SizeTiredCompactionRecoverTask(context));
-        }
-      }
+    List<String> dirs;
+    if (isSequence) {
+      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+    } else {
+      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
     }
-
-    List<String> unsequenceDirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-
-    for(String unsequenceDir : unsequenceDirs) {
-      String storageGroupDir = unsequenceDir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for(Long timePartition : timePartitions) {
+    for (String dir : dirs) {
+      String storageGroupDir =
+          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
+      for (Long timePartition : timePartitions) {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = CompactionUtils.findCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
           CompactionContext context = new CompactionContext();
-          context.setSequence(false);
-          context.setUnsequenceFileResourceList(tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
-          context.setRecoverTsFileList(tsFileResourceManager.getUnsequenceRecoverTsFileResources());
-          CompactionTaskManager.getInstance().submitTask(logicalStorageGroupName, new SizeTiredCompactionRecoverTask(context));
+          context.setCompactionLogFile(compactionLog);
+          context.setSequence(isSequence);
+          if (isSequence) {
+            context.setSequenceFileResourceList(
+                tsFileResourceManager.getSequenceListByTimePartition(timePartition));
+            context.setRecoverTsFileList(tsFileResourceManager.getSequenceRecoverTsFileResources());
+          } else {
+            context.setUnsequenceFileResourceList(
+                tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
+            context.setRecoverTsFileList(
+                tsFileResourceManager.getUnsequenceRecoverTsFileResources());
+          }
+          CompactionTaskManager.getInstance()
+              .submitTask(
+                  logicalStorageGroupName,
+                  config.getInnerCompactionStrategy().getCompactionRecoverTask(context));
         }
       }
     }
