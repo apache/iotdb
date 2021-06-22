@@ -3,6 +3,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
@@ -35,6 +36,8 @@ public class CompactionRecoverTask implements Callable<Void> {
     recoverInnerCompaction(true);
     recoverInnerCompaction(false);
     recoverCrossCompaction();
+    CompactionScheduler.decPartitionCompaction(
+        logicalStorageGroupName + "-" + logicalStorageGroupName, 0);
     compactionRecoverCallBack.call();
     return null;
   }

@@ -155,7 +155,7 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      boolean isClosed = checkClosed(unseqFile);
+      boolean isClosed = checkClosedAndNotMerging(unseqFile);
       if (!isClosed) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
@@ -206,18 +206,19 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     return false;
   }
 
-  private boolean checkClosed(TsFileResource unseqFile) {
-    boolean isClosed = unseqFile.isClosed();
-    if (!isClosed) {
+  private boolean checkClosedAndNotMerging(TsFileResource unseqFile) {
+    boolean isClosedAndNotMerging = unseqFile.isClosed() && !unseqFile.isMerging();
+    if (!isClosedAndNotMerging) {
       return false;
     }
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (!resource.getSeqFiles().get(seqIdx).isClosed()) {
-        isClosed = false;
+      if (!resource.getSeqFiles().get(seqIdx).isClosed()
+          || resource.getSeqFiles().get(seqIdx).isMerging()) {
+        isClosedAndNotMerging = false;
         break;
       }
     }
-    return isClosed;
+    return isClosedAndNotMerging;
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
