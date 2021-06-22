@@ -179,7 +179,6 @@ public class SQLConstant {
   public static final int TOK_CONTINUOUS_QUERY_DROP = 107;
   public static final int TOK_SHOW_CONTINUOUS_QUERIES = 108;
 
-  public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
