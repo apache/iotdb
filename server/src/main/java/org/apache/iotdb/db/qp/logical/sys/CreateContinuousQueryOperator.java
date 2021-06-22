@@ -19,11 +19,15 @@
 
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class CreateContinuousQueryOperator extends RootOperator {
+public class CreateContinuousQueryOperator extends Operator {
 
   private String querySql;
   private QueryOperator queryOperator;
@@ -83,5 +87,12 @@ public class CreateContinuousQueryOperator extends RootOperator {
 
   public QueryOperator getQueryOperator() {
     return queryOperator;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new CreateContinuousQueryPlan(
+        querySql, continuousQueryName, targetPath, everyInterval, forInterval, queryOperator);
   }
 }

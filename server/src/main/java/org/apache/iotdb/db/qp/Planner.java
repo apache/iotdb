@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -64,20 +65,12 @@ public class Planner {
     return new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
-  public PhysicalPlan queryOperatorToPhysicalPlan(SFWOperator queryOperator, int fetchSize)
+  public GroupByTimePlan operatorToPhysicalPlan(QueryOperator operator, int fetchSize)
       throws QueryProcessException {
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    if (queryOperator.isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
-      // while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
-      // set it to Integer.MAX_VALUE - 1
-      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    }
-    queryOperator = optimizeSFWOperator(queryOperator, maxDeduplicatedPathNum);
-    PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(queryOperator, fetchSize);
+    // optimize the logical operator (no need to check since the operator has been checked
+    // beforehand)
+    operator = (QueryOperator) logicalOptimize(operator, fetchSize);
+    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
   /** convert raw data query to physical plan directly */

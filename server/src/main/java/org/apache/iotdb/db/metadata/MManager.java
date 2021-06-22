@@ -330,11 +330,10 @@ public class MManager {
       }
     }
 
-    LogicalGenerator logicalGenerator = new LogicalGenerator();
     for (Map.Entry<String, CreateContinuousQueryPlan> cq : recoveredCQs.entrySet()) {
       CreateContinuousQueryPlan plan = cq.getValue();
       QueryOperator queryOperator =
-          (QueryOperator) logicalGenerator.generate(plan.getQuerySql(), ZoneId.systemDefault());
+          (QueryOperator) LogicalGenerator.generate(plan.getQuerySql(), ZoneId.systemDefault());
       plan.setQueryOperator(queryOperator);
       try {
         ContinuousQueryService.getInstance().register(plan, false);

@@ -25,9 +25,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -93,20 +93,14 @@ public class ContinuousQuery implements Runnable {
   }
 
   private GroupByTimePlan getQueryPlan() throws QueryProcessException {
-    GroupByTimePlan queryPlan;
 
     QueryOperator queryOperator = plan.getQueryOperator();
 
-    SelectOperator selectOperatorCopy = queryOperator.getSelectOperator().copy();
-    FilterOperator filterOperatorCopy = null;
-    if (queryOperator.getFilterOperator() != null) {
-      filterOperatorCopy = queryOperator.getFilterOperator().copy();
-    }
+    SelectComponent selectComponentCopy = new SelectComponent(queryOperator.getSelectComponent());
 
-    queryPlan = (GroupByTimePlan) planner.queryOperatorToPhysicalPlan(queryOperator, 1024);
+    GroupByTimePlan queryPlan = planner.operatorToPhysicalPlan(queryOperator, 1024);
 
-    queryOperator.setSelectOperator(selectOperatorCopy);
-    queryOperator.setFilterOperator(filterOperatorCopy);
+    queryOperator.setSelectComponent(selectComponentCopy);
 
     long timestamp = System.currentTimeMillis();
     queryPlan.setStartTime(timestamp - plan.getForInterval());
@@ -141,7 +135,12 @@ public class ContinuousQuery implements Runnable {
     int fetchSize =
         (int)
             Math.min(
-                10, Math.ceil((float) plan.getForInterval() / plan.getQueryOperator().getUnit()));
+                10,
+                Math.ceil(
+                    (float) plan.getForInterval()
+                        / ((GroupByClauseComponent)
+                                plan.getQueryOperator().getSpecialClauseComponent())
+                            .getUnit()));
 
     Object[][] columns = getColumns(columnSize, fetchSize, dataType);
     long[][] timestamps = new long[columnSize][fetchSize];

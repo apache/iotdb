@@ -109,29 +109,9 @@ statement
       resampleClause?
       BEGIN
       cqSelectIntoClause
-      END  # createContinuousQueryStatement
-    | DROP CONTINUOUS QUERY continuousQueryName=ID# dropContinuousQueryStatement
-    | SHOW CONTINUOUS QUERIES # showContinuousQueriesStatement
-    ;
-
-
-resampleClause
-    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
-
-cqSelectIntoClause
-    : SELECT selectElements
-    INTO (fullPath | suffixPath)
-    fromClause
-    whereClause?
-    cqGroupByTimeClause
-    ;
-
-
-cqGroupByTimeClause
-    : GROUP BY TIME LR_BRACKET
-      DURATION
-      RR_BRACKET
-      (COMMA LEVEL OPERATOR_EQ INT)?
+      END  #createContinuousQueryStatement
+    | DROP CONTINUOUS QUERY continuousQueryName=ID #dropContinuousQueryStatement
+    | SHOW CONTINUOUS QUERIES #showContinuousQueriesStatement
     ;
 
 selectClause
@@ -354,6 +334,23 @@ indexPredicateClause
 
 sequenceClause
     : LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
+
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : selectClause
+    INTO (fullPath | suffixPath)
+    fromClause
+    cqGroupByTimeClause
+    ;
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
     ;
 
 comparisonOperator

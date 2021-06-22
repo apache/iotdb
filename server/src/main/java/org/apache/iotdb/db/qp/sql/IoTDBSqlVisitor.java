@@ -110,6 +110,9 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CqGroupByTimeClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CqSelectIntoClauseContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateContinuousQueryStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
@@ -122,6 +125,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeletePartitionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropContinuousQueryStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.DropRoleContext;
@@ -182,6 +186,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.PrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.PropertyContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.PropertyValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.RemoveFileContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ResampleClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ResultColumnContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.RevokeRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.RevokeRoleFromUserContext;
@@ -196,6 +201,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildNodesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildPathsContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowContinuousQueriesStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFunctionsContext;
@@ -1090,23 +1096,20 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitDropContinuousQueryStatement(
-      SqlBaseParser.DropContinuousQueryStatementContext ctx) {
-    DropContinuousQueryOperator operator =
+  public Operator visitDropContinuousQueryStatement(DropContinuousQueryStatementContext ctx) {
+    DropContinuousQueryOperator dropContinuousQueryOperator =
         new DropContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_DROP);
-    operator.setContinuousQueryName(ctx.continuousQueryName.getText());
-    return operator;
+    dropContinuousQueryOperator.setContinuousQueryName(ctx.continuousQueryName.getText());
+    return dropContinuousQueryOperator;
   }
 
   @Override
-  public Operator visitShowContinuousQueriesStatement(
-      SqlBaseParser.ShowContinuousQueriesStatementContext ctx) {
+  public Operator visitShowContinuousQueriesStatement(ShowContinuousQueriesStatementContext ctx) {
     return new ShowContinuousQueriesOperator(SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES);
   }
 
   @Override
-  public Operator visitCreateContinuousQueryStatement(
-      SqlBaseParser.CreateContinuousQueryStatementContext ctx) {
+  public Operator visitCreateContinuousQueryStatement(CreateContinuousQueryStatementContext ctx) {
     CreateContinuousQueryOperator createContinuousQueryOperator =
         new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
 
@@ -1120,17 +1123,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     parseCqSelectIntoClause(ctx.cqSelectIntoClause(), createContinuousQueryOperator);
 
-    QueryOperator queryOperator = createContinuousQueryOperator.getQueryOperator();
-
     StringBuilder sb = new StringBuilder();
     sb.append("select ");
-    sb.append(ctx.cqSelectIntoClause().selectElements().getText());
+    sb.append(ctx.cqSelectIntoClause().selectClause().getText().substring(6));
     sb.append(" from ");
     sb.append(ctx.cqSelectIntoClause().fromClause().prefixPath(0).getText());
-    if (ctx.cqSelectIntoClause().whereClause() != null) {
-      sb.append(" ");
-      sb.append(getFullText(ctx.cqSelectIntoClause().whereClause()).toLowerCase());
-    }
+
     sb.append(" group by ([now() - ");
     String groupByInterval = ctx.cqSelectIntoClause().cqGroupByTimeClause().DURATION().getText();
     if (createContinuousQueryOperator.getForInterval() == 0) {
@@ -1142,80 +1140,64 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     sb.append(", now()), ");
     sb.append(groupByInterval);
     sb.append(")");
-    if (queryOperator.isGroupByLevel()) {
+    if (queryOp.isGroupByLevel()) {
       sb.append(", level = ");
-      sb.append(queryOperator.getLevel());
+      sb.append(queryOp.getSpecialClauseComponent().getLevel());
     }
     createContinuousQueryOperator.setQuerySql(sb.toString());
 
     if (createContinuousQueryOperator.getEveryInterval() == 0) {
-      createContinuousQueryOperator.setEveryInterval(queryOperator.getUnit());
+      createContinuousQueryOperator.setEveryInterval(
+          ((GroupByClauseComponent) queryOp.getSpecialClauseComponent()).getUnit());
     }
 
     if (createContinuousQueryOperator.getForInterval() == 0) {
-      createContinuousQueryOperator.setForInterval(queryOperator.getUnit());
+      createContinuousQueryOperator.setForInterval(
+          ((GroupByClauseComponent) queryOp.getSpecialClauseComponent()).getUnit());
     }
 
     return createContinuousQueryOperator;
   }
 
-  private String getFullText(ParserRuleContext context) {
-    if (context.start == null
-        || context.stop == null
-        || context.start.getStartIndex() < 0
-        || context.stop.getStopIndex() < 0) return context.getText();
-
-    return context
-        .start
-        .getInputStream()
-        .getText(Interval.of(context.start.getStartIndex(), context.stop.getStopIndex()));
-  }
-
   public void parseResampleClause(
-      SqlBaseParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
+      ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
 
     if (ctx.DURATION().size() == 1) {
       if (ctx.EVERY() != null) {
-        operator.setEveryInterval(parseDuration(ctx.DURATION(0).getText()));
+        operator.setEveryInterval(
+            DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
       } else if (ctx.FOR() != null) {
-        operator.setForInterval(parseDuration(ctx.DURATION(0).getText()));
+        operator.setForInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
       }
     } else if (ctx.DURATION().size() == 2) {
-      operator.setEveryInterval(parseDuration(ctx.DURATION(0).getText()));
-      operator.setForInterval(parseDuration(ctx.DURATION(1).getText()));
+      operator.setEveryInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(0).getText()));
+      operator.setForInterval(DatetimeUtils.convertDurationStrToLong(ctx.DURATION(1).getText()));
     }
   }
 
   public void parseCqSelectIntoClause(
-      SqlBaseParser.CqSelectIntoClauseContext ctx,
-      CreateContinuousQueryOperator createContinuousQueryOperator) {
+      CqSelectIntoClauseContext ctx, CreateContinuousQueryOperator createContinuousQueryOperator) {
 
-    QueryOperator queryOperator = new QueryOperator(SQLConstant.TOK_QUERY);
+    queryOp = new GroupByQueryOperator();
 
-    SelectOperator selectOp = (SelectOperator) visit(ctx.selectElements());
-    if (selectOp.getSuffixPaths().size() > 1) {
-      throw new SQLParserException("Cq Select Into currently does not support multiple suffixes.");
-    }
-    queryOperator.setSelectOperator(selectOp);
+    parseSelectClause(ctx.selectClause());
+    parseFromClause(ctx.fromClause());
 
-    FromOperator fromOp = (FromOperator) visit(ctx.fromClause());
-    if (fromOp.getPrefixPaths().size() > 1) {
-      throw new SQLParserException("Cq Select Into currently does not support multiple prefixes.");
-    }
-    queryOperator.setFromOperator(fromOp);
-
-    if (ctx.whereClause() != null) {
-      Operator operator = visit(ctx.whereClause());
-      if (operator instanceof FilterOperator) {
-        FilterOperator whereOp = (FilterOperator) operator;
-        queryOperator.setFilterOperator(whereOp.getChildren().get(0));
-      }
+    if (queryOp.getSelectComponent().getResultColumns().size() > 1) {
+      throw new SQLParserException(
+          "Cq Select Into: CQ currently does not support multiple result columns.");
     }
 
-    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), queryOperator);
+    if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
+      throw new SQLParserException(
+          "Cq Select Into: CQ currently does not support multiple series .");
+    }
 
-    int fromLen = queryOperator.getFromOperator().getPrefixPaths().get(0).getNodeLength();
-    if (queryOperator.getLevel() >= fromLen) {
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
+
+    int fromLen = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
+    int queryLevel = queryOp.getSpecialClauseComponent().getLevel();
+    if (queryLevel >= fromLen) {
       throw new SQLParserException(
           "Cq Select Into: Level should not exceed the <from_prefix> length.");
     }
@@ -1225,7 +1207,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       targetPath = parseFullPath(ctx.fullPath());
     } else if (ctx.suffixPath() != null) {
       List<String> targetNodes = new ArrayList<>();
-      int trueLevel = queryOperator.getLevel();
+      int trueLevel = queryLevel;
       if (trueLevel == -1) {
         trueLevel = fromLen - 1;
       }
@@ -1237,56 +1219,41 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
 
     createContinuousQueryOperator.setTargetPath(targetPath);
-    createContinuousQueryOperator.setQueryOperator(queryOperator);
+    createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
-  public void parseCqGroupByTimeClause(
-      SqlBaseParser.CqGroupByTimeClauseContext ctx, QueryOperator queryOperator) {
-    queryOperator.setGroupByTime(true);
-    queryOperator.setLeftCRightO(true);
+  public void parseCqGroupByTimeClause(CqGroupByTimeClauseContext ctx) {
 
-    queryOperator.setUnit(parseDuration(ctx.DURATION().getText()));
-    queryOperator.setSlidingStep(queryOperator.getUnit());
+    GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
+
+    groupByClauseComponent.setUnit(
+        parseTimeUnitOrSlidingStep(ctx.DURATION().getText(), true, groupByClauseComponent));
+
+    groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
+
+    groupByClauseComponent.setLeftCRightO(true);
 
     if (ctx.LEVEL() != null && ctx.INT() != null) {
-      queryOperator.setGroupByLevel(true);
-      queryOperator.setLevel(Integer.parseInt(ctx.INT().getText()));
+      groupByClauseComponent.setLevel(Integer.parseInt(ctx.INT().getText()));
     }
+
+    queryOp.setSpecialClauseComponent(groupByClauseComponent);
   }
 
   @Override
-  public Operator visitResampleClause(SqlBaseParser.ResampleClauseContext ctx) {
+  public Operator visitResampleClause(ResampleClauseContext ctx) {
     return visitChildren(ctx);
   }
 
   @Override
-  public Operator visitCqSelectIntoClause(SqlBaseParser.CqSelectIntoClauseContext ctx) {
+  public Operator visitCqSelectIntoClause(CqSelectIntoClauseContext ctx) {
     return visitChildren(ctx);
   }
 
   @Override
-  public Operator visitCqGroupByTimeClause(SqlBaseParser.CqGroupByTimeClauseContext ctx) {
+  public Operator visitCqGroupByTimeClause(CqGroupByTimeClauseContext ctx) {
     return visitChildren(ctx);
   }
-
-  @Override
-  public Operator visitAggregationElement(AggregationElementContext ctx) {
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
-
-    for (AggregationCallContext aggregationCallContext : ctx.aggregationCall()) {
-      BuiltInFunctionCallContext builtInFunctionCallContext =
-          aggregationCallContext.builtInFunctionCall();
-      UdfCallContext udfCallContext = aggregationCallContext.udfCall();
-      if (builtInFunctionCallContext != null) {
-        selectOp.addClusterPath(
-            parseSuffixPath(builtInFunctionCallContext.suffixPath()),
-            builtInFunctionCallContext.functionName().getText());
-        selectOp.addUdf(null);
-      } else if (udfCallContext != null) {
-        selectOp.addClusterPath(null, null);
-        parseUdfCall(udfCallContext, selectOp);
-      }
-    }
 
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(ExpressionContext context) {
