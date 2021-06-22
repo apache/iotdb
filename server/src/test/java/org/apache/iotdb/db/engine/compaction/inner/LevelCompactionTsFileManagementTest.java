@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -50,6 +50,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    tsFileResourceManager =
+        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -62,19 +64,17 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
   /** just compaction once */
   @Test
   public void testAddRemoveAndIterator() {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     for (TsFileResource tsFileResource : seqResources) {
-      levelCompactionTsFileManagement.add(tsFileResource, true);
+      tsFileResourceManager.add(tsFileResource, true);
     }
-    levelCompactionTsFileManagement.addAll(seqResources, false);
-    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
-    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(false).size());
-    assertEquals(6, levelCompactionTsFileManagement.size(true));
-    assertEquals(6, levelCompactionTsFileManagement.size(false));
-    assertTrue(levelCompactionTsFileManagement.contains(seqResources.get(0), true));
+    tsFileResourceManager.addAll(seqResources, false);
+    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(6, tsFileResourceManager.getTsFileList(false).size());
+    assertEquals(6, tsFileResourceManager.size(true));
+    assertEquals(6, tsFileResourceManager.size(false));
+    assertTrue(tsFileResourceManager.contains(seqResources.get(0), true));
     assertFalse(
-        levelCompactionTsFileManagement.contains(
+        tsFileResourceManager.contains(
             new TsFileResource(
                 new File(
                     TestConstant.BASE_OUTPUT_PATH.concat(
@@ -87,9 +87,9 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                             + 0
                             + ".tsfile"))),
             false));
-    assertTrue(levelCompactionTsFileManagement.contains(seqResources.get(0), false));
+    assertTrue(tsFileResourceManager.contains(seqResources.get(0), false));
     assertFalse(
-        levelCompactionTsFileManagement.contains(
+        tsFileResourceManager.contains(
             new TsFileResource(
                 new File(
                     TestConstant.BASE_OUTPUT_PATH.concat(
@@ -102,29 +102,25 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                             + 0
                             + ".tsfile"))),
             false));
-    assertFalse(levelCompactionTsFileManagement.isEmpty(true));
-    assertFalse(levelCompactionTsFileManagement.isEmpty(false));
-    levelCompactionTsFileManagement.remove(
-        levelCompactionTsFileManagement.getTsFileList(true).get(0), true);
-    levelCompactionTsFileManagement.remove(
-        levelCompactionTsFileManagement.getTsFileList(false).get(0), false);
-    assertEquals(5, levelCompactionTsFileManagement.getTsFileList(true).size());
-    levelCompactionTsFileManagement.removeAll(
-        levelCompactionTsFileManagement.getTsFileList(false), false);
-    assertEquals(0, levelCompactionTsFileManagement.getTsFileList(false).size());
+    assertFalse(tsFileResourceManager.isEmpty(true));
+    assertFalse(tsFileResourceManager.isEmpty(false));
+    tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(true).get(0), true);
+    tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(false).get(0), false);
+    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
+    tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(false), false);
+    assertEquals(0, tsFileResourceManager.getTsFileList(false).size());
     long count = 0;
-    Iterator<TsFileResource> iterator = levelCompactionTsFileManagement.getIterator(true);
+    Iterator<TsFileResource> iterator = tsFileResourceManager.getIterator(true);
     while (iterator.hasNext()) {
       iterator.next();
       count++;
     }
     assertEquals(5, count);
-    levelCompactionTsFileManagement.removeAll(
-        levelCompactionTsFileManagement.getTsFileList(true), true);
-    assertEquals(0, levelCompactionTsFileManagement.getTsFileList(true).size());
-    assertTrue(levelCompactionTsFileManagement.isEmpty(true));
-    assertTrue(levelCompactionTsFileManagement.isEmpty(false));
-    levelCompactionTsFileManagement.add(
+    tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(true), true);
+    assertEquals(0, tsFileResourceManager.getTsFileList(true).size());
+    assertTrue(tsFileResourceManager.isEmpty(true));
+    assertTrue(tsFileResourceManager.isEmpty(false));
+    tsFileResourceManager.add(
         new TsFileResource(
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
@@ -137,7 +133,7 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile"))),
         true);
-    levelCompactionTsFileManagement.add(
+    tsFileResourceManager.add(
         new TsFileResource(
             new File(
                 TestConstant.BASE_OUTPUT_PATH.concat(
@@ -150,32 +146,29 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + 0
                         + ".tsfile"))),
         false);
-    assertEquals(1, levelCompactionTsFileManagement.size(true));
-    assertEquals(1, levelCompactionTsFileManagement.size(false));
-    levelCompactionTsFileManagement.clear();
-    assertEquals(0, levelCompactionTsFileManagement.size(true));
-    assertEquals(0, levelCompactionTsFileManagement.size(false));
+    assertEquals(1, tsFileResourceManager.size(true));
+    assertEquals(1, tsFileResourceManager.size(false));
+    tsFileResourceManager.clear();
+    assertEquals(0, tsFileResourceManager.size(true));
+    assertEquals(0, tsFileResourceManager.size(false));
   }
 
   @Test
   public void testIteratorRemove() {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     for (TsFileResource tsFileResource : seqResources) {
-      levelCompactionTsFileManagement.add(tsFileResource, true);
+      tsFileResourceManager.add(tsFileResource, true);
     }
-    levelCompactionTsFileManagement.addAll(seqResources, false);
-    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
+    tsFileResourceManager.addAll(seqResources, false);
+    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
 
-    Iterator<TsFileResource> tsFileResourceIterator =
-        levelCompactionTsFileManagement.getIterator(true);
+    Iterator<TsFileResource> tsFileResourceIterator = tsFileResourceManager.getIterator(true);
     tsFileResourceIterator.next();
     try {
       tsFileResourceIterator.remove();
     } catch (UnsupportedOperationException e) {
       // pass
     }
-    assertEquals(6, levelCompactionTsFileManagement.getTsFileList(true).size());
+    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
 
     TsFileResource tsFileResource1 =
         new TsFileResource(
@@ -201,8 +194,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    levelCompactionTsFileManagement.add(tsFileResource1, true);
-    levelCompactionTsFileManagement.add(tsFileResource2, true);
+    tsFileResourceManager.add(tsFileResource1, true);
+    tsFileResourceManager.add(tsFileResource2, true);
     TsFileResource tsFileResource3 =
         new TsFileResource(
             new File(
@@ -215,9 +208,8 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    levelCompactionTsFileManagement.add(tsFileResource3, true);
-    Iterator<TsFileResource> tsFileResourceIterator2 =
-        levelCompactionTsFileManagement.getIterator(true);
+    tsFileResourceManager.add(tsFileResource3, true);
+    Iterator<TsFileResource> tsFileResourceIterator2 = tsFileResourceManager.getIterator(true);
     int count = 0;
     while (tsFileResourceIterator2.hasNext()) {
       count++;

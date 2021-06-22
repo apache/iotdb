@@ -90,7 +90,8 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
                 resource);
           }
           CompactionTaskManager.getInstance()
-              .submitTask(storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+              .submitTask(
+                  storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
           taskSubmitted = true;
           LOGGER.info(
               "{}-{} [Compaction] submit a inner compaction task of {} files",
@@ -118,7 +119,8 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
 
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
-              .submitTask(storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+              .submitTask(
+                  storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
           LOGGER.info(
               "{} [Compaction] submit a inner compaction task of {} files",
               storageGroupName,

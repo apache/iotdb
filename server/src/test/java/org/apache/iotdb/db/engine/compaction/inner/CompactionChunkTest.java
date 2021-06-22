@@ -205,8 +205,7 @@ public class CompactionChunkTest extends LevelCompactionTest {
             entry,
             targetTsfileResource,
             writer,
-            new HashMap<>(),
-            new ArrayList<>());
+            new HashMap<>());
       }
       reader.close();
     }

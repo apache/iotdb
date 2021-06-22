@@ -21,8 +21,9 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -182,6 +183,8 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    tsFileResourceManager =
+        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @After
@@ -193,17 +196,10 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
   // test file compaction larger than 1024 sensor
   @Test
   public void testSensorWithTwoOrThreeNode() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     QueryContext context = new QueryContext();
@@ -217,7 +213,7 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
             path,
             measurementSchemas[2688].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -228,11 +224,5 @@ public class LevelCompactionMoreDataTest extends LevelCompactionTest {
         assertEquals(batchData.getTimeByIndex(i) + 2688, batchData.getDoubleByIndex(i), 0.001);
       }
     }
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(
-      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
-    this.compactionMergeWorking = false;
   }
 }

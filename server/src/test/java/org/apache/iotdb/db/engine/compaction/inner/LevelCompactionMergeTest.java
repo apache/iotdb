@@ -21,11 +21,12 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -63,6 +64,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    tsFileResourceManager =
+        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -75,17 +78,10 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   /** just compaction once */
   @Test
   public void testCompactionMergeOnce() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     QueryContext context = new QueryContext();
@@ -99,7 +95,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -115,17 +111,10 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   /** just compaction stable list */
   @Test
   public void testCompactionMergeStableList() throws IllegalPathException, IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     QueryContext context = new QueryContext();
@@ -139,7 +128,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -165,8 +154,6 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource forthSeqTsFileResource = seqResources.get(3);
     PartialPath path =
         new PartialPath(
@@ -180,15 +167,10 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
           new Deletion(path, forthSeqTsFileResource.getTsFileSize() / 10, 300, 310);
       sourceModificationFile.write(modification);
     }
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     QueryContext context = new QueryContext();
@@ -197,7 +179,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -210,7 +192,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     }
     assertEquals(489, count);
 
-    List<TsFileResource> tsFileResourceList = levelCompactionTsFileManagement.getTsFileList(true);
+    List<TsFileResource> tsFileResourceList = tsFileResourceManager.getTsFileList(true);
     for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.getModFile().remove();
       tsFileResource.remove();
@@ -225,21 +207,14 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(1);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     TsFileResource newTsFileResource =
-        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+        tsFileResourceManager.getSequenceListByTimePartition(0L).getArrayList().get(0);
     TsFileSequenceReader tsFileSequenceReader =
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
@@ -262,21 +237,14 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(100000);
 
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     TsFileResource newTsFileResource =
-        levelCompactionTsFileManagement.getTsFileListByTimePartition(true, 0).get(0);
+        tsFileResourceManager.getSequenceListByTimePartition(0L).getArrayList().get(0);
     TsFileSequenceReader tsFileSequenceReader =
         new TsFileSequenceReader(newTsFileResource.getTsFilePath());
     Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
@@ -302,9 +270,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
   public void testCompactionDiffTimeSeries()
       throws IOException, WriteProcessException, IllegalPathException {
     List<TsFileResource> compactionFiles = prepareTsFileResources();
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(compactionFiles, true);
+    tsFileResourceManager.addAll(compactionFiles, true);
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -316,7 +282,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[1].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
@@ -330,13 +296,8 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     }
     assertEquals(count, 1);
 
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionOnePartitionUtil =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionOnePartitionUtil.call();
-    while (compactionMergeWorking) {
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     context = new QueryContext();
@@ -345,7 +306,7 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
             path,
             measurementSchemas[1].getType(),
             context,
-            levelCompactionTsFileManagement.getTsFileList(true),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
