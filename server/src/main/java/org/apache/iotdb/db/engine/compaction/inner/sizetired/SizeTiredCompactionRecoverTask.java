@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
@@ -28,15 +27,20 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
   protected TsFileResourceList tsFileResourceList;
   protected List<TsFileResource> recoverTsFileResources;
 
-  public SizeTiredCompactionRecoverTask(CompactionContext context) {
-    super(context);
-    compactionLogFile = context.getCompactionLogFile();
-    storageGroupDir = context.getStorageGroupDir();
-    tsFileResourceList =
-        context.isSequence()
-            ? context.getSequenceFileResourceList()
-            : context.getUnsequenceFileResourceList();
-    recoverTsFileResources = context.getRecoverTsFileList();
+  public SizeTiredCompactionRecoverTask(
+      String storageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      File compactionLogFile,
+      String storageGroupDir,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> recoverTsFileResources,
+      boolean sequence) {
+    super(storageGroupName, virtualStorageGroup, timePartition, tsFileResourceList, null, sequence);
+    this.compactionLogFile = compactionLogFile;
+    this.storageGroupDir = storageGroupDir;
+    this.tsFileResourceList = tsFileResourceList;
+    this.recoverTsFileResources = recoverTsFileResources;
   }
 
   public void doCompaction() {

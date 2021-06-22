@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
@@ -32,19 +31,17 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected boolean sequence;
   protected Set<String> skippedDevicesSet;
 
-  public SizeTiredCompactionTask(CompactionContext context) {
-    super(
-        context.getStorageGroupName() + "-" + context.getVirtualStorageGroupName(),
-        context.getTimePartitionId());
-    this.tsFileResourceList =
-        context.isSequence()
-            ? context.getSequenceFileResourceList()
-            : context.getUnsequenceFileResourceList();
-    this.selectedTsFileResourceList =
-        context.isSequence()
-            ? context.getSelectedSequenceFiles()
-            : context.getSelectedUnsequenceFiles();
-    this.sequence = context.isSequence();
+  public SizeTiredCompactionTask(
+      String storageGroupName,
+      String virtualStorageGroupName,
+      long timePartition,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence) {
+    super(storageGroupName + "-" + virtualStorageGroupName, timePartition);
+    this.tsFileResourceList = tsFileResourceList;
+    this.selectedTsFileResourceList = selectedTsFileResourceList;
+    this.sequence = sequence;
     this.skippedDevicesSet = new HashSet<>();
   }
 

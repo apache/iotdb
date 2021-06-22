@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
-
 public interface ICompactionTaskFactory {
   AbstractCompactionTask createTask(CompactionContext context);
 }

@@ -2,7 +2,6 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
@@ -54,23 +53,22 @@ public class CompactionRecoverTask implements Callable<Void> {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = CompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setCompactionLogFile(compactionLog);
-          context.setSequence(isSequence);
-          if (isSequence) {
-            context.setSequenceFileResourceList(
-                tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(tsFileResourceManager.getSequenceRecoverTsFileResources());
-          } else {
-            context.setUnsequenceFileResourceList(
-                tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(
-                tsFileResourceManager.getUnsequenceRecoverTsFileResources());
-          }
           IoTDBDescriptor.getInstance()
               .getConfig()
               .getInnerCompactionStrategy()
-              .getCompactionRecoverTask(context)
+              .getCompactionRecoverTask(
+                  tsFileResourceManager.getStorageGroupName(),
+                  tsFileResourceManager.getVirtualStorageGroup(),
+                  timePartition,
+                  compactionLog,
+                  storageGroupDir,
+                  isSequence
+                      ? tsFileResourceManager.getSequenceListByTimePartition(timePartition)
+                      : tsFileResourceManager.getUnsequenceListByTimePartition(timePartition),
+                  isSequence
+                      ? tsFileResourceManager.getSequenceRecoverTsFileResources()
+                      : tsFileResourceManager.getUnsequenceRecoverTsFileResources(),
+                  isSequence)
               .call();
         }
       }

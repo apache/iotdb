@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;

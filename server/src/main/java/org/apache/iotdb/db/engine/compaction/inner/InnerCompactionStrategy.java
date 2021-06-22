@@ -19,29 +19,64 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+
+import java.io.File;
+import java.util.List;
 
 public enum InnerCompactionStrategy {
   SIZE_TIRED_COMPACTION;
 
-  public AbstractInnerSpaceCompactionTask getCompactionTask(CompactionContext context) {
+  public AbstractInnerSpaceCompactionTask getCompactionTask(
+      String storageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence) {
+    AbstractInnerSpaceCompactionTask result;
     switch (this) {
       case SIZE_TIRED_COMPACTION:
       default:
-        return new SizeTiredCompactionTask(context);
+        result =
+            new SizeTiredCompactionTask(
+                storageGroupName,
+                virtualStorageGroup,
+                timePartition,
+                tsFileResourceList,
+                selectedTsFileResourceList,
+                sequence);
+        break;
     }
+    return result;
   }
 
-  public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(CompactionContext context) {
+  public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(
+      String storageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      File compactionLogFile,
+      String storageGroupDir,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> recoverTsFileResources,
+      boolean sequence) {
     switch (this) {
       case SIZE_TIRED_COMPACTION:
       default:
-        return new SizeTiredCompactionRecoverTask(context);
+        return new SizeTiredCompactionRecoverTask(
+            storageGroupName,
+            virtualStorageGroup,
+            timePartition,
+            compactionLogFile,
+            storageGroupDir,
+            tsFileResourceList,
+            recoverTsFileResources,
+            sequence);
     }
   }
 
