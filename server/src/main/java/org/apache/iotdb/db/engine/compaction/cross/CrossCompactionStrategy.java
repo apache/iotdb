@@ -1,12 +1,14 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import java.util.List;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+
+import java.io.File;
+import java.util.List;
 
 public enum CrossCompactionStrategy {
   INPLACE_COMPACTION;
@@ -40,25 +42,22 @@ public enum CrossCompactionStrategy {
   public AbstractCrossSpaceCompactionTask getCompactionRecoverTask(
       String storageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      int concurrentMergeCount,
+      File logFile) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionRecoverTask(storageGroupName,
+        return new InplaceCompactionRecoverTask(
+            storageGroupName,
             timePartitionId,
-            mergeResource,
             storageGroupDir,
             seqTsFileResourceList,
             unSeqTsFileResourceList,
-            selectedSeqTsFileResourceList,
-            selectedUnSeqTsFileResourceList,
-            concurrentMergeCount);
+            concurrentMergeCount,
+            logFile);
     }
   }
 

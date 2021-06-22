@@ -21,13 +21,28 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
-  @Override
-  public AbstractCompactionTask createTask(CompactionContext context) {
+import java.util.List;
+
+public class InnerSpaceCompactionTaskFactory {
+  public AbstractCompactionTask createTask(
+      String storageGroupName,
+      String virtualStorageGroup,
+      long timePartition,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence) {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getInnerCompactionStrategy()
-        .getCompactionTask(context);
+        .getCompactionTask(
+            storageGroupName,
+            virtualStorageGroup,
+            timePartition,
+            tsFileResourceList,
+            selectedTsFileResourceList,
+            sequence);
   }
 }

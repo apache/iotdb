@@ -18,10 +18,29 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
-public class FakedInnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-  @Override
-  public AbstractCompactionTask createTask(CompactionContext context) {
-    return new FakedInnerSpaceCompactionTask(context);
+import java.util.List;
+
+public class FakedInnerSpaceCompactionTaskFactory extends InnerSpaceCompactionTaskFactory {
+
+  public FakedInnerSpaceCompactionTaskFactory() {}
+
+  public AbstractCompactionTask createTask(
+      String storageGroupName,
+      String virtualStorageGroupName,
+      long timePartition,
+      TsFileResourceList tsFileResourceList,
+      List<TsFileResource> selectedTsFileResourceList,
+      boolean sequence) {
+    return new FakedInnerSpaceCompactionTask(
+        storageGroupName,
+        virtualStorageGroupName,
+        timePartition,
+        tsFileResourceList,
+        selectedTsFileResourceList,
+        sequence);
   }
 }

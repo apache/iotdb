@@ -56,23 +56,22 @@ public class CompactionRecoverTask implements Callable<Void> {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = CompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setCompactionLogFile(compactionLog);
-          context.setSequence(isSequence);
-          if (isSequence) {
-            context.setSequenceFileResourceList(
-                tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(tsFileResourceManager.getSequenceRecoverTsFileResources());
-          } else {
-            context.setUnsequenceFileResourceList(
-                tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(
-                tsFileResourceManager.getUnsequenceRecoverTsFileResources());
-          }
           IoTDBDescriptor.getInstance()
               .getConfig()
               .getInnerCompactionStrategy()
-              .getCompactionRecoverTask(context)
+              .getCompactionRecoverTask(
+                  tsFileResourceManager.getStorageGroupName(),
+                  tsFileResourceManager.getVirtualStorageGroup(),
+                  timePartition,
+                  compactionLog,
+                  storageGroupDir,
+                  isSequence
+                      ? tsFileResourceManager.getSequenceListByTimePartition(timePartition)
+                      : tsFileResourceManager.getUnsequenceListByTimePartition(timePartition),
+                  isSequence
+                      ? tsFileResourceManager.getSequenceRecoverTsFileResources()
+                      : tsFileResourceManager.getUnsequenceRecoverTsFileResources(),
+                  isSequence)
               .call();
         }
       }
@@ -89,16 +88,17 @@ public class CompactionRecoverTask implements Callable<Void> {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = MergeLogger.findCrossSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setCompactionLogFile(compactionLog);
-          context.setSequenceFileResourceList(
-              tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-          context.setUnsequenceFileResourceList(
-              tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
           IoTDBDescriptor.getInstance()
               .getConfig()
               .getCrossCompactionStrategy()
-              .getCompactionRecoverTask(context)
+              .getCompactionRecoverTask(
+                  logicalStorageGroupName,
+                  timePartition,
+                  storageGroupDir,
+                  tsFileResourceManager.getSequenceListByTimePartition(timePartition),
+                  tsFileResourceManager.getUnsequenceListByTimePartition(timePartition),
+                  1,
+                  compactionLog)
               .call();
         }
       }

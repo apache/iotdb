@@ -56,13 +56,12 @@ import java.util.Collections;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-public class LevelCompactionMoreDataTest extends LevelCompactionTest {
+public class InnerCompactionMoreDataTest extends InnerCompactionTest {
 
   protected int measurementNum = 3000;
   protected int seqFileNum = 2;
 
   File tempSGDir;
-  boolean compactionMergeWorking = false;
 
   @Override
   void prepareSeries() throws MetadataException {

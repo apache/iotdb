@@ -65,8 +65,8 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
         seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
   }
 
-  public void recoverMerge(boolean continueMerge) throws IOException, MetadataException {
-    File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
+  public void recoverMerge(boolean continueMerge, File logFile)
+      throws IOException, MetadataException {
     if (!logFile.exists()) {
       logger.info("{} no merge.log, merge recovery ends", taskName);
       return;

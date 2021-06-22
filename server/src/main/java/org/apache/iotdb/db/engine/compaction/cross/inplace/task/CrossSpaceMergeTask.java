@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -68,8 +67,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
   States states = States.START;
   MergeMultiChunkTask chunkTask;
   MergeFileTask fileTask;
-  private MergeCallback callback;
-  public ModificationFile mergingModification;
+  private final MergeCallback callback;
 
   CrossSpaceMergeTask(
       List<TsFileResource> seqFiles,

@@ -198,7 +198,7 @@ public class CompactionScheduler {
       long timePartition,
       TsFileResourceList tsFileResources,
       boolean sequence,
-      ICompactionTaskFactory taskFactory) {
+      InnerSpaceCompactionTaskFactory taskFactory) {
     AbstractInnerSpaceCompactionSelector innerSpaceCompactionSelector =
         config
             .getInnerCompactionStrategy()

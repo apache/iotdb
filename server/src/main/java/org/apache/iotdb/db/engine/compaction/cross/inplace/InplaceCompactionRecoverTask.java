@@ -2,7 +2,6 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.RecoverCrossMergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -12,6 +11,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -20,27 +20,27 @@ import java.util.List;
 public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractCrossSpaceCompactionRecoverTask.class);
+  private File logFile;
 
   public InplaceCompactionRecoverTask(
       String storageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      int concurrentMergeCount,
+      File logFile) {
     super(
         storageGroupName,
         timePartitionId,
-        mergeResource,
+        null,
         storageGroupDir,
         seqTsFileResourceList,
         unSeqTsFileResourceList,
-        selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList,
+        seqTsFileResourceList,
+        unSeqTsFileResourceList,
         concurrentMergeCount);
+    this.logFile = logFile;
   }
 
   @Override
@@ -67,7 +67,7 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
             storageGroupName);
     LOGGER.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
     recoverCrossMergeTask.recoverMerge(
-        IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+        IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot(), logFile);
     if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
       for (TsFileResource seqFile : seqFileList) {
         ModificationFile.getCompactionMods(seqFile).remove();

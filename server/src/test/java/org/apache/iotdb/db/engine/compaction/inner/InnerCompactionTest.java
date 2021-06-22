@@ -54,7 +54,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
-abstract class LevelCompactionTest {
+abstract class InnerCompactionTest {
 
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   protected TsFileResourceManager tsFileResourceManager;

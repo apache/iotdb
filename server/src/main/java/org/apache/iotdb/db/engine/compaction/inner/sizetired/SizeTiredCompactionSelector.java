@@ -5,6 +5,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -26,7 +27,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       long timePartition,
       TsFileResourceList tsFileResources,
       boolean sequence,
-      ICompactionTaskFactory taskFactory) {
+      InnerSpaceCompactionTaskFactory taskFactory) {
     super(
         storageGroupName,
         virtualStorageGroupName,
@@ -56,7 +57,6 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             || (!enableUnseqSpaceCompaction && !sequence)) {
           return taskSubmitted;
         }
-        System.out.println(currentFile.getTsFileSize());
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
@@ -68,18 +68,14 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         selectedFileSize += currentFile.getTsFileSize();
         if (selectedFileSize >= targetCompactionFileSize) {
           // submit the task
-          CompactionContext context = new CompactionContext();
-          context.setStorageGroupName(storageGroupName);
-          context.setTimePartitionId(timePartition);
-          context.setSequence(sequence);
-          if (sequence) {
-            context.setSequenceFileResourceList(tsFileResources);
-            context.setSelectedSequenceFiles(selectedFileList);
-          } else {
-            context.setUnsequenceFileResourceList(tsFileResources);
-            context.setSelectedUnsequenceFiles(selectedFileList);
-          }
-          AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+          AbstractCompactionTask compactionTask =
+              taskFactory.createTask(
+                  storageGroupName,
+                  virtualStorageGroupName,
+                  timePartition,
+                  tsFileResources,
+                  selectedFileList,
+                  sequence);
           for (TsFileResource resource : selectedFileList) {
             resource.setMerging(true);
             LOGGER.info(
@@ -104,19 +100,14 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       // if some files are selected but the total size is smaller than target size, submit a task
       if (selectedFileList.size() > 1) {
         try {
-          CompactionContext context = new CompactionContext();
-          context.setStorageGroupName(storageGroupName);
-          context.setTimePartitionId(timePartition);
-          context.setSequence(sequence);
-          if (sequence) {
-            context.setSelectedSequenceFiles(selectedFileList);
-            context.setSequenceFileResourceList(tsFileResources);
-          } else {
-            context.setSelectedUnsequenceFiles(selectedFileList);
-            context.setUnsequenceFileResourceList(tsFileResources);
-          }
-
-          AbstractCompactionTask compactionTask = taskFactory.createTask(context);
+          AbstractCompactionTask compactionTask =
+              taskFactory.createTask(
+                  storageGroupName,
+                  virtualStorageGroupName,
+                  timePartition,
+                  tsFileResources,
+                  selectedFileList,
+                  sequence);
           CompactionTaskManager.getInstance()
               .submitTask(
                   storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);

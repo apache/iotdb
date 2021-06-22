@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -59,7 +60,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
 
-public class LevelCompactionRecoverTest extends LevelCompactionTest {
+public class InnerCompactionRecoverTest extends InnerCompactionTest {
 
   File tempSGDir;
 
@@ -82,7 +83,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
 
   /** compaction recover merge finished */
   @Test
-  public void testCompactionMergeRecoverMergeFinished() throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeFinished() throws Exception {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     QueryContext context = new QueryContext();
@@ -139,7 +140,24 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         true);
     compactionLogger.close();
     tsFileResourceManager.addRecover(targetTsFileResource, true);
-    tsFileResourceManager.recover();
+    //    tsFileResourceManager.recover();
+    List<TsFileResource> recoverTsFile = new ArrayList<>();
+    recoverTsFile.add(targetTsFileResource);
+    SizeTiredCompactionRecoverTask task =
+        new SizeTiredCompactionRecoverTask(
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            SystemFileFactory.INSTANCE.getFile(
+                tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME),
+            tempSGDir.getPath(),
+            tsFileResourceManager.getUnsequenceListByTimePartition(0),
+            recoverTsFile,
+            false);
+    task.call();
+    //
+    // compactionContext.setSequenceFileResourceList(tsFileResourceManager.getSequenceListByTimePartition());
+    //    SizeTiredCompactionRecoverTask task = new SizeTiredCompactionRecoverTask();
     context = new QueryContext();
     path =
         new PartialPath(
