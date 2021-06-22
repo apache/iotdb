@@ -38,7 +38,7 @@ import java.io.IOException;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
 import static org.junit.Assert.assertFalse;
 
-public class LevelCompactionLogTest extends LevelCompactionTest {
+public class InnerCompactionLogTest extends InnerCompactionTest {
 
   File tempSGDir;
 

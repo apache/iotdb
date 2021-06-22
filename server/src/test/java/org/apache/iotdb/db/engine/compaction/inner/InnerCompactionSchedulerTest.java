@@ -37,7 +37,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 
-public class CompactionSchedulerTest {
+public class InnerCompactionSchedulerTest {
 
   private long originFileSize;
 
