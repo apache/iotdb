@@ -28,6 +28,7 @@ public enum CrossCompactionStrategy {
 
   public AbstractCrossSpaceCompactionSelector getCompactionSelector(
       String storageGroupName,
+      String virtualGroupId,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -38,6 +39,7 @@ public enum CrossCompactionStrategy {
       default:
         return new InplaceCompactionSelector(
             storageGroupName,
+            virtualGroupId,
             storageGroupDir,
             timePartition,
             sequenceFileList,

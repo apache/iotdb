@@ -121,6 +121,7 @@ public class CompactionScheduler {
       taskSubmitted =
           tryToSubmitCrossSpaceCompactionTask(
                   storageGroupName,
+                  virtualStorageGroupName,
                   storageGroupDir,
                   timePartition,
                   sequenceFileList,
@@ -153,6 +154,7 @@ public class CompactionScheduler {
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         storageGroupDir,
         timePartition,
         sequenceFileList,
@@ -169,6 +171,7 @@ public class CompactionScheduler {
       TsFileResourceList unsequenceFileList) {
     tryToSubmitCrossSpaceCompactionTask(
         storageGroupName,
+        virtualStorageGroupName,
         storageGroupDir,
         timePartition,
         sequenceFileList,
@@ -212,6 +215,7 @@ public class CompactionScheduler {
 
   private static boolean tryToSubmitCrossSpaceCompactionTask(
       String storageGroupName,
+      String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -222,6 +226,7 @@ public class CompactionScheduler {
             .getCrossCompactionStrategy()
             .getCompactionSelector(
                 storageGroupName,
+                virtualStorageGroupName,
                 storageGroupDir,
                 timePartition,
                 sequenceFileList,

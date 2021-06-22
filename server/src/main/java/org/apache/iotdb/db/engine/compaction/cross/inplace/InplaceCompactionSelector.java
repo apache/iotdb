@@ -30,6 +30,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
 
   public InplaceCompactionSelector(
       String storageGroupName,
+      String virtualStorageGroupId,
       String storageGroupDir,
       long timePartition,
       TsFileResourceList sequenceFileList,
@@ -37,6 +38,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       ICompactionTaskFactory taskFactory) {
     super(
         storageGroupName,
+        virtualStorageGroupId,
         storageGroupDir,
         timePartition,
         sequenceFileList,
@@ -109,7 +111,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
 
       AbstractCompactionTask compactionTask = taskFactory.createTask(context);
       CompactionTaskManager.getInstance()
-          .submitTask(storageGroupName, timePartition, compactionTask);
+          .submitTask(storageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
       taskSubmitted = true;
     } catch (MergeException | IOException e) {
       LOGGER.error("{} cannot select file for cross space compaction", storageGroupName, e);
