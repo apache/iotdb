@@ -2,6 +2,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.RecoverCrossMergeTask;
 import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;

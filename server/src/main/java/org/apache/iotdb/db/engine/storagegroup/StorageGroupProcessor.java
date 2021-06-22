@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -521,7 +520,7 @@ public class StorageGroupProcessor {
           // sort the time partition from largest to smallest
           timePartitions.sort((o1, o2) -> (int) (o2 - o1));
           for (long timePartition : timePartitions) {
-            CompactionScheduler.compactionSchedule(tsFileResourceManager, timePartition);
+            CompactionScheduler.scheduleCompaction(tsFileResourceManager, timePartition);
           }
         },
         COMPACTION_TASK_SUBMIT_DELAY,
@@ -680,7 +679,7 @@ public class StorageGroupProcessor {
       RestorableTsFileIOWriter writer;
       try {
         // this tsfile is not zero level, no need to perform redo wal
-        if (LevelCompactionTsFileManagement.getMergeLevel(tsFileResource.getTsFile()) > 0) {
+        if (TsFileResource.getCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
@@ -694,7 +693,7 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
-      } catch (StorageGroupProcessorException e) {
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
             "Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(), e);
         continue;

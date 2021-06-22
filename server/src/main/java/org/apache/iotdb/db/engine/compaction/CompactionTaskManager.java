@@ -41,7 +41,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {

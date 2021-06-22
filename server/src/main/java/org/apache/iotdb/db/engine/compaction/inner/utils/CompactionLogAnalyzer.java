@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.utils;
+package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -28,11 +28,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.FULL_MERGE;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.UNSEQUENCE_NAME;
 
 public class CompactionLogAnalyzer {
 

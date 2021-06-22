@@ -1,9 +1,9 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -21,10 +21,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
 
-public class SizeTiredCompactionTask extends InnerSpaceCompactionTask {
+public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;

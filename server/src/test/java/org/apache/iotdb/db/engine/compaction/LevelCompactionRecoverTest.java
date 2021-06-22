@@ -21,9 +21,9 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -54,9 +54,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
 
 public class LevelCompactionRecoverTest extends LevelCompactionTest {

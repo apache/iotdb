@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -46,7 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionUtilsTest extends LevelCompactionTest {

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.utils;
+package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStr
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -278,13 +279,13 @@ public class CompactionUtils {
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
             new TreeMap<>(
                 (o1, o2) ->
-                    TsFileManagement.compareFileName(
+                    TsFileResourceManager.compareFileName(
                         new File(o1.getFileName()), new File(o2.getFileName())));
         Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
             chunkMetadataListIteratorCache =
                 new TreeMap<>(
                     (o1, o2) ->
-                        TsFileManagement.compareFileName(
+                        TsFileResourceManager.compareFileName(
                             new File(o1.getFileName()), new File(o2.getFileName())));
         for (TsFileResource tsFileResource : tsFileResources) {
           TsFileSequenceReader reader =
@@ -336,7 +337,7 @@ public class CompactionUtils {
               Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataListMap =
                   new TreeMap<>(
                       (o1, o2) ->
-                          TsFileManagement.compareFileName(
+                          TsFileResourceManager.compareFileName(
                               new File(o1.getFileName()), new File(o2.getFileName())));
               // find all chunkMetadata of a sensor
               for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>

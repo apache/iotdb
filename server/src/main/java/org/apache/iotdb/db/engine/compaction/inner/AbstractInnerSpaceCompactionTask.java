@@ -17,22 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
-import org.apache.iotdb.db.engine.compaction.no.NoCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 
-public enum CompactionStrategy {
-  LEVEL_COMPACTION,
-  NO_COMPACTION;
+public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactionTask {
+  public final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
-  public TsFileManagement getTsFileManagement(String storageGroupName, String storageGroupDir) {
-    switch (this) {
-      case LEVEL_COMPACTION:
-        return new LevelCompactionTsFileManagement(storageGroupName, storageGroupDir);
-      case NO_COMPACTION:
-      default:
-        return new NoCompactionTsFileManagement(storageGroupName, storageGroupDir);
-    }
+  public AbstractInnerSpaceCompactionTask(String storageGroupName, long timePartition) {
+    super(storageGroupName, timePartition);
   }
 }

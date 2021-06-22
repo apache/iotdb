@@ -1,10 +1,10 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -20,9 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
+public class SizeTiredCompactionRecoverTask extends AbstractInnerSpaceCompactionRecoverTask {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(InnerSpaceCompactionRecoverTask.class);
+      LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
   protected File compactionLogFile;
   protected String storageGroupDir;
   protected TsFileResourceList tsFileResourceList;
