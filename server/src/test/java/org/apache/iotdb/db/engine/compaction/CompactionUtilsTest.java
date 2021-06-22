@@ -42,7 +42,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 
@@ -94,8 +93,7 @@ public class CompactionUtilsTest extends LevelCompactionTest {
         COMPACTION_TEST_SG,
         compactionLogger,
         new HashSet<>(),
-        true,
-        new ArrayList<>());
+        true);
     compactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =

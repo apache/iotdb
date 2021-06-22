@@ -1,6 +1,9 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -8,11 +11,16 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public SizeTiredCompactionSelector(
       String storageGroupName,
@@ -45,7 +53,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
-        if ((currentTaskNum.get() >= concurrentCompactionThread)
+        if ((CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
           return taskSubmitted;

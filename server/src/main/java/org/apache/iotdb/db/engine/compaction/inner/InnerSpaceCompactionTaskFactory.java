@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
@@ -26,7 +27,9 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    // TODO select strategy
-    return InnerCompactionStrategy.getCompactionTask(context);
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getInnerCompactionStrategy()
+        .getCompactionTask(context);
   }
 }

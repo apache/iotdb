@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class SizeTiredCompactionRecoverTask extends AbstractInnerSpaceCompactionRecoverTask {
+public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
   protected File compactionLogFile;
@@ -39,7 +39,6 @@ public class SizeTiredCompactionRecoverTask extends AbstractInnerSpaceCompaction
     recoverTsFileResources = context.getRecoverTsFileList();
   }
 
-  @Override
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {

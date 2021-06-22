@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.cross;
 
-public abstract class CrossSpaceCompactionTask extends AbstractCompactionTask {
+public abstract class AbstractCrossSpaceCompactionRecoverTask
+    extends AbstractCrossSpaceCompactionTask {
 
-  public CrossSpaceCompactionTask(String storageGroupName, long timePartition) {
+  public AbstractCrossSpaceCompactionRecoverTask(String storageGroupName, long timePartition) {
     super(storageGroupName, timePartition);
   }
 }

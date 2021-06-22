@@ -27,20 +27,19 @@ import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public enum InnerCompactionStrategy {
-  LEVEL_COMPACTION;
+  SIZE_TIRED_COMPACTION;
 
   public AbstractInnerSpaceCompactionTask getCompactionTask(CompactionContext context) {
     switch (this) {
-      case LEVEL_COMPACTION:
+      case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionTask(context);
     }
   }
 
-  public AbstractInnerSpaceCompactionRecoverTask getCompactionRecoverTask(
-      CompactionContext context) {
+  public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(CompactionContext context) {
     switch (this) {
-      case LEVEL_COMPACTION:
+      case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionRecoverTask(context);
     }
@@ -54,7 +53,7 @@ public enum InnerCompactionStrategy {
       boolean sequence,
       ICompactionTaskFactory taskFactory) {
     switch (this) {
-      case LEVEL_COMPACTION:
+      case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionSelector(
             storageGroupName,
