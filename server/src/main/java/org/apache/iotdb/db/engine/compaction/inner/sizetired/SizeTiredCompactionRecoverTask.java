@@ -64,12 +64,17 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource = getRecoverTsFileResource(targetFile);
         List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-        for (String file : sourceFileList) {
-          // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource resource = getSourceTsFile(file);
-          resource.readLock();
-          resource.setMerging(true);
-          sourceTsFileResources.add(resource);
+
+        tsFileResourceList.writeLock();
+        try {
+          for (String file : sourceFileList) {
+            // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+            TsFileResource resource = getSourceTsFile(file);
+            resource.setMerging(true);
+            sourceTsFileResources.add(resource);
+          }
+        } finally {
+          tsFileResourceList.writeUnlock();
         }
         try {
           RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
@@ -109,9 +114,13 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             writer.close();
           }
         } finally {
-          for (TsFileResource resource : sourceTsFileResources) {
-            resource.readUnlock();
-            resource.setMerging(false);
+          tsFileResourceList.writeLock();
+          try {
+            for (TsFileResource resource : sourceTsFileResources) {
+              resource.setMerging(false);
+            }
+          } finally {
+            tsFileResourceList.writeUnlock();
           }
         }
       }

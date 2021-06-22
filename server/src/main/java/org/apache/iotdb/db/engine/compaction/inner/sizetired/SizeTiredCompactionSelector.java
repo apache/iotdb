@@ -48,7 +48,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    tsFileResources.readLock();
+    tsFileResources.writeLock();
     try {
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       while (iterator.hasNext()) {
@@ -82,7 +82,6 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           }
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           for (TsFileResource resource : selectedFileList) {
-            resource.readLock();
             resource.setMerging(true);
             LOGGER.info(
                 "{}-{} [Compaction] start to compact TsFile {}",
@@ -92,6 +91,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           }
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
+          taskSubmitted = true;
           LOGGER.info(
               "{}-{} [Compaction] submit a inner compaction task of {} files",
               storageGroupName,
@@ -129,7 +129,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       }
       return taskSubmitted;
     } finally {
-      tsFileResources.readUnlock();
+      tsFileResources.writeUnlock();
     }
   }
 }

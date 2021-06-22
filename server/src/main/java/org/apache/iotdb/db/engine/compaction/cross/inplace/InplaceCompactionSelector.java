@@ -50,7 +50,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
     if ((CompactionScheduler.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())
         || CompactionScheduler.isPartitionCompacting(storageGroupName, timePartition)) {
-      return taskSubmitted;
+      return false;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
     Iterator<TsFileResource> unSeqIterator = unsequenceFileList.iterator();
@@ -63,7 +63,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       unSeqFileList.add(unSeqIterator.next());
     }
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
-      return taskSubmitted;
+      return false;
     }
     if (unSeqFileList.size() > config.getMaxOpenFileNumInCrossSpaceCompaction()) {
       unSeqFileList = unSeqFileList.subList(0, config.getMaxOpenFileNumInCrossSpaceCompaction());
@@ -80,7 +80,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       if (mergeFiles.length == 0) {
         LOGGER.info(
             "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
-        return taskSubmitted;
+        return false;
       }
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
@@ -110,10 +110,11 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       AbstractCompactionTask compactionTask = taskFactory.createTask(context);
       CompactionTaskManager.getInstance()
           .submitTask(storageGroupName, timePartition, compactionTask);
+      taskSubmitted = true;
     } catch (MergeException | IOException e) {
       LOGGER.error("{} cannot select file for cross space compaction", storageGroupName, e);
     }
 
-    return false;
+    return taskSubmitted;
   }
 }

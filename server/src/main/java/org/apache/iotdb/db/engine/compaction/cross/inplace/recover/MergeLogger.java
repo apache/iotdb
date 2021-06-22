@@ -128,4 +128,13 @@ public class MergeLogger {
     logStream.newLine();
     logStream.flush();
   }
+
+  public static File[] findCrossSpaceCompactionLogs(String directory) {
+    File timePartitionDir = new File(directory);
+    if (timePartitionDir.exists()) {
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(MERGE_LOG_NAME));
+    } else {
+      return new File[0];
+    }
+  }
 }
