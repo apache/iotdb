@@ -137,14 +137,13 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
     }
   }
 
-  private TsFileResource getRecoverTsFileResource(String filePath)
-      throws IOException {
+  private TsFileResource getRecoverTsFileResource(String filePath) throws IOException {
     for (TsFileResource tsFileResource : recoverTsFileResources) {
       if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
         return tsFileResource;
       }
     }
-    logger.error("cannot get tsfile resource path: {}", filePath);
+    LOGGER.error("cannot get tsfile resource path: {}", filePath);
     throw new IOException();
   }
 

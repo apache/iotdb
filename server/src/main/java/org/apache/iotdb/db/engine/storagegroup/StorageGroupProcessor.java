@@ -170,8 +170,6 @@ public class StorageGroupProcessor {
   private final TreeMap<Long, TsFileProcessor> workSequenceTsFileProcessors = new TreeMap<>();
   /** time partition id in the storage group -> tsFileProcessor for this time partition */
   private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
-
-  private final TreeMap<Long, TsFileProcessor> workUnsequenceTsFileProcessors = new TreeMap<>();
   // upgrading sequence TsFile resource list
   private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
 
@@ -471,36 +469,7 @@ public class StorageGroupProcessor {
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, false);
       }
-
-      //      String taskName =
-      //          logicalStorageGroupName + "-" + virtualStorageGroupId + "-" +
-      // System.currentTimeMillis();
-      //      File mergingMods =
-      //          SystemFileFactory.INSTANCE.getFile(storageGroupSysDir,
-      // MERGING_MODIFICATION_FILE_NAME);
-      //      if (mergingMods.exists()) {
-      //        this.tsFileResourceManager.mergingModification = new
-      // ModificationFile(mergingMods.getPath());
-      //      }
-      //      RecoverMergeTask recoverMergeTask =
-      //          new RecoverMergeTask(
-      //              new ArrayList<>(tsFileResourceManager.getTsFileList(true)),
-      //              tsFileResourceManager.getTsFileList(false),
-      //              storageGroupSysDir.getPath(),
-      //              tsFileResourceManager::mergeEndAction,
-      //              taskName,
-      //              IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-      //              logicalStorageGroupName + "-" + virtualStorageGroupId);
-      //      logger.info(
-      //          "{} - {} a RecoverMergeTask {} starts...",
-      //          logicalStorageGroupName,
-      //          virtualStorageGroupId,
-      //          taskName);
-      //      recoverMergeTask.recoverMerge(
-      //          IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-      //      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-      //        mergingMods.delete();
-      //      }
+      recoverCompaction();
       submitTimedCompactionTask();
       for (TsFileResource resource : tsFileResourceManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
@@ -542,31 +511,7 @@ public class StorageGroupProcessor {
   }
 
   private void recoverCompaction() {
-    //    if (!CompactionTaskManager.getInstance().isTerminated()) {
-    //      compactionMergeWorking = true;
-    //      logger.info(
-    //          "{} - {} submit a compaction recover merge task",
-    //          logicalStorageGroupName,
-    //          virtualStorageGroupId);
-    //      try {
-    //        CompactionTaskManager.getInstance()
-    //            .submitTask(
-    //                logicalStorageGroupName,
-    //                tsFileResourceManager.new
-    // CompactionRecoverTask(this::closeCompactionMergeCallBack));
-    //      } catch (RejectedExecutionException e) {
-    //        this.closeCompactionMergeCallBack(false, 0);
-    //        logger.error(
-    //            "{} - {} compaction submit task failed",
-    //            logicalStorageGroupName,
-    //            virtualStorageGroupId,
-    //            e);
-    //      }
-    //    } else {
-    //      logger.error(
-    //          "{} compaction pool not started ,recover failed",
-    //          logicalStorageGroupName + "-" + virtualStorageGroupId);
-    //    }
+    // TODO: submit recover compaction task in each time partition
   }
 
   private void submitTimedCompactionTask() {
@@ -2093,11 +2038,6 @@ public class StorageGroupProcessor {
     //          "{} last compaction merge task is working, skip current merge",
     //          logicalStorageGroupName + "-" + virtualStorageGroupId);
     //    }
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(boolean isMerge, long timePartitionId) {
-    this.compactionMergeWorking = false;
   }
 
   /**
