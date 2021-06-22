@@ -23,12 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -471,8 +469,6 @@ public class StorageGroupProcessor {
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
         recoverTsFiles(value, false);
       }
-      recoverCompaction();
-      submitTimedCompactionTask();
       for (TsFileResource resource : tsFileResourceManager.getTsFileList(true)) {
         long partitionNum = resource.getTimePartition();
         updatePartitionFileVersion(partitionNum, resource.getVersion());
@@ -510,74 +506,21 @@ public class StorageGroupProcessor {
           .putAll(endTimeMap);
       globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
+
+    // recover and start timed compaction thread
+    initCompaction();
   }
 
-  private void recoverCompaction() {
-    recoverInnerCompaction(true);
-    recoverInnerCompaction(false);
-    recoverCrossCompaction();
-  }
-
-  private void recoverInnerCompaction(boolean isSequence) {
-    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
-    List<String> dirs;
-    if (isSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-    } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-    }
-    for (String dir : dirs) {
-      String storageGroupDir =
-          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for (Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
-        File[] compactionLogs = CompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
-        for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setCompactionLogFile(compactionLog);
-          context.setSequence(isSequence);
-          if (isSequence) {
-            context.setSequenceFileResourceList(
-                tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(tsFileResourceManager.getSequenceRecoverTsFileResources());
-          } else {
-            context.setUnsequenceFileResourceList(
-                tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
-            context.setRecoverTsFileList(
-                tsFileResourceManager.getUnsequenceRecoverTsFileResources());
-          }
-          CompactionTaskManager.getInstance()
-              .submitTask(
-                  logicalStorageGroupName,
-                  config.getInnerCompactionStrategy().getCompactionRecoverTask(context));
-        }
-      }
-    }
-  }
-
-  private void recoverCrossCompaction() {
-    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
-    List<String> sequenceDirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-    for (String dir : sequenceDirs) {
-      String storageGroupDir =
-          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for (Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
-        File[] compactionLogs = MergeLogger.findCrossSpaceCompactionLogs(timePartitionDir);
-        for (File compactionLog : compactionLogs) {
-          CompactionContext context = new CompactionContext();
-          context.setCompactionLogFile(compactionLog);
-          context.setSequenceFileResourceList(
-              tsFileResourceManager.getSequenceListByTimePartition(timePartition));
-          context.setUnsequenceFileResourceList(
-              tsFileResourceManager.getUnsequenceListByTimePartition(timePartition));
-          CompactionTaskManager.getInstance()
-              .submitTask(
-                  logicalStorageGroupName,
-                  config.getCrossCompactionStrategy().getCompactionRecoverTask(context));
-        }
-      }
-    }
+  private void initCompaction() {
+    CompactionTaskManager.getInstance()
+        .submitTask(
+            logicalStorageGroupName + "-" + virtualStorageGroupId,
+            0,
+            new CompactionRecoverTask(
+                this::submitTimedCompactionTask,
+                tsFileResourceManager,
+                logicalStorageGroupName,
+                virtualStorageGroupId));
   }
 
   private void submitTimedCompactionTask() {
@@ -3091,9 +3034,8 @@ public class StorageGroupProcessor {
   }
 
   @FunctionalInterface
-  public interface CloseCompactionMergeCallBack {
-
-    void call(boolean isMergeExecutedInCurrentTask, long timePartitionId);
+  public interface CompactionRecoverCallBack {
+    void call();
   }
 
   @FunctionalInterface
