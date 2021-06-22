@@ -44,6 +44,7 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
   protected File compactionLogFile;
   protected String storageGroupDir;
   protected TsFileResourceList tsFileResourceList;
+  protected List<TsFileResource> recoverTsFileResources;
 
   public InnerSpaceCompactionRecoverTask(CompactionContext context) {
     super(context);
@@ -53,6 +54,7 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
         context.isSequence()
             ? context.getSequenceFileResourceList()
             : context.getUnsequenceFileResourceList();
+    recoverTsFileResources = context.getRecoverTsFileList();
   }
 
   @Override
@@ -79,7 +81,7 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
           return;
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-        TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
+        TsFileResource targetResource = getRecoverTsFileResource(targetFile);
         List<TsFileResource> sourceTsFileResources = new ArrayList<>();
         for (String file : sourceFileList) {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
@@ -135,19 +137,11 @@ public class InnerSpaceCompactionRecoverTask extends InnerSpaceCompactionTask {
     }
   }
 
-  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
+  private TsFileResource getRecoverTsFileResource(String filePath)
       throws IOException {
-    if (isSeq) {
-      for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
-        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-          return tsFileResource;
-        }
-      }
-    } else {
-      for (TsFileResource tsFileResource : unSequenceRecoverTsFileResources) {
-        if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-          return tsFileResource;
-        }
+    for (TsFileResource tsFileResource : recoverTsFileResources) {
+      if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+        return tsFileResource;
       }
     }
     logger.error("cannot get tsfile resource path: {}", filePath);

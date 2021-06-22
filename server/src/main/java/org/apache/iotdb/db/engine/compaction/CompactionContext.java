@@ -41,6 +41,7 @@ public class CompactionContext {
   protected CrossSpaceMergeResource mergeResource;
   protected int concurrentMergeCount;
   protected File compactionLogFile;
+  protected List<TsFileResource> recoverTsFileList;
 
   public CompactionContext() {}
 
@@ -146,5 +147,13 @@ public class CompactionContext {
 
   public void setCompactionLogFile(File compactionLogFile) {
     this.compactionLogFile = compactionLogFile;
+  }
+
+  public List<TsFileResource> getRecoverTsFileList() {
+    return recoverTsFileList;
+  }
+
+  public void setRecoverTsFileList(List<TsFileResource> recoverTsFileList) {
+    this.recoverTsFileList = recoverTsFileList;
   }
 }
