@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -33,14 +33,14 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.junit.Assert.assertFalse;
 
-public class LevelCompactionSelectorTest extends LevelCompactionTest {
+public class LevelCompactionLogTest extends LevelCompactionTest {
 
   File tempSGDir;
+  boolean compactionMergeWorking = false;
 
   @Override
   @Before
@@ -57,20 +57,30 @@ public class LevelCompactionSelectorTest extends LevelCompactionTest {
     FileUtils.deleteDirectory(tempSGDir);
   }
 
-  /** just compaction once */
   @Test
-  public void testCompactionSelector() throws NoSuchFieldException, IllegalAccessException {
+  public void testCompactionLog() {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
-    Field fieldForkedSequenceTsFileResources =
-        LevelCompactionTsFileManagement.class.getDeclaredField("forkedSequenceTsFileResources");
-    fieldForkedSequenceTsFileResources.setAccessible(true);
-    List<TsFileResource> forkedSequenceTsFileResources =
-        (List<TsFileResource>)
-            fieldForkedSequenceTsFileResources.get(levelCompactionTsFileManagement);
-    assertEquals(2, forkedSequenceTsFileResources.size());
+    CompactionMergeTask compactionMergeTask =
+        levelCompactionTsFileManagement
+        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionMergeTask.call();
+    while (compactionMergeWorking) {
+      // wait
+    }
+    File logFile =
+        FSFactoryProducer.getFSFactory()
+            .getFile(tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME);
+    assertFalse(logFile.exists());
+  }
+
+  /** close compaction merge callback, to release some locks */
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
+    this.compactionMergeWorking = false;
   }
 }

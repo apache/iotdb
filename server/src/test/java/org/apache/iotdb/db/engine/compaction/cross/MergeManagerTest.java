@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;

@@ -17,14 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction;
+package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -33,11 +39,14 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-public class LevelCompactionLogTest extends LevelCompactionTest {
+public class LevelCompactionCacheTest extends LevelCompactionTest {
 
   File tempSGDir;
   boolean compactionMergeWorking = false;
@@ -58,9 +67,28 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testCompactionLog() {
+  public void testCompactionChunkCache() throws IOException {
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    TsFileResource tsFileResource = seqResources.get(1);
+    TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
+    List<Path> paths = reader.getAllPaths();
+    Set<String> allSensors = new TreeSet<>();
+    for (Path path : paths) {
+      allSensors.add(path.getMeasurement());
+    }
+    ChunkMetadata firstChunkMetadata = reader.getChunkMetadataList(paths.get(0)).get(0);
+    firstChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
+    TimeSeriesMetadataCacheKey firstTimeSeriesMetadataCacheKey =
+        new TimeSeriesMetadataCacheKey(
+            seqResources.get(1).getTsFilePath(),
+            paths.get(0).getDevice(),
+            paths.get(0).getMeasurement());
+
+    // add cache
+    ChunkCache.getInstance().get(firstChunkMetadata);
+    TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
+
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
@@ -72,10 +100,22 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
     while (compactionMergeWorking) {
       // wait
     }
-    File logFile =
-        FSFactoryProducer.getFSFactory()
-            .getFile(tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME);
-    assertFalse(logFile.exists());
+
+    firstChunkMetadata.setFilePath(null);
+    try {
+      ChunkCache.getInstance().get(firstChunkMetadata);
+      fail();
+    } catch (NullPointerException e) {
+      assertTrue(true);
+    }
+
+    try {
+      TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, new TreeSet<>());
+      fail();
+    } catch (Exception e) {
+      assertTrue(true);
+    }
+    reader.close();
   }
 
   /** close compaction merge callback, to release some locks */
