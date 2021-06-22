@@ -253,6 +253,7 @@ public class CompactionScheduler {
           }
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
+          taskSubmitted = true;
           LOGGER.info(
               "{} [Compaction] submit a inner compaction task of {} files",
               storageGroupName,
@@ -279,6 +280,7 @@ public class CompactionScheduler {
           AbstractCompactionTask compactionTask = taskFactory.createTask(context);
           CompactionTaskManager.getInstance()
               .submitTask(storageGroupName, timePartition, compactionTask);
+          taskSubmitted = true;
           LOGGER.info(
               "{} [Compaction] submit a inner compaction task of {} files",
               storageGroupName,
