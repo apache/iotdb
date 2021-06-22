@@ -113,6 +113,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
         resource.readUnlock();
+        resource.setMerging(false);
       }
     }
     LOGGER.info("{} [Compaction] compaction finish, start to delete old files", storageGroupName);
