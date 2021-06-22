@@ -55,7 +55,7 @@ import java.util.Map.Entry;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
-public class CompactionChunkTest extends LevelCompactionTest {
+public class InnerCompactionChunkTest extends InnerCompactionTest {
 
   File tempSGDir;
 

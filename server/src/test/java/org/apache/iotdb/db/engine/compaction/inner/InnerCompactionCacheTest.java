@@ -47,10 +47,9 @@ import java.util.TreeSet;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class LevelCompactionCacheTest extends LevelCompactionTest {
+public class InnerCompactionCacheTest extends InnerCompactionTest {
 
   File tempSGDir;
-  boolean compactionMergeWorking = false;
 
   @Override
   @Before

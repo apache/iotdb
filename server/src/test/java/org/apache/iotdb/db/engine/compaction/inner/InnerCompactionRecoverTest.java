@@ -60,7 +60,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
 
-public class LevelCompactionRecoverTest extends LevelCompactionTest {
+public class InnerCompactionRecoverTest extends InnerCompactionTest {
 
   File tempSGDir;
 

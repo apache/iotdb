@@ -47,7 +47,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    tsFileResources.writeLock();
+    tsFileResources.readLock();
     try {
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       while (iterator.hasNext()) {
@@ -130,7 +130,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       }
       return taskSubmitted;
     } finally {
-      tsFileResources.writeUnlock();
+      tsFileResources.readUnlock();
     }
   }
 }

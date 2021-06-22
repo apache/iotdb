@@ -53,7 +53,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
-public class LevelCompactionMergeTest extends LevelCompactionTest {
+public class InnerCompactionMergeTest extends InnerCompactionTest {
 
   File tempSGDir;
   boolean compactionMergeWorking = false;
