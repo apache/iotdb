@@ -225,7 +225,7 @@ public class SlotPartitionTableTest {
             40000 + start,
             Constants.RPC_PORT + start,
             "localhost"),
-        group.getHeader());
+        group.getHeader().getNode());
 
     assertEquals(
         new Node(
