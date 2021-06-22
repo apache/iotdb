@@ -1,11 +1,12 @@
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.RecoverCrossMergeTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import org.slf4j.Logger;
@@ -20,8 +21,26 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractCrossSpaceCompactionRecoverTask.class);
 
-  public InplaceCompactionRecoverTask(CompactionContext context) {
-    super(context);
+  public InplaceCompactionRecoverTask(
+      String storageGroupName,
+      long timePartitionId,
+      CrossSpaceMergeResource mergeResource,
+      String storageGroupDir,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unSeqTsFileResourceList,
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      int concurrentMergeCount) {
+    super(
+        storageGroupName,
+        timePartitionId,
+        mergeResource,
+        storageGroupDir,
+        seqTsFileResourceList,
+        unSeqTsFileResourceList,
+        selectedSeqTsFileResourceList,
+        selectedUnSeqTsFileResourceList,
+        concurrentMergeCount);
   }
 
   @Override

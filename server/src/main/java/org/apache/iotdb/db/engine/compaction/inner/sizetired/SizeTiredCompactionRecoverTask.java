@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;

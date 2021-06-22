@@ -1,7 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompactionSelector {

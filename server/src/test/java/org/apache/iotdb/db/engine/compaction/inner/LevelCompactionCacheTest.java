@@ -19,12 +19,23 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -32,25 +43,13 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 public class LevelCompactionCacheTest extends LevelCompactionTest {
 
   File tempSGDir;
-  boolean compactionMergeWorking = false;
 
   @Override
   @Before
@@ -70,7 +69,8 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
   }
 
   @Test
-  public void testCompactionChunkCache() throws IOException {
+  public void testCompactionChunkCache() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(150000L);
     TsFileResource tsFileResource = seqResources.get(1);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
     List<Path> paths = reader.getAllPaths();
@@ -92,10 +92,12 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
 
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
-    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
-    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
-      // wait
-    }
+    CompactionContext compactionContext = new CompactionContext();
+    compactionContext.setSequenceFileResourceList(new TsFileResourceList());
+    compactionContext.setSelectedSequenceFiles(seqResources);
+    compactionContext.setSequence(true);
+    SizeTiredCompactionTask sizeTiredCompactionTask = new SizeTiredCompactionTask(compactionContext);
+    sizeTiredCompactionTask.call();
 
     firstChunkMetadata.setFilePath(null);
     try {

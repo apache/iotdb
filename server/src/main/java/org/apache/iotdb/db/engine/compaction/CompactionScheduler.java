@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionS
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
@@ -220,7 +219,7 @@ public class CompactionScheduler {
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
-      ICompactionTaskFactory taskFactory) {
+      CrossSpaceCompactionTaskFactory taskFactory) {
     AbstractCrossSpaceCompactionSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionStrategy()

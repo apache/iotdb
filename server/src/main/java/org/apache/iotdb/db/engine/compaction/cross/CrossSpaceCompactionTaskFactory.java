@@ -19,18 +19,37 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
-public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
+public class CrossSpaceCompactionTaskFactory {
 
-  @Override
-  public AbstractCompactionTask createTask(CompactionContext context) {
+  public AbstractCompactionTask createTask(
+      String storageGroupName,
+      long timePartitionId,
+      CrossSpaceMergeResource mergeResource,
+      String storageGroupDir,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unSeqTsFileResourceList,
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      int concurrentMergeCount) {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getCrossCompactionStrategy()
-        .getCompactionTask(context);
+        .getCompactionTask(
+            storageGroupName,
+            timePartitionId,
+            mergeResource,
+            storageGroupDir,
+            seqTsFileResourceList,
+            unSeqTsFileResourceList,
+            selectedSeqTsFileResourceList,
+            selectedUnSeqTsFileResourceList,
+            concurrentMergeCount);
   }
 }

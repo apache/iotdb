@@ -1,28 +1,64 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import java.util.List;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public enum CrossCompactionStrategy {
   INPLACE_COMPACTION;
 
-  public AbstractCrossSpaceCompactionTask getCompactionTask(CompactionContext context) {
+  public AbstractCrossSpaceCompactionTask getCompactionTask(
+      String storageGroupName,
+      long timePartitionId,
+      CrossSpaceMergeResource mergeResource,
+      String storageGroupDir,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unSeqTsFileResourceList,
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      int concurrentMergeCount) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionTask(context);
+        return new InplaceCompactionTask(
+            storageGroupName,
+            timePartitionId,
+            mergeResource,
+            storageGroupDir,
+            seqTsFileResourceList,
+            unSeqTsFileResourceList,
+            selectedSeqTsFileResourceList,
+            selectedUnSeqTsFileResourceList,
+            concurrentMergeCount);
     }
   }
 
-  public AbstractCrossSpaceCompactionTask getCompactionRecoverTask(CompactionContext context) {
+  public AbstractCrossSpaceCompactionTask getCompactionRecoverTask(
+      String storageGroupName,
+      long timePartitionId,
+      CrossSpaceMergeResource mergeResource,
+      String storageGroupDir,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unSeqTsFileResourceList,
+      List<TsFileResource> selectedSeqTsFileResourceList,
+      List<TsFileResource> selectedUnSeqTsFileResourceList,
+      int concurrentMergeCount) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionRecoverTask(context);
+        return new InplaceCompactionRecoverTask(storageGroupName,
+            timePartitionId,
+            mergeResource,
+            storageGroupDir,
+            seqTsFileResourceList,
+            unSeqTsFileResourceList,
+            selectedSeqTsFileResourceList,
+            selectedUnSeqTsFileResourceList,
+            concurrentMergeCount);
     }
   }
 
@@ -33,7 +69,7 @@ public enum CrossCompactionStrategy {
       long timePartition,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
-      ICompactionTaskFactory taskFactory) {
+      CrossSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
