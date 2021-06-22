@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session;
 
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -27,9 +28,17 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class SessionUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(SessionUtils.class);
 
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(tablet.getTimeBytesSize());
@@ -148,5 +157,33 @@ public class SessionUtils {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
+  }
+
+  public static List<EndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
+    if (nodeUrls == null) {
+      return Collections.emptyList();
+    }
+    List<EndPoint> endPointsList = new ArrayList<>();
+    for (String nodeUrl : nodeUrls) {
+      EndPoint endPoint = parseNodeUrl(nodeUrl);
+      endPointsList.add(endPoint);
+    }
+    return endPointsList;
+  }
+
+  private static EndPoint parseNodeUrl(String nodeUrl) {
+    EndPoint endPoint = new EndPoint();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 2) {
+      return null;
+    }
+    String ip = split[0];
+    try {
+      int rpcPort = Integer.parseInt(split[1]);
+      return endPoint.setIp(ip).setPort(rpcPort);
+    } catch (NumberFormatException e) {
+      logger.warn("parse url fail {}", nodeUrl);
+    }
+    return endPoint;
   }
 }

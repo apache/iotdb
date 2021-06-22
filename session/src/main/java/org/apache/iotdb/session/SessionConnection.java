@@ -60,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SessionConnection {
@@ -74,6 +75,7 @@ public class SessionConnection {
   private long statementId;
   private ZoneId zoneId;
   private EndPoint endPoint;
+  private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
   // TestOnly
@@ -83,8 +85,15 @@ public class SessionConnection {
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
+    endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
+  }
+
+  public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
+    this.session = session;
+    this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
+    initClusterConn();
   }
 
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
@@ -142,6 +151,26 @@ public class SessionConnection {
     } catch (Exception e) {
       transport.close();
       throw new IoTDBConnectionException(e);
+    }
+  }
+
+  private void initClusterConn() throws IoTDBConnectionException {
+    endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
+    for (EndPoint endPoint : endPointList) {
+      if (endPoint == null) {
+        continue;
+      }
+      try {
+        init(endPoint);
+        this.endPoint = endPoint;
+        session.defaultEndPoint = endPoint;
+      } catch (IoTDBConnectionException e) {
+        if (!reconnect()) {
+          logger.error("Cluster has no nodes to connect");
+          throw new IoTDBConnectionException(e);
+        }
+      }
+      break;
     }
   }
 
@@ -722,19 +751,26 @@ public class SessionConnection {
   private boolean reconnect() {
     boolean flag = false;
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
-      try {
-        if (transport != null) {
-          close();
-          init(endPoint);
-          flag = true;
+      if (transport != null) {
+        transport.close();
+        for (EndPoint endPoint : endPointList) {
+          if (endPoint == null) {
+            continue;
+          }
+          try {
+            init(endPoint);
+            flag = true;
+            this.endPoint = endPoint;
+            session.defaultEndPoint = endPoint;
+          } catch (IoTDBConnectionException e) {
+            logger.error("The current node may have been down {},try next node", endPoint);
+            continue;
+          }
+          break;
         }
-      } catch (Exception e) {
-        try {
-          Thread.sleep(Config.RETRY_INTERVAL_MS);
-        } catch (InterruptedException e1) {
-          logger.error("reconnect is interrupted.", e1);
-          Thread.currentThread().interrupt();
-        }
+      }
+      if (flag) {
+        break;
       }
     }
     return flag;

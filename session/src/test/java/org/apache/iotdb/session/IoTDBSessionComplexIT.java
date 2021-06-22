@@ -889,4 +889,24 @@ public class IoTDBSessionComplexIT {
 
     session.close();
   }
+
+  @Test
+  public void testSessionCluster() throws IoTDBConnectionException, StatementExecutionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    session = new Session(nodeList, "root", "root");
+    session.clusterOpen();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertByStr();
+
+    insertViaSQL();
+    queryByDevice("root.sg1.d1");
+
+    session.close();
+  }
 }
