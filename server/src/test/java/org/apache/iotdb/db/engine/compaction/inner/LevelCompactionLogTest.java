@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -40,7 +41,6 @@ import static org.junit.Assert.assertFalse;
 public class LevelCompactionLogTest extends LevelCompactionTest {
 
   File tempSGDir;
-  boolean compactionMergeWorking = false;
 
   @Override
   @Before
@@ -48,6 +48,8 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    tsFileResourceManager =
+        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -59,28 +61,15 @@ public class LevelCompactionLogTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionLog() {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME);
     assertFalse(logFile.exists());
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(
-      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
-    this.compactionMergeWorking = false;
   }
 }

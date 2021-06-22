@@ -23,8 +23,9 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
-import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -57,6 +58,8 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
+    tsFileResourceManager =
+        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
   }
 
   @Override
@@ -68,8 +71,6 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
 
   @Test
   public void testCompactionChunkCache() throws IOException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     TsFileResource tsFileResource = seqResources.get(1);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
     List<Path> paths = reader.getAllPaths();
@@ -89,15 +90,10 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
     ChunkCache.getInstance().get(firstChunkMetadata);
     TimeSeriesMetadataCache.getInstance().get(firstTimeSeriesMetadataCacheKey, allSensors);
 
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask =
-        levelCompactionTsFileManagement
-        .new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
-    compactionMergeWorking = true;
-    compactionMergeTask.call();
-    while (compactionMergeWorking) {
+    tsFileResourceManager.addAll(seqResources, true);
+    tsFileResourceManager.addAll(unseqResources, false);
+    CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }
 
@@ -116,11 +112,5 @@ public class LevelCompactionCacheTest extends LevelCompactionTest {
       assertTrue(true);
     }
     reader.close();
-  }
-
-  /** close compaction merge callback, to release some locks */
-  private void closeCompactionMergeCallBack(
-      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
-    this.compactionMergeWorking = false;
   }
 }
