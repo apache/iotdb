@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
