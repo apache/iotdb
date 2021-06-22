@@ -29,7 +29,7 @@
 	</tr>
 	<tr>
             <td rowspan="4">0.12.1</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-io0.12.1tdb-0.12.1-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip">All-in-one</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-all-bin.zip.asc">ASC</a></td>
             <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip">源代码</a></td>
