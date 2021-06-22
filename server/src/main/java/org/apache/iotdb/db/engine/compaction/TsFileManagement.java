@@ -50,7 +50,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public abstract class TsFileManagement {
@@ -278,8 +277,6 @@ public abstract class TsFileManagement {
               fullMerge,
               fileSelector.getConcurrentMergeNum(),
               storageGroupName);
-      mergingModification =
-          new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
       MergeManager.getINSTANCE().submitMainTask(mergeTask);
       if (logger.isInfoEnabled()) {
         logger.info(

@@ -442,7 +442,14 @@ public class TsFileResource {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+      modFile = ModificationFile.getNormalMods(this);
+    }
+    return modFile;
+  }
+
+  public synchronized ModificationFile getCompactionModFile() {
+    if (modFile == null) {
+      modFile = ModificationFile.getCompactionMods(this);
     }
     return modFile;
   }

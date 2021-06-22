@@ -106,15 +106,13 @@ public class CompactionUtils {
       Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap,
       Map<Long, TimeValuePair> timeValuePairMap,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
-      List<Modification> modifications)
+      PartialPath seriesPath)
       throws IOException {
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
-      modifyChunkMetaDataWithCache(
-          reader, chunkMetadataList, modificationCache, seriesPath, modifications);
+      modifyChunkMetaDataWithCache(reader, chunkMetadataList, modificationCache, seriesPath);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         IChunkReader chunkReader = new ChunkReaderByTimestamp(reader.readMemChunk(chunkMetadata));
         while (chunkReader.hasNextSatisfiedPage()) {
@@ -184,8 +182,7 @@ public class CompactionUtils {
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer,
-      Map<String, List<Modification>> modificationCache,
-      List<Modification> modifications)
+      Map<String, List<Modification>> modificationCache)
       throws IOException, IllegalPathException {
     Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
     Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = entry.getValue();
@@ -193,8 +190,7 @@ public class CompactionUtils {
         readerChunkMetadataMap,
         timeValuePairMap,
         modificationCache,
-        new PartialPath(device, entry.getKey()),
-        modifications);
+        new PartialPath(device, entry.getKey()));
     boolean isChunkMetadataEmpty = true;
     for (List<ChunkMetadata> chunkMetadataList : readerChunkMetadataMap.values()) {
       if (!chunkMetadataList.isEmpty()) {
@@ -265,8 +261,7 @@ public class CompactionUtils {
       String storageGroup,
       CompactionLogger compactionLogger,
       Set<String> devices,
-      boolean sequence,
-      List<Modification> modifications)
+      boolean sequence)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     try {
@@ -365,8 +360,7 @@ public class CompactionUtils {
                     sensorReaderChunkMetadataListEntry,
                     targetResource,
                     writer,
-                    modificationCache,
-                    modifications);
+                    modificationCache);
               } else {
                 boolean isChunkEnoughLarge = true;
                 boolean isPageEnoughLarge = true;
@@ -386,6 +380,12 @@ public class CompactionUtils {
                     }
                   }
                 }
+                if (isFileListHasModifications(
+                    readerChunkMetadataListMap.keySet(), modificationCache)) {
+                  isPageEnoughLarge = false;
+                  isChunkEnoughLarge = false;
+                }
+
                 // if a chunk is large enough, it's page must be large enough too
                 if (isChunkEnoughLarge) {
                   logger.debug(
@@ -417,8 +417,7 @@ public class CompactionUtils {
                       sensorReaderChunkMetadataListEntry,
                       targetResource,
                       writer,
-                      modificationCache,
-                      modifications);
+                      modificationCache);
                 }
               }
             }
@@ -472,8 +471,7 @@ public class CompactionUtils {
       TsFileSequenceReader reader,
       List<ChunkMetadata> chunkMetadataList,
       Map<String, List<Modification>> modificationCache,
-      PartialPath seriesPath,
-      List<Modification> usedModifications) {
+      PartialPath seriesPath) {
     List<Modification> modifications =
         modificationCache.computeIfAbsent(
             reader.getFileName(),
@@ -485,10 +483,28 @@ public class CompactionUtils {
     for (Modification modification : modifications) {
       if (modification.getPath().matchFullPath(seriesPath)) {
         seriesModifications.add(modification);
-        usedModifications.add(modification);
       }
     }
     modifyChunkMetaData(chunkMetadataList, seriesModifications);
+  }
+
+  private static boolean isFileListHasModifications(
+      Set<TsFileSequenceReader> readers, Map<String, List<Modification>> modificationCache) {
+    for (TsFileSequenceReader reader : readers) {
+      if (!getModifications(reader, modificationCache).isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static List<Modification> getModifications(
+      TsFileSequenceReader reader, Map<String, List<Modification>> modificationCache) {
+    return modificationCache.computeIfAbsent(
+        reader.getFileName(),
+        fileName ->
+            new LinkedList<>(
+                new ModificationFile(fileName + ModificationFile.FILE_SUFFIX).getModifications()));
   }
 
   public static ModificationFile getModificationByPath(String filePath) {
