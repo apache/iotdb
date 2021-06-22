@@ -19,11 +19,12 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /** doCompaction 只修改 tsFileResourceList */
-public class FakedInnerSpaceCompactionTask extends InnerSpaceCompactionTask {
+public class FakedInnerSpaceCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   public FakedInnerSpaceCompactionTask(CompactionContext context) {
     super(context);

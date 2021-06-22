@@ -17,15 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 
 public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
     // TODO select strategy
-    return new SizeTiredCompactionTask(context);
+    return InnerCompactionStrategy.getCompactionTask(context);
   }
 }

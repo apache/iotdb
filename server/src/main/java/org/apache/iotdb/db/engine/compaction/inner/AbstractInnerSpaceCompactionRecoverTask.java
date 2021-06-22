@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.inner;
 
-public abstract class InnerSpaceCompactionTask extends AbstractCompactionTask {
-  public final String COMPACTION_LOG_SUFFIX = ".compaction_log";
+public abstract class AbstractInnerSpaceCompactionRecoverTask
+    extends AbstractInnerSpaceCompactionTask {
 
-  public InnerSpaceCompactionTask(String storageGroupName, long timePartition) {
+  public AbstractInnerSpaceCompactionRecoverTask(String storageGroupName, long timePartition) {
     super(storageGroupName, timePartition);
   }
 }

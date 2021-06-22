@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.utils;
+package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 

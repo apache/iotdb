@@ -812,6 +812,11 @@ public class TsFileResource {
     }
   }
 
+  public static int getCompactionCount(String fileName) throws IOException {
+    TsFileName tsFileName = getTsFileName(fileName);
+    return tsFileName.mergeCnt;
+  }
+
   /** For merge, the index range of the new file should be the union of all files' in this merge. */
   public void updatePlanIndexes(TsFileResource another) {
     maxPlanIndex = Math.max(maxPlanIndex, another.maxPlanIndex);

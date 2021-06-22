@@ -36,7 +36,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
@@ -82,7 +82,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   private List<TsFileResource> tsFileResources;
   private boolean hintRegistered;
   private int requiredRetries;
-  private CompactionStrategy defaultCompaction =
+  private InnerCompactionStrategy defaultCompaction =
       IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy();
 
   @Override
@@ -90,7 +90,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   public void setUp() throws MetadataException, StartupException {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+        .setCompactionStrategy(InnerCompactionStrategy.NO_COMPACTION);
     super.setUp();
     hintRegistered = false;
     sourceMember =
