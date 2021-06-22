@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.manage;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeFuture.MainMergeFuture;
-import org.apache.iotdb.db.engine.merge.manage.MergeFuture.SubMergeFuture;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeFuture.MainMergeFuture;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeFuture.SubMergeFuture;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask.MergeChunkHeapTask;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;

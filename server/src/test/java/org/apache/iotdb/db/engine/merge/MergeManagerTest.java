@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.engine.merge;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
-import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.junit.Test;

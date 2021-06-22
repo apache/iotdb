@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.manage;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
 public interface MergeManagerMBean {
   void printMergeStatus();

@@ -21,13 +21,13 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.task.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionUtils;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.merge.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;

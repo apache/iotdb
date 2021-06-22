@@ -19,66 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.task.RecoverCrossMergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+public abstract class CrossSpaceCompactionRecoverTask extends CrossSpaceCompactionTask {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-
-public class CrossSpaceCompactionRecoverTask extends CrossSpaceCompactionTask {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(CrossSpaceCompactionRecoverTask.class);
-
-  public CrossSpaceCompactionRecoverTask(CompactionContext context) {
-    super(context);
-  }
-
-  @Override
-  public void doCompaction() throws IOException, MetadataException {
-    String taskName = storageGroupName + "-" + System.currentTimeMillis();
-    File mergingMods =
-        SystemFileFactory.INSTANCE.getFile(storageGroupDir, MERGING_MODIFICATION_FILE_NAME);
-    if (mergingMods.exists()) {
-      CompactionScheduler.newModification(
-          storageGroupName, timePartition, mergingMods.getAbsolutePath());
-    }
-    Iterator<TsFileResource> seqIterator = seqTsFileResourceList.iterator();
-    Iterator<TsFileResource> unSeqIterator = unSeqTsFileResourceList.iterator();
-    List<TsFileResource> seqFileList = new ArrayList<>();
-    List<TsFileResource> unSeqFileList = new ArrayList<>();
-    while (seqIterator.hasNext()) {
-      seqFileList.add(seqIterator.next());
-    }
-    while (unSeqIterator.hasNext()) {
-      unSeqFileList.add(unSeqIterator.next());
-    }
-    RecoverCrossMergeTask recoverCrossMergeTask =
-        new RecoverCrossMergeTask(
-            seqFileList,
-            unSeqFileList,
-            storageGroupDir,
-            this::mergeEndAction,
-            taskName,
-            IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-            storageGroupName);
-    LOGGER.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
-    recoverCrossMergeTask.recoverMerge(
-        IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-    if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-      mergingMods.delete();
-    }
+  public CrossSpaceCompactionRecoverTask(String storageGroupName, long timePartition) {
+    super(storageGroupName, timePartition);
   }
 }

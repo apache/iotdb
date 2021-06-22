@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeContext;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;

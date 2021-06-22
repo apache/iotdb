@@ -17,11 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.selector;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
 
-public enum MergeFileStrategy {
-  MAX_SERIES_NUM,
-  MAX_FILE_NUM,
-  // TODO: HOW?
-  TRADE_OFF,
-}
+import org.apache.iotdb.db.metadata.PartialPath;
+
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be merged
+ * at the same time.
+ */
+public interface IMergePathSelector extends Iterator<List<PartialPath>> {}

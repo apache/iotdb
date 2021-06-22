@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.merge;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;

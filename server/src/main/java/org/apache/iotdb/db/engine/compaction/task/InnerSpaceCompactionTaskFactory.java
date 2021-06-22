@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 
 public class InnerSpaceCompactionTaskFactory implements ICompactionTaskFactory {
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    return new InnerSpaceCompactionTask(context);
+    // TODO select strategy
+    return new SizeTiredCompactionTask(context);
   }
 }

@@ -17,9 +17,24 @@
  * under the License.
  */
 
-/**
- * Package merge contains classes supporting merge functionality (also compaction in other systems)
- * that compacts several data files into a new one, making it more ordered and removing duplicated
- * data.
- */
-package org.apache.iotdb.db.engine.merge;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
+
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.io.File;
+import java.util.List;
+
+@FunctionalInterface
+public interface MergeCallback {
+
+  /**
+   * On calling this method, the callee should: 1. replace the modification files of seqFiles with
+   * merging modifications since the old modifications have been merged into the new files. 2.
+   * remove the unseqFiles since they have been merged into new files. 3. remove the merge log file
+   * 4. exit merging status
+   *
+   * @param seqFiles
+   * @param unseqFiles
+   */
+  void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile);
+}

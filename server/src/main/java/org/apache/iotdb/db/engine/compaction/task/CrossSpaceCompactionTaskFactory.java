@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
 
 public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    return new CrossSpaceCompactionTask(context);
+    // TODO select strategy
+    return new InplaceCompactionTask(context);
   }
 }

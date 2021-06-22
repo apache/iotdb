@@ -32,7 +32,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
   protected String storageGroupName;
   protected long timePartition;
-  public final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
   public AbstractCompactionTask(String storageGroupName, long timePartition) {
     this.storageGroupName = storageGroupName;

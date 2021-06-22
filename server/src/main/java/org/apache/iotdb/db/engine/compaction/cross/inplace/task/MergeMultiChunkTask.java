@@ -17,16 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.task;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeContext;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
-import org.apache.iotdb.db.engine.merge.selector.IMergePathSelector;
-import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.IMergePathSelector;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;

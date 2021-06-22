@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.recover;
+package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.merge.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -42,14 +42,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_UNSEQ_FILES;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the
