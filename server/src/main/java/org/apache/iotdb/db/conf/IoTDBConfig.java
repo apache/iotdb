@@ -20,7 +20,9 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -306,6 +308,20 @@ public class IoTDBConfig {
 
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
+
+  /**
+   * The strategy of inner space compaction task. There are just one inner space compaction strategy
+   * SIZE_TIRED_COMPACTION:
+   */
+  private InnerCompactionStrategy innerCompactionStrategy =
+      InnerCompactionStrategy.SIZE_TIRED_COMPACTION;
+
+  /**
+   * The strategy of cross space compaction task. There are just one cross space compaction strategy
+   * SIZE_TIRED_COMPACTION:
+   */
+  private CrossCompactionStrategy crossCompactionStrategy =
+      CrossCompactionStrategy.INPLACE_COMPACTION;
 
   /**
    * The priority of compaction task execution. There are three priority strategy INNER_CROSS:
@@ -2126,6 +2142,22 @@ public class IoTDBConfig {
 
   public void setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
+  }
+
+  public InnerCompactionStrategy getInnerCompactionStrategy() {
+    return innerCompactionStrategy;
+  }
+
+  public void setInnerCompactionStrategy(InnerCompactionStrategy innerCompactionStrategy) {
+    this.innerCompactionStrategy = innerCompactionStrategy;
+  }
+
+  public CrossCompactionStrategy getCrossCompactionStrategy() {
+    return crossCompactionStrategy;
+  }
+
+  public void setCrossCompactionStrategy(CrossCompactionStrategy crossCompactionStrategy) {
+    this.crossCompactionStrategy = crossCompactionStrategy;
   }
 
   public CompactionPriority getCompactionPriority() {

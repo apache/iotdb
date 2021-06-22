@@ -2,8 +2,8 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.RecoverCrossMergeTask;
-import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -18,7 +18,7 @@ import java.util.List;
 
 public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(CrossSpaceCompactionRecoverTask.class);
+      LoggerFactory.getLogger(AbstractCrossSpaceCompactionRecoverTask.class);
 
   public InplaceCompactionRecoverTask(CompactionContext context) {
     super(context);

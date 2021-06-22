@@ -4,9 +4,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
-import org.apache.iotdb.db.engine.compaction.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -23,8 +23,9 @@ import java.util.List;
 
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 
-public class InplaceCompactionTask extends CrossSpaceCompactionTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(CrossSpaceCompactionTask.class);
+public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractCrossSpaceCompactionTask.class);
   protected CompactionContext context;
   protected CrossSpaceMergeResource mergeResource;
   protected String storageGroupDir;

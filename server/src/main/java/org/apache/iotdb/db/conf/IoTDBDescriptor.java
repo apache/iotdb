@@ -20,6 +20,8 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -332,6 +334,16 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_unseq_space_compaction",
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
+
+      conf.setCrossCompactionStrategy(
+          CrossCompactionStrategy.valueOf(
+              properties.getProperty(
+                  "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
+
+      conf.setInnerCompactionStrategy(
+          InnerCompactionStrategy.valueOf(
+              properties.getProperty(
+                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
 
       conf.setCompactionPriority(
           CompactionPriority.valueOf(

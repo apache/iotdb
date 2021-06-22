@@ -17,16 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.task;
+package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionContext;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionTaskFactory;
 
 public class CrossSpaceCompactionTaskFactory implements ICompactionTaskFactory {
 
   @Override
   public AbstractCompactionTask createTask(CompactionContext context) {
-    // TODO select strategy
-    return new InplaceCompactionTask(context);
+    return IoTDBDescriptor.getInstance()
+        .getConfig()
+        .getCrossCompactionStrategy()
+        .getCompactionTask(context);
   }
 }
