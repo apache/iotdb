@@ -57,7 +57,6 @@ public class AuthorityChecker {
 
     int permission = translateToPermissionId(type);
     if (permission == -1) {
-      logger.error("OperateType not found. {}", type);
       return false;
     } else if (permission == PrivilegeType.MODIFY_PASSWORD.ordinal()
         && username.equals(targetUser)) {
