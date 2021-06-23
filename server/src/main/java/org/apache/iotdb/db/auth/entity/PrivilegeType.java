@@ -26,6 +26,8 @@ public enum PrivilegeType {
   UPDATE_TIMESERIES,
   READ_TIMESERIES,
   CREATE_TIMESERIES,
+  DELETE_STORAGE_GROUP,
+  ALTER_TIMESERIES,
   DELETE_TIMESERIES,
   CREATE_USER,
   DELETE_USER,
@@ -46,10 +48,8 @@ public enum PrivilegeType {
   DROP_TRIGGER,
   START_TRIGGER,
   STOP_TRIGGER,
-  ALL,
-  DELETE_STORAGE_GROUP,
-  ALTER_TIMESERIES,
-  TTL;
+  TTL,
+  ALL;
 
   /**
    * Some privileges need a seriesPath as parameter, while others do not. This method returns which

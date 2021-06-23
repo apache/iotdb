@@ -258,5 +258,40 @@ public class AuthorityCheckerTest {
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.TTL,
             user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.BATCHINSERT,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.BATCH_INSERT_ONE_DEVICE,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.MULTI_BATCH_INSERT,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.BATCH_INSERT_ROWS,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.CREATE_MULTI_TIMESERIES,
+            user.getName()));
   }
 }

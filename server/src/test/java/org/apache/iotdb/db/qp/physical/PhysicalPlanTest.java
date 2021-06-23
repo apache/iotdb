@@ -188,7 +188,7 @@ public class PhysicalPlanTest {
             + "roleName: xm\n"
             + "password: null\n"
             + "newPassword: null\n"
-            + "permissions: [0, 5]\n"
+            + "permissions: [0, 7]\n"
             + "nodeName: root.vehicle.d1.s1\n"
             + "authorType: GRANT_ROLE",
         plan.toString());
