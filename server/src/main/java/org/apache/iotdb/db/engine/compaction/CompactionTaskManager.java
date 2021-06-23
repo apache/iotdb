@@ -159,20 +159,22 @@ public class CompactionTaskManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public synchronized void submitTask(
+  public void submitTask(
       String storageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
-      CompactionScheduler.currentTaskNum.incrementAndGet();
-      logger.warn(
-          "submitted a compaction task, currentTaskNum={}",
-          CompactionScheduler.currentTaskNum.get());
-      Future<Void> future = pool.submit(compactionMergeTask);
-      CompactionScheduler.addPartitionCompaction(storageGroupName, timePartition);
-      compactionTaskFutures
-          .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(timePartition, k -> new HashSet<>())
-          .add(future);
+      synchronized (CompactionScheduler.currentTaskNum) {
+        CompactionScheduler.currentTaskNum.incrementAndGet();
+        logger.warn(
+            "submitted a compaction task, currentTaskNum={}",
+            CompactionScheduler.currentTaskNum.get());
+        Future<Void> future = pool.submit(compactionMergeTask);
+        CompactionScheduler.addPartitionCompaction(storageGroupName, timePartition);
+        compactionTaskFutures
+            .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(timePartition, k -> new HashSet<>())
+            .add(future);
+      }
     }
   }
 

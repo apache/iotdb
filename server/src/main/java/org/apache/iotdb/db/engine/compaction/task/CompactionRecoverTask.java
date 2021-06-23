@@ -35,10 +35,12 @@ public class CompactionRecoverTask implements Callable<Void> {
     recoverInnerCompaction(true);
     recoverInnerCompaction(false);
     recoverCrossCompaction();
-    CompactionScheduler.decPartitionCompaction(
-        logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-    compactionRecoverCallBack.call();
-    CompactionScheduler.currentTaskNum.decrementAndGet();
+    synchronized (CompactionScheduler.currentTaskNum) {
+      CompactionScheduler.decPartitionCompaction(
+          logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
+      compactionRecoverCallBack.call();
+      CompactionScheduler.currentTaskNum.decrementAndGet();
+    }
     return null;
   }
 
