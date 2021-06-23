@@ -263,7 +263,7 @@ public class AuthorityCheckerTest {
         AuthorityChecker.check(
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.BATCHINSERT,
+            OperatorType.BATCH_INSERT,
             user.getName()));
 
     Assert.assertTrue(
@@ -285,6 +285,13 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.BATCH_INSERT_ROWS,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.CREATE_ALIGNED_TIMESERIES,
             user.getName()));
 
     Assert.assertTrue(
