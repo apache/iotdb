@@ -62,8 +62,6 @@ public class TsFileResourceManager {
     this.virtualStorageGroup = virtualStorageGroup;
   }
 
-  public void recover() {}
-
   public List<TsFileResource> getTsFileList(boolean sequence) {
     readLock();
     try {

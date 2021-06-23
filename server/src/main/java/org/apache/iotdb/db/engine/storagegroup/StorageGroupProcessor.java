@@ -525,14 +525,7 @@ public class StorageGroupProcessor {
 
   private void submitTimedCompactionTask() {
     timedCompactionScheduleTask.scheduleWithFixedDelay(
-        () -> {
-          List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
-          // sort the time partition from largest to smallest
-          timePartitions.sort((o1, o2) -> (int) (o2 - o1));
-          for (long timePartition : timePartitions) {
-            CompactionScheduler.scheduleCompaction(tsFileResourceManager, timePartition);
-          }
-        },
+        this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         COMPACTION_TASK_SUBMIT_DELAY,
         TimeUnit.MILLISECONDS);
@@ -2014,39 +2007,15 @@ public class StorageGroupProcessor {
     logger.info(
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
-
-    executeCompaction(
-        tsFileProcessor.getTimeRangeId(),
-        IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
   }
 
-  private void executeCompaction(long timePartition, boolean fullMerge) {
-    //    if (!compactionMergeWorking && !CompactionTaskManager.getInstance().isTerminated()) {
-    //      compactionMergeWorking = true;
-    //      logger.info(
-    //          "{} submit a compaction merge task",
-    //          logicalStorageGroupName + "-" + virtualStorageGroupId);
-    //      try {
-    //        // fork and filter current tsfile, then commit then to compaction merge
-    //        tsFileResourceManager.forkCurrentFileList(timePartition);
-    //        tsFileResourceManager.setForceFullMerge(fullMerge);
-    //        CompactionTaskManager.getInstance()
-    //            .submitTask(
-    //                logicalStorageGroupName,
-    //                tsFileResourceManager
-    //                .new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition));
-    //      } catch (IOException | RejectedExecutionException e) {
-    //        this.closeCompactionMergeCallBack(false, timePartition);
-    //        logger.error(
-    //            "{} compaction submit task failed",
-    //            logicalStorageGroupName + "-" + virtualStorageGroupId,
-    //            e);
-    //      }
-    //    } else {
-    //      logger.info(
-    //          "{} last compaction merge task is working, skip current merge",
-    //          logicalStorageGroupName + "-" + virtualStorageGroupId);
-    //    }
+  private void executeCompaction() {
+    List<Long> timePartitions = new ArrayList<>(tsFileResourceManager.getTimePartitions());
+    // sort the time partition from largest to smallest
+    timePartitions.sort((o1, o2) -> (int) (o2 - o1));
+    for (long timePartition : timePartitions) {
+      CompactionScheduler.scheduleCompaction(tsFileResourceManager, timePartition);
+    }
   }
 
   /**
@@ -2153,9 +2122,7 @@ public class StorageGroupProcessor {
   public void merge(boolean isFullMerge) {
     writeLock("merge");
     try {
-      for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
-        executeCompaction(timePartitionId, isFullMerge);
-      }
+      executeCompaction();
     } finally {
       writeUnlock();
     }

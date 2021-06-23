@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompactionScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
-  public static AtomicInteger currentTaskNum = new AtomicInteger(0);
+  public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // storageGroupName -> timePartition -> compactionCount
   private static Map<String, Map<Long, Long>> compactionCountInPartition =
@@ -243,18 +243,23 @@ public class CompactionScheduler {
   }
 
   public static void addPartitionCompaction(String storageGroupName, long timePartition) {
-    compactionCountInPartition
-        .computeIfAbsent(storageGroupName, l -> new HashMap<>())
-        .put(
-            timePartition,
-            compactionCountInPartition.get(storageGroupName).getOrDefault(timePartition, 0L) + 1);
+    synchronized (compactionCountInPartition) {
+      compactionCountInPartition
+          .computeIfAbsent(storageGroupName, l -> new HashMap<>())
+          .put(
+              timePartition,
+              compactionCountInPartition.get(storageGroupName).getOrDefault(timePartition, 0L) + 1);
+    }
   }
 
   public static void decPartitionCompaction(String storageGroupName, long timePartition) {
-    compactionCountInPartition
-        .get(storageGroupName)
-        .put(
-            timePartition, compactionCountInPartition.get(storageGroupName).get(timePartition) - 1);
+    synchronized (compactionCountInPartition) {
+      compactionCountInPartition
+          .get(storageGroupName)
+          .put(
+              timePartition,
+              compactionCountInPartition.get(storageGroupName).get(timePartition) - 1);
+    }
   }
 
   public static boolean isPartitionCompacting(String storageGroupName, long timePartition) {

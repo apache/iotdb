@@ -67,11 +67,11 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
     for (TsFileResource tsFileResource : seqResources) {
       tsFileResourceManager.add(tsFileResource, true);
     }
-    tsFileResourceManager.addAll(seqResources, false);
+    tsFileResourceManager.addAll(unseqResources, false);
     assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
-    assertEquals(6, tsFileResourceManager.getTsFileList(false).size());
+    assertEquals(1, tsFileResourceManager.getTsFileList(false).size());
     assertEquals(6, tsFileResourceManager.size(true));
-    assertEquals(6, tsFileResourceManager.size(false));
+    assertEquals(1, tsFileResourceManager.size(false));
     assertTrue(tsFileResourceManager.contains(seqResources.get(0), true));
     assertFalse(
         tsFileResourceManager.contains(

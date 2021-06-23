@@ -268,7 +268,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     logStream.close();
 
     tsFileResourceManager.addRecover(targetTsFileResource, true);
-    tsFileResourceManager.recover();
     context = new QueryContext();
     path =
         new PartialPath(
@@ -386,7 +385,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     out.close();
 
     tsFileResourceManager.addRecover(targetTsFileResource, true);
-    tsFileResourceManager.recover();
     context = new QueryContext();
     path =
         new PartialPath(
@@ -524,7 +522,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.close();
-    tsFileResourceManager.recover();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -565,7 +562,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
     compactionLogger.logSequence(true);
     compactionLogger.close();
-    tsFileResourceManager.recover();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -619,7 +615,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     tsFileResourceManager.add(targetTsFileResource, true);
     compactionLogger.close();
-    tsFileResourceManager.recover();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -681,7 +676,6 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
         true);
     tsFileResourceManager.addRecover(targetTsFileResource, true);
     compactionLogger.close();
-    tsFileResourceManager.recover();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
