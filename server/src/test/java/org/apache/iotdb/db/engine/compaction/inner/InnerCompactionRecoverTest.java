@@ -154,10 +154,8 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
             tsFileResourceManager.getUnsequenceListByTimePartition(0),
             recoverTsFile,
             false);
+
     task.call();
-    //
-    // compactionContext.setSequenceFileResourceList(tsFileResourceManager.getSequenceListByTimePartition());
-    //    SizeTiredCompactionRecoverTask task = new SizeTiredCompactionRecoverTask();
     context = new QueryContext();
     path =
         new PartialPath(

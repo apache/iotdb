@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.modifyTsFileNameUnseqMergCnt;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.modifyTsFileNameUnseqMergCnt;
 
 /**
  * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged chunks

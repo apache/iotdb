@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
@@ -61,16 +62,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
-import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.getTsFileName;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
@@ -814,7 +808,7 @@ public class TsFileResource {
 
   public static int getCompactionCount(String fileName) throws IOException {
     TsFileName tsFileName = getTsFileName(fileName);
-    return tsFileName.mergeCnt;
+    return tsFileName.getMergeCnt();
   }
 
   /** For merge, the index range of the new file should be the union of all files' in this merge. */
@@ -851,91 +845,6 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  // change tsFile name
-
-  public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-    return time
-        + FILE_NAME_SEPARATOR
-        + version
-        + FILE_NAME_SEPARATOR
-        + mergeCnt
-        + FILE_NAME_SEPARATOR
-        + unSeqMergeCnt
-        + TSFILE_SUFFIX;
-  }
-
-  public static TsFileName getTsFileName(String fileName) throws IOException {
-    String[] fileNameParts =
-        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
-            FILE_NAME_SEPARATOR);
-    if (fileNameParts.length != 4) {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
-    }
-    try {
-      TsFileName tsFileName =
-          new TsFileName(
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
-              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-      return tsFileName;
-    } catch (NumberFormatException e) {
-      throw new IOException("tsfile file name format is incorrect:" + fileName);
-    }
-  }
-
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
-      throws IOException {
-    File tsFile = tsFileResource.getTsFile();
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    tsFileResource.setFile(
-        new File(
-            path,
-            tsFileName.time
-                + FILE_NAME_SEPARATOR
-                + tsFileName.version
-                + FILE_NAME_SEPARATOR
-                + tsFileName.mergeCnt
-                + FILE_NAME_SEPARATOR
-                + tsFileName.unSeqMergeCnt
-                + TSFILE_SUFFIX));
-    return tsFileResource;
-  }
-
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
-  }
-
-  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
-  }
-
   // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
   public static int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
@@ -955,72 +864,6 @@ public class TsFileResource {
       return cmpVersion;
     } else {
       return cmp;
-    }
-  }
-
-  /**
-   * This method receive a list of TsFileResource to be compacted, return the name of compaction
-   * target file.
-   *
-   * @return target file name as {minTimestamp}-{minVersionNum}-{maxInnerMergeTimes +
-   *     1}-{maxCrossMergeTimes}
-   */
-  public static String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
-    Pattern tsFilePattern = Pattern.compile(fileNameRegex);
-    Matcher matcher = tsFilePattern.matcher(tsFileResourceList.get(0).getTsFile().getName());
-    long minTimestamp = Long.parseLong(matcher.group(1));
-    long minVersionNum = Long.parseLong(matcher.group(2));
-    int maxInnerMergeTimes = Integer.parseInt(matcher.group(3));
-    int maxCrossMergeTimes = Integer.parseInt(matcher.group(4));
-
-    return TsFileNameGenerator.generateNewTsFileName(
-        minTimestamp, minVersionNum, maxInnerMergeTimes + 1, maxCrossMergeTimes);
-  }
-
-  public static class TsFileName {
-
-    private long time;
-    private long version;
-    private int mergeCnt;
-    private int unSeqMergeCnt;
-
-    public TsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
-      this.time = time;
-      this.version = version;
-      this.mergeCnt = mergeCnt;
-      this.unSeqMergeCnt = unSeqMergeCnt;
-    }
-
-    public long getTime() {
-      return time;
-    }
-
-    public long getVersion() {
-      return version;
-    }
-
-    public int getMergeCnt() {
-      return mergeCnt;
-    }
-
-    public int getUnSeqMergeCnt() {
-      return unSeqMergeCnt;
-    }
-
-    public void setTime(long time) {
-      this.time = time;
-    }
-
-    public void setVersion(long version) {
-      this.version = version;
-    }
-
-    public void setMergeCnt(int mergeCnt) {
-      this.mergeCnt = mergeCnt;
-    }
-
-    public void setUnSeqMergeCnt(int unSeqMergeCnt) {
-      this.unSeqMergeCnt = unSeqMergeCnt;
     }
   }
 }
