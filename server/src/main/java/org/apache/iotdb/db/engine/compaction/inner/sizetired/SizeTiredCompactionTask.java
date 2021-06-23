@@ -83,7 +83,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.modifyTsFileNameMergeCnt(selectedTsFileResourceList.get(selectedTsFileResourceList.size()-1).getTsFile())
+        TsFileNameGenerator.modifyTsFileNameMergeCnt(
+                selectedTsFileResourceList.get(selectedTsFileResourceList.size() - 1).getTsFile())
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
@@ -93,7 +94,10 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.size());
     try {
       File logFile =
-          new File(dataDirectory + File.separator + targetFileName + COMPACTION_LOG_SUFFIX);
+          new File(dataDirectory + File.separator + targetFileName + CompactionLogger.COMPACTION_LOG_NAME);
+      if (!logFile.exists()) {
+        logFile.createNewFile();
+      }
       // compaction execution
       CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {

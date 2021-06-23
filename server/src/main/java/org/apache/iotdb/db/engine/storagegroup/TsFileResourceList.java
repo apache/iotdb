@@ -138,20 +138,20 @@ public class TsFileResourceList implements List<TsFileResource> {
   public boolean contains(Object o) {
     readLock();
     try {
-    if (o.getClass() != TsFileResource.class) {
-      return false;
-    }
-    boolean contain = false;
-    TsFileResource current = header;
-    while (current != null) {
-      if (current.equals(o)) {
-        contain = true;
-        break;
+      if (! (o instanceof TsFileResource)) {
+        return false;
       }
-      current = current.next;
-    }
-    return contain;
-    } finally{
+      boolean contain = false;
+      TsFileResource current = header;
+      while (current != null) {
+        if (current.equals(o)) {
+          contain = true;
+          break;
+        }
+        current = current.next;
+      }
+      return contain;
+    } finally {
       readUnlock();
     }
   }
@@ -231,14 +231,14 @@ public class TsFileResourceList implements List<TsFileResource> {
   public boolean addAll(Collection<? extends TsFileResource> c) {
     writeLock();
     try {
-    if (c instanceof List) {
-      for (TsFileResource resource : c) {
-        add(resource);
+      if (c instanceof List) {
+        for (TsFileResource resource : c) {
+          add(resource);
+        }
+        return true;
       }
-      return true;
-    }
-    throw new NotImplementedException();
-    } finally{
+      throw new NotImplementedException();
+    } finally {
       writeUnlock();
     }
   }
@@ -247,10 +247,10 @@ public class TsFileResourceList implements List<TsFileResource> {
   public void clear() {
     writeLock();
     try {
-    header = null;
-    tail = null;
-    count = 0;
-    } finally{
+      header = null;
+      tail = null;
+      count = 0;
+    } finally {
       writeUnlock();
     }
   }
@@ -328,18 +328,18 @@ public class TsFileResourceList implements List<TsFileResource> {
   public List<TsFileResource> getArrayList() {
     readLock();
     try {
-    List<TsFileResource> list = new ArrayList<>();
-    if (header == null) {
-      return list;
-    }
-    TsFileResource current = header;
-    while (current.next != null) {
+      List<TsFileResource> list = new ArrayList<>();
+      if (header == null) {
+        return list;
+      }
+      TsFileResource current = header;
+      while (current.next != null) {
+        list.add(current);
+        current = current.next;
+      }
       list.add(current);
-      current = current.next;
-    }
-    list.add(current);
-    return list;
-    } finally{
+      return list;
+    } finally {
       readUnlock();
     }
   }

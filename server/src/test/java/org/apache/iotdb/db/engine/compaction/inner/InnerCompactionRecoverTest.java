@@ -479,7 +479,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
-        tsFileResourceManager,
+            tsFileResourceManager,
             SystemFileFactory.INSTANCE.getFile(
                 tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME),
             tempSGDir.getPath(),

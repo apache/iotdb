@@ -38,7 +38,14 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> recoverTsFileResources,
       boolean sequence) {
-    super(storageGroupName, virtualStorageGroup, timePartition, tsFileResourceManager, tsFileResourceList, null, sequence);
+    super(
+        storageGroupName,
+        virtualStorageGroup,
+        timePartition,
+        tsFileResourceManager,
+        tsFileResourceList,
+        null,
+        sequence);
     this.compactionLogFile = compactionLogFile;
     this.storageGroupDir = storageGroupDir;
     this.tsFileResourceList = tsFileResourceList;

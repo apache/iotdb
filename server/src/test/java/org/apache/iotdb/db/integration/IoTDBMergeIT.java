@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -293,9 +292,9 @@ public class IoTDBMergeIT {
 
       statement.execute("MERGE");
 
-//      while (CompactionScheduler.currentTaskNum.get() > 0) {
-//        // wait
-//      }
+      //      while (CompactionScheduler.currentTaskNum.get() > 0) {
+      //        // wait
+      //      }
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
         cnt = 0;
