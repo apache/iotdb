@@ -408,4 +408,12 @@ public class StorageGroupManager {
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
   }
+
+  public void stopCompactionSchedulerPool(){
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+      }
+    }
+  }
 }

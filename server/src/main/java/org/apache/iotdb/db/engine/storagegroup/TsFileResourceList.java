@@ -201,6 +201,7 @@ public class TsFileResourceList implements List<TsFileResource> {
         return false;
       }
       if (tsFileResource.prev == null) {
+        // remove header
         header = header.next;
         if (header != null) {
           header.prev = null;
@@ -209,11 +210,20 @@ public class TsFileResourceList implements List<TsFileResource> {
           tail = null;
         }
       } else if (tsFileResource.next == null) {
+        // remove tail
         tail = tail.prev;
-        tail.next = null;
+        if (tail != null) {
+          tail.next = null;
+        } else {
+          // if list contains only one item, remove the header and the tail
+          header = null;
+        }
       } else {
         tsFileResource.prev.next = tsFileResource.next;
+        tsFileResource.next.prev = tsFileResource.prev;
       }
+      tsFileResource.prev = null;
+      tsFileResource.next = null;
       count--;
       return true;
     } finally {

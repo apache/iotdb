@@ -318,6 +318,9 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
+    for(StorageGroupManager storageGroupManager:processorMap.values()){
+      storageGroupManager.stopCompactionSchedulerPool();
+    }
     syncCloseAllProcessor();
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
@@ -351,6 +354,9 @@ public class StorageEngine implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
+      for(StorageGroupManager storageGroupManager:processorMap.values()){
+        storageGroupManager.stopCompactionSchedulerPool();
+      }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
       throw new ShutdownException(e);

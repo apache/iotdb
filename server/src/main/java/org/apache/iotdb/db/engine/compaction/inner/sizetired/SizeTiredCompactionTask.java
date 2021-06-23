@@ -10,21 +10,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils.COMPACTION_LOG_SUFFIX;
 
 public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
@@ -83,8 +77,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.modifyTsFileNameMergeCnt(
-                selectedTsFileResourceList.get(selectedTsFileResourceList.size() - 1).getTsFile())
+        TsFileNameGenerator.getInnerCompactionFileName(
+                selectedTsFileResourceList)
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
@@ -95,11 +89,18 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     try {
       File logFile =
           new File(dataDirectory + File.separator + targetFileName + CompactionLogger.COMPACTION_LOG_NAME);
-      if (!logFile.exists()) {
-        logFile.createNewFile();
-      }
       // compaction execution
-      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
+      CompactionLogger compactionLogger = null;
+      try{
+      compactionLogger = new CompactionLogger(logFile.getPath());
+      }catch (Exception e){
+        e.printStackTrace();
+        System.out.println(logFile.getParentFile().getPath()+"is "+logFile.getParentFile().exists());
+        System.out.println(logFile.getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().exists());
+        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile().exists());
+      }
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }

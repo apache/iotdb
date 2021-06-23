@@ -553,7 +553,8 @@ public class CompactionUtils {
   public static File[] findInnerSpaceCompactionLogs(String directory) {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_SUFFIX));
+      return timePartitionDir.listFiles(
+          (dir, name) -> name.endsWith(CompactionLogger.COMPACTION_LOG_NAME));
     } else {
       return new File[0];
     }

@@ -94,25 +94,8 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public void waitAllCompactionFinish() {
     if (pool != null) {
-      File sgDir =
-          FSFactoryProducer.getFSFactory()
-              .getFile(
-                  FilePathUtils.regularizePath(
-                          IoTDBDescriptor.getInstance().getConfig().getSystemDir())
-                      + "storage_groups");
-      File[] subDirList = sgDir.listFiles();
-      if (subDirList != null) {
-        for (File subDir : subDirList) {
-          while (FSFactoryProducer.getFSFactory()
-              .getFile(
-                  subDir.getAbsoluteFile()
-                      + File.separator
-                      + subDir.getName()
-                      + COMPACTION_LOG_NAME)
-              .exists()) {
-            // wait
-          }
-        }
+      while (CompactionScheduler.currentTaskNum.get()>0){
+        // wait
       }
       storageGroupTasks.clear();
       logger.info("All compaction task finish");

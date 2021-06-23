@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -34,7 +35,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
-public class IoTDBLevelCompactionIT {
+public class IoTDBInnerSpaceCompactionIT {
 
   @Before
   public void setUp() throws Exception {
@@ -1039,6 +1040,111 @@ public class IoTDBLevelCompactionIT {
         }
       }
       assertEquals(100, cnt);
+    }
+  }
+
+  @Test
+  public void testSequenceInnerCompactionContinously() throws SQLException {
+    int oriThreadNum = IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    try (Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    Statement statement = connection.createStatement()) {
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute(
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+      for (int i = 10000; i < 10004; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+      int compactionCount = 0;
+      while (compactionCount < 3) {
+        while (CompactionScheduler.currentTaskNum.get() == 0) {
+          // wait for schedule
+        }
+        while (CompactionScheduler.currentTaskNum.get() > 0) {
+          // wait for compaction to finish
+        }
+        compactionCount++;
+      }
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s1 = resultSet.getLong("root.compactionTest.s1");
+          long s2 = resultSet.getLong("root.compactionTest.s2");
+          long s3 = resultSet.getLong("root.compactionTest.s3");
+          assertEquals(time + 1, s1);
+          assertEquals(time + 2, s2);
+          assertEquals(time + 3, s3);
+        }
+      }
+
+    } finally{
+      IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
+    }
+  }
+
+  @Test
+  public void testSequenceInnerCompactionConcurrently() throws SQLException {
+    long oriTargetFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    try (Connection connection = DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute(
+              "CREATE TIMESERIES root.compactionTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
+        }
+      }
+      for (int i = 10000; i < 10020; i++) {
+        statement.execute(
+            String.format(
+                "INSERT INTO root.compactionTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                i, i + 1, i + 2, i + 3));
+        statement.execute("FLUSH");
+      }
+        while (CompactionScheduler.currentTaskNum.get() == 0) {
+          // wait for schedule
+        }
+        while (CompactionScheduler.currentTaskNum.get() > 0) {
+          // wait for compaction to finish
+        }
+        try {
+        Thread.sleep(5000);
+        } catch (InterruptedException e) {
+        }
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
+        while (resultSet.next()) {
+          long time = resultSet.getLong("Time");
+          long s1 = resultSet.getLong("root.compactionTest.s1");
+          long s2 = resultSet.getLong("root.compactionTest.s2");
+          long s3 = resultSet.getLong("root.compactionTest.s3");
+          assertEquals(time + 1, s1);
+          assertEquals(time + 2, s2);
+          assertEquals(time + 3, s3);
+        }
+      }
+
+    } finally{
+      IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);
     }
   }
 }
