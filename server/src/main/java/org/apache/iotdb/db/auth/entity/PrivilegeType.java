@@ -26,8 +26,6 @@ public enum PrivilegeType {
   UPDATE_TIMESERIES,
   READ_TIMESERIES,
   CREATE_TIMESERIES,
-  DELETE_STORAGE_GROUP,
-  ALTER_TIMESERIES,
   DELETE_TIMESERIES,
   CREATE_USER,
   DELETE_USER,
@@ -48,8 +46,10 @@ public enum PrivilegeType {
   DROP_TRIGGER,
   START_TRIGGER,
   STOP_TRIGGER,
+  ALL,
   TTL,
-  ALL;
+  DELETE_STORAGE_GROUP,
+  ALTER_TIMESERIES;
 
   /**
    * Some privileges need a seriesPath as parameter, while others do not. This method returns which
@@ -59,6 +59,8 @@ public enum PrivilegeType {
    * @return Whether this privilege need a seriesPath or not.
    */
   public static boolean isPathRelevant(int type) {
-    return type <= DELETE_TIMESERIES.ordinal();
+    return type <= DELETE_TIMESERIES.ordinal()
+        || type == DELETE_STORAGE_GROUP.ordinal()
+        || type == ALTER_TIMESERIES.ordinal();
   }
 }
