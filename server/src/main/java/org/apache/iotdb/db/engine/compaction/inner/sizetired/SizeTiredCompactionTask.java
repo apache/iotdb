@@ -5,6 +5,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
@@ -77,7 +78,9 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   @Override
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
-    String targetFileName = TsFileResource.generateTargetFileName(selectedTsFileResourceList);
+    String targetFileName =
+        TsFileNameGenerator.modifyTsFileNameMergeCnt(selectedTsFileResourceList.get(0).getTsFile())
+            .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(

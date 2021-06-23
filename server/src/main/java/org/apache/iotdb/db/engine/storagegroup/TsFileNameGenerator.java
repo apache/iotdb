@@ -29,6 +29,15 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import java.io.File;
 import java.io.IOException;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_MERGECNT_INDEX;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_TIME_INDEX;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX;
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_VERSION_INDEX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
 public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -124,5 +133,124 @@ public class TsFileNameGenerator {
         + IoTDBConstant.FILE_NAME_SEPARATOR
         + crossSpaceCompactionCount
         + TsFileConstant.TSFILE_SUFFIX;
+  }
+
+  public static TsFileName getTsFileName(String fileName) throws IOException {
+    String[] fileNameParts =
+        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
+            FILE_NAME_SEPARATOR);
+    if (fileNameParts.length != 4) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
+    try {
+      TsFileName tsFileName =
+          new TsFileName(
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
+      return tsFileName;
+    } catch (NumberFormatException e) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
+  }
+
+  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
+      throws IOException {
+    File tsFile = tsFileResource.getTsFile();
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
+    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
+    tsFileResource.setFile(
+        new File(
+            path,
+            tsFileName.time
+                + FILE_NAME_SEPARATOR
+                + tsFileName.version
+                + FILE_NAME_SEPARATOR
+                + tsFileName.mergeCnt
+                + FILE_NAME_SEPARATOR
+                + tsFileName.unSeqMergeCnt
+                + TSFILE_SUFFIX));
+    return tsFileResource;
+  }
+
+  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFile.getName());
+    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
+    return new File(
+        path,
+        tsFileName.time
+            + FILE_NAME_SEPARATOR
+            + tsFileName.version
+            + FILE_NAME_SEPARATOR
+            + tsFileName.mergeCnt
+            + FILE_NAME_SEPARATOR
+            + tsFileName.unSeqMergeCnt
+            + TSFILE_SUFFIX);
+  }
+
+  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFile.getName());
+    tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);
+    return new File(
+        path,
+        tsFileName.time
+            + FILE_NAME_SEPARATOR
+            + tsFileName.version
+            + FILE_NAME_SEPARATOR
+            + tsFileName.mergeCnt
+            + FILE_NAME_SEPARATOR
+            + tsFileName.unSeqMergeCnt
+            + TSFILE_SUFFIX);
+  }
+
+  public static class TsFileName {
+
+    private long time;
+    private long version;
+    private int mergeCnt;
+    private int unSeqMergeCnt;
+
+    public TsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
+      this.time = time;
+      this.version = version;
+      this.mergeCnt = mergeCnt;
+      this.unSeqMergeCnt = unSeqMergeCnt;
+    }
+
+    public long getTime() {
+      return time;
+    }
+
+    public long getVersion() {
+      return version;
+    }
+
+    public int getMergeCnt() {
+      return mergeCnt;
+    }
+
+    public int getUnSeqMergeCnt() {
+      return unSeqMergeCnt;
+    }
+
+    public void setTime(long time) {
+      this.time = time;
+    }
+
+    public void setVersion(long version) {
+      this.version = version;
+    }
+
+    public void setMergeCnt(int mergeCnt) {
+      this.mergeCnt = mergeCnt;
+    }
+
+    public void setUnSeqMergeCnt(int unSeqMergeCnt) {
+      this.unSeqMergeCnt = unSeqMergeCnt;
+    }
   }
 }
