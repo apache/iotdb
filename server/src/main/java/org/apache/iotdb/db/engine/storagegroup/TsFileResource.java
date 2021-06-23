@@ -968,6 +968,7 @@ public class TsFileResource {
   public static String generateTargetFileName(List<TsFileResource> tsFileResourceList) {
     Pattern tsFilePattern = Pattern.compile(fileNameRegex);
     Matcher matcher = tsFilePattern.matcher(tsFileResourceList.get(0).getTsFile().getName());
+    matcher.find();
     long minTimestamp = Long.parseLong(matcher.group(1));
     long minVersionNum = Long.parseLong(matcher.group(2));
     int maxInnerMergeTimes = Integer.parseInt(matcher.group(3));
