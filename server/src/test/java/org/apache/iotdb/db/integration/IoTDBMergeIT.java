@@ -220,7 +220,7 @@ public class IoTDBMergeIT {
 
       statement.execute("MERGE");
       try {
-        Thread.sleep(500);
+        Thread.sleep(2000);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -292,6 +292,9 @@ public class IoTDBMergeIT {
 
       statement.execute("MERGE");
 
+      //      while (CompactionScheduler.currentTaskNum.get() > 0) {
+      //        // wait
+      //      }
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
         cnt = 0;
@@ -372,7 +375,7 @@ public class IoTDBMergeIT {
       }
       // it is uncertain whether the sub tasks are created at this time point, and we are only
       // sure that the main task is created
-      assertEquals(4, cnt);
+      assertEquals(3, cnt);
     }
   }
 }

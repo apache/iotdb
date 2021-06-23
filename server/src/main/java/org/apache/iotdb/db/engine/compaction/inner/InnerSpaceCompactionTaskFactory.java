@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class InnerSpaceCompactionTaskFactory {
       String storageGroupName,
       String virtualStorageGroup,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
@@ -41,6 +43,7 @@ public class InnerSpaceCompactionTaskFactory {
             storageGroupName,
             virtualStorageGroup,
             timePartition,
+            tsFileResourceManager,
             tsFileResourceList,
             selectedTsFileResourceList,
             sequence);

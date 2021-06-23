@@ -136,19 +136,24 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public boolean contains(Object o) {
-    if (o.getClass() != TsFileResource.class) {
-      return false;
-    }
-    boolean contain = false;
-    TsFileResource current = header;
-    while (current != null) {
-      if (current.equals(o)) {
-        contain = true;
-        break;
+    readLock();
+    try {
+      if (! (o instanceof TsFileResource)) {
+        return false;
       }
-      current = current.next;
+      boolean contain = false;
+      TsFileResource current = header;
+      while (current != null) {
+        if (current.equals(o)) {
+          contain = true;
+          break;
+        }
+        current = current.next;
+      }
+      return contain;
+    } finally {
+      readUnlock();
     }
-    return contain;
   }
 
   @Override
@@ -191,7 +196,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     writeLock();
     try {
       TsFileResource tsFileResource = (TsFileResource) o;
-      if (tsFileResource.prev == null && tsFileResource.next == null && tsFileResource != header) {
+      if (!contains(o)) {
         // the tsFileResource does not exist in this list
         return false;
       }
@@ -199,6 +204,9 @@ public class TsFileResourceList implements List<TsFileResource> {
         header = header.next;
         if (header != null) {
           header.prev = null;
+        } else {
+          // if list contains only one item, remove the header and the tail
+          tail = null;
         }
       } else if (tsFileResource.next == null) {
         tail = tail.prev;
@@ -221,20 +229,30 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Only List type parameter is legal, because it is in order. */
   @Override
   public boolean addAll(Collection<? extends TsFileResource> c) {
-    if (c instanceof List) {
-      for (TsFileResource resource : c) {
-        add(resource);
+    writeLock();
+    try {
+      if (c instanceof List) {
+        for (TsFileResource resource : c) {
+          add(resource);
+        }
+        return true;
       }
-      return true;
+      throw new NotImplementedException();
+    } finally {
+      writeUnlock();
     }
-    throw new NotImplementedException();
   }
 
   @Override
   public void clear() {
-    header = null;
-    tail = null;
-    count = 0;
+    writeLock();
+    try {
+      header = null;
+      tail = null;
+      count = 0;
+    } finally {
+      writeUnlock();
+    }
   }
 
   @Override
@@ -308,17 +326,22 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   public List<TsFileResource> getArrayList() {
-    List<TsFileResource> list = new ArrayList<>();
-    if (header == null) {
-      return list;
-    }
-    TsFileResource current = header;
-    while (current.next != null) {
+    readLock();
+    try {
+      List<TsFileResource> list = new ArrayList<>();
+      if (header == null) {
+        return list;
+      }
+      TsFileResource current = header;
+      while (current.next != null) {
+        list.add(current);
+        current = current.next;
+      }
       list.add(current);
-      current = current.next;
+      return list;
+    } finally {
+      readUnlock();
     }
-    list.add(current);
-    return list;
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {

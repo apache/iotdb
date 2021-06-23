@@ -101,6 +101,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
             COMPACTION_TEST_SG,
             "0",
             0,
+            tsFileResourceManager,
             tsFileResourceManager.getSequenceListByTimePartition(0),
             seqResources,
             true);
