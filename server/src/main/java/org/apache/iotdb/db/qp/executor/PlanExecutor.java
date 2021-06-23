@@ -244,7 +244,7 @@ public class PlanExecutor implements IPlanExecutor {
       case BATCH_INSERT_ROWS:
         insert((InsertRowsPlan) plan);
         return true;
-      case BATCHINSERT:
+      case BATCH_INSERT:
         insertTablet((InsertTabletPlan) plan);
         return true;
       case MULTI_BATCH_INSERT:
@@ -1152,8 +1152,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
-      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      List<PartialPath> storageGroupPaths =
+          IoTDB.metaManager.getStorageGroupPaths(plan.getStorageGroup());
+      for (PartialPath storagePath : storageGroupPaths) {
+        IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
+        StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
+      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {

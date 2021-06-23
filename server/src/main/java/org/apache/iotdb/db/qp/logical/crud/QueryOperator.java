@@ -18,87 +18,93 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.RootOperator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class QueryOperator extends RootOperator {
+public class QueryOperator extends Operator {
 
-  private SelectOperator selectOperator;
-  private FromOperator fromOperator;
-  private FilterOperator filterOperator;
+  protected SelectComponent selectComponent;
+  protected FromComponent fromComponent;
+  protected WhereComponent whereComponent;
+  protected SpecialClauseComponent specialClauseComponent;
 
-  private long startTime;
-  private long endTime;
-  // time interval
-  private long unit;
-  // sliding step
-  private long slidingStep;
-  private boolean isGroupByTime = false;
-  private boolean isIntervalByMonth = false;
-  private boolean isSlidingStepByMonth = false;
-  // if it is left close and right open interval
-  private boolean leftCRightO;
+  protected Map<String, Object> props;
+  protected IndexType indexType;
 
-  private Map<TSDataType, IFill> fillTypes;
-  private boolean isFill = false;
-
-  private boolean isGroupByLevel = false;
-  private int level = -1;
-
-  private int rowLimit = 0;
-  private int rowOffset = 0;
-  private int seriesLimit = 0;
-  private int seriesOffset = 0;
-
-  private boolean isAlignByDevice = false;
-  private boolean isAlignByTime = true;
-
-  private String column;
-
-  private boolean ascending = true;
-
-  private Map<String, Object> props;
-
-  private IndexType indexType;
-
-  // if true, we don't need the row whose any column is null
-  private boolean withoutAnyNull;
-
-  // if true, we don't need the row whose all columns are null
-  private boolean withoutAllNull;
-
-  public QueryOperator(int tokenIntType) {
-    super(tokenIntType);
+  public QueryOperator() {
+    super(SQLConstant.TOK_QUERY);
     operatorType = Operator.OperatorType.QUERY;
   }
 
-  public SelectOperator getSelectOperator() {
-    return selectOperator;
+  public QueryOperator(QueryOperator queryOperator) {
+    this();
+    this.selectComponent = queryOperator.getSelectComponent();
+    this.fromComponent = queryOperator.getFromComponent();
+    this.whereComponent = queryOperator.getWhereComponent();
+    this.specialClauseComponent = queryOperator.getSpecialClauseComponent();
+    this.props = queryOperator.getProps();
+    this.indexType = queryOperator.getIndexType();
   }
 
-  public void setSelectOperator(SelectOperator selectOperator) {
-    this.selectOperator = selectOperator;
+  public SelectComponent getSelectComponent() {
+    return selectComponent;
   }
 
-  public FromOperator getFromOperator() {
-    return fromOperator;
+  public void setSelectComponent(SelectComponent selectComponent) {
+    this.selectComponent = selectComponent;
   }
 
-  public void setFromOperator(FromOperator fromOperator) {
-    this.fromOperator = fromOperator;
+  public FromComponent getFromComponent() {
+    return fromComponent;
   }
 
-  public FilterOperator getFilterOperator() {
-    return filterOperator;
+  public void setFromComponent(FromComponent fromComponent) {
+    this.fromComponent = fromComponent;
   }
 
-  public void setFilterOperator(FilterOperator filterOperator) {
-    this.filterOperator = filterOperator;
+  public WhereComponent getWhereComponent() {
+    return whereComponent;
+  }
+
+  public void setWhereComponent(WhereComponent whereComponent) {
+    this.whereComponent = whereComponent;
+  }
+
+  public void setSpecialClauseComponent(SpecialClauseComponent specialClauseComponent) {
+    this.specialClauseComponent = specialClauseComponent;
+  }
+
+  public SpecialClauseComponent getSpecialClauseComponent() {
+    return specialClauseComponent;
   }
 
   public Map<String, Object> getProps() {
@@ -117,199 +123,367 @@ public class QueryOperator extends RootOperator {
     this.indexType = indexType;
   }
 
-  public boolean isFill() {
-    return isFill;
-  }
-
-  public void setFill(boolean fill) {
-    isFill = fill;
-  }
-
-  public Map<TSDataType, IFill> getFillTypes() {
-    return fillTypes;
-  }
-
-  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
-  }
-
-  public boolean isGroupByLevel() {
-    return isGroupByLevel;
-  }
-
-  public void setGroupByLevel(boolean isGroupBy) {
-    this.isGroupByLevel = isGroupBy;
-  }
-
-  public boolean isLeftCRightO() {
-    return leftCRightO;
-  }
-
-  public void setLeftCRightO(boolean leftCRightO) {
-    this.leftCRightO = leftCRightO;
-  }
-
-  public int getRowLimit() {
-    return rowLimit;
-  }
-
-  public void setRowLimit(int rowLimit) {
-    this.rowLimit = rowLimit;
-  }
-
-  public int getRowOffset() {
-    return rowOffset;
-  }
-
-  public void setRowOffset(int rowOffset) {
-    this.rowOffset = rowOffset;
-  }
-
-  public boolean hasLimit() {
-    return rowLimit > 0;
-  }
-
-  public int getSeriesLimit() {
-    return seriesLimit;
-  }
-
-  public void setSeriesLimit(int seriesLimit) {
-    this.seriesLimit = seriesLimit;
-  }
-
-  public int getSeriesOffset() {
-    return seriesOffset;
-  }
-
-  public void setSeriesOffset(int seriesOffset) {
-    this.seriesOffset = seriesOffset;
-  }
-
-  public boolean hasSlimit() {
-    return seriesLimit > 0;
-  }
-
-  public long getUnit() {
-    return unit;
-  }
-
-  public void setUnit(long unit) {
-    this.unit = unit;
-  }
-
-  public long getStartTime() {
-    return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
-  }
-
-  public long getEndTime() {
-    return endTime;
-  }
-
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
-  }
-
-  public long getSlidingStep() {
-    return slidingStep;
-  }
-
-  public void setSlidingStep(long slidingStep) {
-    this.slidingStep = slidingStep;
-  }
-
-  public boolean isAlignByDevice() {
-    return isAlignByDevice;
-  }
-
-  public void setAlignByDevice(boolean isAlignByDevice) {
-    this.isAlignByDevice = isAlignByDevice;
-  }
-
-  public boolean isAlignByTime() {
-    return isAlignByTime;
-  }
-
-  public void setAlignByTime(boolean isAlignByTime) {
-    this.isAlignByTime = isAlignByTime;
-  }
-
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
-  }
-
-  public boolean isGroupByTime() {
-    return isGroupByTime;
-  }
-
-  public void setGroupByTime(boolean groupByTime) {
-    isGroupByTime = groupByTime;
-  }
-
-  public boolean isSlidingStepByMonth() {
-    return isSlidingStepByMonth;
-  }
-
-  public void setSlidingStepByMonth(boolean isSlidingStepByMonth) {
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
-  }
-
-  public boolean isIntervalByMonth() {
-    return isIntervalByMonth;
-  }
-
-  public void setIntervalByMonth(boolean isIntervalByMonth) {
-    this.isIntervalByMonth = isIntervalByMonth;
-  }
-
-  public String getColumn() {
-    return column;
-  }
-
-  public void setColumn(String column) {
-    this.column = column;
-  }
-
-  public boolean isAscending() {
-    return ascending;
-  }
-
-  public void setAscending(boolean ascending) {
-    this.ascending = ascending;
-  }
-
-  public boolean isLastQuery() {
-    return selectOperator.isLastQuery();
-  }
-
   public boolean hasAggregationFunction() {
-    return selectOperator.hasAggregationFunction();
+    return selectComponent.hasAggregationFunction();
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
-    return selectOperator.hasTimeSeriesGeneratingFunction();
+    return selectComponent.hasTimeSeriesGeneratingFunction();
   }
 
-  public boolean isWithoutAnyNull() {
-    return withoutAnyNull;
+  public boolean isAlignByDevice() {
+    return specialClauseComponent != null && specialClauseComponent.isAlignByDevice();
   }
 
-  public void setWithoutAnyNull(boolean withoutAnyNull) {
-    this.withoutAnyNull = withoutAnyNull;
+  public boolean isAlignByTime() {
+    return specialClauseComponent == null || specialClauseComponent.isAlignByTime();
   }
 
-  public boolean isWithoutAllNull() {
-    return withoutAllNull;
+  public boolean isGroupByLevel() {
+    return specialClauseComponent != null && specialClauseComponent.getLevel() != -1;
   }
 
-  public void setWithoutAllNull(boolean withoutAllNull) {
-    this.withoutAllNull = withoutAllNull;
+  public void check() throws LogicalOperatorException {
+    if (isAlignByDevice()) {
+      if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        throw new LogicalOperatorException(
+            "ALIGN BY DEVICE clause is not supported in UDF queries.");
+      }
+
+      for (PartialPath path : selectComponent.getPaths()) {
+        String device = path.getDevice();
+        if (!device.isEmpty()) {
+          throw new LogicalOperatorException(
+              "The paths of the SELECT clause can only be single level. In other words, "
+                  + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                  + " For more details please refer to the SQL document.");
+        }
+      }
+    }
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    QueryPlan queryPlan = indexType == null ? new RawDataQueryPlan() : new QueryIndexPlan();
+    return isAlignByDevice()
+        ? this.generateAlignByDevicePlan(generator)
+        : this.generateRawDataQueryPlan(generator, queryPlan);
+  }
+
+  protected QueryPlan generateRawDataQueryPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+      throws QueryProcessException {
+    RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
+    rawDataQueryPlan.setPaths(selectComponent.getPaths());
+    rawDataQueryPlan.setResultColumns(selectComponent.getResultColumns());
+
+    // transform filter operator to expression
+    if (whereComponent != null) {
+      FilterOperator filterOperator = whereComponent.getFilterOperator();
+      List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
+      try {
+        List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPaths);
+        HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+        for (int i = 0; i < filterPaths.size(); i++) {
+          rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPaths.get(i));
+          pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
+        }
+        IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
+        rawDataQueryPlan.setExpression(expression);
+      } catch (MetadataException e) {
+        throw new LogicalOptimizeException(e.getMessage());
+      }
+    }
+
+    if (queryPlan instanceof QueryIndexPlan) {
+      ((QueryIndexPlan) queryPlan).setIndexType(indexType);
+      ((QueryIndexPlan) queryPlan).setProps(props);
+      return queryPlan;
+    }
+
+    try {
+      rawDataQueryPlan.setDataTypes(generator.getSeriesTypes(selectComponent.getPaths()));
+      queryPlan.deduplicate(generator);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+
+    convertSpecialClauseValues(rawDataQueryPlan);
+
+    return rawDataQueryPlan;
+  }
+
+  protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
+
+    List<PartialPath> prefixPaths = fromComponent.getPrefixPaths();
+    // remove stars in fromPaths and get deviceId with deduplication
+    List<PartialPath> devices = removeStarsInDeviceWithUnique(prefixPaths);
+    List<ResultColumn> resultColumns = selectComponent.getResultColumns();
+    List<String> originAggregations = selectComponent.getAggregationFunctions();
+
+    // to record result measurement columns
+    List<String> measurements = new ArrayList<>();
+    Map<String, String> measurementAliasMap = new HashMap<>();
+    // to check the same measurement of different devices having the same datatype
+    // record the data type of each column of result set
+    Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
+    Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
+
+    // to record the real type of the corresponding measurement
+    Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
+    List<PartialPath> paths = new ArrayList<>();
+
+    for (int i = 0; i < resultColumns.size(); i++) { // per suffix in SELECT
+      ResultColumn resultColumn = resultColumns.get(i);
+      Expression suffixExpression = resultColumn.getExpression();
+      PartialPath suffixPath =
+          suffixExpression instanceof TimeSeriesOperand
+              ? ((TimeSeriesOperand) suffixExpression).getPath()
+              : (((FunctionExpression) suffixExpression).getPaths().get(0));
+
+      // to record measurements in the loop of a suffix path
+      Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+
+      // if const measurement
+      if (suffixPath.getMeasurement().startsWith("'")) {
+        measurements.add(suffixPath.getMeasurement());
+        measurementTypeMap.put(suffixPath.getMeasurement(), MeasurementType.Constant);
+        continue;
+      }
+
+      for (PartialPath device : devices) { // per device in FROM after deduplication
+        PartialPath fullPath = device.concatPath(suffixPath);
+        try {
+          // remove stars in SELECT to get actual paths
+          List<PartialPath> actualPaths = getMatchedTimeseries(fullPath);
+          if (resultColumn.hasAlias()) {
+            if (actualPaths.size() == 1) {
+              String columnName = actualPaths.get(0).getMeasurement();
+              if (originAggregations != null && !originAggregations.isEmpty()) {
+                measurementAliasMap.put(
+                    originAggregations.get(i) + "(" + columnName + ")", resultColumn.getAlias());
+              } else {
+                measurementAliasMap.put(columnName, resultColumn.getAlias());
+              }
+            } else if (actualPaths.size() >= 2) {
+              throw new QueryProcessException(
+                  "alias '"
+                      + resultColumn.getAlias()
+                      + "' can only be matched with one time series");
+            }
+          }
+
+          // for actual non exist path
+          if (originAggregations != null && actualPaths.isEmpty() && originAggregations.isEmpty()) {
+            String nonExistMeasurement = fullPath.getMeasurement();
+            if (measurementSetOfGivenSuffix.add(nonExistMeasurement)
+                && measurementTypeMap.get(nonExistMeasurement) != MeasurementType.Exist) {
+              measurementTypeMap.put(fullPath.getMeasurement(), MeasurementType.NonExist);
+            }
+          }
+
+          // Get data types with and without aggregate functions (actual time series) respectively
+          // Data type with aggregation function `columnDataTypes` is used for:
+          //  1. Data type consistency check 2. Header calculation, output result set
+          // The actual data type of the time series `measurementDataTypes` is used for
+          //  the actual query in the AlignByDeviceDataSet
+          String aggregation =
+              originAggregations != null && !originAggregations.isEmpty()
+                  ? originAggregations.get(i)
+                  : null;
+
+          Pair<List<TSDataType>, List<TSDataType>> pair =
+              generator.getSeriesTypes(actualPaths, aggregation);
+          List<TSDataType> columnDataTypes = pair.left;
+          List<TSDataType> measurementDataTypes = pair.right;
+          for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
+            PartialPath path = new PartialPath(actualPaths.get(pathIdx).getNodes());
+
+            // check datatype consistency
+            // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by
+            // device,
+            // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
+            String measurementChecked;
+            if (originAggregations != null && !originAggregations.isEmpty()) {
+              measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
+            } else {
+              measurementChecked = path.getMeasurement();
+            }
+            TSDataType columnDataType = columnDataTypes.get(pathIdx);
+            if (columnDataTypeMap.containsKey(measurementChecked)) {
+              if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
+                throw new QueryProcessException(
+                    "The data types of the same measurement column should be the same across "
+                        + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
+                        + "SQL document.");
+              }
+            } else {
+              columnDataTypeMap.put(measurementChecked, columnDataType);
+              measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
+            }
+
+            // This step indicates that the measurement exists under the device and is correct,
+            // First, update measurementSetOfGivenSuffix which is distinct
+            // Then if this measurement is recognized as NonExist before，update it to Exist
+            if (measurementSetOfGivenSuffix.add(measurementChecked)
+                || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
+              measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
+            }
+
+            // update paths
+            paths.add(path);
+          }
+
+        } catch (MetadataException | QueryProcessException e) {
+          throw new LogicalOptimizeException(
+              String.format(
+                      "Error when getting all paths of a full path: %s", fullPath.getFullPath())
+                  + e.getMessage());
+        }
+      }
+
+      // update measurements
+      // Note that in the loop of a suffix path, set is used.
+      // And across the loops of suffix paths, list is used.
+      // e.g. select *,s1 from root.sg.d0, root.sg.d1
+      // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
+      // for suffix s1, measurementSetOfGivenSuffix = {s1}
+      // therefore the final measurements is [s1,s2,s3,s1].
+      measurements.addAll(measurementSetOfGivenSuffix);
+    }
+
+    convertSpecialClauseValues(alignByDevicePlan);
+    // slimit trim on the measurementColumnList
+    if (specialClauseComponent.hasSlimit()) {
+      int seriesSlimit = specialClauseComponent.getSeriesLimit();
+      int seriesOffset = specialClauseComponent.getSeriesOffset();
+      measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
+    }
+
+    // assigns to alignByDevicePlan
+    alignByDevicePlan.setMeasurements(measurements);
+    alignByDevicePlan.setMeasurementAliasMap(measurementAliasMap);
+    alignByDevicePlan.setDevices(devices);
+    alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
+    alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
+    alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
+    alignByDevicePlan.setPaths(paths);
+
+    // get deviceToFilterMap
+    if (whereComponent != null) {
+      alignByDevicePlan.setDeviceToFilterMap(
+          concatFilterByDevice(generator, devices, whereComponent.getFilterOperator()));
+    }
+
+    return alignByDevicePlan;
+  }
+
+  private void convertSpecialClauseValues(QueryPlan queryPlan) {
+    if (specialClauseComponent != null) {
+      queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      queryPlan.setRowLimit(specialClauseComponent.getRowLimit());
+      queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
+      queryPlan.setAscending(specialClauseComponent.isAscending());
+      queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
+  }
+
+  private List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)
+      throws LogicalOptimizeException {
+    List<PartialPath> retDevices;
+    Set<PartialPath> deviceSet = new LinkedHashSet<>();
+    try {
+      for (PartialPath path : paths) {
+        Set<PartialPath> tempDS = getMatchedDevices(path);
+        deviceSet.addAll(tempDS);
+      }
+      retDevices = new ArrayList<>(deviceSet);
+    } catch (MetadataException e) {
+      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+    }
+    return retDevices;
+  }
+
+  private List<String> slimitTrimColumn(List<String> columnList, int seriesLimit, int seriesOffset)
+      throws QueryProcessException {
+    int size = columnList.size();
+
+    // check parameter range
+    if (seriesOffset >= size) {
+      String errorMessage =
+          "The value of SOFFSET (%d) is equal to or exceeds the number of sequences (%d) that can actually be returned.";
+      throw new QueryProcessException(String.format(errorMessage, seriesOffset, size));
+    }
+    int endPosition = seriesOffset + seriesLimit;
+    if (endPosition > size) {
+      endPosition = size;
+    }
+
+    // trim seriesPath list
+    return new ArrayList<>(columnList.subList(seriesOffset, endPosition));
+  }
+
+  // e.g. translate "select * from root.ln.d1, root.ln.d2 where s1 < 20 AND s2 > 10" to
+  // [root.ln.d1 -> root.ln.d1.s1 < 20 AND root.ln.d1.s2 > 10,
+  //  root.ln.d2 -> root.ln.d2.s1 < 20 AND root.ln.d2.s2 > 10)]
+  private Map<String, IExpression> concatFilterByDevice(
+      PhysicalGenerator generator, List<PartialPath> devices, FilterOperator operator)
+      throws QueryProcessException {
+    Map<String, IExpression> deviceToFilterMap = new HashMap<>();
+    Set<PartialPath> filterPaths = new HashSet<>();
+    for (PartialPath device : devices) {
+      FilterOperator newOperator = operator.copy();
+      concatFilterPath(device, newOperator, filterPaths);
+      // transform to a list so it can be indexed
+      List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
+      try {
+        List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPathList);
+        Map<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+        for (int i = 0; i < filterPathList.size(); i++) {
+          pathTSDataTypeHashMap.put(filterPathList.get(i), seriesTypes.get(i));
+        }
+        deviceToFilterMap.put(
+            device.getFullPath(), newOperator.transformToExpression(pathTSDataTypeHashMap));
+        filterPaths.clear();
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+    }
+
+    return deviceToFilterMap;
+  }
+
+  private void concatFilterPath(
+      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+    if (!operator.isLeaf()) {
+      for (FilterOperator child : operator.getChildren()) {
+        concatFilterPath(prefix, child, filterPaths);
+      }
+      return;
+    }
+    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+    PartialPath filterPath = basicOperator.getSinglePath();
+
+    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
+    if (SQLConstant.isReservedPath(filterPath)
+        || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+      filterPaths.add(filterPath);
+      return;
+    }
+
+    PartialPath concatPath = prefix.concatPath(filterPath);
+    filterPaths.add(concatPath);
+    basicOperator.setSinglePath(concatPath);
+  }
+
+  protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getDevices(path);
+  }
+
+  protected List<PartialPath> getMatchedTimeseries(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPath(path);
   }
 }

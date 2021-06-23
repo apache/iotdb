@@ -41,6 +41,11 @@ public class Template {
 
   private Map<String, IMeasurementSchema> schemaMap = new HashMap<>();
 
+  /**
+   * build a template from a createTemplatePlan
+   *
+   * @param plan createTemplatePlan
+   */
   public Template(CreateTemplatePlan plan) {
     name = plan.getName();
 
@@ -104,6 +109,12 @@ public class Template {
     this.schemaMap = schemaMap;
   }
 
+  /**
+   * check whether a timeseries path is compatible with this template
+   *
+   * @param path timeseries path
+   * @return whether we can create this new timeseries (whether it's compatible with this template)
+   */
   public boolean isCompatible(PartialPath path) {
     return !(schemaMap.containsKey(path.getMeasurement())
         || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
@@ -139,6 +150,26 @@ public class Template {
 
   public String getMeasurementNodeName(String measurementName) {
     return schemaMap.get(measurementName).getMeasurementId();
+  }
+
+  /**
+   * get all path in this template (to support aligned by device query)
+   *
+   * @return a hash map looks like below {vector -> [s1, s2, s3] normal_timeseries -> []}
+   */
+  public HashMap<String, List<String>> getAllPath() {
+    HashMap<String, List<String>> res = new HashMap<>();
+    for (Map.Entry<String, IMeasurementSchema> schemaEntry : schemaMap.entrySet()) {
+      if (schemaEntry.getValue() instanceof VectorMeasurementSchema) {
+        VectorMeasurementSchema vectorMeasurementSchema =
+            (VectorMeasurementSchema) schemaEntry.getValue();
+        res.put(schemaEntry.getKey(), vectorMeasurementSchema.getValueMeasurementIdList());
+      } else {
+        res.put(schemaEntry.getKey(), new ArrayList<>());
+      }
+    }
+
+    return res;
   }
 
   @Override

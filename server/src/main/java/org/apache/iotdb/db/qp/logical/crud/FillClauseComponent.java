@@ -16,6 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.page;
 
-public class VectorChunkReader {}
+package org.apache.iotdb.db.qp.logical.crud;
+
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Map;
+
+public class FillClauseComponent extends SpecialClauseComponent {
+
+  private Map<TSDataType, IFill> fillTypes;
+
+  public FillClauseComponent() {}
+
+  public Map<TSDataType, IFill> getFillTypes() {
+    return fillTypes;
+  }
+
+  public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
+    this.fillTypes = fillTypes;
+  }
+}

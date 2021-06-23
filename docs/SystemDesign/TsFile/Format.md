@@ -29,7 +29,7 @@
 
 - **Big Endian**
        
-  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, not `08 00 00 00`
+  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, replace by `08 00 00 00`
 - **String with Variable Length**
   - The format is `int size` plus `String literal`. Size can be zero.
   - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
@@ -66,13 +66,13 @@
 
 ### 1.2 TsFile Overview
 
-Here is a graph about the TsFile structure.
+Here is the structure diagram of TsFile.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/120660695-2a71e300-c4ba-11eb-9e61-5e023636480b.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/123052025-f47aab80-d434-11eb-94c2-9b75429e5c54.png">
 
 This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
-Here is another graph:
+Here is another representation of the TsFile structure:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
 
@@ -80,8 +80,8 @@ This TsFile contains two devices: d1, d2. Each device contains three measurement
 
 There are three parts of metadata
 
-* ChunkMetadata list that grouped by timeseries
-* TimeseriesMetadata that ordered by timeseries
+* A list of ChunkMetadata organized by timeseries.
+* A list of TimeseriesMetadata organized by timeseries.
 * TsFileMetadata
 
 Query Process：e.g., read d1.s1
@@ -104,7 +104,7 @@ The data section is an array of `ChunkGroup`, each ChunkGroup represents a *devi
 
 ##### ChunkGroup
 
-The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker, and a `ChunkFooter`.
+The `ChunkGroup` consists of several `Chunk`, a byte delimiter`0x00` and a `ChunkFooter`.
 
 ##### Chunk
 
@@ -215,19 +215,19 @@ The max degree of the metadata index tree (that is, the max number of each node'
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
 
-5 devices with 5 measurements each: Since the numbers of devices and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 MetadataIndex entries point to MetadataIndex nodes of related devices. These nodes point to  `TimeseriesMetadata` directly, as they are `LEAF_MEASUREMENT` type.
+In the case of 5 devices with 5 measurements each: Since the numbers of devices and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 MetadataIndex entries point to MetadataIndex nodes of related devices. These nodes point to  `TimeseriesMetadata` directly, as they are `LEAF_MEASUREMENT` type.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935210-d97b1c80-9622-11ea-8a69-2c2c5f05a876.png">
 
-1 device with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
+In the case of 1 device with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95592841-c0fd1a00-0a7b-11eb-9b46-dfe8b2f73bfb.png">
 
-150 device with 1 measurement each: The number of devices exceeds `max_degree_of_index_node`, so the device index level and measurement index level of the tree are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of device index level, which are `LEAF_DEVICE` type. Other nodes and root node of index tree are not leaf nodes of device index level, so they are `INTERNAL_DEVICE` type.
+In the case of 150 device with 1 measurement each: The number of devices exceeds `max_degree_of_index_node`, so the device index level and measurement index level of the tree are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of device index level, which are `LEAF_DEVICE` type. Other nodes and root node of index tree are not leaf nodes of device index level, so they are `INTERNAL_DEVICE` type.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935138-b6e90380-9622-11ea-94f9-c97bd2b5d050.png">
 
-150 device with 150 measurements each: The numbers of devices and measurements both exceed `max_degree_of_index_node`, so the device index level and measurement index level are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. As is described before, from the root node to the leaf nodes of device index level, their types are `INTERNAL_DEVICE` and `LEAF_DEVICE`; each leaf node of device index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
+In the case of 150 device with 150 measurements each: The numbers of devices and measurements both exceed `max_degree_of_index_node`, so the device index level and measurement index level are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. As is described before, from the root node to the leaf nodes of device index level, their types are `INTERNAL_DEVICE` and `LEAF_DEVICE`; each leaf node of device index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
 
 The MetadataIndex is designed as tree structure so that not all the `TimeseriesMetadata` need to be read when the number of devices or measurements is too large. Only reading specific MetadataIndex nodes according to requirement and reducing I/O could speed up the query. More reading process of TsFile in details will be described in the last section of this chapter.
 

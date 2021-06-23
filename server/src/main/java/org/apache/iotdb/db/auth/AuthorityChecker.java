@@ -130,9 +130,7 @@ public class AuthorityChecker {
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
       case QUERY:
-      case SELECT:
-      case FILTER:
-      case GROUPBYTIME:
+      case GROUP_BY_TIME:
       case QUERY_INDEX:
       case AGGREGATION:
       case UDAF:

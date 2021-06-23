@@ -117,7 +117,7 @@ All Chinese Slides and videos are on myslide.cn and bilibili.
 
 * <span id = "bdtc2020"> 2021.01, Apache IoTDB: 工业物联网时序数据管理系统. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76614" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/IoTDB_BDTC2020" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 * <span id = "meetup2020-1"> 2020.11, IoTDB 使用进阶与背后原理介绍. Reporter: Kaifeng Xue. </span>
 
@@ -157,19 +157,19 @@ All Chinese Slides and videos are on myslide.cn and bilibili.
 
 * <span id = "IoTDBOptimizeAndCaseStudy"> 2020.06, IoTDB 性能优化及案例分享. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76617" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
+<iframe src="https://www.slidestalk.com/IoTDB/IoTDBOptimizeAndCaseStudy" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
 
 * <span id = "IoTDBQuickStart"> 2020.05, IoTDB 基本使用. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76619" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
+<iframe src="https://www.slidestalk.com/IoTDB/IoTDBQuickStart" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
 
 * <span id = "IoTDBOps"> 2020.05, IoTDB 部署运维及常见问题. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76618" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
+<iframe src="https://www.slidestalk.com/IoTDB/IoTDBOps" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
 
 * <span id = "meetup2019-pulsar1"> 2020.01, 北京Meetup 2019. 基于Apache IoTDB的时序数据开源解决方案. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76622" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/IoTDB_meetup_2020_01" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 <iframe src="//player.bilibili.com/player.html?aid=83462398&bvid=BV1sJ411J783&cid=142782989&page=5"   width="640" height="480" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 

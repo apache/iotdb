@@ -19,7 +19,7 @@
 
 -->
 
-# TsFile Write Process
+# TsFile Writing Process
 
 - org.apache.iotdb.tsfile.write.*
 
@@ -31,11 +31,11 @@ Among them, each device corresponds to a ChunkGroupWriter, and each sensor corre
 
 File writing is mainly divided into three operations, marked with 1, 2, 3 on the figure
 
-- 1、Write memory swap area
+- 1、Writing memory buffer
 - 2、Persistent ChunkGroup
 - 3、Close file
 
-## 1、Write memory buffer
+## 1、Writing memory buffer
 
 TsFile file layer has two write interfaces
 
@@ -69,7 +69,7 @@ One of the most important steps in constructing TsFileMetadata is to construct M
 
 ### MetadataIndexConstructor.constructMetadataIndex()
 
-The input params of this method:
+The method of input include:
 * Map\<String, List\<TimeseriesMetadata\>\> deviceTimeseriesMetadataMap, which indicates the map from device to its `TimeseriesMetadata`
 * TsFileOutput out
 
@@ -84,7 +84,7 @@ The whole method contains three parts:
     * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, add `currentIndexNode` into `queue`, and point `currentIndexNode` to a new MetadataIndexNode
   * Generate upper-level nodes of measurement index level according to the leaf nodes in `queue`, until the final root node (this method will be described later), and put the "device-root node" map into `deviceMetadataIndexMap`
 
-2. Then judge whether the number of devices exceed `MAX_DEGREE_OF_INDEX_NODE`. If not, the root node of MetadataIndex tree could be generated and return
+2. Next, determine whether the number of devices exceeds `MAX_DEGREE_OF_INDEX_NODE`. If not, the root node of MetadataIndex tree could be generated and return
   * Initialize the root node of MetadataIndex tree, which is `INTERNAL_MEASUREMENT` type
   * For each entry in `deviceMetadataIndexMap`:
     * Serialize
@@ -103,7 +103,7 @@ The whole method contains three parts:
 
 ### MetadataIndexConstructor.generateRootNode
 
-The input params of this method:
+The method of input include:
 * Queue\<MetadataIndexNode\> metadataIndexNodeQueue
 * TsFileOutput out
 * MetadataIndexNodeType type, which indicates the internal nodes type of generated tree. There are two types: when the method is called by measurement index level, it is INTERNAL_MEASUREMENT; when the method is called by device index level, it is INTERNAL_DEVICE 
@@ -118,7 +118,7 @@ The method needs to generate a tree structure of nodes in metadataIndexNodeQueue
 
 ### MetadataIndexConstructor.addCurrentIndexNodeToQueue
 
-The input params of this method:
+The method of input include:
 * MetadataIndexNode currentIndexNode
 * Queue\<MetadataIndexNode\> metadataIndexNodeQueue
 * TsFileOutput out
