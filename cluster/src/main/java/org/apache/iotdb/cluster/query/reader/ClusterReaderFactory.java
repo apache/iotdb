@@ -62,6 +62,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -364,7 +365,12 @@ public class ClusterReaderFactory {
         metaGroupMember.getName(),
         path,
         partitionGroups.size());
-    ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
+    PriorityMergeReader mergeReader;
+    if (ascending) {
+      mergeReader = new ManagedPriorityMergeReader(dataType);
+    } else {
+      mergeReader = new ManagedDescPriorityMergeReader(dataType);
+    }
     try {
       // build a reader for each group and merge them
       for (PartitionGroup partitionGroup : partitionGroups) {
@@ -383,7 +389,9 @@ public class ClusterReaderFactory {
     } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
     }
-    return mergeReader;
+    // The instance of merge reader is either ManagedPriorityMergeReader or
+    // ManagedDescPriorityMergeReader, which is safe to cast type.
+    return (ManagedSeriesReader) mergeReader;
   }
 
   /**
