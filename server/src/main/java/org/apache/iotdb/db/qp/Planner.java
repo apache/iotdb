@@ -65,7 +65,7 @@ public class Planner {
     return new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
-  public GroupByTimePlan operatorToPhysicalPlan(QueryOperator operator, int fetchSize)
+  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator, int fetchSize)
       throws QueryProcessException {
     // optimize the logical operator (no need to check since the operator has been checked
     // beforehand)

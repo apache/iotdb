@@ -487,6 +487,11 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "compaction_thread_num", Integer.toString(conf.getCompactionThreadNum()))));
+      conf.setContinuousQueryThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "continuous_query_thread_num",
+                  Integer.toString(conf.getContinuousQueryThreadNum()))));
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(

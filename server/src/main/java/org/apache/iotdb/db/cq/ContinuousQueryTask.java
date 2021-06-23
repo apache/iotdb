@@ -46,21 +46,28 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ContinuousQuery implements Runnable {
+public class ContinuousQueryTask implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(ContinuousQuery.class);
+  private static final int FETCH_SIZE = 2048;
+  private static final int BATCH_SIZE = 10;
 
+  private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryTask.class);
+
+  // To execute the query plan
   private final PlanExecutor planExecutor;
+  // To save the continuous query info
   private final CreateContinuousQueryPlan plan;
+  // To transform query operator to query plan
   private final Planner planner;
 
-  public ContinuousQuery(CreateContinuousQueryPlan plan) throws QueryProcessException {
+  private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
+
+  public ContinuousQueryTask(CreateContinuousQueryPlan plan) throws QueryProcessException {
     this.plan = plan;
     this.planExecutor = new PlanExecutor();
     this.planner = new Planner();
@@ -71,17 +78,17 @@ public class ContinuousQuery implements Runnable {
 
     try {
 
-      GroupByTimePlan queryPlan = getQueryPlan();
+      GroupByTimePlan queryPlan = generateQueryPlan();
 
       if (queryPlan.getDeduplicatedPaths().isEmpty()) {
-        logger.error(plan.getContinuousQueryName() + ": deduplicated paths empty");
+        logger.info(plan.getContinuousQueryName() + ": deduplicated paths empty");
         return;
       }
 
       QueryDataSet result = doQuery(queryPlan);
 
-      if (result == null) {
-        logger.error(plan.getContinuousQueryName() + ": query result empty");
+      if (result == null || result.getPaths().size() == 0) {
+        logger.info(plan.getContinuousQueryName() + ": query result empty");
         return;
       }
 
@@ -92,13 +99,18 @@ public class ContinuousQuery implements Runnable {
     }
   }
 
-  private GroupByTimePlan getQueryPlan() throws QueryProcessException {
+  private GroupByTimePlan generateQueryPlan() throws QueryProcessException {
 
     QueryOperator queryOperator = plan.getQueryOperator();
 
+    // To handle the time series meta changes in different queries, i.e. creation & deletion,
+    // we need to apply concatenation optimization to SelectComponent before every query.
+    // Since the concatenation optimization will change resultColumns information of
+    // SelectComponent,
+    // we need to save one copy of the original SelectComponent.
     SelectComponent selectComponentCopy = new SelectComponent(queryOperator.getSelectComponent());
 
-    GroupByTimePlan queryPlan = planner.operatorToPhysicalPlan(queryOperator, 1024);
+    GroupByTimePlan queryPlan = planner.cqQueryOperatorToGroupByTimePlan(queryOperator, FETCH_SIZE);
 
     queryOperator.setSelectComponent(selectComponentCopy);
 
@@ -114,10 +126,9 @@ public class ContinuousQuery implements Runnable {
           IOException, InterruptedException, QueryProcessException {
     long queryId =
         QueryResourceManager.getInstance()
-            .assignQueryId(true, 1024, queryPlan.getDeduplicatedPaths().size());
+            .assignQueryId(true, FETCH_SIZE, queryPlan.getDeduplicatedPaths().size());
 
-    QueryDataSet result;
-    result = planExecutor.processQuery(queryPlan, new QueryContext(queryId));
+    QueryDataSet result = planExecutor.processQuery(queryPlan, new QueryContext(queryId));
     QueryResourceManager.getInstance().endQuery(queryId);
     return result;
   }
@@ -130,29 +141,28 @@ public class ContinuousQuery implements Runnable {
         TypeInferenceUtils.getAggrDataType(
             queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
 
-    InsertTabletPlan[] insertTabletPlans = getInsertTabletPlans(columnSize, result, dataType);
+    InsertTabletPlan[] insertTabletPlans = generateInsertTabletPlans(columnSize, result, dataType);
 
-    int fetchSize =
+    int batchSize =
         (int)
             Math.min(
-                10,
+                BATCH_SIZE,
                 Math.ceil(
                     (float) plan.getForInterval()
                         / ((GroupByClauseComponent)
                                 plan.getQueryOperator().getSpecialClauseComponent())
                             .getUnit()));
 
-    Object[][] columns = getColumns(columnSize, fetchSize, dataType);
-    long[][] timestamps = new long[columnSize][fetchSize];
+    Object[][] columns = constructColumns(columnSize, batchSize, dataType);
+    long[][] timestamps = new long[columnSize][batchSize];
     int[] rowNums = new int[columnSize];
 
     boolean hasNext = true;
 
     while (hasNext) {
       int rowNum = 0;
-      Arrays.fill(rowNums, 0);
 
-      while (++rowNum <= fetchSize) {
+      while (++rowNum <= batchSize) {
         if (!result.hasNextWithoutConstraint()) {
           hasNext = false;
           break;
@@ -172,9 +182,9 @@ public class ContinuousQuery implements Runnable {
     }
   }
 
-  private InsertTabletPlan[] getInsertTabletPlans(
+  private InsertTabletPlan[] generateInsertTabletPlans(
       int columnSize, QueryDataSet result, TSDataType dataType) throws IllegalPathException {
-    List<PartialPath> targetPaths = getTargetPaths(result.getPaths());
+    List<PartialPath> targetPaths = generateTargetPaths(result.getPaths());
     InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
     String[] measurements = new String[] {targetPaths.get(0).getMeasurement()};
     List<Integer> dataTypes = Collections.singletonList(dataType.ordinal());
@@ -188,7 +198,7 @@ public class ContinuousQuery implements Runnable {
     return insertTabletPlans;
   }
 
-  private Object[][] getColumns(int columnSize, int fetchSize, TSDataType dataType) {
+  private Object[][] constructColumns(int columnSize, int fetchSize, TSDataType dataType) {
     Object[][] columns = new Object[columnSize][1];
     for (int i = 0; i < columnSize; i++) {
       switch (dataType) {
@@ -245,15 +255,15 @@ public class ContinuousQuery implements Runnable {
     }
   }
 
-  private List<PartialPath> getTargetPaths(List<Path> rawPaths) throws IllegalPathException {
+  private List<PartialPath> generateTargetPaths(List<Path> rawPaths) throws IllegalPathException {
     List<PartialPath> targetPaths = new ArrayList<>(rawPaths.size());
     for (Path rawPath : rawPaths) {
-      targetPaths.add(new PartialPath(fillTemplate((PartialPath) rawPath)));
+      targetPaths.add(new PartialPath(fillTargetPathTemplate((PartialPath) rawPath)));
     }
     return targetPaths;
   }
 
-  private String fillTemplate(PartialPath rawPath) {
+  private String fillTargetPathTemplate(PartialPath rawPath) {
     String[] nodes = rawPath.getNodes();
     int indexOfLeftBracket = nodes[0].indexOf("(");
     if (indexOfLeftBracket != -1) {
@@ -264,7 +274,7 @@ public class ContinuousQuery implements Runnable {
       nodes[nodes.length - 1] = nodes[nodes.length - 1].substring(0, indexOfRightBracket);
     }
     StringBuffer sb = new StringBuffer();
-    Matcher m = Pattern.compile("\\$\\{\\w+}").matcher(this.plan.getTargetPath().getFullPath());
+    Matcher m = pattern.matcher(this.plan.getTargetPath().getFullPath());
     while (m.find()) {
       String param = m.group();
       String value = nodes[Integer.parseInt(param.substring(2, param.length() - 1).trim())];

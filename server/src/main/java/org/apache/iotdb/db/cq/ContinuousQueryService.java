@@ -76,7 +76,10 @@ public class ContinuousQueryService implements IService {
 
   @Override
   public void start() {
-    pool = IoTDBThreadPoolFactory.newScheduledThreadPool(10, "Continuous Query Service");
+    pool =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getContinuousQueryThreadNum(),
+            "Continuous Query Service");
     logger.info("Continuous query service started.");
   }
 
@@ -107,6 +110,8 @@ public class ContinuousQueryService implements IService {
   public boolean register(CreateContinuousQueryPlan plan, boolean writeLog)
       throws ContinuousQueryAlreadyExistException {
 
+    acquireRegistrationLock();
+
     if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
       throw new ContinuousQueryAlreadyExistException(plan.getContinuousQueryName());
     }
@@ -120,19 +125,19 @@ public class ContinuousQueryService implements IService {
     }
 
     doRegister(plan);
+
+    releaseRegistrationLock();
     return true;
   }
 
   private void doRegister(CreateContinuousQueryPlan plan) {
-    acquireRegistrationLock();
 
     try {
-
-      ContinuousQuery cq = new ContinuousQuery(plan);
+      ContinuousQueryTask cq = new ContinuousQueryTask(plan);
       ScheduledFuture<?> future =
           pool.scheduleAtFixedRate(
               cq,
-              plan.getEveryInterval(),
+              0,
               plan.getEveryInterval(),
               DatetimeUtils.toTimeUnit(
                   IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
@@ -140,8 +145,6 @@ public class ContinuousQueryService implements IService {
       continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
     } catch (QueryProcessException e) {
       logger.error(e.getMessage());
-    } finally {
-      releaseRegistrationLock();
     }
   }
 
@@ -152,7 +155,11 @@ public class ContinuousQueryService implements IService {
   }
 
   public boolean deregister(DropContinuousQueryPlan plan) throws ContinuousQueryNotExistException {
+
+    acquireRegistrationLock();
+
     if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      releaseRegistrationLock();
       throw new ContinuousQueryNotExistException(plan.getContinuousQueryName());
     }
 
@@ -165,6 +172,8 @@ public class ContinuousQueryService implements IService {
       logger.error(e.getMessage());
     }
 
+    releaseRegistrationLock();
+
     return true;
   }
 
@@ -175,7 +184,7 @@ public class ContinuousQueryService implements IService {
     continuousQueryPlans.remove(cqName);
   }
 
-  public List<ShowContinuousQueriesResult> getContinuousQueryPlans() {
+  public List<ShowContinuousQueriesResult> getShowContinuousQueriesResultList() {
 
     List<ShowContinuousQueriesResult> results = new ArrayList<>(continuousQueryPlans.size());
 

@@ -31,7 +31,7 @@
 CREATE CONTINUOUS QUERY <cq_id> 
 [RESAMPLE EVERY <every_interval> FOR <for_interval>] 
 BEGIN 
-SELECT <function>(<path_suffix>) INTO <new_path> | <new_path_suffix>
+SELECT <function>(<path_suffix>) INTO <full_path> | <node_name>
 FROM <path_prefix>
 GROUP BY time(<group_by_interval>) [, level = <level>] 
 END
@@ -44,7 +44,7 @@ END
 * `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。可选择指定。 
 * `<function>` 指定聚合函数，目前支持 `count`, `sum`, `avg`, `last_value`, `first_value`, `min_time`, `max_time`, `min_value`, `max_value` 等。
 * `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
-* `<new_path>` 或 `<new_path_suffix>` 指定将查询出的数据写入的结果序列路径。
+* `<full_path>` 或 `<node_name>` 指定将查询出的数据写入的结果序列路径。
 * `<group_by_interval>` 指定时间分组长度。
 * `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层以下的所有序列聚合。
 
@@ -58,12 +58,12 @@ END
       * 若 `<for_interval>` 大于 `<every_interval>`，每次的查询窗口会有部分数据重叠，从查询性能角度这种配置不被建议。
       * 若 `<for_interval>` 小于 `<every_interval>`，每次的查询窗口之间可能会有未覆盖到的数据。
 *  对于结果序列路径
-     * 用户可以选择指定`<new_path>`，即完整的时间序列路径，用户可以在路径中使用 `${x}` 变量来表示原始时间序列中 `level = x` 的节点名称。
-        
-    * 用户也可以仅指定`<new_path_suffix>`
-      * 若用户指定  `<level> = l`，则系统生成的结果时间序列路径为 `${0}.${1}. ... .${l}.<new_path_suffix>`
+     * 用户可以选择指定`<full_path>`，即以 `root` 开头的完整的时间序列路径，用户可以在路径中使用 `${x}` 变量来表示原始时间序列中 `level = x` 的节点名称，`x`应当大于等于 1 且小于等于 `<level>` 值
+       （若未指定 `level`，则应小于等于 `<path_prefix>` 长度）。
+    * 用户也可以仅指定`<node_name>`，即生成时间序列路径的最后一个结点名。
+      * 若用户指定  `<level> = l`，则系统生成的结果时间序列路径为 `root.${1}. ... .${l}.<node_name>`
       * 若用户未指定 `<level>`，令原始时间序列最大层数为 `L`， 
-      则系统生成的结果时间序列路径为 `${0}.${1}. ... .${L - 1}.<new_path_suffix>`。
+      则系统生成的结果时间序列路径为 `root.${1}. ... .${L - 1}.<node_name>`。
 
 ### 例子
 
@@ -100,7 +100,7 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 ````
 
 每隔 10s 查询 `root.ln.*.*.temperature` 在前 10s 内的最大值（结果以10s为一组），
-将结果写入到 `${0}.${1}.${2}.${3}.temperature_max` 中，
+将结果写入到 `root.${1}.${2}.${3}.temperature_max` 中，
 结果将产生4条新序列：
 ````
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
@@ -128,7 +128,7 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 ````
 
 每隔 20s 查询 `root.ln.*.*.temperature` 在前 20s 内的平均值（结果以10s为一组，按照第2层节点分组），
-将结果写入到 `${0}.${1}.${2}.temperature_avg` 中。
+将结果写入到 `root.${1}.${2}.temperature_avg` 中。
 结果将产生如下两条新序列，
 其中 `root.ln.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
 `root.ln.wf01.temperature_avg` 由 `root.ln.wf01.wt02.temperature` 和 `root.ln.wf01.wt01.temperature` 聚合计算生成。
@@ -155,8 +155,7 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 ````
 CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO root.ln_cq.${2}.temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
-查询模式与 cq2 相同，
-将结果写入到 `root.ln_cq.${2}.temperature_avg` 中。
+查询模式与 cq2 相同，在这个例子中，用户自行指定结果写入到 `root.ln_cq.${2}.temperature_avg` 中。
 结果将产生如下两条新序列，
 其中 `root.ln_cq.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
 `root.ln_cq.wf01.temperature_avg` 由 `root.ln.wf01.wt02.temperature` 和 `root.ln.wf01.wt01.temperature` 聚合计算生成。
@@ -179,6 +178,11 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 +-----------------------------+-------------------------------+-------------------------------+
 ````
 
+用户也可以指定写入序列为 `root.${1}_cq.${2}.temperature_avg`、`root.${1}.${2}_cq.temperature_avg`，效果与上例相同。
+用户也可以按需要指定写入序列为 `root.${2}.${1}.temperature_avg` 等。
+需要注意的是，`${x}` 中的 `x` 应当大于等于 1 且小于等于 `<level>` 值
+（若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
+
 ### 展示 CQ 信息
 ````
 SHOW CONTINUOUS QUERIES 
@@ -187,9 +191,9 @@ SHOW CONTINUOUS QUERIES
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
 |cq name|every interval|for interval|                                                                               query sql|                        target path|
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
-|    cq1|         10000|       10000|     select max_value(temperature) from root.ln.*.* group by ([now() - 10s, now()), 10s)|${0}.${1}.${2}.${3}.temperature_max|
+|    cq1|         10000|       10000|     select max_value(temperature) from root.ln.*.* group by ([now() - 10s, now()), 10s)|root.${1}.${2}.${3}.temperature_max|
 |    cq3|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|    root.ln_cq.${2}.temperature_avg|
-|    cq2|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|     ${0}.${1}.${2}.temperature_avg|
+|    cq2|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|     root.${1}.${2}.temperature_avg|
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
 ````
 ### 删除 CQ

@@ -269,6 +269,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
@@ -281,6 +283,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+
+  private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
+
   private ZoneId zoneId;
   private QueryOperator queryOp;
 
@@ -1203,18 +1208,38 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
 
     PartialPath targetPath = null;
+
+    int trueLevel = queryLevel;
+    if (trueLevel == -1) {
+      trueLevel = fromLen - 1;
+    }
+
     if (ctx.fullPath() != null) {
       targetPath = parseFullPath(ctx.fullPath());
-    } else if (ctx.suffixPath() != null) {
-      List<String> targetNodes = new ArrayList<>();
-      int trueLevel = queryLevel;
-      if (trueLevel == -1) {
-        trueLevel = fromLen - 1;
+      Matcher m = pattern.matcher(targetPath.getFullPath());
+      while (m.find()) {
+        String param = m.group();
+        int nodeIndex = 0;
+        try {
+          nodeIndex = Integer.parseInt(param.substring(2, param.length() - 1).trim());
+        } catch (NumberFormatException e) {
+          throw new SQLParserException("Cq Select Into: x of ${x} should be an integer.");
+        }
+        if (nodeIndex < 1 || nodeIndex > trueLevel) {
+          throw new SQLParserException(
+              "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
+        }
       }
-      for (int i = 0; i <= trueLevel; i++) {
+    } else if (ctx.nodeNameWithoutStar() != null) {
+
+      List<String> targetNodes = new ArrayList<>();
+
+      targetNodes.add("root");
+
+      for (int i = 1; i <= trueLevel; i++) {
         targetNodes.add("${" + i + "}");
       }
-      targetNodes.add(ctx.suffixPath().getText());
+      targetNodes.add(ctx.nodeNameWithoutStar().getText());
       targetPath = new PartialPath(targetNodes.toArray(new String[0]));
     }
 
@@ -1238,21 +1263,6 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
 
     queryOp.setSpecialClauseComponent(groupByClauseComponent);
-  }
-
-  @Override
-  public Operator visitResampleClause(ResampleClauseContext ctx) {
-    return visitChildren(ctx);
-  }
-
-  @Override
-  public Operator visitCqSelectIntoClause(CqSelectIntoClauseContext ctx) {
-    return visitChildren(ctx);
-  }
-
-  @Override
-  public Operator visitCqGroupByTimeClause(CqGroupByTimeClauseContext ctx) {
-    return visitChildren(ctx);
   }
 
   @SuppressWarnings("squid:S3776")

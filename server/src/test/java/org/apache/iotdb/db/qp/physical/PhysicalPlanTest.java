@@ -1247,7 +1247,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals(10000, plan.getEveryInterval());
     Assert.assertEquals(10000, plan.getForInterval());
     Assert.assertEquals(
-        "${0}.${1}.${2}.${3}.${4}.temperature_max", plan.getTargetPath().getFullPath());
+        "root.${1}.${2}.${3}.${4}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s)",
         plan.getQuerySql());
@@ -1264,7 +1264,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
     Assert.assertEquals(10000, plan.getEveryInterval());
     Assert.assertEquals(10000, plan.getForInterval());
-    Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
         plan.getQuerySql());
@@ -1281,7 +1281,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
     Assert.assertEquals(20000, plan.getEveryInterval());
     Assert.assertEquals(10000, plan.getForInterval());
-    Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
         plan.getQuerySql());
@@ -1298,7 +1298,7 @@ public class PhysicalPlanTest {
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
     Assert.assertEquals(20000, plan.getEveryInterval());
     Assert.assertEquals(10000, plan.getForInterval());
-    Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
         plan.getQuerySql());
@@ -1315,10 +1315,87 @@ public class PhysicalPlanTest {
     Assert.assertEquals("cq1", plan.getContinuousQueryName());
     Assert.assertEquals(10000, plan.getEveryInterval());
     Assert.assertEquals(20000, plan.getForInterval());
-    Assert.assertEquals("${0}.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
     Assert.assertEquals(
         "select max_value(temperature) from root.ln.*.*.* group by ([now() - 20s, now()), 10s), level = 3",
         plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ6() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${a4}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("Cq Select Into: x of ${x} should be an integer.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ7() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${4}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ8() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO root.${1}_cq.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals(
+        "root.${1}_cq.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ9() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO ${1}.${0}.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (ParseCancellationException e) {
+      assertTrue(e.getMessage().contains("mismatched input '.' expecting FROM"));
+    }
+  }
+
+  @Test
+  public void testCreateCQ10() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          e.getMessage());
+    }
   }
 
   @Test

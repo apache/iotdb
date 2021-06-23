@@ -96,18 +96,18 @@ public class IoTDBContinuousQueryIT {
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
-            + "GROUP BY time(10s) END");
+            + "GROUP BY time(1s) END");
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq2 "
             + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
-            + " GROUP BY time(10s), level=3 END");
+            + " GROUP BY time(1s), level=3 END");
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq3 "
-            + "RESAMPLE EVERY 20s FOR 20s "
+            + "RESAMPLE EVERY 2s FOR 2s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(10s), level=2 END");
+            + "GROUP BY time(1s), level=2 END");
 
     statement.execute("DROP CONTINUOUS QUERY cq1");
     statement.execute("DROP CONTINUOUS QUERY cq2");
@@ -124,12 +124,28 @@ public class IoTDBContinuousQueryIT {
 
       statement.execute(
           "CREATE CONTINUOUS QUERY cq3 "
-              + "RESAMPLE EVERY 20s FOR 20s "
+              + "RESAMPLE EVERY 2s FOR 2s "
               + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-              + "GROUP BY time(10s), level=2 END");
+              + "GROUP BY time(1s), level=2 END");
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("already exists"));
     }
+
+    statement.execute(
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+            + "GROUP BY time(1s) END");
+
+    statement.execute(
+        "CREATE CONTINUOUS QUERY cq2 "
+            + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
+            + " GROUP BY time(1s), level=3 END");
+
+    checkContinuousQueries(new String[] {"cq3", "cq1", "cq2"});
+
+    statement.execute("DROP CONTINUOUS QUERY cq1");
+    statement.execute("DROP CONTINUOUS QUERY cq2");
+    statement.execute("DROP CONTINUOUS QUERY cq3");
   }
 
   @Test
@@ -166,17 +182,19 @@ public class IoTDBContinuousQueryIT {
     generator.start();
 
     statement.execute(
-        "CREATE CONTINUOUS QUERY cq "
+        "CREATE CQ cq1 "
             + "RESAMPLE EVERY 1s FOR 1s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(10100);
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(10000 / 1000);
+    checkResultSize(5000 / 1000 + 1);
+
+    statement.execute("DROP CQ cq1");
   }
 
   @Test
@@ -186,17 +204,19 @@ public class IoTDBContinuousQueryIT {
     generator.start();
 
     statement.execute(
-        "CREATE CONTINUOUS QUERY cq "
-            + "RESAMPLE EVERY 20s "
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "RESAMPLE EVERY 2s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(40100);
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(40000 / 20000);
+    checkResultSize(5500 / 2000 + 1);
+
+    statement.execute("DROP CQ cq1");
   }
 
   @Test
@@ -206,38 +226,42 @@ public class IoTDBContinuousQueryIT {
     generator.start();
 
     statement.execute(
-        "CREATE CONTINUOUS QUERY cq "
+        "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(10100);
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(10000 / 1000);
+    checkResultSize(5500 / 1000 + 1);
+
+    statement.execute("DROP CQ cq1");
   }
 
   @Test
   public void testContinuousQueryResult4() throws Exception {
 
     statement.execute(
-        "CREATE CONTINUOUS QUERY cq "
+        "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(10000);
+    Thread.sleep(5500);
 
     createTimeSeries();
 
     generator.start();
 
-    Thread.sleep(10000);
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(10000 / 1000);
+    checkResultSize(5500 / 1000 + 1);
+
+    statement.execute("DROP CQ cq1");
   }
 
   private void checkResultSize(int expectedSize) throws SQLException {

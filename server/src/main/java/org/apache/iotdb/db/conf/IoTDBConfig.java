@@ -530,6 +530,11 @@ public class IoTDBConfig {
    */
   private int compactionThreadNum = 10;
 
+  /*
+   * How many thread will be set up to perform continuous queries
+   */
+  private int continuousQueryThreadNum = 10;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -1418,6 +1423,14 @@ public class IoTDBConfig {
 
   public void setCompactionThreadNum(int compactionThreadNum) {
     this.compactionThreadNum = compactionThreadNum;
+  }
+
+  public int getContinuousQueryThreadNum() {
+    return continuousQueryThreadNum;
+  }
+
+  public void setContinuousQueryThreadNum(int continuousQueryThreadNum) {
+    this.continuousQueryThreadNum = continuousQueryThreadNum;
   }
 
   public int getMergeWriteThroughputMbPerSec() {

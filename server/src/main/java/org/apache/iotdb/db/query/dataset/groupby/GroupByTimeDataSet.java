@@ -86,7 +86,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
       try {
         this.paths.add(new PartialPath(entry.getKey()));
       } catch (IllegalPathException e) {
-        e.printStackTrace();
+        logger.error("Query result IllegalPathException occurred.");
       }
       this.dataTypes.add(entry.getValue().getResultDataType());
     }

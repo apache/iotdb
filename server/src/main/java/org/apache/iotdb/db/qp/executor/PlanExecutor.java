@@ -989,7 +989,7 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT));
 
     List<ShowContinuousQueriesResult> continuousQueriesList =
-        ContinuousQueryService.getInstance().getContinuousQueryPlans();
+        ContinuousQueryService.getInstance().getShowContinuousQueriesResultList();
 
     for (ShowContinuousQueriesResult result : continuousQueriesList) {
       RowRecord record = new RowRecord(0);

@@ -105,13 +105,11 @@ statement
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
     | selectClause fromClause whereClause? specialClause? #selectStatement
-    | CREATE CONTINUOUS QUERY continuousQueryName=ID
+    | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
       resampleClause?
-      BEGIN
-      cqSelectIntoClause
-      END  #createContinuousQueryStatement
-    | DROP CONTINUOUS QUERY continuousQueryName=ID #dropContinuousQueryStatement
-    | SHOW CONTINUOUS QUERIES #showContinuousQueriesStatement
+      cqSelectIntoClause #createContinuousQueryStatement
+    | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
+    | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
     ;
 
 selectClause
@@ -340,10 +338,12 @@ resampleClause
     : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
 
 cqSelectIntoClause
-    : selectClause
-    INTO (fullPath | suffixPath)
+    : BEGIN
+    selectClause
+    INTO (fullPath | nodeNameWithoutStar)
     fromClause
     cqGroupByTimeClause
+    END
     ;
 
 cqGroupByTimeClause
@@ -633,6 +633,8 @@ nodeNameWithoutStar
     | DESC
     | ASC
     | CONTINUOUS
+    | CQ
+    | CQS
     | BEGIN
     | END
     | RESAMPLE
@@ -1249,13 +1251,20 @@ EXPLAIN
     : E X P L A I N
     ;
 
-
 CONTINUOUS
     : C O N T I N U O U S
     ;
 
 QUERIES
     : Q U E R I E S
+    ;
+
+CQ
+    : C Q
+    ;
+
+CQS
+    : C Q S
     ;
 
 BEGIN
