@@ -507,7 +507,9 @@ public class SeriesReader {
                     firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
                 && mergeReader.currentTimeValuePair().getTimestamp()
-                    >= firstPageReader.getStatistics().getStartTime()));
+                    >= firstPageReader
+                        .getStatistics() // TODO: what if order by time desc?
+                        .getStartTime()));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
