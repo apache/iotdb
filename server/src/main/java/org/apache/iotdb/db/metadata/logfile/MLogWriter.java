@@ -299,7 +299,7 @@ public class MLogWriter implements AutoCloseable {
   }
 
   /** only used for initialize a mlog file writer. */
-  public void setLogNum(int number) {
+  public synchronized void setLogNum(int number) {
     logNum = number;
   }
 
