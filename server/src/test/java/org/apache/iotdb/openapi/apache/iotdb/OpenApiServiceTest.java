@@ -64,6 +64,11 @@ public class OpenApiServiceTest {
     groupByFillPlan.setInterval("1ms");
   }
 
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
+
   @Test
   public void postV1GrafanaData() throws NotFoundException {
     Response response = v1ApiService.postV1GrafanaData(groupByFillPlan, basicSecurityContext);
