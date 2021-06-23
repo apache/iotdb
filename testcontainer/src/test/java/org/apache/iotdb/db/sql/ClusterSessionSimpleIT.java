@@ -73,7 +73,7 @@ public class ClusterSessionSimpleIT {
     stringList.add("localhost:" + service2Port);
     stringList.add("localhost:" + service3Port);
     session = new Session(stringList, "root", "root");
-    session.clusterOpen();
+    session.open();
     session.setStorageGroup("root.sg1");
     session.createTimeseries(
         "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);

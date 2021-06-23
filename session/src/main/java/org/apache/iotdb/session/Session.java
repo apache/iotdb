@@ -253,6 +253,30 @@ public class Session {
         Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
+  public Session(List<String> nodeUrls, String username, String password, int fetchSize) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
   public Session(
       List<String> nodeUrls,
       String username,
@@ -270,39 +294,6 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
-  }
-
-  public synchronized void clusterOpen() throws IoTDBConnectionException {
-    clusterOpen(false);
-  }
-
-  public synchronized void clusterOpen(boolean enableRPCCompression)
-      throws IoTDBConnectionException {
-    clusterOpen(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-  }
-
-  public synchronized void clusterOpen(boolean enableRPCCompression, int connectionTimeoutInMs)
-      throws IoTDBConnectionException {
-    if (!isClosed) {
-      return;
-    }
-
-    this.enableRPCCompression = enableRPCCompression;
-    this.connectionTimeoutInMs = connectionTimeoutInMs;
-    defaultSessionConnection = constructClusterSessionConn(this, zoneId);
-    defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
-    metaSessionConnection = defaultSessionConnection;
-    isClosed = false;
-    if (enableCacheLeader || enableQueryRedirection) {
-      deviceIdToEndpoint = new HashMap<>();
-      endPointToSessionConnection = new HashMap<>();
-      endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
-    }
-  }
-
-  private SessionConnection constructClusterSessionConn(Session session, ZoneId zoneId)
-      throws IoTDBConnectionException {
-    return new SessionConnection(session, zoneId);
   }
 
   public void setFetchSize(int fetchSize) {
@@ -359,6 +350,9 @@ public class Session {
 
   public SessionConnection constructSessionConnection(
       Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+    if (endpoint == null) {
+      return new SessionConnection(session, zoneId);
+    }
     return new SessionConnection(session, endpoint, zoneId);
   }
 

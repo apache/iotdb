@@ -93,6 +93,7 @@ public class SessionConnection {
   public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
+    this.endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
     initClusterConn();
   }
 
@@ -155,15 +156,14 @@ public class SessionConnection {
   }
 
   private void initClusterConn() throws IoTDBConnectionException {
-    endPointList = SessionUtils.parseSeedNodeUrls(session.nodeUrls);
     for (EndPoint endPoint : endPointList) {
       if (endPoint == null) {
         continue;
       }
       try {
-        init(endPoint);
         this.endPoint = endPoint;
         session.defaultEndPoint = endPoint;
+        init(endPoint);
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
@@ -753,17 +753,19 @@ public class SessionConnection {
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
-        for (EndPoint endPoint : endPointList) {
-          if (endPoint == null) {
+        int currHostIndex = endPointList.indexOf(endPoint);
+        for (int j = currHostIndex; j < endPointList.size(); j++) {
+          if (j == -1) {
             continue;
           }
           try {
-            init(endPoint);
+            init(endPointList.get(j));
             flag = true;
-            this.endPoint = endPoint;
-            session.defaultEndPoint = endPoint;
+            this.endPoint = endPointList.get(j);
+            session.defaultEndPoint = endPointList.get(j);
           } catch (IoTDBConnectionException e) {
-            logger.error("The current node may have been down {},try next node", endPoint);
+            logger.error(
+                "The current node may have been down {},try next node", endPointList.get(j));
             continue;
           }
           break;

@@ -897,7 +897,7 @@ public class IoTDBSessionComplexIT {
     nodeList.add("127.0.0.1:6667");
     nodeList.add("127.0.0.1:6668");
     session = new Session(nodeList, "root", "root");
-    session.clusterOpen();
+    session.open();
 
     session.setStorageGroup("root.sg1");
 
