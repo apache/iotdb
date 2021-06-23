@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentTaskNum;
+
 public class CompactionRecoverTask implements Callable<Void> {
   private CompactionRecoverCallBack compactionRecoverCallBack;
   private TsFileResourceManager tsFileResourceManager;
@@ -36,8 +38,9 @@ public class CompactionRecoverTask implements Callable<Void> {
     recoverInnerCompaction(false);
     recoverCrossCompaction();
     CompactionScheduler.decPartitionCompaction(
-        logicalStorageGroupName + "-" + logicalStorageGroupName, 0);
+        logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
     compactionRecoverCallBack.call();
+    currentTaskNum.decrementAndGet();
     return null;
   }
 

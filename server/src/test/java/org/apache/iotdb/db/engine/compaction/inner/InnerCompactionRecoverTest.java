@@ -416,8 +416,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
 
   /** compaction recover merge finished,unseq */
   @Test
-  public void testCompactionMergeRecoverMergeFinishedUnseq()
-      throws IOException, IllegalPathException {
+  public void testCompactionMergeRecoverMergeFinishedUnseq() throws Exception {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     QueryContext context = new QueryContext();
@@ -474,7 +473,18 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
         false);
     compactionLogger.close();
     tsFileResourceManager.addRecover(targetTsFileResource, false);
-    tsFileResourceManager.recover();
+    CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
+    new SizeTiredCompactionRecoverTask(
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            SystemFileFactory.INSTANCE.getFile(
+                tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME),
+            tempSGDir.getPath(),
+            tsFileResourceManager.getSequenceListByTimePartition(0),
+            tsFileResourceManager.getUnsequenceRecoverTsFileResources(),
+            true)
+        .call();
     context = new QueryContext();
     path =
         new PartialPath(
@@ -486,7 +496,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
             path,
             measurementSchemas[0].getType(),
             context,
-            tsFileResourceManager.getTsFileList(false),
+            tsFileResourceManager.getTsFileList(true),
             new ArrayList<>(),
             null,
             null,
