@@ -113,7 +113,7 @@ public class SyncClientPool {
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
       try {
-        this.wait(waitClientTimeoutMS);
+        clientStack.wait(waitClientTimeoutMS);
         if (clientStack.isEmpty()
             && System.currentTimeMillis() - waitStart >= waitClientTimeoutMS) {
           logger.warn(

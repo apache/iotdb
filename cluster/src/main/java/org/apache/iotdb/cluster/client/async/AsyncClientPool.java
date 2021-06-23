@@ -123,7 +123,7 @@ public class AsyncClientPool {
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
       try {
-        this.wait(waitClientTimeutMS);
+        clientStack.wait(waitClientTimeutMS);
         if (clientStack.isEmpty() && System.currentTimeMillis() - waitStart >= waitClientTimeutMS) {
           logger.warn(
               "{} Cannot get an available client after {}ms, create a new one.",
@@ -159,12 +159,12 @@ public class AsyncClientPool {
     if (call != null) {
       logger.warn("A using client {} is put back while running {}", client.hashCode(), call);
     }
-    synchronized (this) {
-      // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-      Deque<AsyncClient> clientStack =
-          clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<AsyncClient> clientStack =
+        clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    synchronized (clientStack) {
       clientStack.push(client);
-      this.notifyAll();
+      clientStack.notifyAll();
     }
   }
 
@@ -183,7 +183,7 @@ public class AsyncClientPool {
         }
       }
       nodeClientNumMap.put(clusterNode, 0);
-      this.notifyAll();
+      clientStack.notifyAll();
       NodeStatusManager.getINSTANCE().deactivate(node);
     }
   }
