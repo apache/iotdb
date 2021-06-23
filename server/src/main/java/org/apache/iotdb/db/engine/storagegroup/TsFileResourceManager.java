@@ -68,6 +68,7 @@ public class TsFileResourceManager {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
+        List<TsFileResource> tmp = entry.getValue().getArrayList();
         allResources.addAll(entry.getValue().getArrayList());
       }
       return allResources;
@@ -168,13 +169,14 @@ public class TsFileResourceManager {
 
   public boolean isEmpty(boolean sequence) {
     readLock();
-    boolean notEmpty = false;
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
-        notEmpty = notEmpty | (!entry.getValue().isEmpty());
+        if (!entry.getValue().isEmpty()) {
+          return false;
+        }
       }
-      return !notEmpty;
+      return true;
     } finally {
       readUnlock();
     }
