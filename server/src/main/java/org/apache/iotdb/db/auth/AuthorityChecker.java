@@ -141,9 +141,9 @@ public class AuthorityChecker {
       case GROUP_BY_FILL:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
+      case BATCHINSERT:
       case LOADDATA:
       case CREATE_INDEX:
-      case BATCHINSERT:
       case BATCH_INSERT_ONE_DEVICE:
       case MULTI_BATCH_INSERT:
       case BATCH_INSERT_ROWS:
