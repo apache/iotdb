@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -604,9 +605,9 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    //    while (processor.getTsFileResourceManager().isUnseqMerging) {
-    //      // wait
-    //    }
+//    while (CompactionScheduler.currentTaskNum.get() > 0) {
+//      // wait
+//    }
 
     QueryDataSource queryDataSource =
         processor.query(new PartialPath(deviceId, measurementId), context, null, null);

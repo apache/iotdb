@@ -1030,6 +1030,7 @@ public class IoTDBNewTsFileCompactionIT {
     } catch (StorageEngineException | InterruptedException e) {
       e.printStackTrace();
       fail();
+
     } finally {
       IoTDBDescriptor.getInstance()
           .getConfig()

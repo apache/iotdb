@@ -136,6 +136,8 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public boolean contains(Object o) {
+    readLock();
+    try {
     if (o.getClass() != TsFileResource.class) {
       return false;
     }
@@ -149,6 +151,9 @@ public class TsFileResourceList implements List<TsFileResource> {
       current = current.next;
     }
     return contain;
+    } finally{
+      readUnlock();
+    }
   }
 
   @Override
@@ -191,7 +196,7 @@ public class TsFileResourceList implements List<TsFileResource> {
     writeLock();
     try {
       TsFileResource tsFileResource = (TsFileResource) o;
-      if (tsFileResource.prev == null && tsFileResource.next == null && tsFileResource != header) {
+      if (!contains(o)) {
         // the tsFileResource does not exist in this list
         return false;
       }
@@ -199,6 +204,9 @@ public class TsFileResourceList implements List<TsFileResource> {
         header = header.next;
         if (header != null) {
           header.prev = null;
+        } else {
+          // if list contains only one item, remove the header and the tail
+          tail = null;
         }
       } else if (tsFileResource.next == null) {
         tail = tail.prev;
@@ -221,6 +229,8 @@ public class TsFileResourceList implements List<TsFileResource> {
   /** Only List type parameter is legal, because it is in order. */
   @Override
   public boolean addAll(Collection<? extends TsFileResource> c) {
+    writeLock();
+    try {
     if (c instanceof List) {
       for (TsFileResource resource : c) {
         add(resource);
@@ -228,13 +238,21 @@ public class TsFileResourceList implements List<TsFileResource> {
       return true;
     }
     throw new NotImplementedException();
+    } finally{
+      writeUnlock();
+    }
   }
 
   @Override
   public void clear() {
+    writeLock();
+    try {
     header = null;
     tail = null;
     count = 0;
+    } finally{
+      writeUnlock();
+    }
   }
 
   @Override
@@ -308,6 +326,8 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   public List<TsFileResource> getArrayList() {
+    readLock();
+    try {
     List<TsFileResource> list = new ArrayList<>();
     if (header == null) {
       return list;
@@ -319,6 +339,9 @@ public class TsFileResourceList implements List<TsFileResource> {
     }
     list.add(current);
     return list;
+    } finally{
+      readUnlock();
+    }
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {
