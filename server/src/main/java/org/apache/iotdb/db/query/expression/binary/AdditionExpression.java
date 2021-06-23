@@ -16,6 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.reader.page;
 
-public class VectorChunkReader {}
+package org.apache.iotdb.db.query.expression.binary;
+
+import org.apache.iotdb.db.query.expression.Expression;
+
+public class AdditionExpression extends BinaryExpression {
+
+  public AdditionExpression(Expression leftExpression, Expression rightExpression) {
+    super(leftExpression, rightExpression);
+  }
+
+  @Override
+  protected String operator() {
+    return "+";
+  }
+}

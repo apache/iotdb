@@ -120,7 +120,7 @@ public class IoTDBUDTFHybridQueryIT {
       assertTrue(
           throwable
               .getMessage()
-              .contains("User-defined and built-in hybrid aggregation is not supported."));
+              .contains("User-defined and built-in hybrid aggregation is not supported together."));
     }
   }
 
@@ -155,7 +155,8 @@ public class IoTDBUDTFHybridQueryIT {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("parsing SQL to physical plan"));
+      assertTrue(
+          throwable.getMessage().contains("Last queries can only be applied on raw time series."));
     }
   }
 

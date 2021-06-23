@@ -32,7 +32,9 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath deviceId;
+  protected PartialPath prefixPath;
+  protected PartialPath originalPrefixPath;
+  protected boolean isAligned;
   protected String[] measurements;
   // get from client
   protected TSDataType[] dataTypes;
@@ -49,12 +51,20 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  public PartialPath getPrefixPath() {
+    return prefixPath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setPrefixPath(PartialPath prefixPath) {
+    this.prefixPath = prefixPath;
+  }
+
+  /*
+  the original prefixPath needs to be recorded and recovered by recoverFromFailure because cluster may try to execute this plan twice
+   */
+  public void setPrefixPathForAlignTimeSeries(PartialPath prefixPath) {
+    this.originalPrefixPath = this.prefixPath;
+    this.prefixPath = prefixPath;
   }
 
   public String[] getMeasurements() {
@@ -93,6 +103,14 @@ public abstract class InsertPlan extends PhysicalPlan {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
   public abstract long getMinTime();
 
   /** @param index failed measurement index */
@@ -109,6 +127,24 @@ public abstract class InsertPlan extends PhysicalPlan {
     failedExceptions.add(e);
     failedIndices.add(index);
     measurements[index] = null;
+  }
+
+  public void markFailedMeasurementAlignedInsertion(Exception e) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
+      failedExceptions = new ArrayList<>();
+      failedIndices = new ArrayList<>();
+    }
+
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
+      failedMeasurements.add(measurements[i]);
+      failedExceptions.add(e);
+      failedIndices.add(i);
+      measurements[i] = null;
+    }
   }
 
   /**
@@ -144,6 +180,9 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
   public void recoverFromFailure() {
+    if (isAligned && originalPrefixPath != null) {
+      prefixPath = originalPrefixPath;
+    }
     if (failedMeasurements == null) {
       return;
     }
@@ -159,7 +198,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (deviceId == null) {
+    if (prefixPath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {

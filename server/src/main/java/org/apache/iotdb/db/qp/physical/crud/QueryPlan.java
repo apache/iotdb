@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.HashMap;
@@ -31,6 +33,7 @@ import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
+  protected List<ResultColumn> resultColumns = null;
   protected List<PartialPath> paths = null;
   protected List<TSDataType> dataTypes = null;
   private boolean alignByTime = true; // for disable align sql
@@ -60,6 +63,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
   }
+
+  public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
   @Override
   public List<PartialPath> getPaths() {
@@ -103,11 +108,11 @@ public abstract class QueryPlan extends PhysicalPlan {
     return alignByTime;
   }
 
-  public void setAlignByTime(boolean align) throws QueryProcessException {
+  public void setAlignByTime(boolean align) {
     alignByTime = align;
   }
 
-  public void addPathToIndex(String columnName, Integer index) {
+  public void setColumnNameToDatasetOutputIndex(String columnName, Integer index) {
     pathToIndex.put(columnName, index);
   }
 
@@ -128,17 +133,13 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
-    String columnForReader = path.isTsAliasExists() ? path.getTsAlias() : null;
-    if (columnForReader == null) {
-      columnForReader =
-          path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.toString();
-    }
-    return columnForReader;
+    ResultColumn resultColumn = resultColumns.get(pathIndex);
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
-    return columnForReader;
+    return resultColumns.get(pathIndex).getResultColumnName();
   }
 
   public boolean isEnableRedirect() {
@@ -155,6 +156,14 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public void setVectorPathToIndex(Map<String, Integer> vectorPathToIndex) {
     this.vectorPathToIndex = vectorPathToIndex;
+  }
+
+  public List<ResultColumn> getResultColumns() {
+    return resultColumns;
+  }
+
+  public void setResultColumns(List<ResultColumn> resultColumns) {
+    this.resultColumns = resultColumns;
   }
 
   public boolean isWithoutAnyNull() {

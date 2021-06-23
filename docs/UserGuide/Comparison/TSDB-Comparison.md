@@ -21,6 +21,16 @@
 
 # Comparison
 
+## Overview
+
+![TSDB Comparison](https://user-images.githubusercontent.com/33376433/119833923-182ffc00-bf32-11eb-8b3f-9f95d3729ad2.png)
+
+
+
+**The table format is inspired by [Andriy Zabavskyy: How to Select Time Series DB](https://towardsdatascience.com/how-to-select-time-series-db-123b0eb4ab82).*
+
+
+
 ## Known Time Series Database
 
 As the time series data becomes more and more important, 
@@ -50,7 +60,7 @@ However, few of them are developed for IoT or IIoT (Industrial IoT) scenario in 
 Prometheus and Druid are also famous for time series data management. 
 However, Prometheus focuses data collection, data visualization and alert warnings.
 Druid focuses on data analysis with OLAP workload. We omit them here.
- 
+
 
 ## Comparison 
 The above time series databases are compared from two aspects: the feature comparison and the performance
@@ -62,36 +72,35 @@ comparison.
 I list the basic features comparison of these databases. 
 
 Legend:
-- O: big support greatly
-- o: support
-- x: not support
-- :\-( : support but not very good
-- ?: unknown
-
+- `++`: big support greatly
+- `+`: support
+- `+-`: support but not very good
+- `-`: not support
+- `?`: unknown
 
 #### Basic Features
 
-| TSDB                        | IoTDB                       | InfluxDB   | OpenTSDB   | KairosDB   | TimescaleDB |   
-|-----------------------------|-----------------------------|------------|------------|------------|-------------|  
-| OpenSource                  | **o**                       | o          | o          | **o**      | o           |   
-| SQL\-like                   | o                           | o          | x          | x          | **O**       |   
-| Schema                      | "Tree\-based, tag\-based\"  | tag\-based | tag\-based | tag\-based | Relational  |   
-| Writing out\-of\-order data | o                           | o          | o          | o          | o           |   
-| Schema\-less                | o                           | o          | o          | o          | o           |   
-| Batch insertion             | o                           | o          | o          | o          | o           |   
-| Time range filter           | o                           | o          | o          | o          | o           |   
-| Order by time               | **O**                       | o          | x          | x          | o           |   
-| Value filter                | o                           | o          | x          | x          | o           |   
-| Downsampling                | **O**                       | o          | o          | o          | o           |   
-| Fill                        | **O**                       | o          | o          | x          | o           |   
-| LIMIT                       | o                           | o          | o          | o          | o           |   
-| SLIMIT                      | o                           | o          | x          | x          | ?           |   
-| Latest value                | O                           | o          | o          | x          | o           |
+| TSDB                          |          IoTDB          |  InfluxDB  |  OpenTSDB  |  KairosDB  | TimescaleDB |
+| ----------------------------- | :---------------------: | :--------: | :--------: | :--------: | :---------: |
+| *OpenSource*                  |          **+**          |     +      |     +      |   **+**    |      +      |
+| *SQL\-like*                   |            +            |     +      |     -      |     -      |   **++**    |
+| *Schema*                      | tree\-based, tag\-based | tag\-based | tag\-based | tag\-based | relational  |
+| *Writing out\-of\-order data* |            +            |     +      |     +      |     +      |      +      |
+| *Schema\-less*                |            +            |     +      |     +      |     +      |      +      |
+| *Batch insertion*             |            +            |     +      |     +      |     +      |      +      |
+| *Time range filter*           |            +            |     +      |     +      |     +      |      +      |
+| *Order by time*               |         **++**          |     +      |     -      |     -      |      +      |
+| *Value filter*                |            +            |     +      |     -      |     -      |      +      |
+| *Downsampling*                |         **++**          |     +      |     +      |     +      |      +      |
+| *Fill*                        |         **++**          |     +      |     +      |     -      |      +      |
+| *LIMIT*                       |            +            |     +      |     +      |     +      |      +      |
+| *SLIMIT*                      |            +            |     +      |     -      |     -      |      ?      |
+| *Latest value*                |           ++            |     +      |     +      |     -      |      +      |
 
 **Details**
 
 * OpenSource:  
- 
+
   * IoTDB uses Apache License 2.0. 
   * InfluxDB uses MIT license. However, **the cluster version is not open sourced**.
   * OpenTSDB uses LGPL2.1, which **is not compatible with Apache License**.
@@ -148,17 +157,17 @@ Legend:
   
   or,
   
-    | timestamp |     series name   |    value   |
-    |-----------|-------------------|------------|
-    |    1      |       wind speed  |    5.0     |
-    |    1      | generated energy  |    13.1    |
-    |    2      |       wind speed  |    6.0     |
-    |    2      | generated energy  |    13.3    |
-    |    3      | generated energy  |    13.1    |      
-  
+  | timestamp |     series name   |    value   |
+  |-----------|-------------------|------------|
+  |    1      |       wind speed  |    5.0     |
+  |    1      | generated energy  |    13.1    |
+  |    2      |       wind speed  |    6.0     |
+  |    2      | generated energy  |    13.3    |
+  |    3      | generated energy  |    13.1    |
+
  Though the second table format does not align data by the time dimension, it is easy to be implemented in the client-side,
  by just scanning data row by row.
- 
+
  IoTDB supports the first table format (called align by time), InfluxDB supports the second table format.
 
 * Downsampling:
@@ -174,23 +183,21 @@ Legend:
   
   * There is no disk loss for IoTDB.
   
-
 * Fill:
 
   Sometimes we thought the data is collected in some fixed frequency, e.g., 1Hz (1 point per second). 
   But usually, we may lost some data points, because the network is unstable, the machine is busy, or the machine is down for several minutes.
   
-  In this case, filling these holes is important. Data scientists can avoid to many so called dirty work, e.g., data clean.
+  In this case, filling these holes is important. Data scientists can avoid many so called dirty work, e.g., data clean.
   
   InfluxDB and OpenTSDB only support using fill in a group by statement, while IoTDB supports to fill data when just given a particular timestamp.
   Besides, IoTDB supports several strategies for filling data.
-       
+  
 * Slimit:
 
   Slimit means return limited number of measurements (or, fields in InfluxDB). 
   For example, a wind turbine may have 1000 measurements (speed, voltage, etc..), using slimit and soffset can just return a part of them.    
   
-
 * Latest value:
 
   As one of the most basic timeseries based applications is monitoring the latest data. 
@@ -200,7 +207,7 @@ Legend:
   (the reason why IoTDB provides a special SQL is IoTDB optimizes the query expressly.)
   
    
-  
+
 **Conclusion**:
 
 Well, if we compare the basic features, we can find that OpenTSDB and KairosDB somehow lack some important query features.
@@ -212,19 +219,19 @@ IoTDB and InfluxDB can meet most requirements of time series data management, wh
 
 I listed some interesting features that these systems may differ.
 
-| TSDB                        | IoTDB                           | InfluxDB   | OpenTSDB   | KairosDB   | TimescaleDB |   
-|-----------------------------|---------------------------------|------------|------------|------------|-------------|   
-| Align by time               | **O**                           | o          | x          | x          | o           |   
-| Compression                 | **O**                           | :\-(       | :\-\(      | :\-\(      | :\-\(       |   
-| MQTT support                | **O**                           | o          | x          | x          | :\-\(       |   
-| Run on Edge-side Device     | **O**                           | o          | x          | :\-\(      | o           |   
-| Multi\-instance Sync        | **O**                           | x          | x          | x          | x           |   
-| JDBC Driver                 | **o**                           | x          | x          | x          | x           |   
-| Standard SQL                | o                               | x          | x          | x          | **O**       |   
-| Spark integration           | **O**                           | x          | x          | x          | x           | 
-| Hive integration            | **O**                           | x          | x          | x          | x           |
-| Writing data to NFS (HDFS)  | **O**                           | x          | o          | x          | x           |
-| Flink integration           | **O**                           | x          | x          | x          | x           |
+| TSDB                         | IoTDB  | InfluxDB | OpenTSDB | KairosDB | TimescaleDB |
+| ---------------------------- | :----: | :------: | :------: | :------: | :---------: |
+| *Align by time*              | **++** |    +     |    -     |    -     |      +      |
+| *Compression*                | **++** |    +-    |    +-    |    +-    |     +-      |
+| *MQTT support*               | **++** |    +     |    -     |    -     |     +-      |
+| *Run on Edge-side Device*    | **++** |    +     |    -     |    +-    |      +      |
+| *Multi\-instance Sync*       | **++** |    -     |    -     |    -     |      -      |
+| *JDBC Driver*                | **+**  |    -     |    -     |    -     |      -      |
+| *Standard SQL*               |   +    |    -     |    -     |    -     |   **++**    |
+| *Spark integration*          | **++** |    -     |    -     |    -     |      -      |
+| *Hive integration*           | **++** |    -     |    -     |    -     |      -      |
+| *Writing data to NFS (HDFS)* | **++** |    -     |    +     |    -     |      -      |
+| *Flink integration*          | **++** |    -     |    -     |    -     |      -      |
 
 
 * Align by time: have been introduced. Let's skip it..
@@ -238,7 +245,7 @@ I listed some interesting features that these systems may differ.
   
 * MQTT protocol support:
   
-  MQTT protocol is an international standard and widely known in industrial users. only IoTDB and InfluxDB support user using MQTT client to write data.  
+  MQTT protocol is an international standard and widely known in industrial users. Only IoTDB and InfluxDB support user using MQTT client to write data.  
 
 * Running on Edge-side Device:
   
@@ -272,9 +279,9 @@ I listed some interesting features that these systems may differ.
   * IoTDB supports writing data locally or on HDFS directly. IoTDB also allows user to extend to store data on other NFS.
   * InfluxDB, KairosDB have to write data locally.
   * OpenTSDB has to write data on HDFS.
-    
+
 **Conclusion**:    
-  
+
   We can find that IoTDB has many powerful features that other TSDBs do not support.
 
 ### Performance Comparison
@@ -283,6 +290,14 @@ Ok... If you say, "well, I just want the basic features. IoTDB has little differ
 It is somehow right. But, if you consider the performance, you may change your mind.
 
 #### quick review
+
+| TSDB                 | IoTDB | InfluxDB | KairosDB | TimescaleDB |
+| -------------------- | :---: | :------: | :------: | :---------: |
+| *Scalable Writes*    |  ++   |    +     |    +     |      +      |
+| *Raw Data Query*     |  ++   |    +     |    +     |      +      |
+| *Aggregation Query*  |  ++   |    +     |    +     |      +      |
+| *Downsampling Query* |  ++   |    +     |    +-    |     +-      |
+| *Latest Query*       |  ++   |    +     |    +-    |      +      |
 
 * Write:
 
@@ -335,17 +350,11 @@ The write throughput (points/second) is:
 ![Aggregation query](https://user-images.githubusercontent.com/24886743/106251336-cf03c000-624f-11eb-8395-de5e349f47b5.png)
 <center>Figure 5. Aggregation query time cost(ms) IoTDB v0.11.1</center>
 
-![Downsampling query](https://user-images.githubusercontent.com/24886743/118790090-0615e400-b8c8-11eb-93d8-3c7fe1a154a1.png)
+![Downsampling query](https://user-images.githubusercontent.com/24886743/106251353-d32fdd80-624f-11eb-80c1-fdb4197939fe.png)
 <center>Figure 6. Downsampling query time cost(ms) IoTDB v0.11.1</center>
 
 ![Latest query](https://user-images.githubusercontent.com/24886743/106251369-d7f49180-624f-11eb-9d19-fc7341582b90.png)
 <center>Figure 7. Latest query time cost(ms) IoTDB v0.11.1</center>
-
-**Compression performance**
-
-* Dataset:
-
-REDD, TDrive, Geolife, NOAA
 
 ![Data compression](https://user-images.githubusercontent.com/24886743/118790229-23e34900-b8c8-11eb-87da-ac01dd117f28.png)
 <center>Figure 8. Data compression IoTDB v0.11.1</center>
@@ -380,7 +389,7 @@ In raw data query, as the query scope increases, the advantages of IoTDB begin t
 In aggregation query, we use the statistics of the file layer and cache the statistics. Therefore, multiple queries only need to perform memory calculations (do not need to traverse the original data points, and do not need to access the disk), so the aggregation performance advantage is obvious.
 Downsampling query scenarios is more interesting, as the time partition becomes larger and larger, the query performance of IoTDB increases gradually. Probably it has risen twice, which corresponds to the pre-calculated information of 2 granularities(3 hours and 4.5 days). Therefore, the queries in the range of 1 day and 1 week are accelerated respectively. The other databases only rose once, indicating that they only have one granular statistics.
 
-If you are considering a TSDB for your IIoT application, Apache IoTDB, a new time series, is your best choice.
+If you are considering a TSDB for your IIoT application, Apache IoTDB, a new time series database, is your best choice.
 
 We will update this page once we release new version and finish the experiments.
 We also welcome more contributors correct this article and contribute IoTDB and reproduce experiments.

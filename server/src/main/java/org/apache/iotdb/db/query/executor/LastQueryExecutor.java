@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -101,16 +102,10 @@ public class LastQueryExecutor {
       if (lastPairList.get(i).right != null && lastPairList.get(i).right.getValue() != null) {
         TimeValuePair lastTimeValuePair = lastPairList.get(i).right;
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
+
         Field pathField = new Field(TSDataType.TEXT);
-        if (selectedSeries.get(i).isTsAliasExists()) {
-          pathField.setBinaryV(new Binary(selectedSeries.get(i).getTsAlias()));
-        } else {
-          if (selectedSeries.get(i).isMeasurementAliasExists()) {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
-          } else {
-            pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
-          }
-        }
+        pathField.setBinaryV(
+            new Binary(lastQueryPlan.getResultColumns().get(i).getResultColumnName()));
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
@@ -175,7 +170,8 @@ public class LastQueryExecutor {
             new LastPointReader(
                 nonCachedPaths.get(i),
                 nonCachedDataTypes.get(i),
-                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                deviceMeasurementsMap.getOrDefault(
+                    nonCachedPaths.get(i).getDevice(), new HashSet<>()),
                 context,
                 dataSource,
                 Long.MAX_VALUE,

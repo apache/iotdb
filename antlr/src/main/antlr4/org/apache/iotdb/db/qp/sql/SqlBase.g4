@@ -76,6 +76,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -103,71 +104,30 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | SELECT topClause? selectElements
-    fromClause
-    whereClause?
-    specialClause? #selectStatement
+    | selectClause fromClause whereClause? specialClause? #selectStatement
     ;
 
-selectElements
-    : aggregationCall (COMMA aggregationCall)* #aggregationElement
-    | tableCall (COMMA tableCall)* #tableElement
-    | lastClause #lastElement
-    | asClause (COMMA asClause)* #asElement
-    | functionAsClause (COMMA functionAsClause)* #functionAsElement
-    ;
+selectClause
+   : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
+   ;
 
-aggregationCall
-    : builtInFunctionCall
-    | udfCall
-    ;
+resultColumn
+   : expression (AS ID)?
+   ;
 
-tableCall
-    : suffixPath
-    | udfCall
-    | SINGLE_QUOTE_STRING_LITERAL
-    ;
+expression
+   : LR_BRACKET unary=expression RR_BRACKET
+   | (PLUS | MINUS) unary=expression
+   | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+   | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+   | suffixPath
+   | literal=SINGLE_QUOTE_STRING_LITERAL
+   ;
 
-udfCall
-    : udfName=ID LR_BRACKET udfSuffixPaths udfAttribute* RR_BRACKET
-    ;
-
-udfSuffixPaths
-    : suffixPath (COMMA suffixPath)*
-    ;
-
-udfAttribute
-    : COMMA udfAttributeKey=stringLiteral OPERATOR_EQ udfAttributeValue=stringLiteral
-    ;
-
-builtInFunctionCall
-    : functionName LR_BRACKET suffixPath RR_BRACKET
-    ;
-
-functionName
-    : MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | COUNT
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
-    ;
-
-functionAsClause
-    : builtInFunctionCall (AS ID)?
-    ;
-
-lastClause
-    : LAST suffixPath (COMMA suffixPath)*
-    | LAST asClause (COMMA asClause)*
-    ;
-
-asClause
-    : suffixPath (AS ID)?
-    ;
+functionAttribute
+   : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
+   ;
 
 alias
     : LR_BRACKET ID RR_BRACKET
@@ -523,14 +483,6 @@ nodeName
     | COUNT
     | NODES
     | LEVEL
-    | MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
     | LAST
     | DISABLE
     | ALIGN
@@ -634,14 +586,6 @@ nodeNameWithoutStar
     | COUNT
     | NODES
     | LEVEL
-    | MIN_TIME
-    | MAX_TIME
-    | MIN_VALUE
-    | MAX_VALUE
-    | AVG
-    | FIRST_VALUE
-    | SUM
-    | LAST_VALUE
     | LAST
     | DISABLE
     | ALIGN
@@ -695,7 +639,7 @@ dateExpression
     ;
 
 encoding
-    : PLAIN | PLAIN_DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
+    : PLAIN | DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
     ;
 
 realLiteral
@@ -921,8 +865,8 @@ PLAIN
     : P L A I N
     ;
 
-PLAIN_DICTIONARY
-    : P L A I N '_' D I C T I O N A R Y
+DICTIONARY
+    : D I C T I O N A R Y
     ;
 
 RLE
@@ -940,7 +884,6 @@ TS_2DIFF
 GORILLA
     : G O R I L L A
     ;
-
 
 REGULAR
     : R E G U L A R
@@ -1099,38 +1042,6 @@ NODES
 
 LEVEL
     : L E V E L
-    ;
-
-MIN_TIME
-    : M I N UNDERLINE T I M E
-    ;
-
-MAX_TIME
-    : M A X UNDERLINE T I M E
-    ;
-
-MIN_VALUE
-    : M I N UNDERLINE V A L U E
-    ;
-
-MAX_VALUE
-    : M A X UNDERLINE V A L U E
-    ;
-
-AVG
-    : A V G
-    ;
-
-FIRST_VALUE
-    : F I R S T UNDERLINE V A L U E
-    ;
-
-SUM
-    : S U M
-    ;
-
-LAST_VALUE
-    : L A S T UNDERLINE V A L U E
     ;
 
 LAST
@@ -1325,6 +1236,10 @@ ANY
     : A N Y
     ;
 
+LOCK
+    : L O C K
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -1369,6 +1284,10 @@ OPERATOR_CONTAINS
 MINUS : '-';
 
 PLUS : '+';
+
+DIV : '/';
+
+MOD : '%';
 
 DOT : '.';
 
