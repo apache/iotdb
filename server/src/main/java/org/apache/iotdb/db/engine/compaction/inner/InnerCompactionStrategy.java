@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompaction
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.io.File;
 import java.util.List;
@@ -35,6 +36,7 @@ public enum InnerCompactionStrategy {
       String storageGroupName,
       String virtualStorageGroup,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
@@ -45,6 +47,7 @@ public enum InnerCompactionStrategy {
             storageGroupName,
             virtualStorageGroup,
             timePartition,
+            tsFileResourceManager,
             tsFileResourceList,
             selectedTsFileResourceList,
             sequence);
@@ -55,6 +58,7 @@ public enum InnerCompactionStrategy {
       String storageGroupName,
       String virtualStorageGroup,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       File compactionLogFile,
       String storageGroupDir,
       TsFileResourceList tsFileResourceList,
@@ -67,6 +71,7 @@ public enum InnerCompactionStrategy {
             storageGroupName,
             virtualStorageGroup,
             timePartition,
+            tsFileResourceManager,
             compactionLogFile,
             storageGroupDir,
             tsFileResourceList,
@@ -79,6 +84,7 @@ public enum InnerCompactionStrategy {
       String storageGroupName,
       String virtualStorageGroupName,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -89,6 +95,7 @@ public enum InnerCompactionStrategy {
             storageGroupName,
             virtualStorageGroupName,
             timePartition,
+            tsFileResourceManager,
             tsFileResources,
             sequence,
             taskFactory);

@@ -64,6 +64,7 @@ public class CompactionRecoverTask implements Callable<Void> {
                   tsFileResourceManager.getStorageGroupName(),
                   tsFileResourceManager.getVirtualStorageGroup(),
                   timePartition,
+                  tsFileResourceManager,
                   compactionLog,
                   storageGroupDir,
                   isSequence

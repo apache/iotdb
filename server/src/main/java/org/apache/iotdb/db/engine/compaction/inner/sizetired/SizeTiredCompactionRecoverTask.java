@@ -6,6 +6,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -31,12 +32,13 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
       String storageGroupName,
       String virtualStorageGroup,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       File compactionLogFile,
       String storageGroupDir,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> recoverTsFileResources,
       boolean sequence) {
-    super(storageGroupName, virtualStorageGroup, timePartition, tsFileResourceList, null, sequence);
+    super(storageGroupName, virtualStorageGroup, timePartition, tsFileResourceManager, tsFileResourceList, null, sequence);
     this.compactionLogFile = compactionLogFile;
     this.storageGroupDir = storageGroupDir;
     this.tsFileResourceList = tsFileResourceList;

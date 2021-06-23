@@ -10,6 +10,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +26,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       String storageGroupName,
       String virtualStorageGroupName,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
@@ -32,6 +34,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         storageGroupName,
         virtualStorageGroupName,
         timePartition,
+        tsFileResourceManager,
         tsFileResources,
         sequence,
         taskFactory);
@@ -68,31 +71,8 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         selectedFileSize += currentFile.getTsFileSize();
         if (selectedFileSize >= targetCompactionFileSize) {
           // submit the task
-          AbstractCompactionTask compactionTask =
-              taskFactory.createTask(
-                  storageGroupName,
-                  virtualStorageGroupName,
-                  timePartition,
-                  tsFileResources,
-                  selectedFileList,
-                  sequence);
-          for (TsFileResource resource : selectedFileList) {
-            resource.setMerging(true);
-            LOGGER.info(
-                "{}-{} [Compaction] start to compact TsFile {}",
-                storageGroupName,
-                virtualStorageGroupName,
-                resource);
-          }
-          CompactionTaskManager.getInstance()
-              .submitTask(
-                  storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+          createAndSubmitTask(selectedFileList);
           taskSubmitted = true;
-          LOGGER.info(
-              "{}-{} [Compaction] submit a inner compaction task of {} files",
-              storageGroupName,
-              virtualStorageGroupName,
-              selectedFileList.size());
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
@@ -100,21 +80,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       // if some files are selected but the total size is smaller than target size, submit a task
       if (selectedFileList.size() > 1) {
         try {
-          AbstractCompactionTask compactionTask =
-              taskFactory.createTask(
-                  storageGroupName,
-                  virtualStorageGroupName,
-                  timePartition,
-                  tsFileResources,
-                  selectedFileList,
-                  sequence);
-          CompactionTaskManager.getInstance()
-              .submitTask(
-                  storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
-          LOGGER.info(
-              "{} [Compaction] submit a inner compaction task of {} files",
-              storageGroupName,
-              selectedFileList.size());
+          createAndSubmitTask(selectedFileList);
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
         }
@@ -123,5 +89,33 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     } finally {
       tsFileResources.readUnlock();
     }
+  }
+
+  private void createAndSubmitTask(List<TsFileResource> selectedFileList) {
+    AbstractCompactionTask compactionTask =
+        taskFactory.createTask(
+            storageGroupName,
+            virtualStorageGroupName,
+            timePartition,
+            tsFileResourceManager,
+            tsFileResources,
+            selectedFileList,
+            sequence);
+    for (TsFileResource resource : selectedFileList) {
+      resource.setMerging(true);
+      LOGGER.info(
+          "{}-{} [Compaction] start to compact TsFile {}",
+          storageGroupName,
+          virtualStorageGroupName,
+          resource);
+    }
+    CompactionTaskManager.getInstance()
+        .submitTask(
+            storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+    LOGGER.info(
+        "{}-{} [Compaction] submit a inner compaction task of {} files",
+        storageGroupName,
+        virtualStorageGroupName,
+        selectedFileList.size());
   }
 }

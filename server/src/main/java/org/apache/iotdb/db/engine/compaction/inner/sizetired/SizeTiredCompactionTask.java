@@ -8,6 +8,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 
 import org.slf4j.Logger;
@@ -29,6 +30,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
   protected List<TsFileResource> selectedTsFileResourceList;
   protected TsFileResourceList tsFileResourceList;
+  protected TsFileResourceManager tsFileResourceManager;
   protected boolean sequence;
   protected Set<String> skippedDevicesSet;
 
@@ -36,11 +38,13 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       String storageGroupName,
       String virtualStorageGroupName,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     super(storageGroupName + "-" + virtualStorageGroupName, timePartition);
     this.tsFileResourceList = tsFileResourceList;
+    this.tsFileResourceManager = tsFileResourceManager;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
     this.sequence = sequence;
     this.skippedDevicesSet = new HashSet<>();
@@ -79,7 +83,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.modifyTsFileNameMergeCnt(selectedTsFileResourceList.get(0).getTsFile())
+        TsFileNameGenerator.modifyTsFileNameMergeCnt(selectedTsFileResourceList.get(selectedTsFileResourceList.size()-1).getTsFile())
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
@@ -112,7 +116,6 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
-        resource.readUnlock();
         resource.setMerging(false);
       }
     }
@@ -121,7 +124,6 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(String.format("%s [Compaction] abort", storageGroupName));
       }
-      tsFileResourceList.writeLockWithTimeout(5000);
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
       // current thread will catch a WriteLockFailException, then terminate the thread itself
@@ -130,6 +132,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
               "%s [Compaction] compaction abort because cannot acquire write lock",
               storageGroupName));
     }
+    // apply write lock for TsFileResource list
+    tsFileResourceManager.writeLock("size-tired compaction");
     try {
       // replace the old files with new file, the new is in same position as the old
       tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
@@ -140,7 +144,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, storageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
     } finally {
-      tsFileResourceList.writeUnlock();
+      tsFileResourceManager.writeUnlock();
     }
   }
 }

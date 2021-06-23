@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompaction
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
       String storageGroupName,
       String virtualStorageGroupName,
       long timePartition,
+      TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
@@ -38,6 +40,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
         storageGroupName,
         virtualStorageGroupName,
         timePartition,
+        tsFileResourceManager,
         tsFileResourceList,
         selectedTsFileResourceList,
         sequence);
