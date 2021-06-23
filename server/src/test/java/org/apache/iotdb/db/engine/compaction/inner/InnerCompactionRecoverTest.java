@@ -144,6 +144,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     //    tsFileResourceManager.recover();
     List<TsFileResource> recoverTsFile = new ArrayList<>();
     recoverTsFile.add(targetTsFileResource);
+    CompactionScheduler.currentTaskNum.incrementAndGet();
     SizeTiredCompactionRecoverTask task =
         new SizeTiredCompactionRecoverTask(
             COMPACTION_TEST_SG,
@@ -472,6 +473,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     compactionLogger.close();
     tsFileResourceManager.addRecover(targetTsFileResource, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
+    CompactionScheduler.currentTaskNum.getAndIncrement();
     new SizeTiredCompactionRecoverTask(
             COMPACTION_TEST_SG,
             "0",

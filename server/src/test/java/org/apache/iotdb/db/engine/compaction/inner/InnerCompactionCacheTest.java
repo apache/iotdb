@@ -95,6 +95,7 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
+    CompactionScheduler.currentTaskNum.getAndIncrement();
     SizeTiredCompactionTask sizeTiredCompactionTask =
         new SizeTiredCompactionTask(
             COMPACTION_TEST_SG,
