@@ -20,16 +20,18 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class ManagedMergeReader extends PriorityMergeReader implements ManagedSeriesReader {
+public class ManagedDescPriorityMergeReader extends DescPriorityMergeReader
+    implements ManagedSeriesReader, IPointReader {
 
   private static final int BATCH_SIZE = 4096;
 
@@ -39,7 +41,7 @@ public class ManagedMergeReader extends PriorityMergeReader implements ManagedSe
   private BatchData batchData;
   private TSDataType dataType;
 
-  public ManagedMergeReader(TSDataType dataType) {
+  public ManagedDescPriorityMergeReader(TSDataType dataType) {
     this.dataType = dataType;
   }
 
