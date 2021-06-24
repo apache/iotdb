@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchData.BatchDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -123,6 +124,7 @@ public class SerializeUtils {
       TSDataType dataType = batchData.getDataType();
       outputStream.writeInt(length);
       outputStream.write(dataType.ordinal());
+      outputStream.write(batchData.getBatchDataType().ordinal());
       switch (dataType) {
         case BOOLEAN:
           for (int i = 0; i < length; i++) {
@@ -175,7 +177,7 @@ public class SerializeUtils {
 
     int length = buffer.getInt();
     TSDataType dataType = TSDataType.values()[buffer.get()];
-    BatchData batchData = new BatchData(dataType);
+    BatchData batchData = BatchDataType.deserialize(buffer.get(), dataType);
     switch (dataType) {
       case INT32:
         for (int i = 0; i < length; i++) {
@@ -212,6 +214,7 @@ public class SerializeUtils {
         }
         break;
     }
+    batchData.resetBatchData();
     return batchData;
   }
 
