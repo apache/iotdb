@@ -50,9 +50,7 @@ Note: FullPath can not include `*`
 
 ```
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln
 Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
@@ -356,7 +354,7 @@ TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-01 00:13:00
 Eg. IoTDB > SELECT * FROM root
 Eg. IoTDB > SELECT * FROM root where time > now() - 5m
 Eg. IoTDB > SELECT * FROM root.ln.*.wf*
@@ -440,6 +438,8 @@ Note: Integer in <TimeUnit> needs to be greater than 0
 * Group By Fill语句
 
 ```
+# time区间规则为：只能为左开右闭或左闭右开，例如：[20, 100)
+
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause> (FILL <GROUPBYFillClause>)?
 GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> RPAREN
 GROUPBYFillClause : LPAREN <TypeClause> RPAREN
@@ -499,8 +499,8 @@ SLIMITClause : SLIMIT <SN> [SOFFSETClause]?
 SN : Integer
 SOFFSETClause : SOFFSET <SOFFSETValue>
 SOFFSETValue : Integer
-Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-1 0:13:00 LIMIT 3 OFFSET 2
-Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000], 5m) LIMIT 3
+Eg: IoTDB > SELECT status, temperature FROM root.ln.wf01.wt01 WHERE temperature < 24 and time > 2017-11-01 00:13:00 LIMIT 3 OFFSET 2
+Eg. IoTDB > SELECT COUNT (status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE time < 1509466500000 GROUP BY([1509465720000, 1509466380000), 5m) LIMIT 3
 Note: N, OFFSETValue, SN and SOFFSETValue must be greater than 0.
 Note: The order of <LIMITClause> and <SLIMITClause> does not affect the grammatical correctness.
 Note: <FillClause> can not use <LIMITClause> but not <SLIMITClause>.
@@ -714,7 +714,7 @@ E.g. select * as temperature from root.sg.d1
 CREATE USER <userName> <password>;  
 userName:=identifier  
 password:=string
-Eg: IoTDB > CREATE USER thulab 'pwd';
+Eg: IoTDB > CREATE USER thulab 'passwd';
 ```
 
 * 删除用户

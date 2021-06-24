@@ -60,7 +60,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testNoFilter() throws IOException, StorageEngineException, QueryProcessException {
+  public void testNoFilter() throws IOException, StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
@@ -97,7 +97,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   }
 
   @Test
-  public void testNoFilterWithRedirect() throws StorageEngineException, QueryProcessException {
+  public void testNoFilterWithRedirect() throws StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
     plan.setDeduplicatedDataTypes(dataTypes);
@@ -137,7 +137,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test
   public void testFilterWithTimeFilterRedirect()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException {
     IExpression expression =
         new GlobalTimeExpression(new AndFilter(TimeFilter.gtEq(5), TimeFilter.ltEq(10)));
     RawDataQueryPlan plan = new RawDataQueryPlan();

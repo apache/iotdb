@@ -122,8 +122,8 @@ void deleteTimeseries(List<String> paths)
 * 删除一个或多个时间序列在某个时间点前或这个时间点的数据
 
 ```java
-void deleteData(String path, long time)
-void deleteData(List<String> paths, long time)
+void deleteData(String path, long endTime)
+void deleteData(List<String> paths, long endTime)
 ```
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
@@ -141,7 +141,7 @@ void insertTablet(Tablet tablet)
 * 插入多个 Tablet
 
 ```java
-void insertTablets(Map<String, Tablet> tablet)
+void insertTablets(Map<String, Tablet> tablets)
 ```
 
 * 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
@@ -162,7 +162,7 @@ void insertRecord(String prefixPath, long time, List<String> measurements,
 
 ```java
 void insertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<String>> measurementsList,
     List<List<Object>> valuesList)
 ```
 

@@ -1195,5 +1195,7 @@ public class IoTDBDescriptor {
   private static class IoTDBDescriptorHolder {
 
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
+
+    private IoTDBDescriptorHolder() {}
   }
 }

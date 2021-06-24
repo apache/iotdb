@@ -49,9 +49,9 @@ import static org.junit.Assert.assertNull;
  */
 public class BaseQueryTest extends BaseMember {
 
-  List<PartialPath> pathList;
-  List<TSDataType> dataTypes;
-  private int defaultCompactionThread =
+  protected List<PartialPath> pathList;
+  protected List<TSDataType> dataTypes;
+  protected int defaultCompactionThread =
       IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
 
   protected static void checkAggregations(
