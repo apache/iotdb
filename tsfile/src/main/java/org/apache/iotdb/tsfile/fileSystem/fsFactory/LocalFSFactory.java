@@ -35,6 +35,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class LocalFSFactory implements FSFactory {
 
@@ -125,7 +128,16 @@ public class LocalFSFactory implements FSFactory {
 
   @Override
   public File[] listFilesBySuffix(String fileFolder, String suffix) {
-    return new File(fileFolder).listFiles(file -> file.getName().endsWith(suffix));
+    List<File> fileList = new ArrayList<>();
+    File[] fileArr = new File(fileFolder).listFiles(file -> file.getName().endsWith(suffix));
+    for (File f : fileArr) {
+      if (f.isDirectory()) { // 如果是目录
+        fileList.addAll(Arrays.asList(listFilesBySuffix(f.getAbsolutePath(), suffix)));
+      } else {
+        fileList.add(f);
+      }
+    }
+    return fileList.toArray(new File[0]);
   }
 
   @Override

@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -646,10 +648,21 @@ public class TraditionalLevelCompactionTsFileManagement extends TsFileManagement
           new TreeSet<>(
               (o1, o2) -> {
                 try {
-                  int rangeCompare =
-                      Long.compare(
-                          Long.parseLong(o1.getTsFile().getParentFile().getName()),
-                          Long.parseLong(o2.getTsFile().getParentFile().getName()));
+                  String[] item1Strs = o1.getTsFile().getParent().split("/");
+                  String[] item2Strs = o2.getTsFile().getParent().split("/");
+                  int rangeCompare = 0;
+                  int index = 0;
+                  do {
+                    Pattern pattern = Pattern.compile("[0-9]+");
+                    Matcher isNum = pattern.matcher(item1Strs[index]);
+                    if (isNum.matches()) {
+                      rangeCompare =
+                          Integer.parseInt(item1Strs[index]) - Integer.parseInt(item2Strs[index]);
+                    }
+                    index++;
+                  } while (rangeCompare == 0
+                      && item1Strs.length > index
+                      && item2Strs.length > index);
                   return rangeCompare == 0
                       ? compareFileName(o1.getTsFile(), o2.getTsFile())
                       : rangeCompare;

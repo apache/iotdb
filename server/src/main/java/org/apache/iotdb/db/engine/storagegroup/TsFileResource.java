@@ -789,10 +789,11 @@ public class TsFileResource {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
+    File newDir = new File(path + "/0");
+    newDir.mkdirs();
     tsFileResource.setFile(
         new File(
-            path,
+            newDir.getPath(),
             tsFileName.time
                 + FILE_NAME_SEPARATOR
                 + tsFileName.version
@@ -837,26 +838,10 @@ public class TsFileResource {
   }
 
   public static File createNewTsFileNameByOffset(File tsFile, int offset) {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setTime(tsFileName.time + offset);
-    int i = 0;
-    File newFile;
-    do {
-      newFile =
-          new File(
-              path,
-              tsFileName.time
-                  + FILE_NAME_SEPARATOR
-                  + tsFileName.version
-                  + FILE_NAME_SEPARATOR
-                  + (tsFileName.mergeCnt + i)
-                  + FILE_NAME_SEPARATOR
-                  + tsFileName.unSeqMergeCnt
-                  + TSFILE_SUFFIX);
-      i++;
-    } while (newFile.exists());
-    return newFile;
+    String parentPath = tsFile.getParentFile().getParent() + "/" + offset;
+    File parent = new File(parentPath);
+    parent.mkdirs();
+    return new File(parentPath, tsFile.getName());
   }
 
   public static class TsFileName {
