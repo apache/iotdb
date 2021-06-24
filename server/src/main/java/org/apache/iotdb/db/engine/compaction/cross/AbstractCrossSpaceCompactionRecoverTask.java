@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 public abstract class AbstractCrossSpaceCompactionRecoverTask
     extends AbstractCrossSpaceCompactionTask {
 
-  public AbstractCrossSpaceCompactionRecoverTask(String storageGroupName, long timePartition) {
-    super(storageGroupName, timePartition);
+  public AbstractCrossSpaceCompactionRecoverTask(String fullStorageGroupName, long timePartition) {
+    super(fullStorageGroupName, timePartition);
   }
 }

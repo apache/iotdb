@@ -30,11 +30,11 @@ import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentT
 
 public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
-  protected String storageGroupName;
+  protected String fullStorageGroupName;
   protected long timePartition;
 
-  public AbstractCompactionTask(String storageGroupName, long timePartition) {
-    this.storageGroupName = storageGroupName;
+  public AbstractCompactionTask(String fullStorageGroupName, long timePartition) {
+    this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
   }
 
@@ -50,7 +50,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       synchronized (CompactionScheduler.currentTaskNum) {
         currentTaskNum.decrementAndGet();
         LOGGER.warn("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
-        CompactionScheduler.decPartitionCompaction(storageGroupName, timePartition);
+        CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
       }
     }
     return null;

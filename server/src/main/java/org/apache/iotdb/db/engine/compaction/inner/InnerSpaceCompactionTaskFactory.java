@@ -29,7 +29,7 @@ import java.util.List;
 
 public class InnerSpaceCompactionTaskFactory {
   public AbstractCompactionTask createTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -40,7 +40,7 @@ public class InnerSpaceCompactionTaskFactory {
         .getConfig()
         .getInnerCompactionStrategy()
         .getCompactionTask(
-            storageGroupName,
+            logicalStorageGroupName,
             virtualStorageGroup,
             timePartition,
             tsFileResourceManager,

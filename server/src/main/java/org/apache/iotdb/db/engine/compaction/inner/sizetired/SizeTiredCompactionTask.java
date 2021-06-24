@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
@@ -16,11 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
@@ -34,14 +48,14 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected Set<String> skippedDevicesSet;
 
   public SizeTiredCompactionTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
-    super(storageGroupName + "-" + virtualStorageGroupName, timePartition);
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition);
     this.tsFileResourceList = tsFileResourceList;
     this.tsFileResourceManager = tsFileResourceManager;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
@@ -51,7 +65,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   public void renameLevelFilesMods(
       Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
-    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
+    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", fullStorageGroupName);
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       try (ModificationFile sourceCompactionModificationFile =
@@ -82,14 +96,12 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.modifyTsFileNameMergeCnt(
-                selectedTsFileResourceList.get(selectedTsFileResourceList.size() - 1).getTsFile())
-            .getName();
+        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
-        storageGroupName,
+        fullStorageGroupName,
         selectedTsFileResourceList.size());
     try {
       File logFile =
@@ -98,22 +110,54 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   + File.separator
                   + targetFileName
                   + CompactionLogger.COMPACTION_LOG_NAME);
-      if (!logFile.exists()) {
-        logFile.createNewFile();
-      }
       // compaction execution
-      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
+      CompactionLogger compactionLogger = null;
+      try {
+        compactionLogger = new CompactionLogger(logFile.getPath());
+      } catch (Exception e) {
+        e.printStackTrace();
+        System.out.println(
+            logFile.getParentFile().getPath() + "is " + logFile.getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getPath()
+                + "is "
+                + logFile
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .exists());
+      }
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }
       compactionLogger.logSequence(sequence);
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
       LOGGER.info(
-          "{} [Compaction] compaction with {}", storageGroupName, selectedTsFileResourceList);
+          "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       CompactionUtils.compact(
           targetTsFileResource,
           selectedTsFileResourceList,
-          storageGroupName,
+          fullStorageGroupName,
           compactionLogger,
           this.skippedDevicesSet,
           sequence);
@@ -126,10 +170,12 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         resource.setMerging(false);
       }
     }
-    LOGGER.info("{} [Compaction] compaction finish, start to delete old files", storageGroupName);
+    LOGGER.info(
+        "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
     try {
       if (Thread.currentThread().isInterrupted()) {
-        throw new InterruptedException(String.format("%s [Compaction] abort", storageGroupName));
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
       }
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
@@ -137,7 +183,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
-              storageGroupName));
+              fullStorageGroupName));
     }
     // apply write lock for TsFileResource list
     tsFileResourceManager.writeLock("size-tired compaction");
@@ -148,7 +194,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, storageGroupName);
+      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
     } finally {
       tsFileResourceManager.writeUnlock();

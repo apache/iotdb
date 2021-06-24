@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
@@ -204,6 +205,31 @@ public class TsFileNameGenerator {
             + tsFileName.mergeCnt
             + FILE_NAME_SEPARATOR
             + tsFileName.unSeqMergeCnt
+            + TSFILE_SUFFIX);
+  }
+
+  public static File getInnerCompactionFileName(List<TsFileResource> tsFileResources)
+      throws IOException {
+    long minTime = Long.MAX_VALUE;
+    long minVersion = Long.MAX_VALUE;
+    long maxInnerMergeCount = Long.MIN_VALUE;
+    long maxCrossMergeCount = Long.MIN_VALUE;
+    for (TsFileResource resource : tsFileResources) {
+      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      minTime = Math.min(tsFileName.time, minTime);
+      minVersion = Math.min(tsFileName.version, minVersion);
+      maxInnerMergeCount = Math.max(tsFileName.mergeCnt, maxInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.unSeqMergeCnt, maxCrossMergeCount);
+    }
+    return new File(
+        tsFileResources.get(0).getTsFile().getParent(),
+        minTime
+            + FILE_NAME_SEPARATOR
+            + minVersion
+            + FILE_NAME_SEPARATOR
+            + (maxInnerMergeCount + 1)
+            + FILE_NAME_SEPARATOR
+            + maxCrossMergeCount
             + TSFILE_SUFFIX);
   }
 

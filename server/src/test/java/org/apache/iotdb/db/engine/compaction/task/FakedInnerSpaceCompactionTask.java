@@ -29,7 +29,7 @@ import java.util.List;
 public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
 
   public FakedInnerSpaceCompactionTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -37,7 +37,7 @@ public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     super(
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
         tsFileResourceManager,

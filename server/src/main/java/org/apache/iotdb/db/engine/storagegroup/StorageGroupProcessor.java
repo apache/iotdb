@@ -3014,4 +3014,8 @@ public class StorageGroupProcessor {
   public String getInsertWriteLockHolder() {
     return insertWriteLockHolder;
   }
+
+  public ScheduledExecutorService getTimedCompactionScheduleTask() {
+    return timedCompactionScheduleTask;
+  }
 }

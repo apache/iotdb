@@ -38,7 +38,7 @@ import java.util.List;
 public interface PartitionTable {
 
   /**
-   * Given the storageGroupName and the timestamp, return the list of nodes on which the storage
+   * Given the fullStorageGroupName and the timestamp, return the list of nodes on which the storage
    * group and the corresponding time interval is managed.
    *
    * @param storageGroupName
@@ -48,8 +48,8 @@ public interface PartitionTable {
   PartitionGroup route(String storageGroupName, long timestamp);
 
   /**
-   * Given the storageGroupName and the timestamp, return the header node of the partitionGroup by
-   * which the storage group and the corresponding time interval is managed.
+   * Given the fullStorageGroupName and the timestamp, return the header node of the partitionGroup
+   * by which the storage group and the corresponding time interval is managed.
    *
    * @param storageGroupName
    * @param timestamp

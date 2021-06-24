@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -28,7 +46,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public InplaceCompactionSelector(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupId,
       String storageGroupDir,
       long timePartition,
@@ -36,7 +54,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
     super(
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroupId,
         storageGroupDir,
         timePartition,
@@ -50,7 +68,8 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
     boolean taskSubmitted = false;
     if ((CompactionScheduler.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())
-        || CompactionScheduler.isPartitionCompacting(storageGroupName, timePartition)) {
+        || CompactionScheduler.isPartitionCompacting(
+            logicalStorageGroupName + "-" + virtualGroupId, timePartition)) {
       return false;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
@@ -80,7 +99,9 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
         LOGGER.info(
-            "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
+            "{} cannot select merge candidates under the budget {}",
+            logicalStorageGroupName,
+            budget);
         return false;
       }
       // avoid pending tasks holds the metadata and streams
@@ -98,7 +119,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
 
       AbstractCompactionTask compactionTask =
           taskFactory.createTask(
-              storageGroupName,
+              logicalStorageGroupName,
               timePartition,
               mergeResource,
               storageGroupDir,
@@ -108,10 +129,11 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               mergeResource.getUnseqFiles(),
               fileSelector.getConcurrentMergeNum());
       CompactionTaskManager.getInstance()
-          .submitTask(storageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
+          .submitTask(
+              logicalStorageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
       taskSubmitted = true;
     } catch (MergeException | IOException e) {
-      LOGGER.error("{} cannot select file for cross space compaction", storageGroupName, e);
+      LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
 
     return taskSubmitted;

@@ -33,7 +33,7 @@ public enum InnerCompactionStrategy {
   SIZE_TIRED_COMPACTION;
 
   public AbstractInnerSpaceCompactionTask getCompactionTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -44,7 +44,7 @@ public enum InnerCompactionStrategy {
       case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionTask(
-            storageGroupName,
+            logicalStorageGroupName,
             virtualStorageGroup,
             timePartition,
             tsFileResourceManager,
@@ -55,7 +55,7 @@ public enum InnerCompactionStrategy {
   }
 
   public AbstractInnerSpaceCompactionTask getCompactionRecoverTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -68,7 +68,7 @@ public enum InnerCompactionStrategy {
       case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionRecoverTask(
-            storageGroupName,
+            logicalStorageGroupName,
             virtualStorageGroup,
             timePartition,
             tsFileResourceManager,
@@ -81,7 +81,7 @@ public enum InnerCompactionStrategy {
   }
 
   public AbstractInnerSpaceCompactionSelector getCompactionSelector(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -92,7 +92,7 @@ public enum InnerCompactionStrategy {
       case SIZE_TIRED_COMPACTION:
       default:
         return new SizeTiredCompactionSelector(
-            storageGroupName,
+            logicalStorageGroupName,
             virtualStorageGroupName,
             timePartition,
             tsFileResourceManager,
