@@ -24,7 +24,6 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils.COMPACTION_LOG_SUFFIX;
 
 public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
@@ -94,7 +93,11 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.size());
     try {
       File logFile =
-          new File(dataDirectory + File.separator + targetFileName + CompactionLogger.COMPACTION_LOG_NAME);
+          new File(
+              dataDirectory
+                  + File.separator
+                  + targetFileName
+                  + CompactionLogger.COMPACTION_LOG_NAME);
       if (!logFile.exists()) {
         logFile.createNewFile();
       }
