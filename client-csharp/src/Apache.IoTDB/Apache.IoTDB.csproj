@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="NLog" Version="4.7.9" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Apache.IoTDB.RPC.Generated\Apache.IoTDB.RPC.Generated.csproj" />
+    </ItemGroup>
+
+</Project>
