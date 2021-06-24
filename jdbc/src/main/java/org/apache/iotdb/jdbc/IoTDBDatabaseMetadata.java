@@ -38,13 +38,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.*;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
-import java.util.*;
+import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
@@ -2227,7 +2235,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern.length() > 0) {
       sql = sql + "." + tableNamePattern;
     }
-
     ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[10];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
