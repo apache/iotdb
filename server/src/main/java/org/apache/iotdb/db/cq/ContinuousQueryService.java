@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.cq;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ContinuousQueryAlreadyExistException;
 import org.apache.iotdb.db.exception.ContinuousQueryNotExistException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -35,27 +34,34 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ContinuousQueryService implements IService {
 
+  private static long CHECK_INTERVAL =
+      IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
+
   private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryService.class);
 
-  private final HashMap<String, ScheduledFuture<?>> continuousQueriesFutures = new HashMap<>();
+  private final ConcurrentHashMap<String, CreateContinuousQueryPlan> continuousQueryPlans =
+      new ConcurrentHashMap<>();
 
-  private final HashMap<String, CreateContinuousQueryPlan> continuousQueryPlans = new HashMap<>();
+  private final ConcurrentHashMap<String, Long> nextExecutionTimestamps = new ConcurrentHashMap<>();
 
   private final ReentrantLock registrationLock = new ReentrantLock();
 
   private static final ContinuousQueryService INSTANCE = new ContinuousQueryService();
 
-  private ScheduledExecutorService pool;
+  private ScheduledExecutorService checkThread;
+
+  protected static final ContinuousQueryTaskPoolManager TASK_POOL_MANAGER =
+      ContinuousQueryTaskPoolManager.getInstance();
 
   public static ContinuousQueryService getInstance() {
     return INSTANCE;
@@ -76,34 +82,55 @@ public class ContinuousQueryService implements IService {
 
   @Override
   public void start() {
-    pool =
-        IoTDBThreadPoolFactory.newScheduledThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getContinuousQueryThreadNum(),
-            "Continuous Query Service");
+
+    for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
+      long durationFromCreation = System.currentTimeMillis() - plan.getCreationTimestamp();
+      long nextExecutionTimestamp =
+          plan.getCreationTimestamp()
+              + plan.getEveryInterval()
+                  * (durationFromCreation / plan.getEveryInterval()
+                      + ((durationFromCreation % plan.getEveryInterval() == 0) ? 0 : 1));
+      nextExecutionTimestamps.put(plan.getContinuousQueryName(), nextExecutionTimestamp);
+    }
+
+    checkThread = Executors.newSingleThreadScheduledExecutor();
+    checkThread.scheduleAtFixedRate(
+        this::checkAndSubmitTasks,
+        0,
+        CHECK_INTERVAL,
+        DatetimeUtils.timestampPrecisionStringToTimeUnit(
+            IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
+
     logger.info("Continuous query service started.");
   }
 
   @Override
   public void stop() {
-    if (pool != null) {
-      pool.shutdownNow();
+    if (checkThread != null) {
+      checkThread.shutdown();
+      try {
+        checkThread.awaitTermination(600, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Check thread still doesn't exit after 60s");
+        checkThread.shutdownNow();
+      }
     }
   }
 
   @Override
-  public void waitAndStop(long milliseconds) {
-    for (ScheduledFuture<?> future : continuousQueriesFutures.values()) {
-      future.cancel(false);
-    }
-    logger.info("Waiting for task pool to shut down");
-    try {
-      Thread.sleep(milliseconds);
-    } catch (InterruptedException e) {
-      logger.info("Thread interrupted");
-      Thread.currentThread().interrupt();
-    }
-    if (pool != null) {
-      pool.shutdownNow();
+  public void shutdown(long milliseconds) throws ShutdownException {
+    stop();
+  }
+
+  private void checkAndSubmitTasks() {
+    long currentTimestamp = System.currentTimeMillis();
+    for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
+      long nextExecutionTimestamp = nextExecutionTimestamps.get(plan.getContinuousQueryName());
+      if (currentTimestamp >= nextExecutionTimestamp) {
+        TASK_POOL_MANAGER.submit(new ContinuousQueryTask(plan, nextExecutionTimestamp));
+        nextExecutionTimestamps.replace(
+            plan.getContinuousQueryName(), nextExecutionTimestamp + plan.getEveryInterval());
+      }
     }
   }
 
@@ -113,39 +140,27 @@ public class ContinuousQueryService implements IService {
     acquireRegistrationLock();
 
     if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      releaseRegistrationLock();
       throw new ContinuousQueryAlreadyExistException(plan.getContinuousQueryName());
     }
 
-    if (writeLog) {
-      try {
+    try {
+      if (writeLog) {
         IoTDB.metaManager.createContinuousQuery(plan);
-      } catch (IOException e) {
-        logger.error(e.getMessage());
       }
+      doRegister(plan);
+
+    } catch (Exception e) {
+      logger.error(e.getMessage());
+    } finally {
+      releaseRegistrationLock();
     }
-
-    doRegister(plan);
-
-    releaseRegistrationLock();
     return true;
   }
 
   private void doRegister(CreateContinuousQueryPlan plan) {
-
-    try {
-      ContinuousQueryTask cq = new ContinuousQueryTask(plan);
-      ScheduledFuture<?> future =
-          pool.scheduleAtFixedRate(
-              cq,
-              0,
-              plan.getEveryInterval(),
-              DatetimeUtils.toTimeUnit(
-                  IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
-      continuousQueriesFutures.put(plan.getContinuousQueryName(), future);
-      continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
-    } catch (QueryProcessException e) {
-      logger.error(e.getMessage());
-    }
+    continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
+    nextExecutionTimestamps.put(plan.getContinuousQueryName(), plan.getCreationTimestamp());
   }
 
   public void deregisterAll() throws ContinuousQueryNotExistException {
@@ -164,24 +179,21 @@ public class ContinuousQueryService implements IService {
     }
 
     try {
-
       IoTDB.metaManager.dropContinuousQuery(plan);
       doDeregister(plan);
+
     } catch (Exception e) {
-
       logger.error(e.getMessage());
+    } finally {
+      releaseRegistrationLock();
     }
-
-    releaseRegistrationLock();
 
     return true;
   }
 
   private void doDeregister(DropContinuousQueryPlan plan) {
-    String cqName = plan.getContinuousQueryName();
-    continuousQueriesFutures.get(cqName).cancel(false);
-    continuousQueriesFutures.remove(cqName);
-    continuousQueryPlans.remove(cqName);
+    continuousQueryPlans.remove(plan.getContinuousQueryName());
+    nextExecutionTimestamps.remove(plan.getContinuousQueryName());
   }
 
   public List<ShowContinuousQueriesResult> getShowContinuousQueriesResultList() {
@@ -189,6 +201,7 @@ public class ContinuousQueryService implements IService {
     List<ShowContinuousQueriesResult> results = new ArrayList<>(continuousQueryPlans.size());
 
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
+
       results.add(
           new ShowContinuousQueriesResult(
               plan.getQuerySql(),

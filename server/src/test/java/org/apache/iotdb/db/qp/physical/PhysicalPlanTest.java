@@ -1399,6 +1399,24 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testCreateCQ11() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 RESAMPLE EVERY 1mo FOR 1mo BEGIN SELECT max_value(temperature) INTO root.${1}_cq.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(1mo), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals(
+        "root.${1}_cq.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 1mo, now()), 1mo), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
   public void testDropCQ() throws QueryProcessException {
     String sql = "DROP CONTINUOUS QUERY cq1";
 

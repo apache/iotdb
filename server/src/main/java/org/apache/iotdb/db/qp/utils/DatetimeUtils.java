@@ -622,7 +622,7 @@ public class DatetimeUtils {
     }
   }
 
-  public static TimeUnit toTimeUnit(String timestampPrecision) {
+  public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
     if (timestampPrecision.equals("us")) {
       return TimeUnit.MICROSECONDS;
     } else if (timestampPrecision.equals("ns")) {

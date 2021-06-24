@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -46,8 +45,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -68,7 +65,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -96,7 +92,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -306,7 +301,7 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
-    HashMap<String, CreateContinuousQueryPlan> recoveredCQs = new HashMap<>();
+
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -314,15 +309,7 @@ public class MManager {
         if (plan == null) {
           continue;
         }
-        if (plan.getOperatorType() == Operator.OperatorType.CREATE_CONTINUOUS_QUERY) {
-          recoveredCQs.put(
-              ((CreateContinuousQueryPlan) plan).getContinuousQueryName(),
-              (CreateContinuousQueryPlan) plan);
-        } else if (plan.getOperatorType() == Operator.OperatorType.DROP_CONTINUOUS_QUERY) {
-          recoveredCQs.remove(((DropContinuousQueryPlan) plan).getContinuousQueryName());
-        } else {
-          operation(plan);
-        }
+        operation(plan);
         idx++;
       } catch (Exception e) {
         logger.error(
@@ -330,18 +317,6 @@ public class MManager {
       }
     }
 
-    for (Map.Entry<String, CreateContinuousQueryPlan> cq : recoveredCQs.entrySet()) {
-      CreateContinuousQueryPlan plan = cq.getValue();
-      QueryOperator queryOperator =
-          (QueryOperator) LogicalGenerator.generate(plan.getQuerySql(), ZoneId.systemDefault());
-      plan.setQueryOperator(queryOperator);
-      try {
-        ContinuousQueryService.getInstance().register(plan, false);
-      } catch (StorageEngineException e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
     return idx;
   }
 

@@ -1255,6 +1255,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         parseTimeUnitOrSlidingStep(ctx.DURATION().getText(), true, groupByClauseComponent));
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
+    groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
 
     groupByClauseComponent.setLeftCRightO(true);
 

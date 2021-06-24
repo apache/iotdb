@@ -45,7 +45,8 @@ public enum ThreadName {
   TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
   QUERY_SERVICE("Query"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
-  CLUSTER_INFO_SERVICE("ClusterInfoClient");
+  CLUSTER_INFO_SERVICE("ClusterInfoClient"),
+  CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager");
 
   private final String name;
 

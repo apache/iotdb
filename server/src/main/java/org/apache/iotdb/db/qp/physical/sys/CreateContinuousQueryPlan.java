@@ -29,14 +29,15 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.Serializable {
+public class CreateContinuousQueryPlan extends PhysicalPlan {
 
   private String querySql;
   private String continuousQueryName;
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private transient QueryOperator queryOperator;
+  private QueryOperator queryOperator;
+  private long creationTimestamp;
 
   public CreateContinuousQueryPlan() {
     super(false, Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
@@ -56,6 +57,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
     this.queryOperator = queryOperator;
+    this.creationTimestamp = System.currentTimeMillis();
   }
 
   public void setQuerySql(String querySql) {
@@ -106,6 +108,14 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     return queryOperator;
   }
 
+  public void setCreationTimestamp(long creationTimestamp) {
+    this.creationTimestamp = creationTimestamp;
+  }
+
+  public long getCreationTimestamp() {
+    return creationTimestamp;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
@@ -119,6 +129,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     buffer.putLong(everyInterval);
     buffer.putLong(forInterval);
+    buffer.putLong(creationTimestamp);
   }
 
   @Override
@@ -128,5 +139,6 @@ public class CreateContinuousQueryPlan extends PhysicalPlan implements java.io.S
     targetPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     everyInterval = ReadWriteIOUtils.readLong(buffer);
     forInterval = ReadWriteIOUtils.readLong(buffer);
+    creationTimestamp = ReadWriteIOUtils.readLong(buffer);
   }
 }

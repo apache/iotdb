@@ -33,12 +33,10 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -50,7 +48,49 @@ public class IoTDBContinuousQueryIT {
 
   private Statement statement;
   private Connection connection;
-  private DataGenerator generator;
+  private volatile Exception exception = null;
+
+  private final Thread dataGenerator =
+      new Thread() {
+
+        @Override
+        public void run() {
+
+          try (Connection connection =
+                  DriverManager.getConnection(
+                      Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+              Statement statement = connection.createStatement()) {
+
+            do {
+
+              for (String timeSeries : timeSeriesArray) {
+                try {
+                  statement.execute(
+                      String.format(
+                          "insert into %s(timestamp, temperature) values(now(), %.3f)",
+                          timeSeries, 200 * Math.random()));
+                } catch (SQLException throwables) {
+                  LOGGER.error(throwables.getMessage());
+                }
+              }
+            } while (!isInterrupted());
+          } catch (SQLException e) {
+            exception = e;
+          }
+        }
+      };
+
+  private void startDataGenerator() {
+    dataGenerator.start();
+  }
+
+  private void stopDataGenerator() throws InterruptedException {
+    dataGenerator.interrupt();
+    dataGenerator.join();
+    if (exception != null) {
+      fail(exception.getMessage());
+    }
+  }
 
   String[] timeSeriesArray = {
     "root.ln.wf01.wt01.ws01",
@@ -77,12 +117,10 @@ public class IoTDBContinuousQueryIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
     statement = connection.createStatement();
-    generator = new DataGenerator();
   }
 
   @After
   public void tearDown() throws Exception {
-    generator.close();
     statement.close();
     connection.close();
     EnvironmentUtils.cleanEnv();
@@ -114,6 +152,8 @@ public class IoTDBContinuousQueryIT {
 
     checkContinuousQueries(new String[] {"cq3"});
 
+    EnvironmentUtils.shutdownDaemon();
+
     EnvironmentUtils.stopDaemon();
 
     setUp();
@@ -129,6 +169,13 @@ public class IoTDBContinuousQueryIT {
               + "GROUP BY time(1s), level=2 END");
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("already exists"));
+    }
+
+    try {
+
+      statement.execute("DROP CONTINUOUS QUERY cq1");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("not exist"));
     }
 
     statement.execute(
@@ -151,14 +198,16 @@ public class IoTDBContinuousQueryIT {
   @Test
   public void testContinuousQueryResultSeries() throws Exception {
     createTimeSeries();
-    generator.start();
+    startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
-        "CREATE CONTINUOUS QUERY cq "
+        "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.*.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(10000);
+    Thread.sleep(5500);
 
     checkTimeSeries(
         new String[] {
@@ -173,13 +222,19 @@ public class IoTDBContinuousQueryIT {
           "root.ln.wf01.temperature_cnt",
           "root.ln.wf02.temperature_cnt"
         });
+
+    statement.execute("DROP CONTINUOUS QUERY cq1");
+
+    stopDataGenerator();
   }
 
   @Test
   public void testContinuousQueryResult() throws Exception {
     createTimeSeries();
 
-    generator.start();
+    startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
         "CREATE CQ cq1 "
@@ -187,7 +242,7 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(5500);
+    Thread.sleep(5600);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
@@ -195,13 +250,17 @@ public class IoTDBContinuousQueryIT {
     checkResultSize(5000 / 1000 + 1);
 
     statement.execute("DROP CQ cq1");
+
+    stopDataGenerator();
   }
 
   @Test
   public void testContinuousQueryResult2() throws Exception {
     createTimeSeries();
 
-    generator.start();
+    startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
@@ -214,30 +273,36 @@ public class IoTDBContinuousQueryIT {
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5500 / 2000 + 1);
+    checkResultSize(5000 / 2000 + 1);
 
     statement.execute("DROP CQ cq1");
+
+    stopDataGenerator();
   }
 
   @Test
   public void testContinuousQueryResult3() throws Exception {
     createTimeSeries();
 
-    generator.start();
+    startDataGenerator();
+
+    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(5500);
+    Thread.sleep(5600);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5500 / 1000 + 1);
+    checkResultSize(5000 / 1000 + 1);
 
     statement.execute("DROP CQ cq1");
+
+    stopDataGenerator();
   }
 
   @Test
@@ -248,20 +313,22 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(5500);
+    Thread.sleep(4500);
 
     createTimeSeries();
 
-    generator.start();
+    startDataGenerator();
 
-    Thread.sleep(5500);
+    Thread.sleep(6000);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5500 / 1000 + 1);
+    checkResultSize(6);
 
     statement.execute("DROP CQ cq1");
+
+    stopDataGenerator();
   }
 
   private void checkResultSize(int expectedSize) throws SQLException {
@@ -318,52 +385,6 @@ public class IoTDBContinuousQueryIT {
 
     for (String s : timeSeriesArray) {
       Assert.assertTrue(collect.contains(s));
-    }
-  }
-
-  class DataGenerator {
-
-    private final Connection producerConnection;
-    private final Statement producerStatement;
-    private ScheduledExecutorService executor;
-
-    public DataGenerator() throws SQLException {
-      producerConnection =
-          DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-      producerStatement = producerConnection.createStatement();
-    }
-
-    public void start() {
-
-      executor = Executors.newSingleThreadScheduledExecutor();
-      executor.scheduleAtFixedRate(
-          () -> {
-            for (String timeSeries : timeSeriesArray) {
-              try {
-                producerStatement.execute(
-                    String.format(
-                        "insert into %s(timestamp, temperature) values(now(), %.3f)",
-                        timeSeries, 200 * Math.random()));
-              } catch (SQLException throwables) {
-                LOGGER.error(throwables.getMessage());
-              }
-            }
-          },
-          0,
-          100,
-          TimeUnit.MILLISECONDS);
-    }
-
-    public void close() throws SQLException {
-      if (executor != null) {
-        executor.shutdownNow();
-      }
-      if (producerStatement != null) {
-        producerStatement.close();
-      }
-      if (producerConnection != null) {
-        producerConnection.close();
-      }
     }
   }
 }

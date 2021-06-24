@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.cq;
 
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -51,7 +52,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ContinuousQueryTask implements Runnable {
+public class ContinuousQueryTask extends WrappedRunnable {
 
   private static final int FETCH_SIZE = 2048;
   private static final int BATCH_SIZE = 10;
@@ -59,25 +60,34 @@ public class ContinuousQueryTask implements Runnable {
   private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryTask.class);
 
   // To execute the query plan
-  private final PlanExecutor planExecutor;
+  private static PlanExecutor planExecutor;
+
+  static {
+    try {
+      planExecutor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      logger.error(e.getMessage());
+    }
+  }
+
   // To save the continuous query info
   private final CreateContinuousQueryPlan plan;
   // To transform query operator to query plan
-  private final Planner planner;
+  private static final Planner planner = new Planner();
+  // Next timestamp to execute a query
+  private long executionTimestamp;
 
   private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
 
-  public ContinuousQueryTask(CreateContinuousQueryPlan plan) throws QueryProcessException {
+  public ContinuousQueryTask(CreateContinuousQueryPlan plan, long timestamp) {
     this.plan = plan;
-    this.planExecutor = new PlanExecutor();
-    this.planner = new Planner();
+    this.executionTimestamp = timestamp;
   }
 
   @Override
-  public void run() {
+  public void runMayThrow() {
 
     try {
-
       GroupByTimePlan queryPlan = generateQueryPlan();
 
       if (queryPlan.getDeduplicatedPaths().isEmpty()) {
@@ -99,6 +109,10 @@ public class ContinuousQueryTask implements Runnable {
     }
   }
 
+  public void onRejection() {
+    logger.info("Continuous Query Task {} rejected", plan.getContinuousQueryName());
+  }
+
   private GroupByTimePlan generateQueryPlan() throws QueryProcessException {
 
     QueryOperator queryOperator = plan.getQueryOperator();
@@ -114,9 +128,8 @@ public class ContinuousQueryTask implements Runnable {
 
     queryOperator.setSelectComponent(selectComponentCopy);
 
-    long timestamp = System.currentTimeMillis();
-    queryPlan.setStartTime(timestamp - plan.getForInterval());
-    queryPlan.setEndTime(timestamp);
+    queryPlan.setStartTime(executionTimestamp - plan.getForInterval());
+    queryPlan.setEndTime(executionTimestamp);
 
     return queryPlan;
   }
@@ -282,5 +295,9 @@ public class ContinuousQueryTask implements Runnable {
     }
     m.appendTail(sb);
     return sb.toString();
+  }
+
+  public CreateContinuousQueryPlan getCreateContinuousQueryPlan() {
+    return plan;
   }
 }
