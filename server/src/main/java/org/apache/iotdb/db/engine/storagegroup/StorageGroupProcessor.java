@@ -1872,7 +1872,8 @@ public class StorageGroupProcessor {
       long deleteEnd,
       TimePartitionFilter timePartitionFilter) {
     if (timePartitionFilter != null
-        && !timePartitionFilter.satisfy(virtualStorageGroupId, tsFileResource.getTimePartition())) {
+        && !timePartitionFilter.satisfy(
+            logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
     for (PartialPath device : devicePaths) {

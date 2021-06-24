@@ -140,7 +140,9 @@ public class DataLogApplierTest extends IoTDBTest {
         }
       };
 
-  private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
+  private TestDataGroupMember testDataGroupMember =
+      new TestDataGroupMember(
+          TestUtils.getNode(10), Collections.singletonList(TestUtils.getNode(10)));
 
   private DataLogApplier applier;
 
@@ -164,7 +166,7 @@ public class DataLogApplierTest extends IoTDBTest {
     testMetaGroupMember.setThisNode(TestUtils.getNode(0));
 
     testMetaGroupMember.setLeader(testMetaGroupMember.getThisNode());
-    testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
+    testDataGroupMember.setLeader(TestUtils.getNode(10));
     testDataGroupMember.setCharacter(NodeCharacter.LEADER);
     testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
@@ -379,7 +381,7 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyDelete() throws QueryProcessException {
+  public void testApplyDeletePartitionFilter() throws QueryProcessException {
     applier.setQueryExecutor(
         new PlanExecutor() {
           @Override
