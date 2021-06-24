@@ -36,7 +36,7 @@
 为方便用户使用，IoTDB Server为用户提供了热修改功能，即在系统运行过程中修改`iotdb-engine.properties`中部分配置参数并即时应用到系统中。下面介绍的参数中，改后
 生效方式为`触发生效`的均为支持热修改的配置参数。
 
-触发方式：客户端发送```load configuration```命令至IoTDB Server，客户端的使用方式详见第4章
+触发方式：客户端发送```load configuration```命令至IoTDB Server，客户端的使用方式详见[SQL命令行终端（CLI）](https://iotdb.apache.org/zh/UserGuide/Master/CLI/Command-Line-Interface.html)
 
 ## 环境配置项
 
@@ -46,9 +46,9 @@
 
 |名字|JMX\_LOCAL|
 |:---:|:---|
-|描述|JMX监控模式，配置为yes表示仅允许本地监控，设置为no的时候表示允许远程监控|
-|类型|枚举String : “yes”, “no”|
-|默认值|yes|
+|描述|JMX监控模式，配置为true表示仅允许本地监控，设置为false的时候表示允许远程监控|
+|类型|枚举String : “true”, “false”|
+|默认值|true|
 |改后生效方式|重启服务生效|
 
 

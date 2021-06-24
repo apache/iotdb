@@ -31,7 +31,9 @@ import java.util.List;
 
 public class VectorChunkMetadata implements IChunkMetadata {
 
+  // ChunkMetadata for time column
   private final IChunkMetadata timeChunkMetadata;
+  // ChunkMetadata for all subSensors in the vector
   private final List<IChunkMetadata> valueChunkMetadataList;
 
   public VectorChunkMetadata(

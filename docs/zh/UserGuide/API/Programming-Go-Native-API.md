@@ -38,14 +38,25 @@
  * 通过go mod
 
 ```sh
+# 切换到GOPATH的HOME路径，启用Go Modules功能
 export GO111MODULE=on
+
+# 配置GOPROXY环境变量
 export GOPROXY=https://goproxy.io
 
+# 创建命名的文件夹或目录，并切换当前目录
 mkdir session_example && cd session_example
 
+# 保存文件，自动跳转到新的地址
 curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 
+# 初始化go module环境
 go mod init session_example
+
+# 下载依赖包
+go mod tidy
+
+# 编译并运行程序
 go run session_example.go
 ```
 
@@ -53,13 +64,24 @@ go run session_example.go
 
 ```sh
 # get thrift 0.13.0
-go get github.com/apache/thrift
-cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.13.0
+go get github.com/apache/thrift@0.13.0
 
+# 递归创建目录
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
+
+# 切换到当前目录
 cd $GOPATH/src/iotdb-client-go-example/session_example
+
+# 保存文件，自动跳转到新的地址
 curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
+
+# 初始化go module 环境
+go mod init
+
+# 下载依赖包
+go mod tidy
+
+# 编译并运行程序
 go run session_example.go
 ```
 
