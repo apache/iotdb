@@ -138,7 +138,7 @@ public class TsFileResourceList implements List<TsFileResource> {
   public boolean contains(Object o) {
     readLock();
     try {
-      if (! (o instanceof TsFileResource)) {
+      if (!(o instanceof TsFileResource)) {
         return false;
       }
       boolean contain = false;

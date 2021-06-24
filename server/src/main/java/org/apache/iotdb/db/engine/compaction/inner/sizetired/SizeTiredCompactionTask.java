@@ -10,6 +10,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,9 +78,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected void doCompaction() throws Exception {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(
-                selectedTsFileResourceList)
-            .getName();
+        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(
@@ -88,18 +87,47 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.size());
     try {
       File logFile =
-          new File(dataDirectory + File.separator + targetFileName + CompactionLogger.COMPACTION_LOG_NAME);
+          new File(
+              dataDirectory
+                  + File.separator
+                  + targetFileName
+                  + CompactionLogger.COMPACTION_LOG_NAME);
       // compaction execution
       CompactionLogger compactionLogger = null;
-      try{
-      compactionLogger = new CompactionLogger(logFile.getPath());
-      }catch (Exception e){
+      try {
+        compactionLogger = new CompactionLogger(logFile.getPath());
+      } catch (Exception e) {
         e.printStackTrace();
-        System.out.println(logFile.getParentFile().getPath()+"is "+logFile.getParentFile().exists());
-        System.out.println(logFile.getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().exists());
-        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(logFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile().getPath()+"is "+logFile.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getPath() + "is " + logFile.getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()
+                + "is "
+                + logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
+        System.out.println(
+            logFile
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getPath()
+                + "is "
+                + logFile
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .exists());
       }
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());

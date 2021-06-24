@@ -208,12 +208,13 @@ public class TsFileNameGenerator {
             + TSFILE_SUFFIX);
   }
 
-  public static File getInnerCompactionFileName(List<TsFileResource> tsFileResources) throws IOException {
+  public static File getInnerCompactionFileName(List<TsFileResource> tsFileResources)
+      throws IOException {
     long minTime = Long.MAX_VALUE;
     long minVersion = Long.MAX_VALUE;
     long maxInnerMergeCount = Long.MIN_VALUE;
     long maxCrossMergeCount = Long.MIN_VALUE;
-    for(TsFileResource resource : tsFileResources) {
+    for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       minTime = Math.min(tsFileName.time, minTime);
       minVersion = Math.min(tsFileName.version, minVersion);
