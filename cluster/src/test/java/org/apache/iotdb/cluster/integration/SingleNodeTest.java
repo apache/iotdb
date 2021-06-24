@@ -117,11 +117,11 @@ public class SingleNodeTest extends BaseSingleNodeTest {
         userStatement.executeBatch();
       } catch (Exception e) {
         assertEquals(
-            System.lineSeparator()
+            "\n"
                 + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg1.d1.s1 with datatype=int32\""
-                + System.lineSeparator()
+                + "\n"
                 + "No permissions for this operation CREATE_TIMESERIES for SQL: \"create timeseries root.sg2.d1.s1 with datatype=int32\""
-                + System.lineSeparator(),
+                + "\n",
             e.getMessage());
       }
     } catch (Exception e) {

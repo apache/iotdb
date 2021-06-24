@@ -48,11 +48,11 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
@@ -446,9 +446,9 @@ public class CMManager extends MManager {
     // for CreateTimeSeriesPlan, use getPath() to get timeseries to get related storage group,
     // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
     // groups.
-    if (plan instanceof InsertRowPlan
-        || plan instanceof InsertRowsOfOneDevicePlan
-        || plan instanceof InsertTabletPlan) {
+    if (plan instanceof BatchPlan) {
+      storageGroups.addAll(getStorageGroups(getValidStorageGroups(plan)));
+    } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
     } else if (plan instanceof InsertRowsPlan) {
@@ -482,6 +482,17 @@ public class CMManager extends MManager {
     if (plan instanceof InsertPlan && !createTimeseries((InsertPlan) plan)) {
       throw new MetadataException("Failed to create timeseries from InsertPlan automatically.");
     }
+  }
+
+  private List<PartialPath> getValidStorageGroups(PhysicalPlan plan) {
+    List<PartialPath> paths = new ArrayList<>();
+    for (int i = 0; i < plan.getPaths().size(); i++) {
+      // has permission to create sg
+      if (!((BatchPlan) plan).getResults().containsKey(i)) {
+        paths.add(plan.getPaths().get(i));
+      }
+    }
+    return paths;
   }
 
   /** return storage groups paths for given deviceIds or timeseries. */
