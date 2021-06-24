@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +62,7 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
 
   @Override
   public void doCompaction() throws IOException, MetadataException {
-    String taskName = storageGroupName + "-" + System.currentTimeMillis();
+    String taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
     Iterator<TsFileResource> seqIterator = seqTsFileResourceList.iterator();
     Iterator<TsFileResource> unSeqIterator = unSeqTsFileResourceList.iterator();
     List<TsFileResource> seqFileList = new ArrayList<>();
@@ -82,8 +81,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
             this::mergeEndAction,
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-            storageGroupName);
-    LOGGER.info("{} a RecoverMergeTask {} starts...", storageGroupName, taskName);
+            fullStorageGroupName);
+    LOGGER.info("{} a RecoverMergeTask {} starts...", fullStorageGroupName, taskName);
     recoverCrossMergeTask.recoverMerge(
         IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot(), logFile);
     if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {

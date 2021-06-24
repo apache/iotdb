@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 
 public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
 
-  public AbstractCrossSpaceCompactionTask(String storageGroupName, long timePartition) {
-    super(storageGroupName, timePartition);
+  public AbstractCrossSpaceCompactionTask(String fullStorageGroupName, long timePartition) {
+    super(fullStorageGroupName, timePartition);
   }
 }

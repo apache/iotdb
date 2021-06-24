@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +46,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
   protected List<TsFileResource> recoverTsFileResources;
 
   public SizeTiredCompactionRecoverTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -57,7 +56,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
       List<TsFileResource> recoverTsFileResources,
       boolean sequence) {
     super(
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroup,
         timePartition,
         tsFileResourceManager,
@@ -111,11 +110,11 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             }
             writer.close();
             CompactionLogger compactionLogger =
-                new CompactionLogger(storageGroupDir, storageGroupName);
+                new CompactionLogger(storageGroupDir, fullStorageGroupName);
             CompactionUtils.compact(
                 targetResource,
                 sourceTsFileResources,
-                storageGroupName,
+                fullStorageGroupName,
                 compactionLogger,
                 deviceSet,
                 isSeq);
@@ -124,7 +123,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(
-                    String.format("%s [Compaction] abort", storageGroupName));
+                    String.format("%s [Compaction] abort", fullStorageGroupName));
               }
               tsFileResourceList.insertBefore(sourceTsFileResources.get(0), targetResource);
               for (TsFileResource resource : tsFileResourceList) {
@@ -133,7 +132,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             } finally {
               tsFileResourceList.writeUnlock();
             }
-            CompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, storageGroupName);
+            CompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, fullStorageGroupName);
             renameLevelFilesMods(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {

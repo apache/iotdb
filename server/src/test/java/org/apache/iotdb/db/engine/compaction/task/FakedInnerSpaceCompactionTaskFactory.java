@@ -30,7 +30,7 @@ public class FakedInnerSpaceCompactionTaskFactory extends InnerSpaceCompactionTa
   public FakedInnerSpaceCompactionTaskFactory() {}
 
   public AbstractCompactionTask createTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -38,7 +38,7 @@ public class FakedInnerSpaceCompactionTaskFactory extends InnerSpaceCompactionTa
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
     return new FakedInnerSpaceCompactionTask(
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
         tsFileResourceManager,

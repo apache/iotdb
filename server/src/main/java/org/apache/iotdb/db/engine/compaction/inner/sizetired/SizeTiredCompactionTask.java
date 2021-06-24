@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,14 +47,14 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected Set<String> skippedDevicesSet;
 
   public SizeTiredCompactionTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence) {
-    super(storageGroupName + "-" + virtualStorageGroupName, timePartition);
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition);
     this.tsFileResourceList = tsFileResourceList;
     this.tsFileResourceManager = tsFileResourceManager;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
@@ -65,7 +64,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   public void renameLevelFilesMods(
       Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
-    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", storageGroupName);
+    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", fullStorageGroupName);
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       try (ModificationFile sourceCompactionModificationFile =
@@ -101,7 +100,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
-        storageGroupName,
+        fullStorageGroupName,
         selectedTsFileResourceList.size());
     try {
       File logFile =
@@ -153,11 +152,11 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       compactionLogger.logSequence(sequence);
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
       LOGGER.info(
-          "{} [Compaction] compaction with {}", storageGroupName, selectedTsFileResourceList);
+          "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       CompactionUtils.compact(
           targetTsFileResource,
           selectedTsFileResourceList,
-          storageGroupName,
+          fullStorageGroupName,
           compactionLogger,
           this.skippedDevicesSet,
           sequence);
@@ -170,10 +169,12 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         resource.setMerging(false);
       }
     }
-    LOGGER.info("{} [Compaction] compaction finish, start to delete old files", storageGroupName);
+    LOGGER.info(
+        "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
     try {
       if (Thread.currentThread().isInterrupted()) {
-        throw new InterruptedException(String.format("%s [Compaction] abort", storageGroupName));
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
       }
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
@@ -181,7 +182,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
-              storageGroupName));
+              fullStorageGroupName));
     }
     // apply write lock for TsFileResource list
     tsFileResourceManager.writeLock("size-tired compaction");
@@ -192,7 +193,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, storageGroupName);
+      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
     } finally {
       tsFileResourceManager.writeUnlock();

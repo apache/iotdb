@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,7 +72,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   @Override
   protected void doCompaction() throws Exception {
-    String taskName = storageGroupName + "-" + System.currentTimeMillis();
+    String taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
             mergeResource,
@@ -82,18 +81,18 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             concurrentMergeCount,
-            storageGroupName);
+            fullStorageGroupName);
     mergeTask.call();
   }
 
   public void mergeEndAction(
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File mergeLog) {
     // todo: add
-    LOGGER.info("{} a merge task is ending...", storageGroupName);
+    LOGGER.info("{} a merge task is ending...", fullStorageGroupName);
 
     if (Thread.currentThread().isInterrupted() || unseqFiles.isEmpty()) {
       // merge task abort, or merge runtime exception arose, just end this merge
-      LOGGER.info("{} a merge task abnormally ends", storageGroupName);
+      LOGGER.info("{} a merge task abnormally ends", fullStorageGroupName);
       return;
     }
     removeUnseqFiles(unseqFiles);
@@ -123,10 +122,10 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       Files.delete(mergeLog.toPath());
     } catch (IOException e) {
       LOGGER.error(
-          "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
+          "{} a merge task ends but cannot delete log {}", fullStorageGroupName, mergeLog.toPath());
     }
 
-    LOGGER.info("{} a merge task ends", storageGroupName);
+    LOGGER.info("{} a merge task ends", fullStorageGroupName);
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
@@ -197,7 +196,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     } catch (IOException e) {
       LOGGER.error(
           "{} cannot clean the ModificationFile of {} after cross space merge",
-          storageGroupName,
+          fullStorageGroupName,
           seqFile.getTsFile(),
           e);
     }
@@ -213,7 +212,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
         ModificationFile.getCompactionMods(unseqFile).remove();
       }
     } catch (IOException e) {
-      LOGGER.error("{} cannot remove merging modification ", storageGroupName, e);
+      LOGGER.error("{} cannot remove merging modification ", fullStorageGroupName, e);
     }
   }
 }

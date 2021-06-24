@@ -30,7 +30,7 @@ import java.util.List;
 public class CrossSpaceCompactionTaskFactory {
 
   public AbstractCompactionTask createTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
       long timePartitionId,
       CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
@@ -43,7 +43,7 @@ public class CrossSpaceCompactionTaskFactory {
         .getConfig()
         .getCrossCompactionStrategy()
         .getCompactionTask(
-            storageGroupName,
+            logicalStorageGroupName,
             timePartitionId,
             mergeResource,
             storageGroupDir,

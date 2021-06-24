@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +40,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public SizeTiredCompactionSelector(
-      String storageGroupName,
+      String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartition,
       TsFileResourceManager tsFileResourceManager,
@@ -49,7 +48,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     super(
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
         tsFileResourceManager,
@@ -112,7 +111,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
   private void createAndSubmitTask(List<TsFileResource> selectedFileList) {
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
-            storageGroupName,
+            logicalStorageGroupName,
             virtualStorageGroupName,
             timePartition,
             tsFileResourceManager,
@@ -123,16 +122,16 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       resource.setMerging(true);
       LOGGER.info(
           "{}-{} [Compaction] start to compact TsFile {}",
-          storageGroupName,
+          logicalStorageGroupName,
           virtualStorageGroupName,
           resource);
     }
     CompactionTaskManager.getInstance()
         .submitTask(
-            storageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
+            logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
     LOGGER.info(
         "{}-{} [Compaction] submit a inner compaction task of {} files",
-        storageGroupName,
+        logicalStorageGroupName,
         virtualStorageGroupName,
         selectedFileList.size());
   }

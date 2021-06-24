@@ -25,21 +25,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
@@ -138,7 +128,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public void submitTask(
-      String storageGroupName, long timePartition, Callable<Void> compactionMergeTask)
+      String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
       synchronized (CompactionScheduler.currentTaskNum) {
@@ -147,9 +137,9 @@ public class CompactionTaskManager implements IService {
             "submitted a compaction task, currentTaskNum={}",
             CompactionScheduler.currentTaskNum.get());
         Future<Void> future = pool.submit(compactionMergeTask);
-        CompactionScheduler.addPartitionCompaction(storageGroupName, timePartition);
+        CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
         compactionTaskFutures
-            .computeIfAbsent(storageGroupName, k -> new ConcurrentHashMap<>())
+            .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
             .computeIfAbsent(timePartition, k -> new HashSet<>())
             .add(future);
       }
@@ -160,9 +150,9 @@ public class CompactionTaskManager implements IService {
    * Abort all compactions of a storage group. The caller must acquire the write lock of the
    * corresponding storage group.
    */
-  public void abortCompaction(String storageGroup) {
+  public void abortCompaction(String fullStorageGroupName) {
     Set<Future<Void>> subTasks =
-        storageGroupTasks.getOrDefault(storageGroup, Collections.emptySet());
+        storageGroupTasks.getOrDefault(fullStorageGroupName, Collections.emptySet());
     Iterator<Future<Void>> subIterator = subTasks.iterator();
     while (subIterator.hasNext()) {
       Future<Void> next = subIterator.next();
