@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +30,7 @@ import java.sql.*;
 
 import static org.junit.Assert.assertEquals;
 
-public class IoTDBInnerSpaceCompactionIT {
+public class IoTDBSizeTiredCompactionIT {
 
   @Before
   public void setUp() throws Exception {

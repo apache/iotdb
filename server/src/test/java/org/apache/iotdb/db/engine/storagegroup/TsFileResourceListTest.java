@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.constant.TestConstant;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -125,5 +124,61 @@ public class TsFileResourceListTest {
     while (reverseIterator.hasNext()) {
       Assert.assertEquals(tsFileResources.get(i--), reverseIterator.next());
     }
+  }
+
+  @Test
+  public void testCount() {
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    // remove in a empty list
+    tsFileResourceList.remove(generateTsFileResource(2000));
+    Assert.assertEquals(tsFileResourceList.size(), 0);
+    for (int i = 0; i < 10; ++i) {
+      TsFileResource resource = generateTsFileResource(i);
+      tsFileResources.add(resource);
+      tsFileResourceList.add(resource);
+    }
+    Assert.assertEquals(tsFileResourceList.getHeader(), tsFileResources.get(0));
+    Assert.assertEquals(
+        tsFileResourceList.getTail(), tsFileResources.get(tsFileResources.size() - 1));
+    Assert.assertEquals(tsFileResourceList.size(), tsFileResources.size());
+    tsFileResourceList.remove(tsFileResources.get(0));
+    tsFileResourceList.remove(tsFileResources.get(2));
+    tsFileResourceList.remove(tsFileResources.get(tsFileResources.size() - 1));
+    Assert.assertEquals(tsFileResourceList.getHeader(), tsFileResources.get(1));
+    Assert.assertEquals(
+        tsFileResourceList.getTail(), tsFileResources.get(tsFileResources.size() - 2));
+    Assert.assertEquals(tsFileResourceList.size(), tsFileResources.size() - 3);
+    for (int i = 10; i < 15; ++i) {
+      TsFileResource resource = generateTsFileResource(i);
+      tsFileResources.add(resource);
+      tsFileResourceList.add(resource);
+    }
+    Assert.assertEquals(
+        tsFileResourceList.getTail(), tsFileResources.get(tsFileResources.size() - 1));
+    Assert.assertEquals(tsFileResourceList.size(), tsFileResources.size() - 3);
+    // remove a resource that not exist
+    tsFileResourceList.remove(generateTsFileResource(1000));
+    Assert.assertEquals(tsFileResourceList.getHeader(), tsFileResources.get(1));
+    Assert.assertEquals(
+        tsFileResourceList.getTail(), tsFileResources.get(tsFileResources.size() - 1));
+    Assert.assertEquals(tsFileResourceList.size(), tsFileResources.size() - 3);
+
+    // remove all resource
+    for (TsFileResource resource : tsFileResources) {
+      tsFileResourceList.remove(resource);
+    }
+    Assert.assertEquals(tsFileResourceList.size(), 0);
+    Assert.assertNull(tsFileResourceList.getHeader());
+    Assert.assertNull(tsFileResourceList.getTail());
+
+    // add to an empty one
+    for (int i = tsFileResources.size() - 1; i >= 0; --i) {
+      tsFileResourceList.add(tsFileResources.get(i));
+    }
+    Assert.assertEquals(tsFileResourceList.size(), tsFileResources.size());
+    Assert.assertEquals(
+        tsFileResourceList.getHeader(), tsFileResources.get(tsFileResources.size() - 1));
+    Assert.assertEquals(tsFileResourceList.getTail(), tsFileResources.get(0));
   }
 }
