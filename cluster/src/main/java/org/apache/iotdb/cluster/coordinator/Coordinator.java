@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -228,14 +229,9 @@ public class Coordinator {
       return StatusUtils.PARTITION_TABLE_NOT_READY;
     }
 
-    // not allowed to create sgs
-    if (plan instanceof CreateMultiTimeSeriesPlan) {
-      CreateMultiTimeSeriesPlan createMultiTimeSeriesPlan = (CreateMultiTimeSeriesPlan) plan;
-      if (createMultiTimeSeriesPlan.getResults().size()
-          == createMultiTimeSeriesPlan.getPaths().size()) {
-        return concludeFinalStatus(
-            plan, plan.getPaths().size(), true, null, false, null, Collections.emptyList());
-      }
+    if (!checkPrivilegeForBatchExecution(plan)) {
+      return concludeFinalStatus(
+          plan, plan.getPaths().size(), true, null, false, null, Collections.emptyList());
     }
 
     // split the plan into sub-plans that each only involve one data group
@@ -269,6 +265,20 @@ public class Coordinator {
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
+  }
+
+  /**
+   * check if batch execution plan has privilege on any sg
+   *
+   * @param plan
+   * @return
+   */
+  private boolean checkPrivilegeForBatchExecution(PhysicalPlan plan) {
+    if (plan instanceof BatchPlan) {
+      return ((BatchPlan) plan).getResults().size() != plan.getPaths().size();
+    } else {
+      return true;
+    }
   }
 
   /**
@@ -432,25 +442,24 @@ public class Coordinator {
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     // need to create substatus for multiPlan
-    if (planGroupMap.size() == 1 && !(plan instanceof CreateMultiTimeSeriesPlan)) {
+
+    // InsertTabletPlan, InsertMultiTabletPlan, InsertRowsPlan and CreateMultiTimeSeriesPlan
+    // contains many rows,
+    // each will correspond to a TSStatus as its execution result,
+    // as the plan is split and the sub-plans may have interleaving ranges,
+    // we must assure that each TSStatus is placed to the right position
+    // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
+    // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
+    // failure and success should be placed into proper positions in TSStatus.subStatus
+    if (plan instanceof InsertTabletPlan
+        || plan instanceof InsertMultiTabletPlan
+        || plan instanceof CreateMultiTimeSeriesPlan
+        || plan instanceof InsertRowsPlan) {
+      status = forwardMultiSubPlan(planGroupMap, plan);
+    } else if (planGroupMap.size() == 1) {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
-      if (plan instanceof InsertTabletPlan
-          || plan instanceof InsertMultiTabletPlan
-          || plan instanceof CreateMultiTimeSeriesPlan
-          || plan instanceof InsertRowsPlan) {
-        // InsertTabletPlan, InsertMultiTabletPlan, InsertRowsPlan and CreateMultiTimeSeriesPlan
-        // contains many rows,
-        // each will correspond to a TSStatus as its execution result,
-        // as the plan is split and the sub-plans may have interleaving ranges,
-        // we must assure that each TSStatus is placed to the right position
-        // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
-        // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
-        // failure and success should be placed into proper positions in TSStatus.subStatus
-        status = forwardMultiSubPlan(planGroupMap, plan);
-      } else {
-        status = forwardToMultipleGroup(planGroupMap);
-      }
+      status = forwardToMultipleGroup(planGroupMap);
     }
     boolean hasCreated = false;
     try {
