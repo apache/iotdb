@@ -92,7 +92,7 @@ public class IoTDBConnectionTest {
     when(client.getProperties())
         .thenReturn(
             new ServerProperties(
-                version, supportedAggregationTime, timestampPrecision, 1, "", "", 1, 1, 1, false));
+                version, supportedAggregationTime, timestampPrecision, 1));
     connection.setClient(client);
     assertEquals(connection.getServerProperties().getVersion(), version);
     for (int i = 0; i < supportedAggregationTime.size(); i++) {
