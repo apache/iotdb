@@ -263,13 +263,16 @@ public class SeriesReader {
       /*
        * first time series metadata is already unpacked, consume cached ChunkMetadata
        */
-      if (!cachedChunkMetadata.isEmpty()) {
+      while (!cachedChunkMetadata.isEmpty()) {
         firstChunkMetadata = cachedChunkMetadata.peek();
         unpackAllOverlappedTsFilesToTimeSeriesMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
-        firstChunkMetadata = cachedChunkMetadata.poll();
+        if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
+          firstChunkMetadata = cachedChunkMetadata.poll();
+          break;
+        }
       }
     }
 
