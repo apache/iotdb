@@ -52,7 +52,9 @@ public class SessionManager {
   // (queryId -> QueryDataSet)
   private final Map<Long, QueryDataSet> queryIdToDataSet = new ConcurrentHashMap<>();
 
-  private static final SessionManager instance = new SessionManager();
+  private SessionManager() {
+    // singleton
+  }
 
   public long requestSessionId(String username, String zoneId) {
     long sessionId = sessionIdGenerator.incrementAndGet();
@@ -60,6 +62,19 @@ public class SessionManager {
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
 
     return sessionId;
+  }
+
+  public boolean releaseSessionResource(long sessionId) {
+    sessionIdToZoneId.remove(sessionId);
+
+    for (long statementId :
+        sessionIdToStatementId.getOrDefault(sessionId, Collections.emptySet())) {
+      for (long queryId : statementIdToQueryId.getOrDefault(statementId, Collections.emptySet())) {
+        releaseQueryResourceNoExceptions(queryId);
+      }
+    }
+
+    return sessionIdToUsername.remove(sessionId) != null;
   }
 
   public long requestStatementId(long sessionId) {
@@ -95,19 +110,6 @@ public class SessionManager {
   public long requestQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
     return QueryResourceManager.getInstance()
         .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
-  }
-
-  public boolean releaseSessionResource(long sessionId) {
-    sessionIdToZoneId.remove(sessionId);
-
-    for (long statementId :
-        sessionIdToStatementId.getOrDefault(sessionId, Collections.emptySet())) {
-      for (long queryId : statementIdToQueryId.getOrDefault(statementId, Collections.emptySet())) {
-        releaseQueryResourceNoExceptions(queryId);
-      }
-    }
-
-    return sessionIdToUsername.remove(sessionId) != null;
   }
 
   public void releaseQueryResource(long queryId) throws StorageEngineException {
@@ -164,10 +166,13 @@ public class SessionManager {
   }
 
   public static SessionManager getInstance() {
-    return instance;
+    return SessionManagerHelper.INSTANCE;
   }
 
-  private SessionManager() {
-    // singleton
+  private static class SessionManagerHelper {
+
+    private static final SessionManager INSTANCE = new SessionManager();
+
+    private SessionManagerHelper() {}
   }
 }
