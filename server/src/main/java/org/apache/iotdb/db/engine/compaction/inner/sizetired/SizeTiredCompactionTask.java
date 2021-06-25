@@ -111,42 +111,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   + targetFileName
                   + CompactionLogger.COMPACTION_LOG_NAME);
       // compaction execution
-      CompactionLogger compactionLogger = null;
-      try {
-        compactionLogger = new CompactionLogger(logFile.getPath());
-      } catch (Exception e) {
-        e.printStackTrace();
-        System.out.println(
-            logFile.getParentFile().getPath() + "is " + logFile.getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getPath()
-                + "is "
-                + logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .exists());
-      }
+      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
+
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }

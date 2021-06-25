@@ -26,12 +26,16 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
 public class CompactionRecoverTask implements Callable<Void> {
+  private static final Logger logger = LoggerFactory.getLogger(CompactionRecoverTask.class);
   private CompactionRecoverCallBack compactionRecoverCallBack;
   private TsFileResourceManager tsFileResourceManager;
   private String logicalStorageGroupName;
@@ -50,15 +54,20 @@ public class CompactionRecoverTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
+    logger.warn("recovering sequence inner compaction");
     recoverInnerCompaction(true);
+    logger.warn("recovering unsequence inner compaction");
     recoverInnerCompaction(false);
+    logger.warn("recovering cross compaction");
     recoverCrossCompaction();
-    synchronized (CompactionScheduler.currentTaskNum) {
-      CompactionScheduler.decPartitionCompaction(
-          logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-      compactionRecoverCallBack.call();
-      CompactionScheduler.currentTaskNum.decrementAndGet();
-    }
+    logger.warn("try to synchronize CompactionScheduler");
+    CompactionScheduler.decPartitionCompaction(
+        logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
+    compactionRecoverCallBack.call();
+    CompactionScheduler.currentTaskNum.decrementAndGet();
+    logger.warn(
+        "recover task finish, current compaction thread is {}",
+        CompactionScheduler.currentTaskNum.get());
     return null;
   }
 
@@ -110,11 +119,13 @@ public class CompactionRecoverTask implements Callable<Void> {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = MergeLogger.findCrossSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
+          logger.warn("calling cross compaction task");
           IoTDBDescriptor.getInstance()
               .getConfig()
               .getCrossCompactionStrategy()
               .getCompactionRecoverTask(
                   logicalStorageGroupName,
+                  virtualStorageGroupId,
                   timePartition,
                   storageGroupDir,
                   tsFileResourceManager.getSequenceListByTimePartition(timePartition),

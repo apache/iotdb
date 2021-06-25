@@ -120,6 +120,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       AbstractCompactionTask compactionTask =
           taskFactory.createTask(
               logicalStorageGroupName,
+              virtualGroupId,
               timePartition,
               mergeResource,
               storageGroupDir,

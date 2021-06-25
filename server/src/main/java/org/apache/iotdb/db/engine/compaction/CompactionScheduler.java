@@ -47,7 +47,7 @@ public class CompactionScheduler {
 
   public static void scheduleCompaction(
       TsFileResourceManager tsFileResourceManager, long timePartition) {
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction] start to schedule compaction",
         tsFileResourceManager.getStorageGroupName());
     if (currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
@@ -269,6 +269,10 @@ public class CompactionScheduler {
 
   public static void decPartitionCompaction(String fullStorageGroupName, long timePartition) {
     synchronized (compactionCountInPartition) {
+      if (!compactionCountInPartition.containsKey(fullStorageGroupName)
+          || !compactionCountInPartition.get(fullStorageGroupName).containsKey(timePartition)) {
+        return;
+      }
       compactionCountInPartition
           .get(fullStorageGroupName)
           .put(

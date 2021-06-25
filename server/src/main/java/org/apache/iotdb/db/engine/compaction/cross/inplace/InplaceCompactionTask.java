@@ -50,9 +50,12 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   protected TsFileResourceList seqTsFileResourceList;
   protected TsFileResourceList unSeqTsFileResourceList;
   protected int concurrentMergeCount;
+  protected String logicalStorageGroupName;
+  protected String virtualStorageGroupName;
 
   public InplaceCompactionTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartitionId,
       CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
@@ -61,7 +64,9 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList,
       int concurrentMergeCount) {
-    super(storageGroupName, timePartitionId);
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartitionId);
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.virtualStorageGroupName = virtualStorageGroupName;
     this.mergeResource = mergeResource;
     this.storageGroupDir = storageGroupDir;
     this.seqTsFileResourceList = seqTsFileResourceList;
@@ -82,7 +87,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             concurrentMergeCount,
-            fullStorageGroupName);
+            logicalStorageGroupName);
     mergeTask.call();
   }
 
