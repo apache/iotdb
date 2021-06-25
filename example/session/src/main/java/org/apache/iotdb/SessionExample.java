@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 
 @SuppressWarnings("squid:S106")
 public class SessionExample {
@@ -74,25 +75,33 @@ public class SessionExample {
     insertTablets();
     insertRecords();
     nonQuery();
-    query();
-    queryWithTimeout();
-    rawDataQuery();
-    lastDataQuery();
-    queryByIterator();
-    deleteData();
-    deleteTimeseries();
-    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
+    for (int i = 0; i < 500000; i++) {
+      System.out.println(i);
+      query();
+    }
+    //    queryWithTimeout();
+    //    rawDataQuery();
+    //    lastDataQuery();
+    //    queryByIterator();
+    //    deleteData();
+    //    deleteTimeseries();
+    //    setTimeout();
+
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
 
     // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
+    //    sessionEnableRedirect.setFetchSize(10000);
 
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
+
+    System.out.println("hang there");
+    Scanner sc = new Scanner(System.in);
+    sc.next();
     session.close();
   }
 
@@ -481,13 +490,19 @@ public class SessionExample {
 
   private static void query() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    try {
+      Thread.sleep(50);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
+    dataSet.next();
+    //    while (dataSet.hasNext()) {
+    //      System.out.println(dataSet.next());
+    //    }
 
-    dataSet.closeOperationHandle();
+    // dataSet.closeOperationHandle();
   }
 
   private static void query4Redirect()
