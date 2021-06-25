@@ -63,7 +63,6 @@ public class TsFileResourceManager {
       List<TsFileResource> allResources = new ArrayList<>();
       Map<Long, TsFileResourceList> chosenMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : chosenMap.entrySet()) {
-        List<TsFileResource> tmp = entry.getValue().getArrayList();
         allResources.addAll(entry.getValue().getArrayList());
       }
       return allResources;
@@ -107,6 +106,23 @@ public class TsFileResourceManager {
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     for (TsFileResource resource : tsFileResourceList) {
       remove(resource, sequence);
+    }
+  }
+
+  /**
+   * insert tsFileResource to a target pos(targetPos = insertPos + 1) e.g. if insertPos = 0, then to
+   * the first, if insert Pos = 1, then to the second.
+   */
+  public void insert(TsFileResource tsFileResource, boolean sequence, int insertPos) {
+    writeLock("add");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      TsFileResourceList tsFileResources =
+          selectedMap.computeIfAbsent(
+              tsFileResource.getTimePartition(), o -> new TsFileResourceList());
+      tsFileResources.set(insertPos, tsFileResource);
+    } finally {
+      writeUnlock();
     }
   }
 
