@@ -89,7 +89,7 @@ public class SessionManager {
     statementIdToQueryId
         .computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
         .add(queryId);
-    return statementId;
+    return queryId;
   }
 
   public long requestQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
@@ -107,7 +107,7 @@ public class SessionManager {
       }
     }
 
-    return sessionIdToUsername.remove(sessionId) == null;
+    return sessionIdToUsername.remove(sessionId) != null;
   }
 
   public void releaseQueryResource(long queryId) throws StorageEngineException {

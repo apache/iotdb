@@ -292,7 +292,7 @@ public class TSServiceImpl implements TSIService.Iface {
     currSessionId.remove();
 
     return new TSStatus(
-        sessionManager.releaseSessionResource(sessionId)
+        !sessionManager.releaseSessionResource(sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
