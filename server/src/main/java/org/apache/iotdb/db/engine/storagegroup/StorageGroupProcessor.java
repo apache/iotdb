@@ -2149,7 +2149,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted,
           newTsFileResource,
           newFilePartitionId,
-          tsFileResourceManager.size(true))) {
+          tsFileResourceManager.size(true) - 1)) {
         updateLatestTimeMap(newTsFileResource);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
