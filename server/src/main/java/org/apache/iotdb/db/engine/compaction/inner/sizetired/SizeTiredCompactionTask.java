@@ -34,7 +34,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
@@ -111,42 +115,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   + targetFileName
                   + CompactionLogger.COMPACTION_LOG_NAME);
       // compaction execution
-      CompactionLogger compactionLogger = null;
-      try {
-        compactionLogger = new CompactionLogger(logFile.getPath());
-      } catch (Exception e) {
-        e.printStackTrace();
-        System.out.println(
-            logFile.getParentFile().getPath() + "is " + logFile.getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getPath()
-                + "is "
-                + logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .exists());
-      }
+      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }

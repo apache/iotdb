@@ -1252,11 +1252,11 @@ public class StorageGroupProcessor {
   private String getNewTsFileName(long timePartitionId) {
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
-    return getNewTsFileName(System.currentTimeMillis(), version, 0);
+    return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
-  private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return TsFileNameGenerator.generateNewTsFileName(System.currentTimeMillis(), version, 0, 0);
+  private String getNewTsFileName(long time, long version, int mergeCnt, int unseqMergeCnt) {
+    return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqMergeCnt);
   }
 
   /**
@@ -2129,7 +2129,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * Load a new tsfile to storage group processor. Tne file may have overlap with other files.
+   * Load a new tsfile to storage group processor. The file may have overlap with other files.
    *
    * <p>or unsequence list.
    *
@@ -2148,7 +2148,8 @@ public class StorageGroupProcessor {
           LoadTsFileType.LOAD_SEQUENCE,
           tsfileToBeInserted,
           newTsFileResource,
-          newFilePartitionId)) {
+          newFilePartitionId,
+          tsFileResourceManager.size(true))) {
         updateLatestTimeMap(newTsFileResource);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
@@ -2227,7 +2228,8 @@ public class StorageGroupProcessor {
             LoadTsFileType.LOAD_UNSEQUENCE,
             tsfileToBeInserted,
             newTsFileResource,
-            newFilePartitionId);
+            newFilePartitionId,
+            insertPos);
       } else {
 
         // check whether the file name needs to be renamed.
@@ -2251,7 +2253,8 @@ public class StorageGroupProcessor {
             LoadTsFileType.LOAD_SEQUENCE,
             tsfileToBeInserted,
             newTsFileResource,
-            newFilePartitionId);
+            newFilePartitionId,
+            insertPos);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
@@ -2555,7 +2558,11 @@ public class StorageGroupProcessor {
    * @return load the file successfully @UsedBy sync module, load external tsfile module.
    */
   private boolean loadTsFileByType(
-      LoadTsFileType type, File syncedTsFile, TsFileResource tsFileResource, long filePartitionId)
+      LoadTsFileType type,
+      File syncedTsFile,
+      TsFileResource tsFileResource,
+      long filePartitionId,
+      int insertPos)
       throws LoadFileException, DiskSpaceInsufficientException {
     File targetFile;
     switch (type) {
@@ -2597,7 +2604,7 @@ public class StorageGroupProcessor {
           logger.error("The file {} has already been loaded in sequence list", tsFileResource);
           return false;
         }
-        tsFileResourceManager.add(tsFileResource, true);
+        tsFileResourceManager.insert(tsFileResource, true, insertPos + 1);
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
             syncedTsFile.getAbsolutePath(),
