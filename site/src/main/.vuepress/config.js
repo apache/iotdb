@@ -668,7 +668,8 @@ var config = {
 					{
 						title: 'CLI',
 						children: [
-							['CLI/Command-Line-Interface','Command Line Interface']
+							['CLI/Command-Line-Interface','Command Line Interface'],
+							['CLI/Time-zone','Time zone']
 						]
 					},
 					{
@@ -1458,7 +1459,8 @@ var config = {
 					{
 						title: 'SQL命令行终端(CLI)',
 						children: [
-							['CLI/Command-Line-Interface','SQL命令行终端(CLI)']
+							['CLI/Command-Line-Interface','SQL命令行终端(CLI)'],
+							['CLI/Time-zone','时区']
 						]
 					},
 					{
