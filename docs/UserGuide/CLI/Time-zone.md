@@ -27,7 +27,7 @@ Time zone is used to: 1. Convert the time format string sent from client to corr
 
 The time zone can be set in both JDBC and session native interface connections. The usage is as follows:
 
-```Java
+```java
 (IoTDBConnection) connection.setTimeZone("+08:00");
 
 session.setTimeZone("+08:00");
@@ -35,7 +35,7 @@ session.setTimeZone("+08:00");
 
 The way to view the time zone used by the current connection is as follows:
 
-```
+```java
 (IoTDBConnection) connection.getTimeZone();
 
 session.getTimeZone();
