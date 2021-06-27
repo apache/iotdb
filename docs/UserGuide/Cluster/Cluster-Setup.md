@@ -19,14 +19,10 @@
 
 -->
 
-__NOTICE: CURRENT IoTDB CLUSTER IS FOR TESTING NOW! 
-PLEASE BE DELIBERATE IF YOU RUN IT IN PRODUCT ENVIRONMENT.__
-
 # Cluster Setup
 For installation prerequisites, please refer to [QuickStart](../QuickStart/QuickStart.md)
 ## Start Service
-Users can build clusters in pseudo-distributed mode or distributed mode. 
-The main difference between pseudo-distributed mode and distributed mode is the difference in `seed_nodes` in the configuration file. 
+You can deploy a distributed cluster on multiple nodes or on a single machine, the main difference being that the latter needs to handle conflicts between ports and file directories.
 For detail descriptions, please refer to [Cluster Configuration Items](#Cluster Configuration Items).
 
 To start the service of one of the nodes, you need to execute the following commands:
