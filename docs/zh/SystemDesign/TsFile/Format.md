@@ -65,50 +65,64 @@
 
 ### 1.2 TsFile 概述
 
+<!-- TODO
+
 下图是关于TsFile的结构图。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/123052025-f47aab80-d434-11eb-94c2-9b75429e5c54.png">
 
 此文件包括两个设备 d1、d2，每个设备包含两个测点 s1、s2，共 4 个时间序列。每个时间序列包含两个 Chunk。
 
-下图是另一种关于TsFile的结构表示：
+-->
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
+TsFile 整体分为两大部分：**数据区**和**索引区**。
 
-此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列。每个时间序列包含两个 Chunk。
+**数据区**所包含的概念由小到大有如下三个：
 
-元数据分为三部分
+* **Page数据页**：一段时间序列，是数据块被反序列化的最小单元；
 
-* 按时间序列组织的 ChunkMetadata 列表
-* 按时间序列组织的 TimeseriesMetadata
-* TsFileMetadata
+* **Chunk数据块**：包含一条时间序列的多个 Page ，是数据块被IO读取的最小单元；
 
-查询流程：以查 d1.s1 为例
+* **ChunkGroup数据块组**：包含一个实体的多个 Chunk。
 
-* 反序列化 TsFileMetadata，得到 d1.s1 的 TimeseriesMetadata 的位置
-* 反序列化得到 d1.s1 的 TimeseriesMetadata
-* 根据 d1.s1 的 TimeseriesMetadata，反序列化其所有 ChunkMetadata
-* 根据 d1.s1 的每一个 ChunkMetadata，读取其 Chunk 数据
+**索引区**分为三部分：
+
+* 按时间序列组织的 **TimeseriesIndex**，包含1个头信息和数据块索引（ChunkIndex）列表。头信息记录文件内某条时间序列的数据类型、统计信息（最大最小时间戳等）；数据块索引列表记录该序列各Chunk在文件中的 offset，并记录相关统计信息（最大最小时间戳等）；
+
+* **IndexOfTimeseriesIndex**，用于索引各TimeseriesIndex在文件中的 offset；
+
+* **BloomFilter**，针对实体（Entity）的布隆过滤器。
+
+> 注：ChunkIndex 旧称 ChunkMetadata；TimeseriesIndex 旧称 TimeseriesMetadata；IndexOfTimeseriesIndex 旧称 TsFileMetadata。v0.13版本起，根据其索引区的特性和实际所索引的内容重新命名。
+
+下图是关于 TsFile 的结构图。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542462-6710c180-d77c-11eb-9afb-a1b495c82ea9.png">
+
+此文件包括两个实体 d1、d2，每个实体分别包含三个物理量 s1、s2、s3，共 6 个时间序列。每个时间序列包含两个 Chunk。
+
+TsFile 的查询流程，以查 d1.s1 为例：
+
+* 反序列化 IndexOfTimeseriesIndex，得到 d1.s1 的 TimeseriesIndex 的位置
+* 反序列化得到 d1.s1 的 TimeseriesIndex
+* 根据 d1.s1 的 TimeseriesIndex，反序列化其所有 ChunkIndex
+* 根据 d1.s1 的每一个 ChunkIndex，读取其 Chunk 数据
 
 #### 1.2.1 文件签名和版本号
 
 TsFile文件头由 6 个字节的 "Magic String" (`TsFile`) 和 6 个字节的版本号 (`000002`)组成。
 
-#### 1.2.2 数据文件
+#### 1.2.2 数据区
 
-TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据（XXMetadata）。数据和元数据之间是由一个字节的 `0x02` 做为分隔符。
+##### ChunkGroup 数据块组
 
-`ChunkGroup` 存储了一个 *设备(device)* 一段时间的数据。
+`ChunkGroup` 存储了一个实体(Entity) 一段时间的数据。由若干个 `Chunk`, 一个字节的分隔符 `0x00` 和 一个`ChunkFooter`组成。
 
-##### ChunkGroup
+##### Chunk 数据块
 
-`ChunkGroup` 由若干个 `Chunk`, 一个字节的分隔符 `0x00` 和 一个`ChunkFooter`组成。
+一个 `Chunk` 存储了一个物理量(Measurement) 一段时间的数据，Chunk 内数据是按时间递增序存储的。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
 
-##### Chunk
-
-一个 `Chunk` 存储了一个 *测点(measurement)* 一段时间的数据，Chunk 内数据是按时间递增序存储的。`Chunk` 是由一个字节的分隔符 `0x01`, 一个 `ChunkHeader` 和若干个 `Page` 构成。
-
-##### ChunkHeader
+##### ChunkHeader 数据块头
 
 |             成员             |  类型  | 解释 |
 | :--------------------------: | :----: | :----: |
@@ -119,11 +133,11 @@ TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据�
 |    encodingType    | TSEncoding  | 编码类型 |
 |  numOfPages  |  int   | 包含的page数量 |
 
-##### Page
+##### Page 数据页
 
-一个 `Page` 页存储了 `Chunk` 的一些数据。 它包含一个 `PageHeader` 和实际的数据(time-value 编码的键值对)。
+一个 `Page` 页存储了一段时间序列，是数据块被反序列化的最小单元。 它包含一个 `PageHeader` 和实际的数据(time-value 编码的键值对)。
 
-PageHeader 结构
+PageHeader 结构：
 
 |                 成员                 |       类型       | 解释 |
 | :----------------------------------: | :--------------: | :----: |
@@ -133,31 +147,31 @@ PageHeader 结构
 
 这里是`statistics`的详细信息：
 
- |             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
- | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
- | count  | 数据点个数 | long | long | long | long | long | long | 
- | startTime | 开始时间 | long | long | long | long | long | long | 
- | endTime | 结束时间 | long | long | long | long | long | long | 
- | minValue | 最小值 | double | float | int | long | - | - |
- | maxValue | 最大值 | double | float | int | long | - | - |
- | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
- | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
- | sumValue | 和 | double | double | double | double | - | - |
- | extreme | 极值 | double | float | int | long | - | - |
- 
-##### ChunkGroupFooter
+|             成员               | 描述 | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+| :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+| count  | 数据点个数 | long | long | long | long | long | long |
+| startTime | 开始时间 | long | long | long | long | long | long |
+| endTime | 结束时间 | long | long | long | long | long | long |
+| minValue | 最小值 | double | float | int | long | - | - |
+| maxValue | 最大值 | double | float | int | long | - | - |
+| firstValue | 第一个值 | double | float | int | long | Binary | boolean|
+| lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
+| sumValue | 和 | double | double | double | double | - | - |
+| extreme | 极值 | double | float | int | long | - | - |
+
+##### ChunkGroupFooter 数据块组结尾
 
 |                成员                |  类型  | 解释 |
 | :--------------------------------: | :----: | :----: |
-|         deviceID          | String | 设备名称 |
+| entityID  | String | 实体名称 |
 |      dataSize      |  long  | ChunkGroup 大小 |
 | numberOfChunks |  int   | 包含的 chunks 的数量 |
 
-#### 1.2.3  元数据
+#### 1.2.3  索引区
 
-##### 1.2.3.1 ChunkMetadata
+##### 1.2.3.1 ChunkIndex 数据块索引
 
-第一部分的元数据是 `ChunkMetadata` 
+第一部分的索引是 `ChunkIndex` ：
 
 |                        成员                        |   类型   | 解释 |
 | :------------------------------------------------: | :------: | :----: |
@@ -166,79 +180,79 @@ PageHeader 结构
 |                tsDataType                |  TSDataType   | 数据类型 |
 |   statistics    |       Statistics        | 统计量 |
 
-##### 1.2.3.2 TimeseriesMetadata
+##### 1.2.3.2 TimeseriesIndex 时间序列索引
 
-第二部分的元数据是 `TimeseriesMetadata`。
+第二部分的索引是 `TimeseriesIndex`：
 
 |                        成员                        |   类型   | 解释 |
 | :------------------------------------------------: | :------: | :------: |
-|             measurementUid            |  String  | 传感器名称 |
+|             measurementUid            |  String  | 物理量名称 |
 |               tsDataType                |  TSDataType   |  数据类型 |
-| startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
-|  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
+| startOffsetOfChunkIndexList |  long  | 文件中 ChunkIndex 列表开始的偏移量 |
+|  ChunkIndexListDataSize  |  int  | ChunkIndex 列表的大小 |
 |   statistics    |       Statistics        | 统计量 |
 
-##### 1.2.3.3 TsFileMetaData
+##### 1.2.3.3 IndexOfTimeseriesIndex 时间序列索引的索引（二级索引）
 
-第三部分的元数据是 `TsFileMetaData`。
+第三部分的索引是 `IndexOfTimeseriesIndex`：
 
 |                        成员                        |   类型   | 解释 |
 | :-------------------------------------------------: | :---------------------: | :---:|
-|       MetadataIndex              |   MetadataIndexNode      |元数据索引节点 |
-|           totalChunkNum            |                int                 | 包含的 Chunk 总数 |
-|          invalidChunkNum           |                int                 | 失效的 Chunk 总数 |
-|                versionInfo         |             List<Pair<Long, Long>>       | 版本信息映射 |
-|        metaOffset   |                long                 | MetaMarker.SEPARATOR偏移量 |
+| IndexTree     |   IndexNode      |索引节点 |
+| offsetOfIndexArea   |                long                 | 索引区的偏移量 |
 |                bloomFilter                 |                BloomFilter      | 布隆过滤器 |
 
-元数据索引节点 (MetadataIndexNode) 的成员和类型具体如下：
+索引节点 (IndexNode) 的成员和类型具体如下：
 
 |                  成员                  |  类型  | 解释 |
 | :------------------------------------: | :----: | :---: |
-|      children    | List<MetadataIndexEntry> | 节点元数据索引项列表 |
-|       endOffset      | long |    此元数据索引节点的结束偏移量 |
-|   nodeType    | MetadataIndexNodeType | 节点类型 |
+|      children    | List<IndexEntry> | 节点索引项列表 |
+|       endOffset      | long |    此索引节点的结束偏移量 |
+|   nodeType    | IndexNodeType | 节点类型 |
 
-元数据索引项 (MetadataIndexEntry) 的成员和类型具体如下：
+索引项 (MetadataIndexEntry) 的成员和类型具体如下：
 
 |                  成员                  |  类型  | 解释 |
 | :------------------------------------: | :----: | :---: |
-|  name    | String | 对应设备或传感器的名字 |
+|  name    | String | 对应实体或物理量的名字 |
 |     offset     | long   | 偏移量 |
 
-所有的元数据索引节点构成一棵**元数据索引树**，这棵树最多由两个层级组成：设备索引层级和传感器索引层级，在不同的情况下会有不同的组成方式。元数据索引节点类型有四种，分别是`INTERNAL_DEVICE`、`LEAF_DEVICE`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应设备索引层级的中间节点和叶子节点，和传感器索引层级的中间节点和叶子节点。
-只有传感器索引层级的叶子节点(`LEAF_MEASUREMENT`) 指向 `TimeseriesMetadata`。
+所有的索引节点构成一棵类B+树结构的**索引树（二级索引）**，这棵树由两部分组成：实体索引部分和物理量索引部分。索引节点类型有四种，分别是`INTERNAL_ENTITY`、`LEAF_ENTITY`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应实体索引部分的中间节点和叶子节点，和物理量索引部分的中间节点和叶子节点。 只有物理量索引部分的叶子节点(`LEAF_MEASUREMENT`) 指向 `TimeseriesIndex`。
 
-为了更清楚的说明元数据索引树的结构，这里我们使用四个例子来加以详细说明。
+下面，我们使用四个例子来加以详细说明。
 
-元数据索引树的最大度（即每个节点的最大子节点个数）是可以由用户进行配置的，配置项为`max_degree_of_index_node`，其默认值为256。在以下例子中，为了简化，我们假定 `max_degree_of_index_node = 10`。
+索引树节点的度（即每个节点的最大子节点个数）可以由用户进行配置，配置项为`max_degree_of_index_node`，其默认值为256。在以下例子中，我们假定 `max_degree_of_index_node = 10`。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
+* 例1：5个实体，每个实体有5个物理量
 
-在5个设备，每个设备有5个传感器的情况下，由于设备数和传感器树均不超过 `max_degree_of_index_node`，因此元数据索引树只有默认的传感器层级。在这个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。根节点的 MetadataIndexNode 是 `INTERNAL_MEASUREMENT` 类型，其中的5个 MetadataIndexEntry 指向对应的设备的 MetadataIndexNode，这些节点直接指向 `TimeseriesMetadata`，是 `LEAF_MEASUREMENT`。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677230-134e2780-d214-11eb-9603-ac7b95bc0668.png">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935210-d97b1c80-9622-11ea-8a69-2c2c5f05a876.png">
+在5个实体，每个实体有5个物理量的情况下，由于实体数和物理量数均不超过 `max_degree_of_index_node`，因此索引树只有默认的物理量部分。在这部分中，每个 IndexNode 最多由10个 IndexEntry 组成。根节点的 IndexNode 是 `INTERNAL_MEASUREMENT` 类型，其中的5个 IndexEntry 指向对应的实体的 IndexNode，这些节点直接指向 `TimeseriesIndex`，是 `LEAF_MEASUREMENT`。
 
-在1个设备，设备中有150个传感器的情况下，传感器个数超过了 `max_degree_of_index_node`，元数据索引树有默认的传感器层级。在这个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点和根节点不是传感器索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`。
+* 例2：1个实体，150个物理量
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95592841-c0fd1a00-0a7b-11eb-9b46-dfe8b2f73bfb.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677233-15b08180-d214-11eb-8d09-c741cca59262.png">
 
-在150个设备，每个设备中有1个传感器的情况下，设备个数超过了 `max_degree_of_index_node`，形成元数据索引树的传感器层级和设备索引层级。在这两个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata` 的节点类型为 `LEAF_MEASUREMENT`，传感器索引层级的根节点同时作为设备索引层级的叶子节点，其节点类型为 `LEAF_DEVICE`；而后续产生的中间节点和根节点不是设备索引层级的叶子节点，因此节点类型为 `INTERNAL_DEVICE`。
+在1个实体，实体中有150个物理量的情况下，物理量个数超过了 `max_degree_of_index_node`，索引树有默认的物理量层级。在这个层级里，每个 IndexNode 最多由10个 IndexEntry 组成。直接指向 `TimeseriesIndex`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点和根节点不是物理量索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935138-b6e90380-9622-11ea-94f9-c97bd2b5d050.png">
+* 例3：150个实体，每个实体有1个物理量
 
-在150个设备，每个设备中有150个传感器的情况下，传感器和设备个数均超过了 `max_degree_of_index_node`，形成元数据索引树的传感器层级和设备索引层级。在这两个层级里，每个 MetadataIndexNode 均最多由10个 MetadataIndexEntry 组成。如前所述，从根节点到设备索引层级的叶子节点，类型分别为`INTERNAL_DEVICE` 和 `LEAF_DEVICE`，而每个设备索引层级的叶子节点都是传感器索引层级的根节点，从这里到传感器索引层级的叶子节点，类型分别为`INTERNAL_MEASUREMENT` 和 `LEAF_MEASUREMENT`。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122771008-9a64d380-d2d8-11eb-9044-5ac794dd38f7.png">
 
-元数据索引采用树形结构进行设计的目的是在设备数或者传感器数量过大时，可以不用一次读取所有的 `TimeseriesMetadata`，只需要根据所读取的传感器定位对应的节点，从而减少 I/O，加快查询速度。有关 TsFile 的读流程将在本章最后一节加以详细说明。
+在150个实体，每个实体中有1个物理量的情况下，实体个数超过了 `max_degree_of_index_node`，形成索引树的物理量层级和实体索引层级。在这两个层级里，每个 IndexNode 最多由10个 IndexEntry 组成。直接指向 `TimeseriesIndex` 的节点类型为 `LEAF_MEASUREMENT`，物理量索引层级的根节点同时作为实体索引层级的叶子节点，其节点类型为 `LEAF_ENTITY`；而后续产生的中间节点和根节点不是实体索引层级的叶子节点，因此节点类型为 `INTERNAL_ENTITY`。
 
-##### 1.2.3.4 TsFileMetadataSize
+* 例4：150个实体，每个实体有150个物理量
 
-在TsFileMetaData之后，有一个int值用来表示TsFileMetaData的大小。
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677241-1a753580-d214-11eb-817f-17bcf797251f.png">
+
+在150个实体，每个实体中有150个物理量的情况下，物理量和实体个数均超过了 `max_degree_of_index_node`，形成索引树的物理量层级和实体索引层级。在这两个层级里，每个 IndexNode 均最多由10个 IndexEntry 组成。如前所述，从根节点到实体索引层级的叶子节点，类型分别为`INTERNAL_ENTITY` 和 `LEAF_ENTITY`，而每个实体索引层级的叶子节点都是物理量索引层级的根节点，从这里到物理量索引层级的叶子节点，类型分别为`INTERNAL_MEASUREMENT` 和 `LEAF_MEASUREMENT`。
+
+索引采用树形结构进行设计的目的是在实体数或者物理量数量过大时，可以不用一次读取所有的 `TimeseriesIndex`，只需要根据所读取的物理量定位对应的节点，从而减少 I/O，加快查询速度。有关 TsFile 的读流程将在本章最后一节加以详细说明。
 
 
 #### 1.2.4 Magic String
 
-TsFile 是以6个字节的magic string (`TsFile`) 作为结束.
+TsFile 是以6个字节的magic string (`TsFile`) 作为结束。
 
 
 恭喜您, 至此您已经完成了 TsFile 的探秘之旅，祝您玩儿的开心!
