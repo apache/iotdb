@@ -737,13 +737,14 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
+    request.setAscending(true);
     Filter filter = TimeFilter.gtEq(5);
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -804,13 +805,14 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
+    request.setAscending(true);
     Filter filter = new AndFilter(TimeFilter.gtEq(5), ValueFilter.ltEq(8.0));
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

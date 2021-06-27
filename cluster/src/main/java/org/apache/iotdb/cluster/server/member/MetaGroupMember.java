@@ -1837,7 +1837,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void exileNode(RemoveNodeLog removeNodeLog) {
+  protected void exileNode(RemoveNodeLog removeNodeLog) {
     logger.debug("Exile node {}: start.", removeNodeLog.getRemovedNode());
     Node node = removeNodeLog.getRemovedNode();
     if (config.isUseAsyncServer()) {

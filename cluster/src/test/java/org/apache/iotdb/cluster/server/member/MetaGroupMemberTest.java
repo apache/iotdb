@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -150,7 +151,6 @@ public class MetaGroupMemberTest extends BaseMember {
   private DataClusterServer dataClusterServer;
   protected boolean mockDataClusterServer;
   private Node exiledNode;
-  private final Object waitExileNode = new Object();
 
   private int prevReplicaNum;
   private List<String> prevSeedNodes;
@@ -207,6 +207,9 @@ public class MetaGroupMemberTest extends BaseMember {
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
           }
+
+          @Override
+          public void pullSlots(NodeRemovalResult removalResult) {}
 
           @Override
           public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
@@ -322,6 +325,17 @@ public class MetaGroupMemberTest extends BaseMember {
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     MetaGroupMember metaGroupMember =
         new MetaGroupMember(new Factory(), node, new Coordinator()) {
+
+          @Override
+          public void applyAddNode(AddNodeLog addNodeLog) {
+            allNodes.add(addNodeLog.getNewNode());
+          }
+
+          @Override
+          public void applyRemoveNode(RemoveNodeLog removeNodeLog) {
+            super.applyRemoveNode(removeNodeLog);
+            exiledNode = removeNodeLog.getRemovedNode();
+          }
 
           @Override
           public DataClusterServer getDataClusterServer() {
@@ -486,10 +500,7 @@ public class MetaGroupMemberTest extends BaseMember {
                 public void exile(
                     ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
                   System.out.printf("%s was exiled%n", node);
-                  synchronized (waitExileNode) {
-                    exiledNode = node;
-                    waitExileNode.notifyAll();
-                  }
+                  exiledNode = node;
                 }
 
                 @Override
@@ -1314,14 +1325,7 @@ public class MetaGroupMemberTest extends BaseMember {
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
     System.out.println("Checking exiled node in testRemoveNodeAsLeader()");
-    synchronized (waitExileNode) {
-      try {
-        waitExileNode.wait();
-      } catch (InterruptedException e) {
-        // ignore
-      }
-      assertEquals(TestUtils.getNode(20), exiledNode);
-    }
+    assertEquals(TestUtils.getNode(20), exiledNode);
   }
 
   @Test
@@ -1401,6 +1405,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) {
+    mockDataClusterServer = true;
     new MetaAsyncService(testMetaMember)
         .removeNode(
             nodeToRemove,
