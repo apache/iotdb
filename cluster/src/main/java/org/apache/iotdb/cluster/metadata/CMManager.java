@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -1075,7 +1076,9 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         try {
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+          metaGroupMember
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
@@ -1149,7 +1152,7 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(
-      Node node, Node header, List<String> pathsToQuery, boolean withAlias)
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1212,7 +1215,9 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         try {
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+          metaGroupMember
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
@@ -1275,7 +1280,7 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(Node node, Node header, List<String> pathsToQuery)
+  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1627,8 +1632,8 @@ public class CMManager extends MManager {
   private void getLocalDevices(
       PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowDevicesResult> localResult = super.getDevices(plan);
@@ -1646,8 +1651,8 @@ public class CMManager extends MManager {
       Set<ShowTimeSeriesResult> resultSet,
       QueryContext context)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);

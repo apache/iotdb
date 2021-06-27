@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
@@ -94,7 +94,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
 
     long commitIndex;
     long commitTerm;
@@ -147,7 +147,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header) {
+  public boolean matchTerm(long index, long term, RaftNode header) {
     return member.matchLog(index, term);
   }
 

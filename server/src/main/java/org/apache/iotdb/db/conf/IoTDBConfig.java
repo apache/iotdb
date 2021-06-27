@@ -607,7 +607,10 @@ public class IoTDBConfig {
    */
   private int mtreeSnapshotThresholdTime = 3600;
 
-  /** Time range for partitioning data inside each storage group. Unit: second */
+  /**
+   * Time range for partitioning data inside each storage group, the unit is second. Default time is
+   * a week.
+   */
   private long partitionInterval = 604800;
 
   /**

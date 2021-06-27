@@ -97,6 +97,7 @@ public class ClusterAggregateExecutor extends AggregationExecutor {
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType,
         context,
-        dataQueryPlan.isAscending());
+        dataQueryPlan.isAscending(),
+        null);
   }
 }

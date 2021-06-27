@@ -178,12 +178,12 @@ public class MetaSimpleSnapshot extends Snapshot {
     }
 
     @Override
-    public void install(MetaSimpleSnapshot snapshot, int slot) {
+    public void install(MetaSimpleSnapshot snapshot, int slot, boolean isDataMigration) {
       installSnapshot(snapshot);
     }
 
     @Override
-    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap) {
+    public void install(Map<Integer, MetaSimpleSnapshot> snapshotMap, boolean isDataMigration) {
       throw new UnsupportedOperationException("Method unimplemented");
     }
 

@@ -163,7 +163,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
 
     SnapshotInstaller defaultInstaller = metaSimpleSnapshot.getDefaultInstaller(metaGroupMember);
-    defaultInstaller.install(metaSimpleSnapshot, -1);
+    defaultInstaller.install(metaSimpleSnapshot, -1, false);
 
     Map<PartialPath, Long> storageGroupsTTL = IoTDB.metaManager.getStorageGroupsTTL();
     for (int i = 0; i < 10; i++) {

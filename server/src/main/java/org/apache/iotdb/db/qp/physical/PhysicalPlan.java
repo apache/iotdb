@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -356,6 +357,9 @@ public abstract class PhysicalPlan {
         case STOP_TRIGGER:
           plan = new StopTriggerPlan();
           break;
+        case CLUSTER_LOG:
+          plan = new LogPlan();
+          break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
@@ -411,6 +415,7 @@ public abstract class PhysicalPlan {
     MNODE,
     MEASUREMENT_MNODE,
     STORAGE_GROUP_MNODE,
+    CLUSTER_LOG,
     BATCH_INSERT_ONE_DEVICE,
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
