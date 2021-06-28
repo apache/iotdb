@@ -234,7 +234,7 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public String getCatalog() {
-    return "no catalog";
+    return "Apache IoTDB";
   }
 
   @Override

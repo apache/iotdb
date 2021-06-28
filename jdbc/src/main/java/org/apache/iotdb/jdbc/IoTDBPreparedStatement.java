@@ -19,6 +19,7 @@
 package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -254,7 +255,8 @@ public class IoTDBPreparedStatement extends IoTDBStatement implements PreparedSt
 
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
-    throw new SQLException(Constant.PARAMETER_SUPPORTED);
+    Binary binary = new Binary(x);
+    this.parameters.put(parameterIndex, binary.getStringValue());
   }
 
   @Override
