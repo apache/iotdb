@@ -1413,6 +1413,26 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testCreateCQ12() throws QueryProcessException {
+    long minEveryInterval =
+        IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
+    long everyInterval = minEveryInterval / 2;
+    String sql =
+        String.format(
+            "CREATE CQ cq1 RESAMPLE EVERY %dms FOR 20s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END",
+            everyInterval);
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "CQ: every interval should not be lower than the minimum value you configured.",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testDropCQ() throws QueryProcessException {
     String sql = "DROP CONTINUOUS QUERY cq1";
 

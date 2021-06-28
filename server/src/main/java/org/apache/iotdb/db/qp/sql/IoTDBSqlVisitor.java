@@ -1154,11 +1154,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (createContinuousQueryOperator.getEveryInterval() == 0) {
       createContinuousQueryOperator.setEveryInterval(
           ((GroupByClauseComponent) queryOp.getSpecialClauseComponent()).getUnit());
-      if (createContinuousQueryOperator.getEveryInterval()
-          < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
-        throw new SQLParserException(
-            "CQ: every interval should not be lower than the minimum value you configured.");
-      }
+    }
+
+    if (createContinuousQueryOperator.getEveryInterval()
+        < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+      throw new SQLParserException(
+          "CQ: every interval should not be lower than the minimum value you configured.");
     }
 
     if (createContinuousQueryOperator.getForInterval() == 0) {

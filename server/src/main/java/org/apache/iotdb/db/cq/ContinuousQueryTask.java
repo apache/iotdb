@@ -54,8 +54,8 @@ import java.util.regex.Pattern;
 
 public class ContinuousQueryTask extends WrappedRunnable {
 
-  private static final int FETCH_SIZE = 2048;
-  private static final int BATCH_SIZE = 10;
+  private static final int FETCH_SIZE = 10000;
+  private static final int BATCH_SIZE = 10000;
 
   private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryTask.class);
 

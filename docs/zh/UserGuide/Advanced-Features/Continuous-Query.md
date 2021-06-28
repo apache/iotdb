@@ -106,7 +106,7 @@ END
 
 对于以上原始时间序列，若用户指定查询聚合层级为 `2`，聚合函数为 `avg`，
 用户可以在 `INTO` 语句中仅指定生成序列的最后一个结点名，若用户将其指定为 `temperature_avg`，则系统生成的完整路径为 `root.${1}.${2}.temperature_avg`。
-用户可以在 `INTO` 语句中指定完整写入路径，用户可将其指定为 `root.${1}.${2}.temperature_avg`、`root.ln_cq.${2}.temperature_avg`、`root.${1}_cq.${2}.temperature_avg`、`root.${1}.${2}_cq.temperature_avg`等，
+用户也可以在 `INTO` 语句中指定完整写入路径，用户可将其指定为 `root.${1}.${2}.temperature_avg`、`root.ln_cq.${2}.temperature_avg`、`root.${1}_cq.${2}.temperature_avg`、`root.${1}.${2}_cq.temperature_avg`等，
 也可以按需要指定为 `root.${2}.${1}.temperature_avg` 等其它形式。
 需要注意的是，`${x}` 中的 `x` 应当大于等于 `1` 且小于等于 `<level>` 值
 （若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
