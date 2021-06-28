@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
@@ -57,7 +58,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
     this.queryOperator = queryOperator;
-    this.creationTimestamp = System.currentTimeMillis();
+    this.creationTimestamp = DatetimeUtils.currentTime();
   }
 
   public void setQuerySql(String querySql) {

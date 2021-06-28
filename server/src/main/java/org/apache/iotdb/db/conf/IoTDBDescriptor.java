@@ -499,15 +499,6 @@ public class IoTDBDescriptor {
         conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
       }
 
-      conf.setContinuousQueryThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "continuous_query_thread_num",
-                  Integer.toString(conf.getContinuousQueryThreadNum()))));
-      if (conf.getContinuousQueryThreadNum() <= 0) {
-        conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
-      }
-
       conf.setMaxPendingContinuousQueryTasks(
           Integer.parseInt(
               properties.getProperty(

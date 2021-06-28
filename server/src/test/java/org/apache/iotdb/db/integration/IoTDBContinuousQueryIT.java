@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import javafx.util.Pair;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -242,12 +243,14 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(5600);
+    long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5000 / 1000 + 1);
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
 
     statement.execute("DROP CQ cq1");
 
@@ -268,12 +271,14 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
+    long creationTime = System.currentTimeMillis();
+
     Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5000 / 2000 + 1);
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 2000, 1000, 2);
 
     statement.execute("DROP CQ cq1");
 
@@ -293,12 +298,14 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
-    Thread.sleep(5600);
+    long creationTime = System.currentTimeMillis();
+
+    Thread.sleep(5500);
 
     boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
     Assert.assertTrue(hasResult);
 
-    checkResultSize(5000 / 1000 + 1);
+    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
 
     statement.execute("DROP CQ cq1");
 
@@ -313,6 +320,8 @@ public class IoTDBContinuousQueryIT {
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
+    long creationTime = System.currentTimeMillis();
+
     Thread.sleep(4500);
 
     createTimeSeries();
@@ -321,25 +330,70 @@ public class IoTDBContinuousQueryIT {
 
     Thread.sleep(6000);
 
-    boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
-    Assert.assertTrue(hasResult);
-
-    checkResultSize(6);
+    checkCQExecutionResult(creationTime, 5000, 5500, 1000, 1000, 1000, 2);
 
     statement.execute("DROP CQ cq1");
 
     stopDataGenerator();
   }
 
-  private void checkResultSize(int expectedSize) throws SQLException {
-    List<String> resultList = new ArrayList<>();
+  private void checkCQExecutionResult(
+      long creationTime,
+      long delay,
+      long duration,
+      long forInterval,
+      long everyInterval,
+      long groupByInterval,
+      int level)
+      throws SQLException {
+    boolean hasResult = statement.execute("select temperature_avg from root.ln.wf01");
+    Assert.assertTrue(hasResult);
+
+    List<Pair<Long, String>> result = generateResult();
+
+    long expectedSize = (duration / everyInterval + 1) * (forInterval / groupByInterval);
+    Assert.assertEquals(expectedSize, result.size());
+
+    long leftMost = result.get(0).getKey() + forInterval;
+
+    for (int i = 0; i < result.size(); i++) {
+      long left = result.get(i).getKey();
+
+      if (i == 0) {
+        assertTrue(Math.abs(creationTime + delay - forInterval - left) <= 100);
+      } else {
+        long pointNumPerForInterval = forInterval / groupByInterval;
+        Assert.assertEquals(
+            leftMost
+                + (i / pointNumPerForInterval) * everyInterval
+                - (pointNumPerForInterval - i % pointNumPerForInterval) * groupByInterval,
+            left);
+      }
+
+      statement.execute(
+          String.format(
+              "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=%d",
+              left, left + groupByInterval, groupByInterval, level));
+
+      List<Pair<Long, String>> correctAnswer = generateResult();
+      Assert.assertEquals(1, correctAnswer.size());
+
+      Assert.assertEquals(correctAnswer.get(0).getValue(), result.get(i).getValue());
+    }
+  }
+
+  private List<Pair<Long, String>> generateResult() {
+    List<Pair<Long, String>> result = new ArrayList<>();
     try (ResultSet resultSet = statement.getResultSet()) {
       while (resultSet.next()) {
-        String timestamp = resultSet.getString("Time");
-        resultList.add(timestamp);
+        String timestamp = resultSet.getString(1);
+        String value = resultSet.getString(2);
+        result.add(new Pair<>(Long.parseLong(timestamp), value));
       }
+    } catch (SQLException throwables) {
+      LOGGER.error(throwables.getMessage());
     }
-    Assert.assertEquals(expectedSize, resultList.size());
+    return result;
   }
 
   private void checkContinuousQueries(String[] continuousQueryArray) throws SQLException {

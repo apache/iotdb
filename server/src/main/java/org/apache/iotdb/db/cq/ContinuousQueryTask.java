@@ -75,42 +75,39 @@ public class ContinuousQueryTask extends WrappedRunnable {
   // To transform query operator to query plan
   private static final Planner planner = new Planner();
   // Next timestamp to execute a query
-  private long executionTimestamp;
+  private long windowEndTimestamp;
 
   private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
 
-  public ContinuousQueryTask(CreateContinuousQueryPlan plan, long timestamp) {
+  public ContinuousQueryTask(CreateContinuousQueryPlan plan, long windowEndTimestamp) {
     this.plan = plan;
-    this.executionTimestamp = timestamp;
+    this.windowEndTimestamp = windowEndTimestamp;
   }
 
   @Override
-  public void runMayThrow() {
+  public void runMayThrow()
+      throws QueryProcessException, StorageEngineException, IOException, InterruptedException,
+          QueryFilterOptimizationException, MetadataException {
 
-    try {
-      GroupByTimePlan queryPlan = generateQueryPlan();
+    GroupByTimePlan queryPlan = generateQueryPlan();
 
-      if (queryPlan.getDeduplicatedPaths().isEmpty()) {
-        logger.info(plan.getContinuousQueryName() + ": deduplicated paths empty");
-        return;
-      }
-
-      QueryDataSet result = doQuery(queryPlan);
-
-      if (result == null || result.getPaths().size() == 0) {
-        logger.info(plan.getContinuousQueryName() + ": query result empty");
-        return;
-      }
-
-      doInsert(result, queryPlan);
-
-    } catch (Exception e) {
-      logger.error(plan.getContinuousQueryName() + ": run error", e);
+    if (queryPlan.getDeduplicatedPaths().isEmpty()) {
+      logger.info(plan.getContinuousQueryName() + ": deduplicated paths empty");
+      return;
     }
+
+    QueryDataSet result = doQuery(queryPlan);
+
+    if (result == null || result.getPaths().size() == 0) {
+      logger.info(plan.getContinuousQueryName() + ": query result empty");
+      return;
+    }
+
+    doInsert(result, queryPlan);
   }
 
   public void onRejection() {
-    logger.info("Continuous Query Task {} rejected", plan.getContinuousQueryName());
+    logger.warn("Continuous Query Task {} rejected", plan.getContinuousQueryName());
   }
 
   private GroupByTimePlan generateQueryPlan() throws QueryProcessException {
@@ -128,8 +125,8 @@ public class ContinuousQueryTask extends WrappedRunnable {
 
     queryOperator.setSelectComponent(selectComponentCopy);
 
-    queryPlan.setStartTime(executionTimestamp - plan.getForInterval());
-    queryPlan.setEndTime(executionTimestamp);
+    queryPlan.setStartTime(windowEndTimestamp - plan.getForInterval());
+    queryPlan.setEndTime(windowEndTimestamp);
 
     return queryPlan;
   }
@@ -141,9 +138,11 @@ public class ContinuousQueryTask extends WrappedRunnable {
         QueryResourceManager.getInstance()
             .assignQueryId(true, FETCH_SIZE, queryPlan.getDeduplicatedPaths().size());
 
-    QueryDataSet result = planExecutor.processQuery(queryPlan, new QueryContext(queryId));
-    QueryResourceManager.getInstance().endQuery(queryId);
-    return result;
+    try {
+      return planExecutor.processQuery(queryPlan, new QueryContext(queryId));
+    } finally {
+      QueryResourceManager.getInstance().endQuery(queryId);
+    }
   }
 
   private void doInsert(QueryDataSet result, GroupByTimePlan queryPlan)

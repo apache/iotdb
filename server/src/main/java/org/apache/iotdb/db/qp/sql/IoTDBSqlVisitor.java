@@ -1154,6 +1154,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (createContinuousQueryOperator.getEveryInterval() == 0) {
       createContinuousQueryOperator.setEveryInterval(
           ((GroupByClauseComponent) queryOp.getSpecialClauseComponent()).getUnit());
+      if (createContinuousQueryOperator.getEveryInterval()
+          < IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval()) {
+        throw new SQLParserException(
+            "CQ: every interval should not be lower than the minimum value you configured.");
+      }
     }
 
     if (createContinuousQueryOperator.getForInterval() == 0) {
@@ -1189,13 +1194,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     parseFromClause(ctx.fromClause());
 
     if (queryOp.getSelectComponent().getResultColumns().size() > 1) {
-      throw new SQLParserException(
-          "Cq Select Into: CQ currently does not support multiple result columns.");
+      throw new SQLParserException("CQ: CQ currently does not support multiple result columns.");
     }
 
     if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
-      throw new SQLParserException(
-          "Cq Select Into: CQ currently does not support multiple series .");
+      throw new SQLParserException("CQ: CQ currently does not support multiple series .");
     }
 
     parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
@@ -1203,8 +1206,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     int fromLen = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
     int queryLevel = queryOp.getSpecialClauseComponent().getLevel();
     if (queryLevel >= fromLen) {
-      throw new SQLParserException(
-          "Cq Select Into: Level should not exceed the <from_prefix> length.");
+      throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
     }
 
     PartialPath targetPath = null;
@@ -1223,11 +1225,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         try {
           nodeIndex = Integer.parseInt(param.substring(2, param.length() - 1).trim());
         } catch (NumberFormatException e) {
-          throw new SQLParserException("Cq Select Into: x of ${x} should be an integer.");
+          throw new SQLParserException("CQ: x of ${x} should be an integer.");
         }
         if (nodeIndex < 1 || nodeIndex > trueLevel) {
           throw new SQLParserException(
-              "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
+              "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
         }
       }
     } else if (ctx.nodeNameWithoutStar() != null) {
@@ -2305,19 +2307,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
-    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-      switch (timePrecision) {
-        case "ns":
-          return System.currentTimeMillis() * 1000_000
-              + (System.nanoTime() - startupNano) % 1000_000;
-        case "us":
-          return System.currentTimeMillis() * 1000
-              + (System.nanoTime() - startupNano) / 1000 % 1000;
-        default:
-          return System.currentTimeMillis();
-      }
+      return DatetimeUtils.currentTime();
     }
     try {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);

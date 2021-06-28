@@ -23,9 +23,11 @@
 
 我们可以通过 SQL 语句注册、或卸载一个 CQ 实例，以及查询到所有已经注册的 CQ 配置信息。
 
-## 注册 CQ
+## SQL 语句
 
-### 语法
+### 创建 CQ
+
+#### 语法
 
 ```sql
 CREATE CONTINUOUS QUERY <cq_id> 
@@ -40,13 +42,15 @@ END
 其中：
 
 * `<cq_id>` 指定 CQ 全局唯一的 id。
-* `<every_interval>` 指定查询执行时间间隔，可选择指定。
-* `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。可选择指定。 
+* `<every_interval>` 指定查询执行时间间隔，支持 ns、us、ms、s、m、h、d、w 等单位，其值不应小于用户所配置的 `continuous_query_min_every_interval` 值。可选择指定。
+* `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。支持 ns、us、ms、s、m、h
+  、d、w 等单位。可选择指定。 
 * `<function>` 指定聚合函数，目前支持 `count`, `sum`, `avg`, `last_value`, `first_value`, `min_time`, `max_time`, `min_value`, `max_value` 等。
 * `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
 * `<full_path>` 或 `<node_name>` 指定将查询出的数据写入的结果序列路径。
-* `<group_by_interval>` 指定时间分组长度。
-* `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层以下的所有序列聚合。
+* `<group_by_interval>` 指定时间分组长度，支持 ns、us、ms、s、m、h
+  、d、w、mo、y 等单位。
+* `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层以下的所有序列聚合。Group By Level 语句的具体语义及 `<level>` 的定义见 [路径层级分组聚合](../IoTDB-SQL-Language/DML-Data-Manipulation-Language.md)。
 
 
 注：
@@ -65,9 +69,11 @@ END
       * 若用户未指定 `<level>`，令原始时间序列最大层数为 `L`， 
       则系统生成的结果时间序列路径为 `root.${1}. ... .${L - 1}.<node_name>`。
 
-### 例子
 
-#### 原始时间序列
+
+#### 示例
+
+##### 原始时间序列
 ````
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -78,6 +84,7 @@ END
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT| GORILLA|     SNAPPY|null|      null|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ````
+
 
 ````
 +-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
@@ -94,7 +101,18 @@ END
 |2021-05-11T22:18:55.003+08:00|                         16.0|                        124.0|                        183.0|                         18.0|
 +-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
 ````
-#### 创建 `cq1`
+
+##### 结果序列配置举例说明
+
+对于以上原始时间序列，若用户指定查询聚合层级为 `2`，聚合函数为 `avg`，
+用户可以在 `INTO` 语句中仅指定生成序列的最后一个结点名，若用户将其指定为 `temperature_avg`，则系统生成的完整路径为 `root.${1}.${2}.temperature_avg`。
+用户可以在 `INTO` 语句中指定完整写入路径，用户可将其指定为 `root.${1}.${2}.temperature_avg`、`root.ln_cq.${2}.temperature_avg`、`root.${1}_cq.${2}.temperature_avg`、`root.${1}.${2}_cq.temperature_avg`等，
+也可以按需要指定为 `root.${2}.${1}.temperature_avg` 等其它形式。
+需要注意的是，`${x}` 中的 `x` 应当大于等于 `1` 且小于等于 `<level>` 值
+（若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
+
+
+##### 创建 `cq1`
 ````
 CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
 ````
@@ -122,7 +140,7 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 |2021-05-11T22:18:46.964+08:00|                            137.0|                            172.0|                            183.0|                            193.0|
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
-#### 创建 `cq2`
+##### 创建 `cq2`
 ````
 CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
@@ -151,7 +169,7 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |2021-05-11T22:18:46.969+08:00|                      112.25|                      132.25|
 +-----------------------------+----------------------------+----------------------------+
 ````
-#### 创建 `cq3`
+##### 创建 `cq3`
 ````
 CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO root.ln_cq.${2}.temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
@@ -178,15 +196,12 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 +-----------------------------+-------------------------------+-------------------------------+
 ````
 
-用户也可以指定写入序列为 `root.${1}_cq.${2}.temperature_avg`、`root.${1}.${2}_cq.temperature_avg`，效果与上例相同。
-用户也可以按需要指定写入序列为 `root.${2}.${1}.temperature_avg` 等。
-需要注意的是，`${x}` 中的 `x` 应当大于等于 1 且小于等于 `<level>` 值
-（若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
-
 ### 展示 CQ 信息
+#### 语法
 ````
 SHOW CONTINUOUS QUERIES 
 ````
+#### 结果示例
 ````
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
 |cq name|every interval|for interval|                                                                               query sql|                        target path|
@@ -197,10 +212,21 @@ SHOW CONTINUOUS QUERIES
 +-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
 ````
 ### 删除 CQ
+#### 语法
 ````
 DROP CONTINUOUS QUERY <cq_id> 
 ````
-例如：
+#### 示例
 ````
 DROP CONTINUOUS QUERY cq3
 ````
+
+## 系统参数配置
+| 参数名          | 描述           |  数据类型| 默认值 |
+| :---------------------------------- |-------- | ----| -----|
+| `continuous_query_execution_thread` | 执行连续查询任务的线程池的线程数 | int | max(1, CPU 核数 / 2)|
+| `max_pending_continuous_query_tasks` | 队列中连续查询最大任务堆积数 | int | 64|
+| `continuous_query_min_every_interval` | 连续查询执行时间间隔的最小值 | duration | 1s|
+
+
+

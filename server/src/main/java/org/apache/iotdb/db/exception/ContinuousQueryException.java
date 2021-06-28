@@ -21,12 +21,10 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ContinuousQueryAlreadyExistException extends StorageEngineException {
+public class ContinuousQueryException extends StorageEngineException {
 
-  public ContinuousQueryAlreadyExistException(String continuousQueryName) {
-    super(
-        String.format("Continuous Query [%s] already exists", continuousQueryName),
-        TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
+  public ContinuousQueryException(String message) {
+    super(message, TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
     this.isUserException = true;
   }
 }

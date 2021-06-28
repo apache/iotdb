@@ -1331,7 +1331,7 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals("Cq Select Into: x of ${x} should be an integer.", e.getMessage());
+      assertEquals("CQ: x of ${x} should be an integer.", e.getMessage());
     }
   }
 
@@ -1346,7 +1346,7 @@ public class PhysicalPlanTest {
       fail();
     } catch (SQLParserException e) {
       assertEquals(
-          "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
           e.getMessage());
     }
   }
@@ -1393,8 +1393,22 @@ public class PhysicalPlanTest {
       fail();
     } catch (SQLParserException e) {
       assertEquals(
-          "Cq Select Into: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ11() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature), avg(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("CQ: CQ currently does not support multiple result columns.", e.getMessage());
     }
   }
 
