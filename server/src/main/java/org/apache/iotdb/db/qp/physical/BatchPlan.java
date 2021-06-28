@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+import java.util.Map;
+
 /** BatchPlan contains multiple sub-plans. */
 public interface BatchPlan {
 
@@ -50,4 +54,11 @@ public interface BatchPlan {
    * @return how many sub-plans are in the plan.
    */
   int getBatchSize();
+
+  /**
+   * Return execution status for each path
+   *
+   * @return execution status for each path
+   */
+  Map<Integer, TSStatus> getResults();
 }
