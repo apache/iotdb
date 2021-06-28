@@ -1990,7 +1990,7 @@ public class StorageGroupProcessor {
   }
 
   private void syncCompactOnePartition(long timePartition, boolean fullMerge) {
-    logger.info(
+    logger.debug(
         "{}-{} partition:{}, submit a compaction merge task",
         logicalStorageGroupName,
         virtualStorageGroupId,

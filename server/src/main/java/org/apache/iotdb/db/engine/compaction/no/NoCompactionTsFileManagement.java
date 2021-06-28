@@ -272,12 +272,12 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList(long timePartition) {
-    logger.info("{} do not need fork", storageGroupName);
+    logger.debug("{} do not need fork", storageGroupName);
   }
 
   @Override
   protected void merge(long timePartition) {
-    logger.info("{} no merge logic", storageGroupName);
+    logger.debug("{} no merge logic", storageGroupName);
   }
 
   private TreeSet<TsFileResource> newSequenceTsFileResources(Long k) {
