@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.EmptyIntervalException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -36,7 +35,6 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
-import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -66,8 +64,8 @@ public class RawDataQueryExecutor {
     if (dataSet != null) {
       return dataSet;
     }
+    List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
-      List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),
           queryPlan.getDeduplicatedPaths(),
@@ -113,11 +111,6 @@ public class RawDataQueryExecutor {
 
         QueryDataSource queryDataSource =
             QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-        timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-        TimeValuePairUtils.Intervals intervals = TimeValuePairUtils.extractTimeInterval(timeFilter);
-        if (intervals.isEmpty()) {
-          throw new EmptyIntervalException(timeFilter);
-        }
         ManagedSeriesReader reader =
             new SeriesRawDataBatchReader(
                 path,
@@ -131,8 +124,6 @@ public class RawDataQueryExecutor {
                 queryPlan.isAscending());
         readersOfSelectedSeries.add(reader);
       }
-    } catch (EmptyIntervalException e) {
-      throw new StorageEngineException(e.getMessage());
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
