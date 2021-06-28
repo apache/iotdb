@@ -34,7 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
-import javafx.util.Pair;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -354,10 +354,10 @@ public class IoTDBContinuousQueryIT {
     long expectedSize = (duration / everyInterval + 1) * (forInterval / groupByInterval);
     Assert.assertEquals(expectedSize, result.size());
 
-    long leftMost = result.get(0).getKey() + forInterval;
+    long leftMost = result.get(0).left + forInterval;
 
     for (int i = 0; i < result.size(); i++) {
-      long left = result.get(i).getKey();
+      long left = result.get(i).left;
 
       if (i == 0) {
         assertTrue(Math.abs(creationTime + delay - forInterval - left) <= 100);
@@ -378,7 +378,7 @@ public class IoTDBContinuousQueryIT {
       List<Pair<Long, String>> correctAnswer = generateResult();
       Assert.assertEquals(1, correctAnswer.size());
 
-      Assert.assertEquals(correctAnswer.get(0).getValue(), result.get(i).getValue());
+      Assert.assertEquals(correctAnswer.get(0).right, result.get(i).right);
     }
   }
 
