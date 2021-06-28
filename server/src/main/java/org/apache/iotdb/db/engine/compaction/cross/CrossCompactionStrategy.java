@@ -33,6 +33,7 @@ public enum CrossCompactionStrategy {
 
   public AbstractCrossSpaceCompactionTask getCompactionTask(
       String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartitionId,
       CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
@@ -46,6 +47,7 @@ public enum CrossCompactionStrategy {
       default:
         return new InplaceCompactionTask(
             logicalStorageGroupName,
+            virtualStorageGroupName,
             timePartitionId,
             mergeResource,
             storageGroupDir,
@@ -59,6 +61,7 @@ public enum CrossCompactionStrategy {
 
   public AbstractCrossSpaceCompactionTask getCompactionRecoverTask(
       String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
@@ -70,6 +73,7 @@ public enum CrossCompactionStrategy {
       default:
         return new InplaceCompactionRecoverTask(
             logicalStorageGroupName,
+            virtualStorageGroupName,
             timePartitionId,
             storageGroupDir,
             seqTsFileResourceList,

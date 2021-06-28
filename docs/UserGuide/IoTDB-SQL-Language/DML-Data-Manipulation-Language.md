@@ -1504,7 +1504,6 @@ The SQL statement will not be executed and the corresponding error prompt is giv
 Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
 ```
 
-
 ## DELETE
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Appendix/SQL-Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
@@ -1570,7 +1569,7 @@ IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
-## Delete Time Partition (experimental)
+### Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
 ```

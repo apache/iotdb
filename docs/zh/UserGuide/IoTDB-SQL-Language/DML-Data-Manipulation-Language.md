@@ -19,15 +19,15 @@
 
 -->
 
-## 数据操作语言（DML）
+# 数据操作语言（DML）
 
-### 数据写入
+## 数据写入
 
 IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../CLI/Command-Line-Interface.md)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../API/Programming-JDBC.md)接口）单条或批量执行插入数据的INSERT语句。
 
 本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Appendix/SQL-Reference.md)节。
 
-#### 使用INSERT语句
+### 使用INSERT语句
 
 使用INSERT语句可以向指定的已经创建的一条或多条时间序列中插入数据。对于每一条数据，均由一个时间戳类型的时间戳和一个数值或布尔值、字符串类型的传感器采集值组成。
 
@@ -77,9 +77,9 @@ Total line number = 4
 It costs 0.170s
 ```
 
-### 数据查询
+## 数据查询
 
-#### 时间条件过滤查询
+### 时间条件过滤查询
 
 本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Appendix/SQL-Reference.md)。同时，您也可以使用[Java JDBC](../API/Programming-JDBC.md)标准接口来执行相关的查询语句。
 
@@ -211,7 +211,7 @@ It costs 0.014s
 ```
 
 
-#### 其他结果对齐方式
+### 其他结果对齐方式
 
  * 根据时间降序返回
 IoTDB 在 0.11 版本开始支持 'order by time' 语句, 用于对结果按照时间进行降序展示。例如，SQL语句为：
@@ -290,7 +290,7 @@ It costs 0.018s
 
 更多语法请参照[SQL REFERENCE](../Appendix/SQL-Reference.md)。
 
-#### 结果空值过滤
+### 结果空值过滤
 
 * 如果结果集中，任意一列为null，则过滤掉该行；即获得的结果集不包含任何空值
 
@@ -305,7 +305,7 @@ select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 
-#### 聚合函数
+### 聚合函数
 
 本章节主要介绍聚合查询的相关示例，
 主要使用的是IoTDB SELECT语句的聚合查询函数。
@@ -329,7 +329,7 @@ It costs 0.016s
 ```
 
 
-#### 时间区间分组聚合
+### 时间区间分组聚合
 
 本章节主要介绍时间区间分组聚合查询的相关示例，
 主要使用的是IoTDB SELECT语句的[GROUP BY子句](../Appendix/SQL-Reference.md)，
@@ -544,7 +544,7 @@ Total line number = 7
 It costs 0.004s
 ```
 
-#### 路径层级分组聚合
+### 路径层级分组聚合
 
 在时间序列层级结构中，分层聚合查询用于对某一层级进行聚合查询。
 这里使用LEVEL来统计指定层级下的聚合范围，该语句约定root为第0层序列，若统计"root.ln"下所有序列则需指定level为1。
@@ -604,7 +604,7 @@ It costs 0.013s
 
 对于sum, avg, min_value, max_value, extreme五种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
-#### 时间区间和路径层级分组聚合查询
+### 时间区间和路径层级分组聚合查询
 
 除此之外，还可以通过定义LEVEL来统计指定层级下的数据点个数。
 
@@ -655,7 +655,7 @@ select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
 Total line number = 7
 It costs 0.004s
 ```
-#### 最新点查询
+### 最新点查询
 
 SQL语法：
 
@@ -703,7 +703,7 @@ It costs 0.002s
 ```
 
 
-#### 空值填充
+### 空值填充
 
 在IoTDB的实际使用中，当进行时间序列的查询操作时，可能会出现在某些时间点值为null的情况，这会妨碍用户进行进一步的分析。 为了更好地反映数据更改的程度，用户希望可以自动填充缺失值。 因此，IoTDB系统引入了自动填充功能。
 
@@ -924,7 +924,7 @@ It costs 0.006s
 
 使用 PREVIOUSUNTILLAST 将不会填充2017-11-07T23:59:00以后的值。
 
-#### LIMIT & OFFSET
+### LIMIT & OFFSET
 
 IoTDB提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
 并且使用OFFSET和SOFSET子句允许用户设置结果显示的起始位置。
@@ -1212,7 +1212,7 @@ Total line number = 10
 It costs 0.009s
 ```
 
-#### 别名
+### 别名
 
 由于 IoTDB 独特的数据模型，在每个传感器前都附带有设备等诸多额外信息。有时，我们只针对某个具体设备查询，而这些前缀信息频繁显示造成了冗余，影响了结果集的显示与分析。这时我们可以使用 IoTDB 提供的 AS 函数，将查询中出现的时间序列给定一个别名。
 
@@ -1229,7 +1229,7 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 | ...  | ...         | ...   |
 
 
-#### 内置函数
+### 内置函数
 
 时间序列生成函数可接受若干原始时间序列作为输入，产生一列时间序列输出。与聚合函数不同的是，时间序列生成函数的结果集带有时间戳列。
 
@@ -1493,15 +1493,13 @@ Empty set.
 It costs 0.005s
 ```
 
-
-
-### 数据删除
+## 数据删除
 
 用户使用[DELETE语句](../Appendix/SQL-Reference.md)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某一个时间区间内的数据进行删除。
 
 在JAVA编程环境中，您可以使用JDBC API单条或批量执行DELETE语句。
 
-#### 单传感器时间序列值删除
+### 单传感器时间序列值删除
 
 以测控ln集团为例，存在这样的使用场景：
 
@@ -1539,7 +1537,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 delete from root.ln.wf02.status
 ```
 
-#### 多传感器时间序列值删除    
+### 多传感器时间序列值删除    
 
 当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Data-Concept/Data-Model-and-Terminology.md)进行删除操作，进行此操作的SQL语句为：
 
@@ -1560,7 +1558,7 @@ IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
-#### 删除时间分区 (实验性功能)
+### 删除时间分区 (实验性功能)
 您可以通过如下语句来删除某一个存储组下的指定时间分区:
 
 ```

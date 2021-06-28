@@ -989,6 +989,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateLoadFiles(OperateFilePlan plan) throws QueryProcessException {
+    logger.info("enter operate load files");
     File file = plan.getFile();
     if (!file.exists()) {
       throw new QueryProcessException(
@@ -1013,6 +1014,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void loadFile(File file, OperateFilePlan plan) throws QueryProcessException {
+    logger.info("start loading files");
     if (!file.getName().endsWith(TSFILE_SUFFIX)) {
       return;
     }
@@ -1065,6 +1067,7 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().loadNewTsFile(resource);
       }
     } catch (Exception e) {
+      e.printStackTrace();
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
@@ -1152,8 +1155,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
-      IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
-      StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      List<PartialPath> storageGroupPaths =
+          IoTDB.metaManager.getStorageGroupPaths(plan.getStorageGroup());
+      for (PartialPath storagePath : storageGroupPaths) {
+        IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
+        StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
+      }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {

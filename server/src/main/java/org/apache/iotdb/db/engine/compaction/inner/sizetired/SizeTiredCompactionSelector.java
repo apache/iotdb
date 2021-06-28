@@ -69,6 +69,10 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
+    LOGGER.warn(
+        "{} [Compaction] SizeTiredCompactionSelector start to select",
+        logicalStorageGroupName + "-" + virtualStorageGroupName);
+    int submitTaskNum = 0;
     try {
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       while (iterator.hasNext()) {
@@ -91,6 +95,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           // submit the task
           createAndSubmitTask(selectedFileList);
           taskSubmitted = true;
+          submitTaskNum += 1;
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
         }
@@ -99,10 +104,15 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       if (selectedFileList.size() > 1) {
         try {
           createAndSubmitTask(selectedFileList);
+          submitTaskNum += 1;
         } catch (Exception e) {
           LOGGER.warn(e.getMessage(), e);
         }
       }
+      LOGGER.warn(
+          "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+          logicalStorageGroupName + "-" + virtualStorageGroupName,
+          submitTaskNum);
       return taskSubmitted;
     } finally {
       tsFileResources.readUnlock();
@@ -121,7 +131,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             sequence);
     for (TsFileResource resource : selectedFileList) {
       resource.setMerging(true);
-      LOGGER.info(
+      LOGGER.warn(
           "{}-{} [Compaction] start to compact TsFile {}",
           logicalStorageGroupName,
           virtualStorageGroupName,
@@ -130,7 +140,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     CompactionTaskManager.getInstance()
         .submitTask(
             logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
-    LOGGER.info(
+    LOGGER.warn(
         "{}-{} [Compaction] submit a inner compaction task of {} files",
         logicalStorageGroupName,
         virtualStorageGroupName,

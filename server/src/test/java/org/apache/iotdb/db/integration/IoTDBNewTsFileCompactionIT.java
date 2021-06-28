@@ -681,7 +681,6 @@ public class IoTDBNewTsFileCompactionIT {
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(10000);
-
       // first file
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(1, 1)");
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");

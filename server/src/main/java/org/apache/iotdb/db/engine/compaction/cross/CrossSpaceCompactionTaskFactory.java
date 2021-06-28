@@ -31,6 +31,7 @@ public class CrossSpaceCompactionTaskFactory {
 
   public AbstractCompactionTask createTask(
       String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartitionId,
       CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
@@ -44,6 +45,7 @@ public class CrossSpaceCompactionTaskFactory {
         .getCrossCompactionStrategy()
         .getCompactionTask(
             logicalStorageGroupName,
+            virtualStorageGroupName,
             timePartitionId,
             mergeResource,
             storageGroupDir,

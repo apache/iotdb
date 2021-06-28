@@ -41,7 +41,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   private File logFile;
 
   public InplaceCompactionRecoverTask(
-      String storageGroupName,
+      String logicalStorageGroupName,
+      String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
@@ -49,7 +50,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
       int concurrentMergeCount,
       File logFile) {
     super(
-        storageGroupName,
+        logicalStorageGroupName,
+        virtualStorageGroupName,
         timePartitionId,
         null,
         storageGroupDir,
@@ -82,7 +84,7 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
             this::mergeEndAction,
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-            fullStorageGroupName);
+            logicalStorageGroupName);
     LOGGER.info("{} a RecoverMergeTask {} starts...", fullStorageGroupName, taskName);
     recoverCrossMergeTask.recoverMerge(
         IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot(), logFile);

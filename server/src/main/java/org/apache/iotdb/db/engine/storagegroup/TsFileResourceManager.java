@@ -25,12 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -114,6 +109,23 @@ public class TsFileResourceManager {
     }
   }
 
+  /**
+   * insert tsFileResource to a target pos(targetPos = insertPos + 1) e.g. if insertPos = 0, then to
+   * the first, if insert Pos = 1, then to the second.
+   */
+  public void insert(TsFileResource tsFileResource, boolean sequence, int insertPos) {
+    writeLock("add");
+    try {
+      Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
+      TsFileResourceList tsFileResources =
+          selectedMap.computeIfAbsent(
+              tsFileResource.getTimePartition(), o -> new TsFileResourceList());
+      tsFileResources.set(insertPos, tsFileResource);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   public void add(TsFileResource tsFileResource, boolean sequence) {
     writeLock("add");
     try {
@@ -168,13 +180,14 @@ public class TsFileResourceManager {
 
   public boolean isEmpty(boolean sequence) {
     readLock();
-    boolean notEmpty = false;
     try {
       Map<Long, TsFileResourceList> selectedMap = sequence ? sequenceFiles : unsequenceFiles;
       for (Map.Entry<Long, TsFileResourceList> entry : selectedMap.entrySet()) {
-        notEmpty = notEmpty | (!entry.getValue().isEmpty());
+        if (!entry.getValue().isEmpty()) {
+          return false;
+        }
       }
-      return !notEmpty;
+      return true;
     } finally {
       readUnlock();
     }
@@ -244,7 +257,13 @@ public class TsFileResourceManager {
   }
 
   public Set<Long> getTimePartitions() {
-    return sequenceFiles.keySet();
+    readLock();
+    try {
+      Set<Long> timePartitions = new HashSet<>(sequenceFiles.keySet());
+      return timePartitions;
+    } finally {
+      readUnlock();
+    }
   }
 
   public String getVirtualStorageGroup() {

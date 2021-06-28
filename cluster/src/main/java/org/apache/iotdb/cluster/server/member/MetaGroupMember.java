@@ -786,6 +786,10 @@ public class MetaGroupMember extends RaftMember {
   /** When the node restarts, it sends handshakes to all other nodes so they may know it is back. */
   private void sendHandshake() {
     for (Node node : allNodes) {
+      if (ClusterUtils.nodeEqual(node, thisNode)) {
+        // no need to shake hands with yourself
+        continue;
+      }
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);

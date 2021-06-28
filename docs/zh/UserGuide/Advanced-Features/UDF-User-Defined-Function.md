@@ -482,7 +482,7 @@ SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
-SELECT *, example(*) FROM root.sg.d1 NON ALIGN;
+SELECT *, example(*) FROM root.sg.d1 DISABLE ALIGN;
 ```
 
 暂不支持UDF查询与其他查询混合使用。

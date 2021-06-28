@@ -289,12 +289,46 @@ public class TsFileResourceList implements List<TsFileResource> {
 
   @Override
   public TsFileResource get(int index) {
-    throw new NotImplementedException();
+    int currIndex = 0;
+    TsFileResource currTsFileResource = header;
+    while (currIndex != index) {
+      if (currTsFileResource.next == null) {
+        throw new ArrayIndexOutOfBoundsException(currIndex);
+      } else {
+        currTsFileResource = currTsFileResource.next;
+      }
+      currIndex++;
+    }
+    return currTsFileResource;
   }
 
+  /**
+   * insert tsFileResource to a target pos(targetPos = index) e.g. if index = 0, then to the first,
+   * if index = 1, then to the second.
+   */
   @Override
   public TsFileResource set(int index, TsFileResource element) {
-    throw new NotImplementedException();
+    int currIndex = 0;
+    TsFileResource currTsFileResource = header;
+    while (currIndex != index) {
+      if (currTsFileResource.next == null) {
+        if (currIndex == index - 1) {
+          insertAfter(currTsFileResource, element);
+          return element;
+        } else {
+          throw new ArrayIndexOutOfBoundsException(currIndex);
+        }
+      } else {
+        currTsFileResource = currTsFileResource.next;
+      }
+      currIndex++;
+    }
+    if (currTsFileResource != null) {
+      insertBefore(currTsFileResource, element);
+    } else {
+      add(element);
+    }
+    return element;
   }
 
   @Override
