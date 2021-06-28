@@ -154,6 +154,8 @@ Msg: The statement is executed successfully.
 |DROP_TRIGGER|卸载触发器。路径无关|
 |START_TRIGGER|启动触发器。路径无关|
 |STOP_TRIGGER|停止触发器。路径无关|
+|CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
+|DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
 
 ### 用户名限制
 

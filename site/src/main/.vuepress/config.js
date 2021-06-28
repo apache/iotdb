@@ -703,7 +703,8 @@ var config = {
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							// The trigger module has not been implemented yet,
 							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger']
+							// ['Advanced-Features/Triggers','Trigger'],
+							['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 						]
 					},
 					{
@@ -1491,9 +1492,10 @@ var config = {
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              // The trigger module has not been implemented yet,
-              // so the website should not show users how to use it to avoid misleading.
-              // ['Advanced-Features/Triggers','触发器']
+						  // The trigger module has not been implemented yet,
+						  // so the website should not show users how to use it to avoid misleading.
+						  // ['Advanced-Features/Triggers','触发器'],
+							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 						]
 					},
 					{
