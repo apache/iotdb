@@ -24,7 +24,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 public class ContinuousQueryException extends StorageEngineException {
 
   public ContinuousQueryException(String message) {
-    super(message, TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
+    super(message, TSStatusCode.CONTINUOUS_QUERY_ERROR.getStatusCode());
     this.isUserException = true;
   }
 }

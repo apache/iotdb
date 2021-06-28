@@ -284,7 +284,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
-  private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
+  private static final Pattern cqLevelNodePattern = Pattern.compile("\\$\\{\\w+}");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -1218,7 +1218,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     if (ctx.fullPath() != null) {
       targetPath = parseFullPath(ctx.fullPath());
-      Matcher m = pattern.matcher(targetPath.getFullPath());
+      Matcher m = cqLevelNodePattern.matcher(targetPath.getFullPath());
       while (m.find()) {
         String param = m.group();
         int nodeIndex = 0;

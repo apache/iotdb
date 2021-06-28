@@ -132,8 +132,7 @@ public class ContinuousQueryService implements IService {
         TASK_POOL_MANAGER.submit(new ContinuousQueryTask(plan, nextExecutionTimestamp));
         nextExecutionTimestamp += plan.getEveryInterval();
       }
-      nextExecutionTimestamps.replace(
-          plan.getContinuousQueryName(), nextExecutionTimestamp + plan.getEveryInterval());
+      nextExecutionTimestamps.replace(plan.getContinuousQueryName(), nextExecutionTimestamp);
     }
   }
 
