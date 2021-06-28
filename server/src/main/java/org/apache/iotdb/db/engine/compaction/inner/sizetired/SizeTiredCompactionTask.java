@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +99,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
@@ -110,48 +111,13 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   + targetFileName
                   + CompactionLogger.COMPACTION_LOG_NAME);
       // compaction execution
-      CompactionLogger compactionLogger = null;
-      try {
-        compactionLogger = new CompactionLogger(logFile.getPath());
-      } catch (Exception e) {
-        e.printStackTrace();
-        System.out.println(
-            logFile.getParentFile().getPath() + "is " + logFile.getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile.getParentFile().getParentFile().getParentFile().getParentFile().getPath()
-                + "is "
-                + logFile.getParentFile().getParentFile().getParentFile().getParentFile().exists());
-        System.out.println(
-            logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getPath()
-                + "is "
-                + logFile
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .getParentFile()
-                    .exists());
-      }
+      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }
       compactionLogger.logSequence(sequence);
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       CompactionUtils.compact(
           targetTsFileResource,
@@ -160,6 +126,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           compactionLogger,
           this.skippedDevicesSet,
           sequence);
+      LOGGER.warn(
+          "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       compactionLogger.close();
       if (logFile.exists()) {
         logFile.delete();
@@ -169,23 +137,26 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         resource.setMerging(false);
       }
     }
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+    if (Thread.currentThread().isInterrupted()) {
+      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+    }
+    // apply write lock for TsFileResource list
     try {
-      if (Thread.currentThread().isInterrupted()) {
-        throw new InterruptedException(
-            String.format("%s [Compaction] abort", fullStorageGroupName));
-      }
+      tsFileResourceManager.writeLockWithTimeout("size-tired compaction", 20000);
     } catch (WriteLockFailedException e) {
       // if the thread of time partition deletion get the write lock,
       // current thread will catch a WriteLockFailException, then terminate the thread itself
+      LOGGER.warn(
+          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task",
+          fullStorageGroupName,
+          e);
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
               fullStorageGroupName));
     }
-    // apply write lock for TsFileResource list
-    tsFileResourceManager.writeLock("size-tired compaction");
     try {
       // replace the old files with new file, the new is in same position as the old
       tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
@@ -194,7 +165,11 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       // delete the old files
       CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
+      LOGGER.warn(
+          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
+          fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
+      LOGGER.warn("{} [SizeTiredCompactionTask] all compaction task finish", fullStorageGroupName);
     } finally {
       tsFileResourceManager.writeUnlock();
     }

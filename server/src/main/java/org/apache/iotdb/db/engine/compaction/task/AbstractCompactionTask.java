@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
