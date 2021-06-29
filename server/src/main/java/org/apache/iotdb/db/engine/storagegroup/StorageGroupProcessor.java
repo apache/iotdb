@@ -2927,7 +2927,7 @@ public class StorageGroupProcessor {
         processor.syncClose();
         iterator.remove();
         processor.getTsFileResource().remove();
-        tsFileManagement.remove(processor.getTsFileResource(), sequence);
+        tsFileResourceManager.remove(processor.getTsFileResource(), sequence);
         updateLatestFlushTimeToPartition(partitionId, Long.MIN_VALUE);
         logger.debug(
             "{} is removed during deleting partitions",
