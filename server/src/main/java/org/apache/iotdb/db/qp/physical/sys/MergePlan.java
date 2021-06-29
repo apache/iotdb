@@ -23,24 +23,13 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.*;
 
 public class MergePlan extends PhysicalPlan {
 
-  private static final Logger logger = LoggerFactory.getLogger(MergePlan.class);
-  /**
-   * key-> storage group, value->list of pair, Pair<PartitionId, isSequence>,
-   *
-   * <p>Notice, the value maybe null, when it is null, all partitions under the storage groups are
-   * flushed, so do not use {@link java.util.concurrent.ConcurrentHashMap} when initializing as
-   * ConcurrentMap dose not support null key and value
-   */
   private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
 
-  // being null indicates flushing both seq and unseq data
+  // being null indicates mergeing both seq and unseq data
 
   public MergePlan(List<PartialPath> storageGroups, OperatorType operatorType) {
     super(false, operatorType);
