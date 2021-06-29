@@ -19,13 +19,13 @@
 
 -->
 
-# 时区
+# Time zone
 
-客户端连接 IoTDB 服务器时，可以指定该连接所要使用的时区。如果未指定，则**默认以服务器所在的时区作为默认的时区值。**
+When a client connects to the iotdb server, it can specify the time zone to be used for this connection. If not specified, the default time zone value is the time zone of the client.
 
-时区被用来：1. 将客户端传来的时间格式的字符串转化为相应的时间戳；2. 将服务器返回给客户端结果中包含的时间戳转化为时间格式字符串。
+Time zone is used to: 1. Convert the time format string sent from client to corresponding time stamp; 2. Convert the timestamp in the result returned by the server into a time format string.
 
-在 JDBC 和 Session 原生接口连接中均可以设置时区，使用方法如下：
+The time zone can be set in both JDBC and session native interface connections. The usage is as follows:
 
 ```java
 (IoTDBConnection) connection.setTimeZone("+08:00");
@@ -33,7 +33,7 @@
 session.setTimeZone("+08:00");
 ```
 
-查看当前连接使用的时区的方法如下：
+The way to view the time zone used by the current connection is as follows:
 
 ```java
 (IoTDBConnection) connection.getTimeZone();
