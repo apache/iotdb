@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.alertmanager;
+package org.apache.iotdb.db.engine.trigger.sink.alertmanager;
 
-import org.apache.iotdb.db.sink.api.Handler;
-import org.apache.iotdb.db.sink.exception.SinkException;
+import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;

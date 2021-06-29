@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.mqtt;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
-import org.apache.iotdb.db.sink.api.Handler;
-import org.apache.iotdb.db.sink.exception.SinkException;
+import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.fusesource.mqtt.client.BlockingConnection;

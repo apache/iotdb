@@ -17,6 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.api;
 
-public interface Event {}
+public interface Handler<C extends Configuration, E extends Event> {
+
+  @SuppressWarnings("squid:S112")
+  default void open(C configuration) throws Exception {}
+
+  @SuppressWarnings("squid:S112")
+  default void close() throws Exception {}
+
+  @SuppressWarnings("squid:S112")
+  void onEvent(E event) throws Exception;
+}

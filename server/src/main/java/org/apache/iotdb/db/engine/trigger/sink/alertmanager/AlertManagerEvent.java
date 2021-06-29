@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.alertmanager;
+package org.apache.iotdb.db.engine.trigger.sink.alertmanager;
 
-import org.apache.iotdb.db.sink.api.Event;
-import org.apache.iotdb.db.sink.exception.SinkException;
+import org.apache.iotdb.db.engine.trigger.sink.api.Event;
+import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
