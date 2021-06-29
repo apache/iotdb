@@ -708,11 +708,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     } finally {
       isSeqMerging = false;
       // reset the merge working state to false
-      logger.info(
-          "{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
-          storageGroupName,
-          sequence,
-          System.currentTimeMillis() - startTimeMillis);
+      if (isMergeExecutedInCurrentTask) {
+        logger.info(
+            "{} [Compaction] merge end time isSeq = {}, consumption: {} ms",
+            storageGroupName,
+            sequence,
+            System.currentTimeMillis() - startTimeMillis);
+      }
     }
     return isMergeExecutedInCurrentTask;
   }

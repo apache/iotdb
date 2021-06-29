@@ -1878,7 +1878,6 @@ public class StorageGroupProcessor {
   }
 
   private void syncCompactOnePartition(long timePartition, boolean fullMerge) {
-    logger.info("{} submit a compaction merge task", storageGroupName);
     try {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
