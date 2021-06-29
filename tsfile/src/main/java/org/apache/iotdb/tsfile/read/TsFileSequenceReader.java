@@ -378,7 +378,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -393,7 +393,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
     }
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
