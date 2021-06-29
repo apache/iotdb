@@ -67,7 +67,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.Constants;
-import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -93,6 +92,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1334,7 +1334,7 @@ public class MetaGroupMemberTest extends BaseMember {
     StorageEngine.setEnablePartition(false);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
-    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    TimeValuePairUtils.Intervals intervals = new TimeValuePairUtils.Intervals();
     intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
 
     List<PartitionGroup> partitionGroups =
@@ -1350,7 +1350,7 @@ public class MetaGroupMemberTest extends BaseMember {
     StorageEngine.setEnablePartition(true);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
-    PartitionUtils.Intervals intervals = new PartitionUtils.Intervals();
+    TimeValuePairUtils.Intervals intervals = new TimeValuePairUtils.Intervals();
     intervals.addInterval(Long.MIN_VALUE, Long.MAX_VALUE);
 
     List<PartitionGroup> partitionGroups =
