@@ -242,6 +242,10 @@ public class CommittedEntryManager {
       }
       entries.addAll(appendingEntries);
     } else if (entries.size() - offset > 0) {
+      logger.error(
+          "committed entries cannot be truncated: current entries:{}, appendingEntries {}",
+          entries,
+          appendingEntries);
       throw new TruncateCommittedEntryException(
           appendingEntries.get(0).getCurrLogIndex(), getLastIndex());
     } else {
