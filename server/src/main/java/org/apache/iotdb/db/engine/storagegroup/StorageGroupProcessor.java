@@ -519,10 +519,6 @@ public class StorageGroupProcessor {
 
     @Override
     public Void call() {
-      logger.info(
-          "all partition in storage group {}: {}",
-          logicalStorageGroupName,
-          partitionLatestFlushedTimeForEachDevice.keySet());
       for (long timePartitionId : partitionLatestFlushedTimeForEachDevice.keySet()) {
         syncCompactOnePartition(
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
@@ -1990,11 +1986,6 @@ public class StorageGroupProcessor {
   }
 
   private void syncCompactOnePartition(long timePartition, boolean fullMerge) {
-    logger.info(
-        "{}-{} partition:{}, submit a compaction merge task",
-        logicalStorageGroupName,
-        virtualStorageGroupId,
-        timePartition);
     try {
       // fork and filter current tsfile, then commit then to compaction merge
       tsFileManagement.forkCurrentFileList(timePartition);
