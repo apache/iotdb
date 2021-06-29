@@ -592,7 +592,9 @@ public class Session {
 
   private SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
-    if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+    if (enableCacheLeader
+        && deviceIdToEndpoint.size() != 0
+        && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
     } else {
       return defaultSessionConnection;
@@ -794,7 +796,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1016,7 +1018,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1101,7 +1103,9 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader
+          && deviceIdToEndpoint.size() != 0
+          && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
@@ -1122,7 +1126,9 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
+      if (enableCacheLeader
+          && deviceIdToEndpoint.size() != 0
+          && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
@@ -1192,7 +1198,7 @@ public class Session {
     SessionConnection connection;
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
-      endPoint = deviceIdToEndpoint.get(entry.getKey());
+      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(entry.getKey());
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
