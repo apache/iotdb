@@ -63,8 +63,8 @@ public class CompactionRecoverTask implements Callable<Void> {
     logger.warn("try to synchronize CompactionScheduler");
     CompactionScheduler.decPartitionCompaction(
         logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-    compactionRecoverCallBack.call();
     CompactionScheduler.currentTaskNum.decrementAndGet();
+    compactionRecoverCallBack.call();
     logger.warn(
         "recover task finish, current compaction thread is {}",
         CompactionScheduler.currentTaskNum.get());
