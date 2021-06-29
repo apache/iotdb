@@ -26,7 +26,8 @@ import java.util.Map;
 
 public interface SnapshotInstaller<T extends Snapshot> {
 
-  void install(T snapshot, int slot) throws SnapshotInstallationException;
+  void install(T snapshot, int slot, boolean isDataMigration) throws SnapshotInstallationException;
 
-  void install(Map<Integer, T> snapshotMap) throws SnapshotInstallationException;
+  void install(Map<Integer, T> snapshotMap, boolean isDataMigration)
+      throws SnapshotInstallationException;
 }

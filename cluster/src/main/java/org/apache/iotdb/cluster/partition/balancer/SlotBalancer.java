@@ -17,25 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.local;
+package org.apache.iotdb.cluster.partition.balancer;
 
-import org.apache.iotdb.db.sink.api.Event;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 
-public class LocalIoTDBEvent implements Event {
+import java.util.List;
+import java.util.Map;
 
-  private final long timestamp;
-  private final Object[] values;
+/** When add/remove node, the slots need to be redistributed. */
+public interface SlotBalancer {
 
-  public LocalIoTDBEvent(long timestamp, Object... values) {
-    this.timestamp = timestamp;
-    this.values = values;
-  }
+  /**
+   * When add a new node, new raft groups will take over some hash slots from another raft groups.
+   */
+  void moveSlotsToNew(Node newNode, List<Node> oldRing);
 
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object[] getValues() {
-    return values;
-  }
+  /**
+   * When remove a old node, all hash slots of the removed groups will assigned to other raft
+   * groups.
+   *
+   * @param target the node to be removed
+   */
+  Map<RaftNode, List<Integer>> retrieveSlots(Node target);
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -491,6 +492,31 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "target_compaction_file_size",
                   Long.toString(conf.getTargetCompactionFileSize()))));
+
+      conf.setContinuousQueryThreadNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "continuous_query_thread_num",
+                  Integer.toString(conf.getContinuousQueryThreadNum()))));
+
+      if (conf.getContinuousQueryThreadNum() <= 0) {
+        conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+      }
+
+      conf.setMaxPendingContinuousQueryTasks(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_pending_continuous_query_tasks",
+                  Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
+
+      if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
+        conf.setMaxPendingContinuousQueryTasks(64);
+      }
+
+      conf.setContinuousQueryMinimumEveryInterval(
+          DatetimeUtils.convertDurationStrToLong(
+              properties.getProperty("continuous_query_minimum_every_interval", "1s")));
+
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(

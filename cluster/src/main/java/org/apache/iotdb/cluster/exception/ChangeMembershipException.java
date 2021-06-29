@@ -17,6 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.cluster.exception;
 
-public interface Event {}
+/** Raised when add/remove membership log can not be sent to all data groups */
+public class ChangeMembershipException extends Exception {
+
+  public ChangeMembershipException(String errMsg) {
+    super(String.format("Change membership fails, error message=%s ", errMsg));
+  }
+}

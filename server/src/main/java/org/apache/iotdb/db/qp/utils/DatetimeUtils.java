@@ -32,6 +32,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
+import java.util.concurrent.TimeUnit;
 
 public class DatetimeUtils {
 
@@ -618,6 +619,29 @@ public class DatetimeUtils {
       } else {
         return res;
       }
+    }
+  }
+
+  public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
+    if (timestampPrecision.equals("us")) {
+      return TimeUnit.MICROSECONDS;
+    } else if (timestampPrecision.equals("ns")) {
+      return TimeUnit.NANOSECONDS;
+    } else {
+      return TimeUnit.MILLISECONDS;
+    }
+  }
+
+  public static long currentTime() {
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
+      case "us":
+        return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
+      default:
+        return System.currentTimeMillis();
     }
   }
 

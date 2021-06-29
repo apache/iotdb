@@ -22,34 +22,20 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 
 import io.airlift.airline.Command;
-import io.airlift.airline.Option;
 
 import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
-@Command(
-    name = "host",
-    description = "Print partitions information which a specific host belongs to")
-public class Host extends NodeToolCmd {
-
-  @Option(
-      title = "all nodes",
-      name = {"-a", "--all"},
-      description = "Show all nodes partition info")
-  private boolean showAll = false;
+@Command(name = "slot", description = "Print slot information of all data groups")
+public class Slot extends NodeToolCmd {
 
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    Map<PartitionGroup, Integer> raftGroupMapSlotNum;
-    if (showAll) {
-      raftGroupMapSlotNum = proxy.getSlotNumOfAllNode();
-    } else {
-      raftGroupMapSlotNum = proxy.getSlotNumOfCurNode();
-    }
+    Map<PartitionGroup, Integer> raftGroupMapSlotNum = proxy.getSlotNumOfAllNode();
     if (raftGroupMapSlotNum == null) {
-      msgPrintln("The cluster is being created.");
+      msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
     showInfo(raftGroupMapSlotNum);
@@ -70,8 +56,8 @@ public class Host extends NodeToolCmd {
       for (int i = 1; i < raftGroup.size(); i++) {
         builder.append(", ").append(nodeToString(raftGroup.get(i)));
       }
-      builder.append(')');
-      msgPrintln(String.format("%-50s->%20s", builder, slotNum));
+      builder.append("),id=").append(raftGroup.getId());
+      msgPrintln(String.format("%-50s->%20s", builder.toString(), slotNum));
     }
   }
 }

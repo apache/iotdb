@@ -34,9 +34,11 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -133,6 +135,16 @@ public class MLogWriter implements AutoCloseable {
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     putLog(deleteTimeSeriesPlan);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
+      throws IOException {
+    putLog(createContinuousQueryPlan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
+      throws IOException {
+    putLog(dropContinuousQueryPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
@@ -275,7 +287,7 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public static void upgradeMLog() throws IOException {
+  public static synchronized void upgradeMLog() throws IOException {
     String schemaDir = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
     upgradeTxtToBin(
         schemaDir, MetadataConstant.METADATA_TXT_LOG, MetadataConstant.METADATA_LOG, false);
@@ -294,16 +306,17 @@ public class MLogWriter implements AutoCloseable {
     logWriter = new LogWriter(logFile, false);
   }
 
-  public int getLogNum() {
+  public synchronized int getLogNum() {
     return logNum;
   }
 
   /** only used for initialize a mlog file writer. */
-  public void setLogNum(int number) {
+  public synchronized void setLogNum(int number) {
     logNum = number;
   }
 
-  public void operation(String cmd, boolean isSnapshot) throws IOException, MetadataException {
+  public synchronized void operation(String cmd, boolean isSnapshot)
+      throws IOException, MetadataException {
     if (!isSnapshot) {
       operation(cmd);
     } else {
@@ -322,7 +335,7 @@ public class MLogWriter implements AutoCloseable {
    * @throws MetadataException
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void operation(String cmd) throws IOException, MetadataException {
+  public synchronized void operation(String cmd) throws IOException, MetadataException {
     // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
@@ -417,11 +430,11 @@ public class MLogWriter implements AutoCloseable {
     }
   }
 
-  public void force() throws IOException {
+  public synchronized void force() throws IOException {
     logWriter.force();
   }
 
-  public static PhysicalPlan convertFromString(String str) {
+  public static synchronized PhysicalPlan convertFromString(String str) {
     String[] words = str.split(",");
     switch (words[0]) {
       case "2":

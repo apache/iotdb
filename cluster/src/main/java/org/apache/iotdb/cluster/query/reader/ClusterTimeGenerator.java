@@ -203,7 +203,8 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
                   filter,
                   context,
                   dataGroupMember,
-                  queryPlan.isAscending());
+                  queryPlan.isAscending(),
+                  null);
 
           if (pointReader.hasNextTimeValuePair()) {
             this.hasLocalReader = true;
@@ -215,8 +216,8 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
         } else if (endPoint == null) {
           endPoint =
               new QueryDataSet.EndPoint(
-                  partitionGroup.getHeader().getClientIp(),
-                  partitionGroup.getHeader().getClientPort());
+                  partitionGroup.getHeader().getNode().getClientIp(),
+                  partitionGroup.getHeader().getNode().getClientPort());
         }
       }
     } catch (Exception e) {

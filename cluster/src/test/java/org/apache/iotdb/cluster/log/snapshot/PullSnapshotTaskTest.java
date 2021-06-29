@@ -178,7 +178,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                       }
 
                       @Override
-                      public void updateKnownMessageSize(long size) throws TTransportException {}
+                      public void updateKnownMessageSize(long size) {}
 
                       @Override
                       public void checkReadBytesAvailable(long numBytes)
@@ -194,6 +194,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
           }
         };
     sourceMember.setMetaGroupMember(metaGroupMember);
+    sourceMember.setLogManager(new TestLogManager(0));
     sourceMember.setThisNode(TestUtils.getNode(0));
     targetMember =
         new TestDataGroupMember() {
@@ -309,7 +310,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
             loadedFiles.get(i).getMaxPlanIndex(),
             loadedFiles.get(i).getTsFile().getAbsolutePath());
       }
-      assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
+      assertEquals(-1, loadedFiles.get(i).getMaxPlanIndex());
     }
     assertEquals(0, processor.getUnSequenceFileList().size());
 

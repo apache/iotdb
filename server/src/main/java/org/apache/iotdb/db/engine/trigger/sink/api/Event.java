@@ -17,19 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.alertmanager;
+package org.apache.iotdb.db.engine.trigger.sink.api;
 
-import org.apache.iotdb.db.sink.api.Configuration;
-
-public class AlertManagerConfiguration implements Configuration {
-
-  private final String endpoint;
-
-  public AlertManagerConfiguration(String endpoint) {
-    this.endpoint = endpoint;
-  }
-
-  public String getEndpoint() {
-    return endpoint;
-  }
-}
+public interface Event {}

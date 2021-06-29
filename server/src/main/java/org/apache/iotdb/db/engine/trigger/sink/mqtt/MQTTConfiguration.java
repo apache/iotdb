@@ -17,35 +17,58 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.local;
+package org.apache.iotdb.db.engine.trigger.sink.mqtt;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.sink.api.Configuration;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class LocalIoTDBConfiguration implements Configuration {
+public class MQTTConfiguration implements Configuration {
+
+  private final String host;
+  private final int port;
+
+  private final String username;
+  private final String password;
 
   private final PartialPath device;
   private final String[] measurements;
-  private final TSDataType[] dataTypes;
 
-  public LocalIoTDBConfiguration(String device, String[] measurements, TSDataType[] dataTypes)
-      throws IllegalPathException {
-    this.device = new PartialPath(device);
+  public MQTTConfiguration(
+      String host,
+      int port,
+      String username,
+      String password,
+      PartialPath device,
+      String[] measurements) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.device = device;
     this.measurements = measurements;
-    this.dataTypes = dataTypes;
   }
 
-  public PartialPath getDevice() {
-    return device;
+  public String getHost() {
+    return host;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getPassword() {
+    return password;
   }
 
   public String[] getMeasurements() {
     return measurements;
   }
 
-  public TSDataType[] getDataTypes() {
-    return dataTypes;
+  public PartialPath getDevice() {
+    return device;
   }
 }
