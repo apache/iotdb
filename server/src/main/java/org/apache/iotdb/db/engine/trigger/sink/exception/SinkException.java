@@ -17,25 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.local;
+package org.apache.iotdb.db.engine.trigger.sink.exception;
 
-import org.apache.iotdb.db.sink.api.Event;
+public class SinkException extends Exception {
 
-public class LocalIoTDBEvent implements Event {
-
-  private final long timestamp;
-  private final Object[] values;
-
-  public LocalIoTDBEvent(long timestamp, Object... values) {
-    this.timestamp = timestamp;
-    this.values = values;
+  public SinkException(String message) {
+    super(message);
   }
 
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object[] getValues() {
-    return values;
+  public SinkException(String message, Throwable cause) {
+    super(message, cause);
   }
 }

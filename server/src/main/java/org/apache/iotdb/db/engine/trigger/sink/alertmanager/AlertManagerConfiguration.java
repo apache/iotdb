@@ -17,46 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.mqtt;
+package org.apache.iotdb.db.engine.trigger.sink.alertmanager;
 
-import org.apache.iotdb.db.sink.api.Event;
+import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 
-import org.fusesource.mqtt.client.QoS;
+public class AlertManagerConfiguration implements Configuration {
 
-public class MQTTEvent implements Event {
+  private final String endpoint;
 
-  private final String topic;
-  private final QoS qos;
-  private final boolean retain;
-
-  private final long timestamp;
-  private final Object[] values;
-
-  public MQTTEvent(String topic, QoS qos, boolean retain, long timestamp, Object... values) {
-    this.topic = topic;
-    this.qos = qos;
-    this.retain = retain;
-    this.timestamp = timestamp;
-    this.values = values;
+  public AlertManagerConfiguration(String endpoint) {
+    this.endpoint = endpoint;
   }
 
-  public String getTopic() {
-    return topic;
-  }
-
-  public QoS getQoS() {
-    return qos;
-  }
-
-  public boolean retain() {
-    return retain;
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object[] getValues() {
-    return values;
+  public String getEndpoint() {
+    return endpoint;
   }
 }

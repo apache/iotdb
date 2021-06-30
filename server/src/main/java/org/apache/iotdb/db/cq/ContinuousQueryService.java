@@ -114,6 +114,7 @@ public class ContinuousQueryService implements IService {
       } catch (InterruptedException e) {
         logger.warn("Check thread still doesn't exit after 60s");
         checkThread.shutdownNow();
+        Thread.currentThread().interrupt();
       }
     }
   }
