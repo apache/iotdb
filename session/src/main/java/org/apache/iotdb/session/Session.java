@@ -253,6 +253,11 @@ public class Session {
         Config.DEFAULT_CACHE_LEADER_MODE);
   }
 
+  /**
+   * Multiple nodeUrl,If one node down, connect to the next one
+   *
+   * @param nodeUrls List<String> Multiple ip:rpcPort eg.127.0.0.1:9001
+   */
   public Session(List<String> nodeUrls, String username, String password, int fetchSize) {
     this(
         nodeUrls,
@@ -589,7 +594,7 @@ public class Session {
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
-        logger.debug("{} redirect query {} to {}", defaultEndPoint, sql, e.getEndPoint());
+        logger.debug("redirect query {} to {}", sql, e.getEndPoint());
         // retry
         try {
           return defaultSessionConnection.executeQueryStatement(sql, timeout);

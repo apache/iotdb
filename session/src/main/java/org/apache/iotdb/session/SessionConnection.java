@@ -155,9 +155,6 @@ public class SessionConnection {
 
   private void initClusterConn() throws IoTDBConnectionException {
     for (EndPoint endPoint : endPointList) {
-      if (endPoint == null) {
-        continue;
-      }
       try {
         session.defaultEndPoint = endPoint;
         init(endPoint);
@@ -752,9 +749,6 @@ public class SessionConnection {
         transport.close();
         int currHostIndex = endPointList.indexOf(session.defaultEndPoint);
         for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (j == -1) {
-            continue;
-          }
           try {
             init(endPointList.get(j));
             flag = true;

@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class SessionUtils {
@@ -161,7 +160,7 @@ public class SessionUtils {
 
   public static List<EndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
-      return Collections.emptyList();
+      throw new NumberFormatException("nodeUrls is null");
     }
     List<EndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
@@ -175,15 +174,14 @@ public class SessionUtils {
     EndPoint endPoint = new EndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
-      return null;
+      throw new NumberFormatException("NodeUrl Incorrect format");
     }
     String ip = split[0];
     try {
       int rpcPort = Integer.parseInt(split[1]);
       return endPoint.setIp(ip).setPort(rpcPort);
-    } catch (NumberFormatException e) {
-      logger.warn("parse url fail {}", nodeUrl);
+    } catch (Exception e) {
+      throw new NumberFormatException("NodeUrl Incorrect format");
     }
-    return endPoint;
   }
 }
