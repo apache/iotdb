@@ -593,7 +593,7 @@ public class Session {
   private SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
     if (enableCacheLeader
-        && deviceIdToEndpoint.size() != 0
+        && !deviceIdToEndpoint.isEmpty()
         && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
     } else {
@@ -796,7 +796,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1018,7 +1018,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1104,7 +1104,7 @@ public class Session {
     EndPoint endPoint;
     try {
       if (enableCacheLeader
-          && deviceIdToEndpoint.size() != 0
+          && !deviceIdToEndpoint.isEmpty()
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -1127,7 +1127,7 @@ public class Session {
     EndPoint endPoint;
     try {
       if (enableCacheLeader
-          && deviceIdToEndpoint.size() != 0
+          && !deviceIdToEndpoint.isEmpty()
           && (endPoint = deviceIdToEndpoint.get(tablet.deviceId)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
@@ -1198,7 +1198,7 @@ public class Session {
     SessionConnection connection;
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
-      endPoint = deviceIdToEndpoint.size() == 0 ? null : deviceIdToEndpoint.get(entry.getKey());
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(entry.getKey());
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
