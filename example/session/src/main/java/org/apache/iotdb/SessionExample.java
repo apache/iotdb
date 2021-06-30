@@ -652,5 +652,6 @@ public class SessionExample {
     nodeList.add("127.0.0.1:6668");
     Session clusterSession = new Session(nodeList, "root", "root");
     clusterSession.open();
+    clusterSession.close();
   }
 }
