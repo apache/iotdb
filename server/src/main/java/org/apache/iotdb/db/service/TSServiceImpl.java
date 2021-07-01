@@ -277,8 +277,6 @@ public class TSServiceImpl implements TSIService.Iface {
           "User {} opens Session failed with an incorrect password", req.getUsername());
     }
 
-    SessionTimeoutManager.getInstance().register(sessionId);
-
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(sessionId);
   }
@@ -293,8 +291,6 @@ public class TSServiceImpl implements TSIService.Iface {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
     currSessionId.remove();
-
-    SessionTimeoutManager.getInstance().unregister(req.sessionId);
 
     return new TSStatus(
         !sessionManager.releaseSessionResource(sessionId)
@@ -1866,6 +1862,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       return executeNonQueryPlan(multiPlan);
     } catch (Exception e) {
+      LOGGER.error("creating multi timeseries fails", e);
       return onNPEOrUnexpectedException(
           e, "creating multi timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }

@@ -66,49 +66,60 @@
 
 ### 1.2 TsFile Overview
 
+<!-- TODO
+
 Here is the structure diagram of TsFile.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/123052025-f47aab80-d434-11eb-94c2-9b75429e5c54.png">
 
-This TsFile contains two devices: d1, d2. Each device contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
+This TsFile contains two entities: d1, d2. Each entity contains two measurements: s1, s2. 4 timeseries in total. Each timeseries contains 2 Chunks.
 
-Here is another representation of the TsFile structure:
+-->
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/98808354-ed2f0080-2456-11eb-8e7f-b11a4759d560.png">
+There are two parts in TsFile: **Data Area** and **Index Area**.
 
-This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total. Each timeseries contains 2 Chunks.
+There are three concepts, from small to large, in **Data Area:**
 
-There are three parts of metadata
+* **Page**: A page is a sequence of timeseries. It is the smallest unit in which a data block is deserialized.
 
-* A list of ChunkMetadata organized by timeseries.
-* A list of TimeseriesMetadata organized by timeseries.
-* TsFileMetadata
+* **Chunk**: A chunk contains several pages in one timeseries. It is the smallest unit in which a data block is read by IO.
 
-Query Process：e.g., read d1.s1
+* **ChunkGroup**: A chunk group contains several chunks in one entity.
 
-* deserialize TsFileMetadata，get the position of TimeseriesMetadata of d1.s1
-* deserialize and get the TimeseriesMetadata of d1.s1
-* according to TimeseriesMetadata of d1.s1，deserialize all ChunkMetadata of d1.s1 
-* according to each ChunkMetadata of d1.s1，read its Chunk
+There are three parts in **Index Area**:
+
+* **TimeseriesIndex** organized by timeseries, containing a header and list of ChunkIndex. The header records data type and statistics (maximum and minimum timestamps, etc.) of a time series in the file. The data block index list records the offsets of the chunks in the file, and the related statistics (maximum and minimum timestamps, etc.).
+* **IndexOfTimeseriesIndex** for index the offsets of TimeseriesIndex in the file.
+* **BloomFilter** for entities.
+
+
+
+Here is the structure diagram of TsFile:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542462-6710c180-d77c-11eb-9afb-a1b495c82ea9.png">
+
+This TsFile contains two entities: d1, d2. Each entity contains three measurements: s1, s2, s3. 6 timeseries in total. Each timeseries contains 2 Chunks.
+
+Query Process of reading d1.s1:
+
+* Deserialize IndexOfTimeseriesIndex, get the position of TimeseriesIndex of d1.s1
+* Deserialize and get the TimeseriesIndex of d1.s1
+* According to TimeseriesIndex of d1.s1, deserialize all ChunkIndex of d1.s1 
+* According to each ChunkIndex of d1.s1, read its Chunk
 
 #### 1.2.1 Magic String and Version Number
 
 A TsFile begins with a 6-byte magic string (`TsFile`) and a 6-byte version number (`000002`).
 
-#### 1.2.2 Data
-
-The content of a TsFile file can be divided as two parts: data (Chunk) and metadata (XXMetadata). There is a byte `0x02` as the marker between
-data and metadata.
-
-The data section is an array of `ChunkGroup`, each ChunkGroup represents a *device*.
+#### 1.2.2 Data Area
 
 ##### ChunkGroup
 
-The `ChunkGroup` consists of several `Chunk`, a byte delimiter`0x00` and a `ChunkFooter`.
+A `ChunkGroup` stores the data of an entity for a period of time. It consists of several `Chunk`, a byte delimiter`0x00` and a `ChunkFooter`.
 
 ##### Chunk
 
-A `Chunk` represents the data of a *measurement* in a time range, data points in Chunks are in time ascending order. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
+A `Chunk` stores the data of a measurement for a period of time. The data in a chunk is stored in time increment order. It consists of a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
 ##### ChunkHeader
 |             Member             |  Type  | Description |
@@ -122,9 +133,9 @@ A `Chunk` represents the data of a *measurement* in a time range, data points in
 
 ##### Page
 
-A `Page` represents some data in a `Chunk`. It contains a `PageHeader` and the actual data (The encoded time-value pair).
+A `Page` stores a sequence of timeseries. It is the smallest unit in which a data block is deserialized. It contains a `PageHeader` and the actual data (encoded time-value pairs).
 
-PageHeader Structure
+PageHeader Structure:
 
 |             Member             |  Type  | Description |
 | :----------------------------------: | :--------------: | :----: |
@@ -134,31 +145,31 @@ PageHeader Structure
 
 Here is the detailed information for `statistics`:
 
- |             Member               | Description | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
- | :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
- | count  | number of time-value points | long | long | long | long | long | long | 
- | startTime | start time | long | long | long | long | long | long | 
- | endTime | end time | long | long | long | long | long | long | 
- | minValue | min value | double | float | int | long | - | - |
- | maxValue | max value | double | float | int | long | - | - |
- | firstValue | first value | double | float | int | long | Binary | boolean|
- | lastValue | last value | double | float | int | long | Binary | boolean|
- | sumValue | sum value | double | double | double | double | - | - |
- | extreme | extreme value | double | float | int | long | - | - |
- 
+|             Member               | Description | DoubleStatistics | FloatStatistics | IntegerStatistics | LongStatistics | BinaryStatistics | BooleanStatistics |
+| :----------------------------------: | :--------------: | :----: | :----: | :----: | :----: | :----: | :----: |
+| count  | number of time-value points | long | long | long | long | long | long |
+| startTime | start time | long | long | long | long | long | long |
+| endTime | end time | long | long | long | long | long | long |
+| minValue | min value | double | float | int | long | - | - |
+| maxValue | max value | double | float | int | long | - | - |
+| firstValue | first value | double | float | int | long | Binary | boolean|
+| lastValue | last value | double | float | int | long | Binary | boolean|
+| sumValue | sum value | double | double | double | double | - | - |
+| extreme | extreme value | double | float | int | long | - | - |
+
 ##### ChunkGroupFooter
 
 |             Member             |  Type  | Description |
 | :--------------------------------: | :----: | :----: |
-|         deviceID          | String | Name of device |
+|         entityID  | String | Name of entity |
 |      dataSize      |  long  | Data size of the ChunkGroup |
 | numberOfChunks |  int   | Number of chunks |
 
-#### 1.2.3  Metadata
+#### 1.2.3  Index Area
 
-##### 1.2.3.1 ChunkMetadata
+##### 1.2.3.1 ChunkIndex
 
-The first part of metadata is `ChunkMetadata` 
+The first part of index is `ChunkIndex` :
 
 |             Member             |  Type  | Description |
 | :------------------------------------------------: | :------: | :----: |
@@ -167,73 +178,74 @@ The first part of metadata is `ChunkMetadata`
 |                tsDataType                |  TSDataType   | Data type |
 |   statistics    |       Statistics        | Statistic values |
 
-##### 1.2.3.2 TimeseriesMetadata
+##### 1.2.3.2 TimeseriesIndex
 
-The second part of metadata is `TimeseriesMetadata`.
+The second part of index is `TimeseriesIndex`:
 
 |             Member             |  Type  | Description |
 | :------------------------------------------------: | :------: | :------: |
 |             measurementUid            |  String  | Name of measurement |
 |               tsDataType                |  short   |  Data type |
-| startOffsetOfChunkMetadataList |  long  | Start offset of ChunkMetadata list |
-|  chunkMetaDataListDataSize  |  int  | ChunkMetadata list size |
+| startOffsetOfChunkIndexList |  long  | Start offset of ChunkIndex list |
+|  ChunkIndexListDataSize  |  int  | ChunkIndex list size |
 |   statistics    |       Statistics        | Statistic values |
 
-##### 1.2.3.3 TsFileMetaData
+##### 1.2.3.3 IndexOfTimeseriesIndex (Secondary Index)
 
-The third part of metadata is `TsFileMetaData`.
+The third part of index is `IndexOfTimeseriesIndex`:
 
 |             Member             |  Type  | Description |
 | :-------------------------------------------------: | :---------------------: | :---: |
-|       MetadataIndex              |   MetadataIndexNode      | MetadataIndex node |
-|           totalChunkNum            |                int                 | total chunk num |
-|          invalidChunkNum           |                int                 | invalid chunk num |
-|                versionInfo         |             List<Pair<Long, Long>>       | version information |
-|        metaOffset   |                long                 | offset of MetaMarker.SEPARATOR |
+|       IndexTree       |   IndexNode      | Root index node of IndexTree |
+| offsetOfIndexArea   |                long                 | offset of index area |
 |                bloomFilter                 |                BloomFilter      | bloom filter |
 
-MetadataIndexNode has members as below:
+IndexNode has members as below:
 
 |             Member             |  Type  | Description |
 | :------------------------------------: | :----: | :---: |
-|      children    | List<MetadataIndexEntry> | MetadataIndexEntry list |
-|       endOffset      | long |    EndOffset of this MetadataIndexNode |
-|   nodeType    | MetadataIndexNodeType | MetadataIndexNode type |
+|      children    | List<IndexEntry> | IndexEntry list |
+|       endOffset      | long |    EndOffset of this IndexNode |
+|   nodeType    | IndexNodeType | IndexNode type |
 
-MetadataIndexEntry has members as below:
+IndexEntry has members as below:
 
 |             Member             |  Type  | Description |
 | :------------------------------------: | :----: | :---: |
-|  name    | String | Name of related device or measurement |
+|  name    | String | Name of related entity or measurement |
 |     offset     | long   | offset |
 
-All MetadataIndexNode forms a **metadata index tree**, which consists of no more than two levels: device index level and measurement index level. In different situation, the tree could have different components. The MetadataIndexNodeType has four enums: `INTERNAL_DEVICE`, `LEAF_DEVICE`, `INTERNAL_MEASUREMENT`, `LEAF_MEASUREMENT`, which indicates the internal or leaf node of device index level and measurement index level respectively. Only the `LEAF_MEASUREMENT` nodes point to `TimeseriesMetadata`.
+All IndexNode forms an **index tree (secondary index)** like a B+ tree, which consists of two levels: entity index level and measurement index level. The IndexNodeType has four enums: `INTERNAL_ENTITY`, `LEAF_ENTITY`, `INTERNAL_MEASUREMENT`, `LEAF_MEASUREMENT`, which indicates the internal or leaf node of entity index level and measurement index level respectively. Only the `LEAF_MEASUREMENT` nodes point to `TimeseriesIndex`.
 
-To describe the structure of metadata index tree more clearly, we will give four examples here in details.
+Here are four detailed examples.
 
-The max degree of the metadata index tree (that is, the max number of each node's children) could be configured by users, and is 256 by default. In the examples below, we assume `max_degree_of_index_node = 10` in the following examples.
+The degree of the index tree (that is, the max number of each node's children) could be configured by users, and is 256 by default. In the examples below, we assume `max_degree_of_index_node = 10`.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
+* Example 1: 5 entities with 5 measurements each
 
-In the case of 5 devices with 5 measurements each: Since the numbers of devices and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 MetadataIndex entries point to MetadataIndex nodes of related devices. These nodes point to  `TimeseriesMetadata` directly, as they are `LEAF_MEASUREMENT` type.
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677230-134e2780-d214-11eb-9603-ac7b95bc0668.png">
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935210-d97b1c80-9622-11ea-8a69-2c2c5f05a876.png">
+In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
 
-In the case of 1 device with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
+* Example 2: 1 entity with 150 measurements
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95592841-c0fd1a00-0a7b-11eb-9b46-dfe8b2f73bfb.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677233-15b08180-d214-11eb-8d09-c741cca59262.png">
 
-In the case of 150 device with 1 measurement each: The number of devices exceeds `max_degree_of_index_node`, so the device index level and measurement index level of the tree are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of device index level, which are `LEAF_DEVICE` type. Other nodes and root node of index tree are not leaf nodes of device index level, so they are `INTERNAL_DEVICE` type.
+In the case of 1 entity with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935138-b6e90380-9622-11ea-94f9-c97bd2b5d050.png">
+* Example 3: 150 entities with 1 measurement each
 
-In the case of 150 device with 150 measurements each: The numbers of devices and measurements both exceed `max_degree_of_index_node`, so the device index level and measurement index level are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. As is described before, from the root node to the leaf nodes of device index level, their types are `INTERNAL_DEVICE` and `LEAF_DEVICE`; each leaf node of device index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122771008-9a64d380-d2d8-11eb-9044-5ac794dd38f7.png">
 
-The MetadataIndex is designed as tree structure so that not all the `TimeseriesMetadata` need to be read when the number of devices or measurements is too large. Only reading specific MetadataIndex nodes according to requirement and reducing I/O could speed up the query. More reading process of TsFile in details will be described in the last section of this chapter.
+In the case of 150 entities with 1 measurement each: The number of entities exceeds `max_degree_of_index_node`, so the entity index level and measurement index level of the tree are both formed. In these two levels, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of entity index level, which are `LEAF_ENTITY` type. Other nodes and root node of index tree are not leaf nodes of entity level, so they are `INTERNAL_ENTITY` type.
 
-##### 1.2.3.4 TsFileMetadataSize
+* Example 4: 150 entities with 150 measurements each
 
-After the TsFileMetaData, there is an int indicating the size of the TsFileMetaData.
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677241-1a753580-d214-11eb-817f-17bcf797251f.png">
+
+In the case of 150 entities with 150 measurements each: The numbers of entities and measurements both exceed `max_degree_of_index_node`, so the entity index level and measurement index level are both formed. In these two levels, each IndexNode is composed of no more than 10 index entries. As is described before, from the root node to the leaf nodes of entity index level, their types are `INTERNAL_ENTITY` and `LEAF_ENTITY`; each leaf node of entity index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
+
+The IndexTree is designed as tree structure so that not all the `TimeseriesIndex` need to be read when the number of entities or measurements is too large. Only reading specific IndexTree nodes according to requirement and reducing I/O could speed up the query. More reading process of TsFile in details will be described in the last section of this chapter.
 
 
 #### 1.2.4 Magic String
@@ -512,39 +524,39 @@ file length: 33436
                     |   [marker] 3
                     |   [version] 102
                30009| [marker] 2
-               30010| [ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_PLAIN, tsDataType:BOOLEAN
+               30010| [ChunkIndexList] of root.group_12.d0.s_BOOLEANe_PLAIN, tsDataType:BOOLEAN
                     | [startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
-               30066| [ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_RLE, tsDataType:BOOLEAN
+               30066| [ChunkIndexList] of root.group_12.d0.s_BOOLEANe_RLE, tsDataType:BOOLEAN
                     | [startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
-               30120| [ChunkMetadataList] of root.group_12.d1.s_INT32e_PLAIN, tsDataType:INT32
+               30120| [ChunkIndexList] of root.group_12.d1.s_INT32e_PLAIN, tsDataType:INT32
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30196| [ChunkMetadataList] of root.group_12.d1.s_INT32e_RLE, tsDataType:INT32
+               30196| [ChunkIndexList] of root.group_12.d1.s_INT32e_RLE, tsDataType:INT32
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30270| [ChunkMetadataList] of root.group_12.d1.s_INT32e_TS_2DIFF, tsDataType:INT32
+               30270| [ChunkIndexList] of root.group_12.d1.s_INT32e_TS_2DIFF, tsDataType:INT32
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30349| [ChunkMetadataList] of root.group_12.d2.s_INT64e_PLAIN, tsDataType:INT64
+               30349| [ChunkIndexList] of root.group_12.d2.s_INT64e_PLAIN, tsDataType:INT64
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30441| [ChunkMetadataList] of root.group_12.d2.s_INT64e_RLE, tsDataType:INT64
+               30441| [ChunkIndexList] of root.group_12.d2.s_INT64e_RLE, tsDataType:INT64
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30531| [ChunkMetadataList] of root.group_12.d2.s_INT64e_TS_2DIFF, tsDataType:INT64
+               30531| [ChunkIndexList] of root.group_12.d2.s_INT64e_TS_2DIFF, tsDataType:INT64
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30626| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_GORILLA, tsDataType:FLOAT
+               30626| [ChunkIndexList] of root.group_12.d3.s_FLOATe_GORILLA, tsDataType:FLOAT
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30704| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_PLAIN, tsDataType:FLOAT
+               30704| [ChunkIndexList] of root.group_12.d3.s_FLOATe_PLAIN, tsDataType:FLOAT
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30780| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_RLE, tsDataType:FLOAT
+               30780| [ChunkIndexList] of root.group_12.d3.s_FLOATe_RLE, tsDataType:FLOAT
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30854| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_TS_2DIFF, tsDataType:FLOAT
+               30854| [ChunkIndexList] of root.group_12.d3.s_FLOATe_TS_2DIFF, tsDataType:FLOAT
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30933| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_GORILLA, tsDataType:DOUBLE
+               30933| [ChunkIndexList] of root.group_12.d4.s_DOUBLEe_GORILLA, tsDataType:DOUBLE
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
-               31028| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_PLAIN, tsDataType:DOUBLE
+               31028| [ChunkIndexList] of root.group_12.d4.s_DOUBLEe_PLAIN, tsDataType:DOUBLE
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00000000123]] 
-               31121| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_RLE, tsDataType:DOUBLE
+               31121| [ChunkIndexList] of root.group_12.d4.s_DOUBLEe_RLE, tsDataType:DOUBLE
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000001224]] 
-               31212| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_TS_2DIFF, tsDataType:DOUBLE
+               31212| [ChunkIndexList] of root.group_12.d4.s_DOUBLEe_TS_2DIFF, tsDataType:DOUBLE
                     | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
-               31308| [ChunkMetadataList] of root.group_12.d5.s_TEXTe_PLAIN, tsDataType:TEXT
+               31308| [ChunkIndexList] of root.group_12.d5.s_TEXTe_PLAIN, tsDataType:TEXT
                     | [startTime: 1 endTime: 10000 count: 10000 [firstValue:version_test,lastValue:version_test]] 
                32840| [MetadataIndex] of root.group_12.d0
                32881| [MetadataIndex] of root.group_12.d1
@@ -552,7 +564,7 @@ file length: 33436
                32959| [MetadataIndex] of root.group_12.d3
                33000| [MetadataIndex] of root.group_12.d4
                33042| [MetadataIndex] of root.group_12.d5
-               33080| [TsFileMetadata]
+               33080| [IndexOfTimeseriesIndex]
                     |   [num of devices] 6
                     |   6 key&TsMetadataIndex
                     |   [totalChunkNum] 17
@@ -561,7 +573,7 @@ file length: 33436
                     |   [bloom filter bit vector byte array] 
                     |   [bloom filter number of bits] 256
                     |   [bloom filter number of hash functions] 5
-               33426| [TsFileMetadataSize] 346
+               33426| [IndexOfTimeseriesIndexSize] 346
                33430| [magic tail] TsFile
                33436| END of TsFile
 

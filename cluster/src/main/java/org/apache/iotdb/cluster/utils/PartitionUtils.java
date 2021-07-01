@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -393,7 +393,7 @@ public class PartitionUtils {
       long timeLowerBound,
       long timeUpperBound,
       PartitionTable partitionTable,
-      Set<Node> result) {
+      Set<RaftNode> result) {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
     long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;
     while (currPartitionStart <= timeUpperBound) {

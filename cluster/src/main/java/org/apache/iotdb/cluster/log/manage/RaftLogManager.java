@@ -80,9 +80,9 @@ public abstract class RaftLogManager {
    * The committed log whose index is larger than blockAppliedCommitIndex will be blocked. if
    * blockAppliedCommitIndex < 0(default is -1), will not block any operation.
    */
-  private volatile long blockAppliedCommitIndex;
+  protected volatile long blockAppliedCommitIndex;
 
-  private LogApplier logApplier;
+  protected LogApplier logApplier;
 
   /** to distinguish managers of different members */
   private String name;
@@ -110,7 +110,7 @@ public abstract class RaftLogManager {
    */
   private final Object[] logUpdateConditions = new Object[1024];
 
-  private List<Log> blockedUnappliedLogList;
+  protected List<Log> blockedUnappliedLogList;
 
   protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -677,16 +677,26 @@ public abstract class RaftLogManager {
    */
   void applyEntries(List<Log> entries) {
     for (Log entry : entries) {
-      if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
-        blockedUnappliedLogList.add(entry);
-        continue;
-      }
-      try {
-        logApplier.apply(entry);
-      } catch (Exception e) {
-        entry.setException(e);
-        entry.setApplied(true);
-      }
+      applyEntry(entry);
+    }
+  }
+
+  public void applyEntry(Log entry) {
+    // For add/remove logs in data groups, this log will be applied immediately when it is
+    // appended to the raft log.
+    // In this case, it will apply a log that has been applied.
+    if (entry.isApplied()) {
+      return;
+    }
+    if (blockAppliedCommitIndex > 0 && entry.getCurrLogIndex() > blockAppliedCommitIndex) {
+      blockedUnappliedLogList.add(entry);
+      return;
+    }
+    try {
+      logApplier.apply(entry);
+    } catch (Exception e) {
+      entry.setException(e);
+      entry.setApplied(true);
     }
   }
 
@@ -1013,5 +1023,9 @@ public abstract class RaftLogManager {
 
   public long getBlockAppliedCommitIndex() {
     return blockAppliedCommitIndex;
+  }
+
+  public RaftLogManager(LogApplier logApplier) {
+    this.logApplier = logApplier;
   }
 }

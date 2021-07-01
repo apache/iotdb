@@ -54,7 +54,7 @@ public class SlotManagerTest {
     ClusterDescriptor.getInstance().getConfig().setEnableRaftLogPersistence(true);
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     int testSlotNum = 100;
-    slotManager = new SlotManager(testSlotNum, null);
+    slotManager = new SlotManager(testSlotNum, null, "");
   }
 
   @Test
@@ -125,7 +125,7 @@ public class SlotManagerTest {
     File dummyMemberDir = new File("test");
     dummyMemberDir.mkdirs();
     try {
-      slotManager = new SlotManager(5, dummyMemberDir.getPath());
+      slotManager = new SlotManager(5, dummyMemberDir.getPath(), "");
       slotManager.setToNull(0);
       slotManager.setToPulling(1, TestUtils.getNode(1));
       slotManager.setToPulling(2, TestUtils.getNode(2));
@@ -137,7 +137,7 @@ public class SlotManagerTest {
         slotManager.sentOneReplication(4);
       }
 
-      SlotManager recovered = new SlotManager(5, dummyMemberDir.getPath());
+      SlotManager recovered = new SlotManager(5, dummyMemberDir.getPath(), "");
       assertEquals(NULL, recovered.getStatus(0));
       assertEquals(PULLING, recovered.getStatus(1));
       assertEquals(PULLING_WRITABLE, recovered.getStatus(2));

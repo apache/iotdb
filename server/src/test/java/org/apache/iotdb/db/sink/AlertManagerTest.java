@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.sink;
 
-import org.apache.iotdb.db.sink.alertmanager.AlertManagerConfiguration;
-import org.apache.iotdb.db.sink.alertmanager.AlertManagerEvent;
-import org.apache.iotdb.db.sink.alertmanager.AlertManagerHandler;
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerEvent;
+import org.apache.iotdb.db.engine.trigger.sink.alertmanager.AlertManagerHandler;
 
 import com.sun.net.httpserver.HttpServer;
 import org.junit.AfterClass;

@@ -28,6 +28,8 @@ import java.nio.ByteBuffer;
 
 public class NodeSerializeUtils {
 
+  private NodeSerializeUtils() {}
+
   public static void serialize(Node node, DataOutputStream dataOutputStream) {
     try {
       byte[] internalIpBytes = node.internalIp.getBytes();

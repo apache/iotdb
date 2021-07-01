@@ -73,6 +73,7 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
+    createAndDropContinuousQueries();
     nonQuery();
     query();
     queryWithTimeout();
@@ -94,6 +95,26 @@ public class SessionExample {
     query4Redirect();
     sessionEnableRedirect.close();
     session.close();
+  }
+
+  private static void createAndDropContinuousQueries()
+      throws StatementExecutionException, IoTDBConnectionException {
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "BEGIN SELECT max_value(s1) INTO temperature_max FROM root.sg1.* "
+            + "GROUP BY time(10s) END");
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq2 "
+            + "BEGIN SELECT count(s2) INTO temperature_cnt FROM root.sg1.* "
+            + "GROUP BY time(10s), level=1 END");
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq3 "
+            + "RESAMPLE EVERY 20s FOR 20s "
+            + "BEGIN SELECT avg(s3) INTO temperature_avg FROM root.sg1.* "
+            + "GROUP BY time(10s), level=1 END");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq1");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq2");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq3");
   }
 
   private static void createTimeseries()

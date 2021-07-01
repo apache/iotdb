@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -493,6 +494,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "compaction_thread_num", Integer.toString(conf.getCompactionThreadNum()))));
+
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
@@ -774,6 +776,9 @@ public class IoTDBDescriptor {
 
       // trigger
       loadTriggerProps(properties);
+
+      // CQ
+      loadCQProps(properties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -1178,6 +1183,31 @@ public class IoTDBDescriptor {
     if (tlogBufferSize > 0) {
       conf.setTlogBufferSize(tlogBufferSize);
     }
+  }
+
+  private void loadCQProps(Properties properties) {
+    conf.setContinuousQueryThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "continuous_query_thread_num",
+                Integer.toString(conf.getContinuousQueryThreadNum()))));
+    if (conf.getContinuousQueryThreadNum() <= 0) {
+      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
+    conf.setMaxPendingContinuousQueryTasks(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_pending_continuous_query_tasks",
+                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
+    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
+      conf.setMaxPendingContinuousQueryTasks(64);
+    }
+
+    conf.setContinuousQueryMinimumEveryInterval(
+        DatetimeUtils.convertDurationStrToLong(
+            properties.getProperty("continuous_query_minimum_every_interval", "1s"),
+            conf.getTimestampPrecision()));
   }
 
   /** Get default encode algorithm by data type */

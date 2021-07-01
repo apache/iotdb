@@ -17,6 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.exception;
 
-public interface Configuration {}
+public class SinkException extends Exception {
+
+  public SinkException(String message) {
+    super(message);
+  }
+
+  public SinkException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

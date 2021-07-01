@@ -17,15 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.exception;
+package org.apache.iotdb.db.exception;
 
-public class SinkException extends Exception {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public SinkException(String message) {
-    super(message);
-  }
+public class ContinuousQueryException extends StorageEngineException {
 
-  public SinkException(String message, Throwable cause) {
-    super(message, cause);
+  public ContinuousQueryException(String message) {
+    super(message, TSStatusCode.CONTINUOUS_QUERY_ERROR.getStatusCode());
+    this.isUserException = true;
   }
 }
