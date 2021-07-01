@@ -748,17 +748,20 @@ public class SessionConnection {
       if (transport != null) {
         transport.close();
         int currHostIndex = endPointList.indexOf(session.defaultEndPoint);
-        if (currHostIndex == endPointList.size() - 1) {
-          currHostIndex = 0;
-        }
-        for (int j = currHostIndex; j < endPointList.size(); j++) {
+        for (int j = currHostIndex + 1; j < endPointList.size(); j++) {
+          session.defaultEndPoint = endPointList.get(j);
+          if (currHostIndex == j) {
+            break;
+          }
+          if (j == endPointList.size() - 1) {
+            j = -1;
+          }
           try {
-            session.defaultEndPoint = endPointList.get(j);
-            init(endPointList.get(j));
+            init(session.defaultEndPoint);
             flag = true;
           } catch (IoTDBConnectionException e) {
             logger.error(
-                "The current node may have been down {},try next node", endPointList.get(j));
+                "The current node may have been down {},try next node", session.defaultEndPoint);
             continue;
           }
           break;

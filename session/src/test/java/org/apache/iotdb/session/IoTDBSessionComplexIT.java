@@ -909,4 +909,19 @@ public class IoTDBSessionComplexIT {
 
     session.close();
   }
+
+  @Test
+  public void testErrorSessionCluster() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    // test Format error
+    nodeList.add("127.0.0.16669");
+    nodeList.add("127.0.0.1:6667");
+    session = new Session(nodeList, "root", "root");
+    try {
+      session.open();
+    } catch (Exception e) {
+      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
+    }
+    session.close();
+  }
 }
