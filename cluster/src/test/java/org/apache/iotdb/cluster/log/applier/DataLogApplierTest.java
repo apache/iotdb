@@ -59,8 +59,10 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -373,5 +375,21 @@ public class DataLogApplierTest extends IoTDBTest {
     applier.apply(log);
     assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
     assertNull(log.getException());
+  }
+
+  @Test
+  public void testApplyClearCache() {
+    ClearCachePlan clearCachePlan = new ClearCachePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(clearCachePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
+  }
+
+  @Test
+  public void testApplyMerge() {
+    MergePlan mergePlan = new MergePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(mergePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
   }
 }
