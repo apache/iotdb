@@ -385,6 +385,7 @@ public abstract class PhysicalPlan {
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
+          break;
         case CREATE_CONTINUOUS_QUERY:
           plan = new CreateContinuousQueryPlan();
           break;
@@ -449,7 +450,7 @@ public abstract class PhysicalPlan {
     STOP_TRIGGER,
     MERGE,
     CREATE_SNAPSHOT,
-    CLEARCACHE
+    CLEARCACHE,
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES
