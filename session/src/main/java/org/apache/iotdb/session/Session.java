@@ -97,7 +97,7 @@ public class Session {
   private boolean isClosed = true;
 
   // Cluster version cache
-  protected boolean enableCacheLeader;
+  public boolean enableCacheLeader;
   protected SessionConnection metaSessionConnection;
   protected Map<String, EndPoint> deviceIdToEndpoint;
   protected Map<EndPoint, SessionConnection> endPointToSessionConnection;

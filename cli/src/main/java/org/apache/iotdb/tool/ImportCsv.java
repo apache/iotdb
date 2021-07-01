@@ -291,6 +291,7 @@ public class ImportCsv extends AbstractCsvTool {
       String ip, String port, String username, String password, String filename, String timeZone) {
     try {
       session = new Session(ip, Integer.parseInt(port), username, password);
+      session.enableCacheLeader = false;
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
