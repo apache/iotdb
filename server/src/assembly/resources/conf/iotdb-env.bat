@@ -78,9 +78,9 @@ if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
 @REM Maximum heap size
-@REM MAX_HEAP_SIZE="2G"
+@REM set MAX_HEAP_SIZE="2G"
 @REM Minimum heap size
-@REM HEAP_NEWSIZE="2G"
+@REM set HEAP_NEWSIZE="2G"
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
