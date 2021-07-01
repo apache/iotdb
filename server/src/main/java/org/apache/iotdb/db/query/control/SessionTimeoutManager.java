@@ -54,7 +54,7 @@ public class SessionTimeoutManager {
   public void register(long id) {
     long timeout = IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
     if (timeout == 0) {
-        return;
+      return;
     }
     idToSessionInfo.put(id, new SessionInfo(timeout));
   }
