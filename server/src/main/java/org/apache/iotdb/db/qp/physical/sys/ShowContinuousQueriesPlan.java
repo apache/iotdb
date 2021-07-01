@@ -17,6 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public interface Event {}
+public class ShowContinuousQueriesPlan extends ShowPlan {
+
+  public ShowContinuousQueriesPlan() {
+    super(ShowContentType.CONTINUOUS_QUERY);
+  }
+}

@@ -17,25 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.local;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.sink.api.Event;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class LocalIoTDBEvent implements Event {
+public class ContinuousQueryException extends StorageEngineException {
 
-  private final long timestamp;
-  private final Object[] values;
-
-  public LocalIoTDBEvent(long timestamp, Object... values) {
-    this.timestamp = timestamp;
-    this.values = values;
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public Object[] getValues() {
-    return values;
+  public ContinuousQueryException(String message) {
+    super(message, TSStatusCode.CONTINUOUS_QUERY_ERROR.getStatusCode());
+    this.isUserException = true;
   }
 }

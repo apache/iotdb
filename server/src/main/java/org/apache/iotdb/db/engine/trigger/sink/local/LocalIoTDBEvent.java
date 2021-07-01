@@ -17,16 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.local;
 
-public interface Handler<C extends Configuration, E extends Event> {
+import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 
-  @SuppressWarnings("squid:S112")
-  default void open(C configuration) throws Exception {}
+public class LocalIoTDBEvent implements Event {
 
-  @SuppressWarnings("squid:S112")
-  default void close() throws Exception {}
+  private final long timestamp;
+  private final Object[] values;
 
-  @SuppressWarnings("squid:S112")
-  void onEvent(E event) throws Exception;
+  public LocalIoTDBEvent(long timestamp, Object... values) {
+    this.timestamp = timestamp;
+    this.values = values;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  public Object[] getValues() {
+    return values;
+  }
 }

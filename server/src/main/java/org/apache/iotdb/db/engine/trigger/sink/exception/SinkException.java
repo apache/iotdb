@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.exception;
+package org.apache.iotdb.db.engine.trigger.sink.exception;
 
 public class SinkException extends Exception {
 

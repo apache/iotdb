@@ -17,6 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.sink.api;
+package org.apache.iotdb.db.engine.trigger.sink.api;
 
 public interface Configuration {}

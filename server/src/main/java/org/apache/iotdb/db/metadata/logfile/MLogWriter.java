@@ -34,9 +34,11 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -133,6 +135,16 @@ public class MLogWriter implements AutoCloseable {
 
   public void deleteTimeseries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws IOException {
     putLog(deleteTimeSeriesPlan);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan createContinuousQueryPlan)
+      throws IOException {
+    putLog(createContinuousQueryPlan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan dropContinuousQueryPlan)
+      throws IOException {
+    putLog(dropContinuousQueryPlan);
   }
 
   public void setStorageGroup(PartialPath storageGroup) throws IOException {
