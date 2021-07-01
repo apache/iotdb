@@ -230,16 +230,14 @@ public class ImportCsvTestIT extends AbstractScript {
       "2,500,'',600,700,800",
       "3,900,'Io\"TDB',1000,1100,1200"
     };
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+    try (FileWriter fileWriter = new FileWriter(CSV_FILE);
+        BufferedWriter writer = new BufferedWriter(fileWriter)) {
       writer.write("");
       for (String s : csvText) {
         writer.write(s);
         writer.newLine();
       }
       writer.flush();
-      writer.close();
       return true;
     } catch (IOException e) {
       System.out.println("failed to create test csv");
@@ -253,16 +251,14 @@ public class ImportCsvTestIT extends AbstractScript {
     for (int i = 0; i < 25000; i++) {
       csvText.add(i + "," + i + "," + i + "," + i);
     }
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+    try (FileWriter fileWriter = new FileWriter(CSV_FILE);
+        BufferedWriter writer = new BufferedWriter(fileWriter)) {
       writer.write("");
       for (String s : csvText) {
         writer.write(s);
         writer.newLine();
       }
       writer.flush();
-      writer.close();
       return true;
     } catch (IOException e) {
       System.out.println("failed to create test csv");
@@ -274,16 +270,14 @@ public class ImportCsvTestIT extends AbstractScript {
     String[] csvText = {
       "Time,root.fit.d1.\"s1\",root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1"
     };
-    BufferedWriter writer;
-    try {
-      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+    try (FileWriter fileWriter = new FileWriter(CSV_FILE);
+        BufferedWriter writer = new BufferedWriter(fileWriter)) {
       writer.write("");
       for (String s : csvText) {
         writer.write(s);
         writer.newLine();
       }
       writer.flush();
-      writer.close();
       return true;
     } catch (IOException e) {
       System.out.println("failed to create test csv");

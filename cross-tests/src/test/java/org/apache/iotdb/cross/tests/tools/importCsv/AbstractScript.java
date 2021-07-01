@@ -34,31 +34,31 @@ public abstract class AbstractScript {
   protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
     builder.redirectErrorStream(true);
     Process p = builder.start();
-    BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-    String line;
-    List<String> actualOutput = new ArrayList<>();
-    while (true) {
-      line = r.readLine();
-      if (line == null) {
-        break;
-      } else {
-        actualOutput.add(line);
+    try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+      String line;
+      List<String> actualOutput = new ArrayList<>();
+      while (true) {
+        line = r.readLine();
+        if (line == null) {
+          break;
+        } else {
+          actualOutput.add(line);
+        }
       }
-    }
-    r.close();
-    p.destroy();
+      p.destroy();
 
-    System.out.println("should contains:");
-    for (String s : output) {
-      System.out.println(s);
-    }
+      System.out.println("should contains:");
+      for (String s : output) {
+        System.out.println(s);
+      }
 
-    System.out.println("actualOutput:");
-    for (String out : actualOutput) {
-      System.out.println(out);
-    }
+      System.out.println("actualOutput:");
+      for (String out : actualOutput) {
+        System.out.println(out);
+      }
 
-    assertTrue(actualOutput.get(actualOutput.size() - 1).contains(output[output.length - 1]));
+      assertTrue(actualOutput.get(actualOutput.size() - 1).contains(output[output.length - 1]));
+    }
   }
 
   protected String getCliPath() {
@@ -79,8 +79,8 @@ public abstract class AbstractScript {
                 + "pom"
                 + ".properties");
     Properties properties = new Properties();
-    try {
-      properties.load(new FileReader(target));
+    try (FileReader reader = new FileReader(target)) {
+      properties.load(reader);
     } catch (IOException e) {
       return "target" + File.separator + "iotdb-cli-";
     }

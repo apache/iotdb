@@ -146,19 +146,20 @@ public class ExportCsvTestIT extends AbstractScript {
     } else {
       testOnUnix(output);
     }
-    FileReader fileReader = new FileReader(EXPORT_FILE);
-    BufferedReader br = new BufferedReader(fileReader);
-    String line = br.readLine();
-    int i = 0;
-    while (line != null) {
-      if (i == 0) {
-        assertEquals(expectCsv[i], line);
-      } else {
-        String lineWithoutTime = line.substring(line.indexOf(',') + 1);
-        assertEquals(expectCsv[i], lineWithoutTime);
+    try (FileReader fileReader = new FileReader(EXPORT_FILE);
+        BufferedReader br = new BufferedReader(fileReader)) {
+      String line = br.readLine();
+      int i = 0;
+      while (line != null) {
+        if (i == 0) {
+          assertEquals(expectCsv[i], line);
+        } else {
+          String lineWithoutTime = line.substring(line.indexOf(',') + 1);
+          assertEquals(expectCsv[i], lineWithoutTime);
+        }
+        i++;
+        line = br.readLine();
       }
-      i++;
-      line = br.readLine();
     }
     File file = new File(EXPORT_FILE);
     if (file.exists()) {
@@ -182,19 +183,20 @@ public class ExportCsvTestIT extends AbstractScript {
     } else {
       testOnUnix(output);
     }
-    FileReader fileReader = new FileReader(EXPORT_FILE);
-    BufferedReader br = new BufferedReader(fileReader);
-    String line = br.readLine();
-    int i = 0;
-    while (line != null) {
-      if (i == 0) {
-        assertEquals(expectCsv[i], line);
-      } else {
-        String lineWithoutTime = line.substring(line.indexOf(',') + 1);
-        assertEquals(expectCsv[i], lineWithoutTime);
+    try (FileReader fileReader = new FileReader(EXPORT_FILE);
+        BufferedReader br = new BufferedReader(fileReader)) {
+      String line = br.readLine();
+      int i = 0;
+      while (line != null) {
+        if (i == 0) {
+          assertEquals(expectCsv[i], line);
+        } else {
+          String lineWithoutTime = line.substring(line.indexOf(',') + 1);
+          assertEquals(expectCsv[i], lineWithoutTime);
+        }
+        i++;
+        line = br.readLine();
       }
-      i++;
-      line = br.readLine();
     }
     File file = new File(EXPORT_FILE);
     if (file.exists()) {
@@ -217,5 +219,6 @@ public class ExportCsvTestIT extends AbstractScript {
     values.add("\"abc\",aa");
     values.add("abbe's");
     session.insertRecord(deviceId, 1L, measurements, values);
+    session.close();
   }
 }
