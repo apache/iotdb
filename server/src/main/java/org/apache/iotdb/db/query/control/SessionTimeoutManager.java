@@ -30,7 +30,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class SessionTimeoutManager {
-  private static final long CLEANUP_PERIOD_MILLIS = 6000; // TODO: Use a more reasonable value
+  private static final long CLEANUP_PERIOD_MILLIS = 10 * 1000; // TODO: Use a more reasonable value
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionTimeoutManager.class);
 
   private Map<Long, SessionInfo> idToSessionInfo;
@@ -61,6 +61,7 @@ public class SessionTimeoutManager {
   }
 
   public void refresh(long id) {
+    LOGGER.debug(String.format("session-%d refreshed", id));
     idToSessionInfo.computeIfPresent(
         id,
         (k, v) -> {
