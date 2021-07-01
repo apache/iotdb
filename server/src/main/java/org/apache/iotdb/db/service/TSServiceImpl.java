@@ -75,6 +75,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
@@ -276,6 +277,8 @@ public class TSServiceImpl implements TSIService.Iface {
           "User {} opens Session failed with an incorrect password", req.getUsername());
     }
 
+    SessionTimeoutManager.getInstance().register(sessionId);
+
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(sessionId);
   }
@@ -290,6 +293,8 @@ public class TSServiceImpl implements TSIService.Iface {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
     currSessionId.remove();
+
+    SessionTimeoutManager.getInstance().unregister(req.sessionId);
 
     return new TSStatus(
         !sessionManager.releaseSessionResource(sessionId)
@@ -1216,6 +1221,8 @@ public class TSServiceImpl implements TSIService.Iface {
     boolean isLoggedIn = sessionManager.getZoneId(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    } else {
+      SessionTimeoutManager.getInstance().refresh(sessionId);
     }
     return isLoggedIn;
   }

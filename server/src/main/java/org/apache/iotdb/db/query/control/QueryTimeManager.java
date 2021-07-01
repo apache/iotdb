@@ -107,6 +107,9 @@ public class QueryTimeManager implements IService {
             QueryTimeoutRuntimeException.TIMEOUT_EXCEPTION_MESSAGE);
       }
     }
+
+    SessionTimeoutManager.getInstance()
+        .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
   }
 
   public Map<Long, QueryInfo> getQueryInfoMap() {
