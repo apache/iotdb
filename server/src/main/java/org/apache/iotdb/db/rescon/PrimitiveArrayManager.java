@@ -56,10 +56,10 @@ public class PrimitiveArrayManager {
       config.getAllocateMemoryForWrite() * config.getBufferedArraysMemoryProportion();
 
   /** total size of buffered arrays */
-  private static AtomicLong bufferedArraysRamSize = new AtomicLong();
+  private static final AtomicLong bufferedArraysRamSize = new AtomicLong();
 
   /** total size of out of buffer arrays */
-  private static AtomicLong outOfBufferArraysRamSize = new AtomicLong();
+  private static final AtomicLong outOfBufferArraysRamSize = new AtomicLong();
 
   static {
     bufferedArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque<>());
@@ -81,11 +81,12 @@ public class PrimitiveArrayManager {
    * @return an array
    */
   public static Object getPrimitiveArraysByType(TSDataType dataType) {
+    long delta = (long) ARRAY_SIZE * dataType.getDataTypeSize();
+
     // check memory of buffered array, if already full, generate OOB
-    if (bufferedArraysRamSize.get() + ARRAY_SIZE * dataType.getDataTypeSize()
-        > BUFFERED_ARRAY_SIZE_THRESHOLD) {
+    if (bufferedArraysRamSize.get() + delta > BUFFERED_ARRAY_SIZE_THRESHOLD) {
       // return an out of buffer array
-      outOfBufferArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
+      outOfBufferArraysRamSize.addAndGet(delta);
       return createPrimitiveArray(dataType);
     }
 
@@ -96,8 +97,9 @@ public class PrimitiveArrayManager {
         return dataArray;
       }
     }
+
     // no buffered array, create one
-    bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
+    bufferedArraysRamSize.addAndGet(delta);
     return createPrimitiveArray(dataType);
   }
 
@@ -205,34 +207,29 @@ public class PrimitiveArrayManager {
     }
 
     // Check out of buffer array num
-    if (outOfBufferArraysRamSize.get() > 0 && isCurrentDataTypeExceeded(dataType)) {
-      // release an out of buffer array
-      bringBackOOBArray(dataType, ARRAY_SIZE);
-    } else if (outOfBufferArraysRamSize.get() > 0 && !isCurrentDataTypeExceeded(dataType)) {
-      // if the ratio of buffered arrays of this data type does not exceed the schema ratio,
-      // choose one replaced array who has larger ratio than schema recommended ratio
-      TSDataType replacedDataType = null;
-      for (Entry<TSDataType, ArrayDeque<Object>> entry : bufferedArraysMap.entrySet()) {
-        if (isCurrentDataTypeExceeded(entry.getKey())) {
-          replacedDataType = entry.getKey();
-          // bring back the replaced array as OOB array
-          bringBackOOBArray(replacedDataType, ARRAY_SIZE);
-          break;
+    if (outOfBufferArraysRamSize.get() > 0) {
+      if (!isCurrentDataTypeExceeded(dataType)) {
+        // if the ratio of buffered arrays of this data type does not exceed the schema ratio,
+        // choose one replaced array who has larger ratio than schema recommended ratio
+        for (Entry<TSDataType, ArrayDeque<Object>> entry : bufferedArraysMap.entrySet()) {
+          TSDataType replacedDataType = entry.getKey();
+          if (isCurrentDataTypeExceeded(replacedDataType)) {
+            // if we find a replaced array, bring back the original array as a buffered array
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
+                  dataType,
+                  replacedDataType);
+            }
+            // bring back the replaced array as OOB array
+            bringBackOutOfBufferArray(replacedDataType);
+            replaceBufferedArray(dataType, replacedDataType, dataArray);
+            return;
+          }
         }
       }
-      if (replacedDataType != null) {
-        // if we find a replaced array, bring back the original array as a buffered array
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
-              dataType,
-              replacedDataType);
-        }
-        replaceBufferedArray(dataType, replacedDataType, dataArray);
-      } else {
-        // or else bring back the original array as OOB array
-        bringBackOOBArray(dataType, ARRAY_SIZE);
-      }
+
+      bringBackOutOfBufferArray(dataType);
     } else {
       // if there is no out of buffer array, bring back as buffered array directly
       bringBackBufferedArray(dataType, dataArray);
@@ -251,30 +248,27 @@ public class PrimitiveArrayManager {
     }
   }
 
-  /**
-   * Replace a buffered array with an out-of-buffered array
-   *
-   * @param dataType data type
-   * @param dataArray data array
-   */
-  private static void replaceBufferedArray(TSDataType dataType, TSDataType replacedDataType, Object dataArray) {
-    synchronized (bufferedArraysMap.get(dataType)) {
-      bufferedArraysMap.get(replacedDataType).poll();
-      bufferedArraysMap.get(dataType).add(dataArray);
-      
+  private static void replaceBufferedArray(
+      TSDataType dataType, TSDataType replacedDataType, Object dataArray) {
+    if (BUFFERED_ARRAY_SIZE_THRESHOLD
+        < bufferedArraysRamSize.get()
+            + (long) ARRAY_SIZE
+                * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize())) {
+      synchronized (bufferedArraysMap.get(dataType)) {
+        bufferedArraysMap.get(dataType).add(dataArray);
+      }
+      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     }
-    bufferedArraysRamSize.addAndGet(-ARRAY_SIZE * replacedDataType.getDataTypeSize());
-    bufferedArraysRamSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
+
+    synchronized (bufferedArraysMap.get(replacedDataType)) {
+      bufferedArraysMap.get(replacedDataType).poll();
+    }
+    bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * replacedDataType.getDataTypeSize());
   }
 
-  /**
-   * Bring back out of buffered array
-   *
-   * @param dataType data type
-   * @param size capacity
-   */
-  private static void bringBackOOBArray(TSDataType dataType, int size) {
-    outOfBufferArraysRamSize.addAndGet((long) -size * dataType.getDataTypeSize());
+  private static void bringBackOutOfBufferArray(TSDataType dataType) {
+    outOfBufferArraysRamSize.getAndUpdate(
+        l -> Math.max(0, l - (long) ARRAY_SIZE * dataType.getDataTypeSize()));
   }
 
   /**
