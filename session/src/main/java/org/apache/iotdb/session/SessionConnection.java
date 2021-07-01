@@ -751,7 +751,7 @@ public class SessionConnection {
         if (currHostIndex == endPointList.size() - 1) {
           currHostIndex = 0;
         }
-        for (int j = currHostIndex + 1; j < endPointList.size(); j++) {
+        for (int j = currHostIndex; j < endPointList.size(); j++) {
           try {
             session.defaultEndPoint = endPointList.get(j);
             init(endPointList.get(j));
