@@ -31,6 +31,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Manage all primitive data list in memory, including get and release operation. */
@@ -38,10 +39,6 @@ public class PrimitiveArrayManager {
 
   /** data type -> ArrayDeque<Array> */
   private static final Map<TSDataType, ArrayDeque<Object>> bufferedArraysMap =
-      new EnumMap<>(TSDataType.class);
-
-  /** data type -> current number of buffered arrays */
-  private static final Map<TSDataType, Integer> bufferedArraysNumMap =
       new EnumMap<>(TSDataType.class);
 
   /** data type -> ratio of data type in schema, which could be seen as recommended ratio */
@@ -98,11 +95,9 @@ public class PrimitiveArrayManager {
       if (dataArray != null) {
         return dataArray;
       }
-      // no buffered array, create one
-      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
-      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     }
-
+    // no buffered array, create one
+    bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     return createPrimitiveArray(dataType);
   }
 
@@ -217,7 +212,7 @@ public class PrimitiveArrayManager {
       // if the ratio of buffered arrays of this data type does not exceed the schema ratio,
       // choose one replaced array who has larger ratio than schema recommended ratio
       TSDataType replacedDataType = null;
-      for (Map.Entry<TSDataType, Integer> entry : bufferedArraysNumMap.entrySet()) {
+      for (Entry<TSDataType, ArrayDeque<Object>> entry : bufferedArraysMap.entrySet()) {
         if (isCurrentDataTypeExceeded(entry.getKey())) {
           replacedDataType = entry.getKey();
           // bring back the replaced array as OOB array
@@ -233,7 +228,7 @@ public class PrimitiveArrayManager {
               dataType,
               replacedDataType);
         }
-        bringBackBufferedArray(dataType, dataArray);
+        replaceBufferedArray(dataType, replacedDataType, dataArray);
       } else {
         // or else bring back the original array as OOB array
         bringBackOOBArray(dataType, ARRAY_SIZE);
@@ -253,9 +248,23 @@ public class PrimitiveArrayManager {
   private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
     synchronized (bufferedArraysMap.get(dataType)) {
       bufferedArraysMap.get(dataType).add(dataArray);
-      bufferedArraysNumMap.put(dataType, bufferedArraysNumMap.getOrDefault(dataType, 0) + 1);
     }
-    bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * dataType.getDataTypeSize());
+  }
+
+  /**
+   * Replace a buffered array with an out-of-buffered array
+   *
+   * @param dataType data type
+   * @param dataArray data array
+   */
+  private static void replaceBufferedArray(TSDataType dataType, TSDataType replacedDataType, Object dataArray) {
+    synchronized (bufferedArraysMap.get(dataType)) {
+      bufferedArraysMap.get(replacedDataType).poll();
+      bufferedArraysMap.get(dataType).add(dataArray);
+      
+    }
+    bufferedArraysRamSize.addAndGet(-ARRAY_SIZE * replacedDataType.getDataTypeSize());
+    bufferedArraysRamSize.addAndGet(ARRAY_SIZE * dataType.getDataTypeSize());
   }
 
   /**
@@ -290,12 +299,13 @@ public class PrimitiveArrayManager {
    */
   private static boolean isCurrentDataTypeExceeded(TSDataType dataType) {
     int total = 0;
-    for (int num : bufferedArraysNumMap.values()) {
-      total += num;
+    for (ArrayDeque<Object> value : bufferedArraysMap.values()) {
+      total += value.size();
     }
+    int arrayNumInBuffer =
+        bufferedArraysMap.get(dataType) == null ? 0 : bufferedArraysMap.get(dataType).size();
     return total != 0
-        && ((double) bufferedArraysNumMap.getOrDefault(dataType, 0) / total
-            > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
+        && ((double) arrayNumInBuffer / total > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
   }
 
   public static void close() {
@@ -303,7 +313,6 @@ public class PrimitiveArrayManager {
       dataListQueue.clear();
     }
 
-    bufferedArraysNumMap.clear();
     bufferedArraysNumRatio.clear();
 
     bufferedArraysRamSize.set(0);
