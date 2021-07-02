@@ -210,4 +210,21 @@ public class IoTDBTtlIT {
       IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
     }
   }
+
+  @Test
+  public void testTTLOnAnyPath() throws SQLException {
+    try (IoTDBConnection connection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.group1");
+      statement.execute("SET STORAGE GROUP TO root.group2.sgroup1");
+      statement.execute("SET TTL TO root.group2 10000");
+      String result = doQuery(statement, "SHOW ALL TTL");
+      assertTrue(
+          result.equals("root.group1,null\n" + "root.group2.sgroup1,10000\n")
+              || result.equals("root.group2.sgroup1 10000\n" + "root.group1,null\n"));
+    }
+  }
 }

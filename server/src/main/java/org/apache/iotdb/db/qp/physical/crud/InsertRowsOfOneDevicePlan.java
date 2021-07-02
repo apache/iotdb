@@ -22,17 +22,22 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class InsertRowsOfOneDevicePlan extends InsertPlan {
+public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
+  boolean[] isExecuted;
   private InsertRowPlan[] rowPlans;
 
   public InsertRowsOfOneDevicePlan(
@@ -45,9 +50,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
     this.deviceId = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
-      for (ByteBuffer b : insertValues) {
-        b.toString();
-      }
       rowPlans[i] =
           new InsertRowPlan(
               deviceId,
@@ -132,6 +134,15 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
   }
 
   @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertRowPlan plan : rowPlans) {
+      // use the InsertRowsOfOneDevicePlan's index as the sub InsertRowPlan's index
+      plan.setIndex(index);
+    }
+  }
+
+  @Override
   public String toString() {
     return "deviceId: " + deviceId + ", times: " + rowPlans.length;
   }
@@ -153,5 +164,38 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan {
 
   public InsertRowPlan[] getRowPlans() {
     return rowPlans;
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  public Map<Integer, TSStatus> getResults() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public int getBatchSize() {
+    return rowPlans.length;
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
   }
 }

@@ -50,8 +50,6 @@ public class IoTDBConstant {
 
   public static final String PATH_ROOT = "root";
   public static final char PATH_SEPARATOR = '.';
-  public static final String ADMIN_NAME = "root";
-  public static final String ADMIN_PW = "root";
   public static final String PROFILE_SUFFIX = ".profile";
   public static final String MAX_TIME = "max_time";
   public static final String MIN_TIME = "min_time";
@@ -82,6 +80,7 @@ public class IoTDBConstant {
   public static final String COLUMN_PRIVILEGE = "privilege";
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
+  public static final String COLUMN_LOCK_INFO = "lock holder";
   public static final String COLUMN_TTL = "ttl";
 
   public static final String COLUMN_TASK_NAME = "task name";

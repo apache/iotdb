@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -85,11 +86,15 @@ public class SessionConnection {
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
-    transport =
-        RpcTransportFactory.INSTANCE.getTransport(
-            new TSocket(endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs));
-
     try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              new TSocket(
+                  TConfigurationConst.defaultTConfiguration,
+                  endPoint.getIp(),
+                  endPoint.getPort(),
+                  session.connectionTimeoutInMs));
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
@@ -409,7 +414,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -428,7 +434,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirection(client.insertStringRecords(request));
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertStringRecords(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -485,7 +492,8 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
-      RpcUtils.verifySuccessWithRedirectionForInsertTablets(client.insertTablets(request), request);
+      RpcUtils.verifySuccessWithRedirectionForMultiDevices(
+          client.insertTablets(request), request.getDeviceIds());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -685,5 +693,10 @@ public class SessionConnection {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  @Override
+  public String toString() {
+    return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 }

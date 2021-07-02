@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -61,7 +62,9 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -72,6 +75,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
@@ -102,9 +106,9 @@ public class StorageEngine implements IService {
    */
   @ServerConfigConsistent private static long timePartitionInterval = -1;
   /** whether enable data partition if disabled, all data belongs to partition 0 */
-  @ServerConfigConsistent
-  private static boolean enablePartition =
-      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  @ServerConfigConsistent private static boolean enablePartition = config.isEnablePartition();
+
+  private final boolean enableMemControl = config.isEnableMemControl();
 
   /**
    * a folder (system/storage_groups/ by default) that persist system info. Each Storage Processor
@@ -199,14 +203,18 @@ public class StorageEngine implements IService {
   }
 
   /** block insertion if the insertion is rejected by memory control */
-  public static void blockInsertionIfReject() throws WriteProcessRejectException {
+  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
+      throws WriteProcessRejectException {
     long startTime = System.currentTimeMillis();
     while (SystemInfo.getInstance().isRejected()) {
+      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+        break;
+      }
       try {
         TimeUnit.MILLISECONDS.sleep(config.getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime > config.getMaxWaitingTimeWhenInsertBlocked()) {
           throw new WriteProcessRejectException(
-              "System rejected over " + config.getMaxWaitingTimeWhenInsertBlocked() + "ms");
+              "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -400,6 +408,26 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * get lock holder for each sg
+   *
+   * @return storage group processor
+   */
+  public List<String> getLockInfo(List<PartialPath> pathList) throws StorageEngineException {
+    try {
+      List<String> lockHolderList = new ArrayList<>(pathList.size());
+      for (PartialPath path : pathList) {
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        StorageGroupProcessor storageGroupProcessor =
+            getStorageGroupProcessorByPath(path, storageGroupMNode);
+        lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
+      }
+      return lockHolderList;
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * get storage group processor by device path
    *
    * @param devicePath path of the device
@@ -504,7 +532,13 @@ public class StorageEngine implements IService {
    * @param insertRowPlan physical plan of insertion
    */
   public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
-
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject(null);
+      } catch (WriteProcessException e) {
+        throw new StorageEngineException(e);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
@@ -526,6 +560,13 @@ public class StorageEngine implements IService {
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
       throws StorageEngineException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject(null);
+      } catch (WriteProcessException e) {
+        throw new StorageEngineException(e);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor =
         getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
@@ -540,6 +581,15 @@ public class StorageEngine implements IService {
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchProcessException {
+    if (enableMemControl) {
+      try {
+        blockInsertionIfReject(null);
+      } catch (WriteProcessRejectException e) {
+        TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+        Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
+        throw new BatchProcessException(results);
+      }
+    }
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
@@ -904,13 +954,13 @@ public class StorageEngine implements IService {
         set.stream()
             .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
-    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readLock());
+    list.forEach(StorageGroupProcessor::readLock);
     return list;
   }
 
   /** unlock all merge lock of the storage group processor related to the query */
   public void mergeUnLock(List<StorageGroupProcessor> list) {
-    list.forEach(storageGroupProcessor -> storageGroupProcessor.getTsFileManagement().readUnLock());
+    list.forEach(StorageGroupProcessor::readUnlock);
   }
 
   static class InstanceHolder {

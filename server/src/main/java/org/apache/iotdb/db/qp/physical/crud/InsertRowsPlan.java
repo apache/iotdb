@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -34,7 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class InsertRowsPlan extends InsertPlan {
+public class InsertRowsPlan extends InsertPlan implements BatchPlan {
+
   /**
    * Suppose there is an InsertRowsPlan, which contains 5 InsertRowPlans,
    * insertRowPlanList={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3,
@@ -49,6 +51,8 @@ public class InsertRowsPlan extends InsertPlan {
 
   /** the InsertRowsPlan list */
   private List<InsertRowPlan> insertRowPlanList;
+
+  boolean[] isExecuted;
 
   /** record the result of insert rows */
   private Map<Integer, TSStatus> results = new HashMap<>();
@@ -184,6 +188,15 @@ public class InsertRowsPlan extends InsertPlan {
     }
   }
 
+  @Override
+  public void setIndex(long index) {
+    super.setIndex(index);
+    for (InsertRowPlan insertRowPlan : insertRowPlanList) {
+      // use the InsertRowsPlan's index as the sub InsertRowPlan's index
+      insertRowPlan.setIndex(index);
+    }
+  }
+
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -223,5 +236,39 @@ public class InsertRowsPlan extends InsertPlan {
 
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowPlanList.size());
+  }
+
+  @Override
+  public void setIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = true;
+  }
+
+  @Override
+  public boolean isExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    return isExecuted[i];
+  }
+
+  @Override
+  public int getBatchSize() {
+    return insertRowPlanList.size();
+  }
+
+  @Override
+  public void unsetIsExecuted(int i) {
+    if (isExecuted == null) {
+      isExecuted = new boolean[getBatchSize()];
+    }
+    isExecuted[i] = false;
+    if (insertRowPlanIndexList != null && !insertRowPlanIndexList.isEmpty()) {
+      results.remove(insertRowPlanIndexList.get(i));
+    } else {
+      results.remove(i);
+    }
   }
 }

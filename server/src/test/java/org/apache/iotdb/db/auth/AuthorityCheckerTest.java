@@ -73,8 +73,6 @@ public class AuthorityCheckerTest {
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.REVOKE_USER_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
-        user.getName(), nodeName, PrivilegeType.UPDATE_TIMESERIES.ordinal());
-    authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_ROLE_PRIVILEGE.ordinal());
     authorizer.grantPrivilegeToUser(
         user.getName(), nodeName, PrivilegeType.GRANT_USER_PRIVILEGE.ordinal());
@@ -116,13 +114,6 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DROP_INDEX,
-            user.getName()));
-
-    Assert.assertFalse(
-        AuthorityChecker.check(
-            user.getName(),
-            Collections.singletonList(new PartialPath(nodeName)),
-            OperatorType.UNION,
             user.getName()));
 
     // check empty list
@@ -226,6 +217,20 @@ public class AuthorityCheckerTest {
             user.getName(),
             Collections.singletonList(new PartialPath(nodeName)),
             OperatorType.DELETE_TIMESERIES,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.FILL,
+            user.getName()));
+
+    Assert.assertTrue(
+        AuthorityChecker.check(
+            user.getName(),
+            Collections.singletonList(new PartialPath(nodeName)),
+            OperatorType.GROUP_BY_FILL,
             user.getName()));
   }
 }
