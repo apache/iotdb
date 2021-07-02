@@ -222,17 +222,16 @@ public class PrimitiveArrayManager {
                   replacedDataType);
             }
             // bring back the replaced array as OOB array
-            bringBackOutOfBufferArray(replacedDataType);
             replaceBufferedArray(dataType, replacedDataType, dataArray);
-            return;
+            break;
           }
         }
       }
 
-      bringBackOutOfBufferArray(dataType);
+      releaseOutOfBuffer(dataType);
     } else {
       // if there is no out of buffer array, bring back as buffered array directly
-      bringBackBufferedArray(dataType, dataArray);
+      putBackBufferedArray(dataType, dataArray);
     }
   }
 
@@ -242,7 +241,7 @@ public class PrimitiveArrayManager {
    * @param dataType data type
    * @param dataArray data array
    */
-  private static void bringBackBufferedArray(TSDataType dataType, Object dataArray) {
+  private static void putBackBufferedArray(TSDataType dataType, Object dataArray) {
     synchronized (bufferedArraysMap.get(dataType)) {
       bufferedArraysMap.get(dataType).add(dataArray);
     }
@@ -250,10 +249,9 @@ public class PrimitiveArrayManager {
 
   private static void replaceBufferedArray(
       TSDataType dataType, TSDataType replacedDataType, Object dataArray) {
-    if (BUFFERED_ARRAY_SIZE_THRESHOLD
-        < bufferedArraysRamSize.get()
-            + (long) ARRAY_SIZE
-                * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize())) {
+    if (bufferedArraysRamSize.get()
+            + (long) ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize())
+        < BUFFERED_ARRAY_SIZE_THRESHOLD) {
       synchronized (bufferedArraysMap.get(dataType)) {
         bufferedArraysMap.get(dataType).add(dataArray);
       }
@@ -267,7 +265,7 @@ public class PrimitiveArrayManager {
     }
   }
 
-  private static void bringBackOutOfBufferArray(TSDataType dataType) {
+  private static void releaseOutOfBuffer(TSDataType dataType) {
     outOfBufferArraysRamSize.getAndUpdate(
         l -> Math.max(0, l - (long) ARRAY_SIZE * dataType.getDataTypeSize()));
   }
@@ -275,13 +273,15 @@ public class PrimitiveArrayManager {
   /**
    * @param schemaDataTypeNumMap schema DataType Num Map (for each series, increase a long and a
    *     specific type)
-   * @param total current DataType Total Num (twice of number of time series)
+   * @param totalSeries total time series number
    */
   public static void updateSchemaDataTypeNum(
-      Map<TSDataType, Integer> schemaDataTypeNumMap, long total) {
+      Map<TSDataType, Integer> schemaDataTypeNumMap, long totalSeries) {
     for (Map.Entry<TSDataType, Integer> entry : schemaDataTypeNumMap.entrySet()) {
       TSDataType dataType = entry.getKey();
-      bufferedArraysNumRatio.put(dataType, (double) schemaDataTypeNumMap.get(dataType) / total);
+      // one time series has 2 columns (time column + value column)
+      bufferedArraysNumRatio.put(
+          dataType, (double) schemaDataTypeNumMap.get(dataType) / (totalSeries * 2));
     }
   }
 
@@ -293,11 +293,11 @@ public class PrimitiveArrayManager {
    * @return true if the buffered array ratio exceeds the recommend ratio
    */
   private static boolean isCurrentDataTypeExceeded(TSDataType dataType) {
-    int total = 0;
+    long total = 0;
     for (ArrayDeque<Object> value : bufferedArraysMap.values()) {
       total += value.size();
     }
-    int arrayNumInBuffer =
+    long arrayNumInBuffer =
         bufferedArraysMap.containsKey(dataType) ? bufferedArraysMap.get(dataType).size() : 0;
     return total != 0
         && ((double) arrayNumInBuffer / total > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
