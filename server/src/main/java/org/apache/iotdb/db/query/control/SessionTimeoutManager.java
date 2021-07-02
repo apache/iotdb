@@ -30,14 +30,18 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class SessionTimeoutManager {
-  private static final long CLEANUP_PERIOD_MILLIS = 10 * 1000; // TODO: Use a more reasonable value
+  private static final long SESSION_TIMEOUT =
+      IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
+  private static final long CLEANUP_PERIOD_MILLIS = Math.max(5000, SESSION_TIMEOUT / 5);
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionTimeoutManager.class);
 
-  private Map<Long, SessionInfo> idToSessionInfo;
+  private Map<Long, Long> idToLastActiveTime;
   private ScheduledExecutorService executorService;
 
   private SessionTimeoutManager() {
-    this.idToSessionInfo = new ConcurrentHashMap<>();
+    if (SESSION_TIMEOUT == 0) return;
+
+    this.idToLastActiveTime = new ConcurrentHashMap<>();
 
     this.executorService =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "session-timeout-manager");
@@ -52,34 +56,28 @@ public class SessionTimeoutManager {
   }
 
   public void register(long id) {
-    long timeout = IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
-    if (timeout == 0) {
-      return;
-    }
-    idToSessionInfo.put(id, new SessionInfo(timeout));
+    if (SESSION_TIMEOUT == 0) return;
+
+    idToLastActiveTime.put(id, System.currentTimeMillis());
   }
 
   public void unregister(long id) {
-    idToSessionInfo.remove(id);
+    if (SESSION_TIMEOUT == 0) return;
+
+    idToLastActiveTime.remove(id);
   }
 
   public void refresh(long id) {
+    if (SESSION_TIMEOUT == 0) return;
+
     LOGGER.debug(String.format("session-%d refreshed", id));
-    idToSessionInfo.computeIfPresent(
-        id,
-        (k, v) -> {
-          v.setLastActiveTime(System.currentTimeMillis());
-          return v;
-        });
+    idToLastActiveTime.computeIfPresent(id, (k, v) -> System.currentTimeMillis());
   }
 
   private void cleanup() {
     long currentTime = System.currentTimeMillis();
-    idToSessionInfo.entrySet().stream()
-        .filter(
-            entry ->
-                entry.getValue().getLastActiveTime() + entry.getValue().getMaxIdleTime()
-                    < currentTime)
+    idToLastActiveTime.entrySet().stream()
+        .filter(entry -> entry.getValue() + SESSION_TIMEOUT < currentTime)
         .forEach(
             entry -> {
               if (SessionManager.getInstance().releaseSessionResource(entry.getKey())) {
@@ -87,35 +85,13 @@ public class SessionTimeoutManager {
                 LOGGER.debug(
                     String.format(
                         "session-%s timed out in %d ms",
-                        entry.getKey(), currentTime - entry.getValue().getLastActiveTime()));
+                        entry.getKey(), currentTime - entry.getValue()));
               }
             });
   }
 
   public static SessionTimeoutManager getInstance() {
     return SessionTimeoutManagerHelper.INSTANCE;
-  }
-
-  private static class SessionInfo {
-    private long maxIdleTime;
-    private long lastActiveTime;
-
-    private SessionInfo(long maxIdleTime) {
-      this.maxIdleTime = maxIdleTime;
-      this.lastActiveTime = System.currentTimeMillis();
-    }
-
-    private long getLastActiveTime() {
-      return lastActiveTime;
-    }
-
-    private void setLastActiveTime(long lastActiveTime) {
-      this.lastActiveTime = lastActiveTime;
-    }
-
-    private long getMaxIdleTime() {
-      return maxIdleTime;
-    }
   }
 
   private static class SessionTimeoutManagerHelper {
