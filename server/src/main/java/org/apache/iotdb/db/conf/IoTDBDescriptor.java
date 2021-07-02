@@ -999,15 +999,21 @@ public class IoTDBDescriptor {
 
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_deduplicated_path_num",
+                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
-          Integer.parseInt(properties.getProperty("frequency_interval_in_minute")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "frequency_interval_in_minute",
+                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
-      conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
-
+      conf.setSlowQueryThreshold(
+          Long.parseLong(
+              properties.getProperty(
+                  "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
