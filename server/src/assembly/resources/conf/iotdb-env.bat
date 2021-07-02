@@ -18,7 +18,6 @@
 @REM
 
 @echo off
-setlocal enabledelayedexpansion
 @REM true or false
 @REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
 set JMX_LOCAL="true"
@@ -45,19 +44,14 @@ if %JMX_LOCAL% == "false" (
   echo "setting local JMX..."
 )
 
-set line=0
-for /f  %%a in ('wmic cpu get numberofcores') do (
-	set /a line+=1
-	if !line!==2 set system_cpu_cores=%%a
+for /f %%b in ('wmic cpu get numberofcores ^| findstr "[0-9]"') do (
+	set system_cpu_cores=%%b
 )
-set as=%system_cpu_cores%
 
-if ["%system_cpu_cores%"] LSS ["1"] set system_cpu_cores="1"
+if %system_cpu_cores% LSS 1 set system_cpu_cores=1
 
-set liner=0
-for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory') do (
-	set /a liner+=1
-	if !liner!==2 set system_memory=%%b
+for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"') do (
+	set system_memory=%%b
 )
 
 echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %temp%\tmp.vbs
@@ -68,10 +62,10 @@ set system_memory_in_mb=%system_memory_in_mb:,=%
 set /a half_=%system_memory_in_mb%/2
 set /a quarter_=%half_%/2
 
-if ["%half_%"] GTR ["1024"] set half_=1024
-if ["%quarter_%"] GTR ["8192"] set quarter_=8192
+if %half_% GTR 1024 set half_=1024
+if %quarter_% GTR 8192 set quarter_=8192
 
-if ["%half_%"] GTR ["quarter_"] (
+if %half_% GTR %quarter_% (
 	set max_heap_size_in_mb=%half_%
 ) else set max_heap_size_in_mb=%quarter_%
 
@@ -80,15 +74,19 @@ set max_sensible_yg_per_core_in_mb=100
 set /a max_sensible_yg_in_mb=%max_sensible_yg_per_core_in_mb%*%system_cpu_cores%
 set /a desired_yg_in_mb=%max_heap_size_in_mb%/4
 
-if ["%desired_yg_in_mb%"] GTR ["%max_sensible_yg_in_mb%"] (
+if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
+
+@REM Maximum heap size
+@REM set MAX_HEAP_SIZE="2G"
+@REM Minimum heap size
+@REM set HEAP_NEWSIZE="2G"
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
 	IF "%JAVA_VERSION%" == "8" (
 		java -d64 -version >nul 2>&1
-		echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
 		set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
 		goto end_config_setting
 	) ELSE (
@@ -107,8 +105,7 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
 
-echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 
 @REM You can put your env variable here
@@ -125,7 +122,7 @@ IF "%1" equ "printgc" (
 		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
 	)
 )
-echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
 
-@REM Maximum heap size
-@REM set MAX_HEAP_SIZE=2G
+
+echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
+echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
