@@ -19,6 +19,28 @@
 
 -->
 
+# Apache IoTDB 0.11.4
+
+## Bug Fixes
+* IOTDB-1303 Disable group by without aggregation function in select clause
+* IOTDB-1306 Fix insertion blocked caused the deadlock in memory control module 
+* IOTDB-1308 Fix users with READ_TIMESERIES permission cannot execute group by fill queries
+* IOTDB-1344 Fix cannot create timeseries caused by the timeseries count doesn't reset when deleting storage group 
+* IOTDB-1384 Some value will disappear while using group by query
+* IOTDB-1398 Do not select unseq files when there are uncompacted old unseq files
+* ISSUE-3316 Fix query result with the same time range is inconsistent in group by query
+* Fix TotalSeriesNumber in MManager counted twice when recovering
+* Fix unseq compaction throws a wrong exception if some paths are not in the file
+* Fix overlapped data should be consumed first exception when query
+
+## Improvements
+* [IOTDB-1356] Separate unseq_file_num_in_each_level from selecting candidate file in unseq compaction
+* [IOTDB-1412] Unclear exception message thrown when executing empty InsertTabletPlan
+* continuous compaction in level compaction strategy when no tsfile is to be closed
+
+## New Features
+* support brackets with number in timeseries path
+
 # Apache IoTDB 0.11.3
 
 ## Bug Fixes

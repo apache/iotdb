@@ -68,7 +68,12 @@ public abstract class TsFileManagement {
 
   private long mergeStartTime;
 
+  /** whether execute merge chunk in this task */
+  protected boolean isMergeExecutedInCurrentTask = false;
+
   protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+  private final int maxOpenFileNumInEachUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -147,53 +152,47 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask implements Runnable {
+  public class CompactionOnePartitionUtil {
 
-    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
 
-    public CompactionMergeTask(
-        CloseCompactionMergeCallBack closeCompactionMergeCallBack, long timePartitionId) {
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
+
+    public CompactionOnePartitionUtil(
+        CloseCompactionMergeCallBack closeCompactionMergeCallBack,
+        long timePartitionId) {
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
-    @Override
     public void run() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
     }
   }
 
-  public class CompactionRecoverTask implements Runnable {
+  public class CompactionRecoverTask extends StorageGroupCompactionTask {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
     public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      super(storageGroupName);
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 
     @Override
     public void run() {
       recover();
-      closeCompactionMergeCallBack.call();
+      // in recover logic, the param time partition is useless, we can just pass 0L
+      closeCompactionMergeCallBack.call(false, 0L);
     }
   }
 
-  public void merge(
+  public boolean merge(
       boolean fullMerge,
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
       long dataTTL) {
-    if (isUnseqMerging) {
-      if (logger.isInfoEnabled()) {
-        logger.info(
-            "{} Last merge is ongoing, currently consumed time: {}ms",
-            storageGroupName,
-            (System.currentTimeMillis() - mergeStartTime));
-      }
-      return;
-    }
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
@@ -201,7 +200,7 @@ public abstract class TsFileManagement {
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();
-        return;
+        return false;
       }
     }
     isUnseqMerging = true;
@@ -209,13 +208,21 @@ public abstract class TsFileManagement {
     if (seqMergeList.isEmpty()) {
       logger.info("{} no seq files to be merged", storageGroupName);
       isUnseqMerging = false;
-      return;
+      return false;
     }
 
     if (unSeqMergeList.isEmpty()) {
       logger.info("{} no unseq files to be merged", storageGroupName);
       isUnseqMerging = false;
-      return;
+      return false;
+    }
+
+    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
+      logger.info(
+          "{} too much unseq files to be merged, reduce it to {}",
+          storageGroupName,
+          maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -229,7 +236,7 @@ public abstract class TsFileManagement {
         logger.info(
             "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
         isUnseqMerging = false;
-        return;
+        return false;
       }
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
@@ -266,9 +273,21 @@ public abstract class TsFileManagement {
             mergeFiles[0].size(),
             mergeFiles[1].size());
       }
+      // wait until unseq merge has finished
+      while (isUnseqMerging) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("{} [Compaction] shutdown", storageGroupName, e);
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      }
 
+      return true;
     } catch (MergeException | IOException e) {
       logger.error("{} cannot select file for merge", storageGroupName, e);
+      return false;
     }
   }
 

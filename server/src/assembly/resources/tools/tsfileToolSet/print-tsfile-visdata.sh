@@ -18,22 +18,13 @@
 # under the License.
 #
 
-# You can put your env variable here
-# export JAVA_HOME=$JAVA_HOME
+echo ---------------------
+echo Starting Printing the TsFile Sketch
+echo ---------------------
 
-if [ -z "${IOTDB_CLI_HOME}" ]; then
-  export IOTDB_CLI_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+if [ -z "${IOTDB_HOME}" ]; then
+  export IOTDB_HOME="$(cd "`dirname "$0"`"/../..; pwd)"
 fi
-
-
-MAIN_CLASS=org.apache.iotdb.cli.Cli
-
-
-CLASSPATH=""
-for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}":"$f
-done
-
 
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
@@ -46,36 +37,12 @@ else
     JAVA=java
 fi
 
-PARAMETERS="$@"
+CLASSPATH=""
+for f in ${IOTDB_HOME}/lib/*.jar; do
+  CLASSPATH=${CLASSPATH}":"$f
+done
 
-# if [ $# -eq 0 ]
-# then
-# 	PARAMETERS="-h 127.0.0.1 -p 6667 -u root -pw root"
-# fi
+MAIN_CLASS=org.apache.iotdb.db.tools.vis.TsFileExtractVisdata
 
-# Added parameters when default parameters are missing
-
-# sh version
-case "$PARAMETERS" in
-*"-pw "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-pw root $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-u "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-u root $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-p "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-p 6667 $PARAMETERS" ;;
-esac
-case "$PARAMETERS" in
-*"-h "*) PARAMETERS=$PARAMETERS ;;
-*            ) PARAMETERS="-h 127.0.0.1 $PARAMETERS" ;;
-esac
-
-# echo $PARAMETERS
-
-exec "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" $PARAMETERS
-
-
+"$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

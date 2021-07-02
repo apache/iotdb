@@ -157,8 +157,6 @@ public class Planner {
       case ALTER_TIMESERIES:
       case LOADDATA:
       case INSERT:
-      case INDEX:
-      case INDEXQUERY:
       case GRANT_WATERMARK_EMBEDDING:
       case REVOKE_WATERMARK_EMBEDDING:
       case TTL:

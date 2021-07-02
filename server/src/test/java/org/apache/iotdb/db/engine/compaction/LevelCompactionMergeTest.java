@@ -24,11 +24,16 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
+import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionOnePartitionUtil;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -61,6 +66,56 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     FileUtils.deleteDirectory(tempSGDir);
   }
 
+  @Test
+  public void testCompactionDiffTimeSeries()
+      throws IOException, WriteProcessException, IllegalPathException {
+    int prevSeqLevelFileNum = IoTDBDescriptor.getInstance().getConfig().getSeqFileNumInEachLevel();
+    int prevSeqLevelNum = IoTDBDescriptor.getInstance().getConfig().getSeqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(2);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(2);
+    List<TsFileResource> compactionFiles = prepareTsFileResources();
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement = new LevelCompactionTsFileManagement(
+        COMPACTION_TEST_SG, tempSGDir.getPath());
+    levelCompactionTsFileManagement.addAll(compactionFiles, true);
+    QueryContext context = new QueryContext();
+    PartialPath path = new PartialPath(
+        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[1].getMeasurementId());
+    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[1].getType(),
+        context,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null, true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        count++;
+      }
+    }
+    assertEquals(count, 1);
+
+    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    CompactionOnePartitionUtil compactionOnePartitionUtil = levelCompactionTsFileManagement.new CompactionOnePartitionUtil(
+        this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionOnePartitionUtil.run();
+    while (compactionMergeWorking) {
+      //wait
+    }
+    context = new QueryContext();
+    tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[1].getType(),
+        context,
+        levelCompactionTsFileManagement.getTsFileList(true), new ArrayList<>(), null, null, true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        count++;
+      }
+    }
+    assertEquals(count, 1);
+    IoTDBDescriptor.getInstance().getConfig().setSeqFileNumInEachLevel(prevSeqLevelFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
+  }
+
   /**
    * just compaction once
    */
@@ -71,10 +126,10 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask = levelCompactionTsFileManagement.new CompactionMergeTask(
+    CompactionOnePartitionUtil compactionOnePartitionUtil = levelCompactionTsFileManagement.new CompactionOnePartitionUtil(
         this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionOnePartitionUtil.run();
     while (compactionMergeWorking) {
       //wait
     }
@@ -106,10 +161,10 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     levelCompactionTsFileManagement.addAll(seqResources, true);
     levelCompactionTsFileManagement.addAll(unseqResources, false);
     levelCompactionTsFileManagement.forkCurrentFileList(0);
-    CompactionMergeTask compactionMergeTask = levelCompactionTsFileManagement.new CompactionMergeTask(
+    CompactionOnePartitionUtil compactionOnePartitionUtil = levelCompactionTsFileManagement.new CompactionOnePartitionUtil(
         this::closeCompactionMergeCallBack, 0);
     compactionMergeWorking = true;
-    compactionMergeTask.run();
+    compactionOnePartitionUtil.run();
     while (compactionMergeWorking) {
       //wait
     }
@@ -133,10 +188,71 @@ public class LevelCompactionMergeTest extends LevelCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setSeqLevelNum(prevSeqLevelNum);
   }
 
-  /**
-   * close compaction merge callback, to release some locks
-   */
-  private void closeCompactionMergeCallBack() {
+  @Test
+  public void testCompactionModsByOffsetAfterMerge() throws IllegalPathException, IOException {
+    int prevPageLimit =
+        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
+
+    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
+        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
+    TsFileResource forthSeqTsFileResource = seqResources.get(3);
+    PartialPath path =
+        new PartialPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    try (ModificationFile sourceModificationFile =
+        new ModificationFile(
+            forthSeqTsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX)) {
+      Modification modification =
+          new Deletion(path, forthSeqTsFileResource.getTsFileSize() / 10, 300, 310);
+      sourceModificationFile.write(modification);
+    }
+    levelCompactionTsFileManagement.addAll(seqResources, true);
+    levelCompactionTsFileManagement.addAll(unseqResources, false);
+    levelCompactionTsFileManagement.forkCurrentFileList(0);
+    CompactionOnePartitionUtil compactionOnePartitionUtil =
+        levelCompactionTsFileManagement
+        .new CompactionOnePartitionUtil(this::closeCompactionMergeCallBack, 0);
+    compactionMergeWorking = true;
+    compactionOnePartitionUtil.run();
+    while (compactionMergeWorking) {
+      // wait
+    }
+    QueryContext context = new QueryContext();
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            context,
+            levelCompactionTsFileManagement.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+
+    long count = 0L;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        System.out.println(batchData.getTimeByIndex(i));
+      }
+      count += batchData.length();
+    }
+    assertEquals(489, count);
+
+    List<TsFileResource> tsFileResourceList = levelCompactionTsFileManagement.getTsFileList(true);
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResource.getModFile().remove();
+      tsFileResource.remove();
+    }
+    IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(prevPageLimit);
+  }
+
+  /** close compaction merge callback, to release some locks */
+  private void closeCompactionMergeCallBack(
+      boolean isMergeExecutedInCurrentTask, long timePartitionId) {
     this.compactionMergeWorking = false;
   }
 }

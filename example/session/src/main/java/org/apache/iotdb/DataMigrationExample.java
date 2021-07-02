@@ -88,7 +88,7 @@ public class DataMigrationExample {
     int count = 0;
     while (schemaIter.next()) {
       count ++;
-      Path currentPath = new Path(schemaIter.getString("timeseries"));
+      Path currentPath = new Path(schemaIter.getString("timeseries"), true);
       Future future = executorService.submit(
           new LoadThread(count, currentPath, TSDataType.valueOf(schemaIter.getString("dataType"))));
       futureList.add(future);
@@ -120,14 +120,14 @@ public class DataMigrationExample {
       this.measurement = series.getMeasurement();
       this.dataType = dataType;
       this.series = series;
-      List<MeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema(measurement, dataType));
-      tablet = new Tablet(device, schemaList, 300000);
     }
 
     @Override
     public Void call() {
 
+      List<MeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema(measurement, dataType));
+      tablet = new Tablet(device, schemaList, 300000);
       SessionDataSetWrapper dataSet = null;
 
       try {

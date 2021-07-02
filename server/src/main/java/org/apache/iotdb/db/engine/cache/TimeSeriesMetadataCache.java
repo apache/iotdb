@@ -122,7 +122,7 @@ public class TimeSeriesMetadataCache {
           .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
       }
-      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement));
+      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
     }
 
     cacheRequestNum.incrementAndGet();

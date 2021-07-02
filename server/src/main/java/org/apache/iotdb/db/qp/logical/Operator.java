@@ -32,7 +32,7 @@ public abstract class Operator {
 
   protected OperatorType operatorType = OperatorType.NULL;
 
-  public Operator(int tokenIntType) {
+  protected Operator(int tokenIntType) {
     this.tokenIntType = tokenIntType;
     this.tokenName = SQLConstant.tokenNames.get(tokenIntType);
     this.isDebug = false;
@@ -74,35 +74,23 @@ public abstract class Operator {
   /** If you want to add new OperatorType, you must add it in the last. */
   public enum OperatorType {
     SFW,
-    JOIN,
-    UNION,
     FILTER,
     GROUPBYTIME,
-    ORDERBY,
-    LIMIT,
     SELECT,
-    SEQTABLESCAN,
-    HASHTABLESCAN,
-    MERGEJOIN,
-    FILEREAD,
     NULL,
-    TABLESCAN,
-    UPDATE,
     INSERT,
     BATCHINSERT,
     DELETE,
     BASIC_FUNC,
     IN,
     QUERY,
-    MERGEQUERY,
+    UPDATE,
     AGGREGATION,
     AUTHOR,
     FROM,
     FUNC,
     LOADDATA,
     METADATA,
-    INDEX,
-    INDEXQUERY,
     FILL,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,

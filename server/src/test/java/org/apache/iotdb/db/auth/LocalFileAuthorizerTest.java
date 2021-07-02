@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.db.auth;
 
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+import java.util.Set;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import java.util.List;
-import java.util.Set;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 public class LocalFileAuthorizerTest {
 
@@ -222,7 +224,6 @@ public class LocalFileAuthorizerTest {
     }
     try {
       authorizer.grantPrivilegeToUser(user.getName(), nodeName, 1);
-      authorizer.grantPrivilegeToRole(roleName, nodeName, 2);
       authorizer.grantPrivilegeToRole(roleName, nodeName, 3);
     } catch (AuthException e) {
       e.printStackTrace();
@@ -230,11 +231,10 @@ public class LocalFileAuthorizerTest {
     }
     try {
       Set<Integer> permisssions = authorizer.getPrivileges(user.getName(), nodeName);
-      assertEquals(3, permisssions.size());
+      assertEquals(2, permisssions.size());
       assertTrue(permisssions.contains(1));
-      assertTrue(permisssions.contains(2));
       assertTrue(permisssions.contains(3));
-      assertFalse(permisssions.contains(4));
+      assertFalse(permisssions.contains(2));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());

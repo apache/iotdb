@@ -33,6 +33,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -786,6 +787,27 @@ public class IoTDBGroupByFillIT {
       fail(e.getMessage());
     }
 
+  }
+
+  /**
+   * Test group by fill without aggregation function used in select clause. The expected situation
+   * is throwing an exception.
+   */
+  @Test
+  public void TestGroupByFillWithoutAggregationFunc() {
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute(
+          "select temperature from root.ln.wf01.wt01 "
+              + "group by ([0, 100), 5ms) FILL(int32[previous])");
+
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage().contains("There is no aggregation function with group by query"));
+    }
   }
 
   private void prepareData() {

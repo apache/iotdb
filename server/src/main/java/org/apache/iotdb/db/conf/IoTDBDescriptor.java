@@ -279,9 +279,17 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
-      conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
-          .getProperty("avg_series_point_number_threshold",
-              Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+      conf.setAvgSeriesPointNumberThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "avg_series_point_number_threshold",
+                  Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
 
       conf.setCheckPeriodWhenInsertBlocked(Integer.parseInt(properties
           .getProperty("check_period_when_insert_blocked",
@@ -331,6 +339,12 @@ public class IoTDBDescriptor {
           .getProperty("unseq_level_num",
               Integer.toString(conf.getUnseqLevelNum()))));
 
+      conf.setMaxOpenFileNumInEachUnseqCompaction(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_open_file_num_in_each_unseq_compaction",
+                  Integer.toString(conf.getMaxOpenFileNumInEachUnseqCompaction()))));
+                  
       conf.setUnseqFileNumInEachLevel(Integer.parseInt(properties
           .getProperty("unseq_file_num_in_each_level",
               Integer.toString(conf.getUnseqFileNumInEachLevel()))));
@@ -763,6 +777,17 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
+      
+      // update debug_state
+      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state",Boolean.toString(conf.isDebugOn()))));
+
+      // update enable_continuous_compaction
+      conf.setEnableContinuousCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
+      
       // update merge_write_throughput_mb_per_sec
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(

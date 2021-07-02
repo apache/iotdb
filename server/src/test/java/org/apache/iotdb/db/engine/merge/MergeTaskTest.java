@@ -105,23 +105,28 @@ public class MergeTaskTest extends MergeTest {
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l) -> {
             }, "test",
-            true, 1, MERGE_TEST_SG);
+            true, 10, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
     PartialPath path = new PartialPath(
-        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[0].getMeasurementId());
+        deviceIds[0] + TsFileConstant.PATH_SEPARATOR + measurementSchemas[9].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
     list.add(seqResources.get(0));
-    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),
+    IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path,
+        measurementSchemas[9].getType(),
         context,
         list, new ArrayList<>(), null, null, true);
+    long count = 0L;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i) + 20000.0, batchData.getDoubleByIndex(i), 0.001);
+      for (int t = 0; t < batchData.length(); t++) {
+        assertEquals(batchData.getTimeByIndex(t) + 20000.0, batchData.getDoubleByIndex(t),
+            0.001);
+        count++;
       }
     }
+    assertEquals(100,count);
     tsFilesReader.close();
   }
 
