@@ -261,9 +261,10 @@ public class PrimitiveArrayManager {
     }
 
     synchronized (bufferedArraysMap.get(replacedDataType)) {
-      bufferedArraysMap.get(replacedDataType).poll();
+      if (bufferedArraysMap.get(replacedDataType).poll() != null) {
+        bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * replacedDataType.getDataTypeSize());
+      }
     }
-    bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * replacedDataType.getDataTypeSize());
   }
 
   private static void bringBackOutOfBufferArray(TSDataType dataType) {
