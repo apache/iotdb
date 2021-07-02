@@ -74,6 +74,7 @@ public class SessionConnection {
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
+  private EndPoint endPoint;
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
@@ -83,6 +84,7 @@ public class SessionConnection {
   public SessionConnection(Session session, EndPoint endPoint, ZoneId zoneId)
       throws IoTDBConnectionException {
     this.session = session;
+    this.endPoint = endPoint;
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
     init(endPoint);
@@ -744,12 +746,13 @@ public class SessionConnection {
 
   private boolean reconnect() {
     boolean flag = false;
-    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+    for (int i = Config.RETRY_NUM; i >= 0; i--) {
       if (transport != null) {
         transport.close();
         int currHostIndex = endPointList.indexOf(session.defaultEndPoint);
         for (int j = currHostIndex + 1; j < endPointList.size(); j++) {
           session.defaultEndPoint = endPointList.get(j);
+          this.endPoint = endPointList.get(j);
           if (currHostIndex == j) {
             break;
           }
@@ -757,11 +760,10 @@ public class SessionConnection {
             j = -1;
           }
           try {
-            init(session.defaultEndPoint);
+            init(endPoint);
             flag = true;
           } catch (IoTDBConnectionException e) {
-            logger.error(
-                "The current node may have been down {},try next node", session.defaultEndPoint);
+            logger.error("The current node may have been down {},try next node", endPoint);
             continue;
           }
           break;
@@ -820,16 +822,16 @@ public class SessionConnection {
     this.enableRedirect = enableRedirect;
   }
 
-  public List<EndPoint> getEndPointList() {
-    return endPointList;
+  public EndPoint getEndPoint() {
+    return endPoint;
   }
 
-  public void setEndPointList(List<EndPoint> endPointList) {
-    this.endPointList = endPointList;
+  public void setEndPoint(EndPoint endPoint) {
+    this.endPoint = endPoint;
   }
 
   @Override
   public String toString() {
-    return "SessionConnection{" + " endPointList=" + endPointList.toString() + "}";
+    return "SessionConnection{" + " endPoint=" + endPoint + "}";
   }
 }
