@@ -298,7 +298,7 @@ public class PrimitiveArrayManager {
       total += value.size();
     }
     int arrayNumInBuffer =
-        bufferedArraysMap.contains(dataType) ? bufferedArraysMap.get(dataType).size() : 0;
+        bufferedArraysMap.containsKey(dataType) ? bufferedArraysMap.get(dataType).size() : 0;
     return total != 0
         && ((double) arrayNumInBuffer / total > bufferedArraysNumRatio.getOrDefault(dataType, 0.0));
   }
