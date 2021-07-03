@@ -56,13 +56,12 @@
 - **Compressing Type Hardcode**
   - 0: UNCOMPRESSED
   - 1: SNAPPY
+  - 2: GZIP
+  - 3: LZO
+  - 4: SDT
+  - 5: PAA
+  - 6: PLA
   - 7: LZ4
-- **TsDigest Statistics Type Hardcode**
-  - 0: min_value
-  - 1: max_value
-  - 2: first_value
-  - 3: last_value
-  - 4: sum_value
 
 ### 1.2 TsFile Overview
 
@@ -255,11 +254,29 @@ A TsFile ends with a 6-byte magic string (`TsFile`).
 
 Congratulations! You have finished the journey of discovering TsFile.
 
-### 1.3 TsFile Tool Set
+## 2. A TsFile Visualization Example
 
-#### 1.3.1 IoTDB Data Directory Overview Tool
+### v0.8
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
+
+### v0.9 / 000001
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+
+### v0.10 / 000002
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
+
+### v0.12 / 000003
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/123052025-f47aab80-d434-11eb-94c2-9b75429e5c54.png">
+
+
+## 3. TsFile Tool Set
+
+### 3.1 IoTDB Data Directory Overview Tool
+
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -278,10 +295,10 @@ For Linux or MacOs:
 An example on Windows:
 
 ```
-D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
+D:\iotdb\server\target\iotdb-server-{version}\tools\tsfileToolSet>.\print-iotdb-data-dir.bat D:\\data\data
 |````````````````````````
 Starting Printing the IoTDB Data Directory Overview
-​|````````````````````````
+|````````````````````````
 output save path:IoTDB_data_dir_overview.txt
 TsFile data dir num:1
 21:17:38.841 [main] WARN org.apache.iotdb.tsfile.common.conf.TSFileDescriptor - Failed to find config file iotdb-engine.properties at classpath, use default configuration
@@ -308,9 +325,9 @@ TsFile data dir num:1
 
 
 
-#### 1.3.2 TsFileResource Print Tool
+### 3.2 TsFileResource Print Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -329,19 +346,19 @@ For Linux or MacOs:
 An example on Windows:
 
 ```shell
-D:\iotdb\server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\iotdb\server\target\iotdb-server-{version}\tools\tsfileToolSet>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 |````````````````````````
 Starting Printing the TsFileResources
-|​````````````````````````
+|````````````````````````
 12:31:59.861 [main] WARN org.apache.iotdb.db.conf.IoTDBDescriptor - Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading config file iotdb-engine.properties, use default configuration
 analyzing D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile ...
 device root.vehicle.d0, start time 3000 (1970-01-01T08:00:03+08:00[GMT+08:00]), end time 100999 (1970-01-01T08:01:40.999+08:00[GMT+08:00])
 analyzing the resource file finished.
 ```
 
-#### 1.3.3 TsFile Sketch Tool
+### 3.3 TsFile Sketch Tool
 
-After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-0.13.0-SNAPSHOT\tools\tsfileToolSet` directory.
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
 
 Command:
 
@@ -364,7 +381,7 @@ For Linux or MacOs:
 An example on macOS:
 
 ```shell
-/iotdb/server/target/iotdb-server-0.13.0-SNAPSHOT/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
+/iotdb/server/target/iotdb-server-{version}/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 |````````````````````````
 Starting Printing the TsFile Sketch
 |````````````````````````
@@ -581,20 +598,179 @@ file length: 33436
 
 ```
 
-#### 1.3.4 TsFileSequenceRead
+### 3.4 TsFileSequenceRead
 
 You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to sequentially print a TsFile's content.
 
-### 1.4 A TsFile Visualization Example
 
-#### v0.8
+### 3.5 Vis Tool
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
+Vis is a tool that visualizes the time layouts and cout aggregation of chunk data in TsFiles. You can use this tool to facilitate debugging, check the distribution of data, etc. Please feel free to play around with it, and let us know your thoughts.
 
-#### v0.9 / 000001
+![image](https://user-images.githubusercontent.com/33376433/123763559-82074100-d8f6-11eb-9109-ead7e18f84b8.png)
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+- A single long narrow rectangle in the figure shows the visdata of a single chunk in a TsFile. 
+Visdata contains \[tsName, fileName, chunkId, startTime, endTime, pointCountNum\].
+- The position of a rectangle on the x-axis is defined by the startTime and endTime of the chunk data.
+- The position of a rectangle on the y-axis is defined simultaneously by 
+  - (a)`showSpecific`: the specific set of time series to be plotted;
+  - (b) seqKey/unseqKey display policies: extract seqKey or unseqKey from statisfied keys under 
+    different display policies: 
+      - b-1) unseqKey identifies tsName and fileName, so chunk data with the same fileName and 
+        tsName but different chunkIds are plotted on the same line. 
+      - b-2) seqKey identifies tsName, so chunk data with the same tsName but different fileNames 
+        and chunkIds are plotted on the same line;
+  - (c)`isFileOrder`: sort seqKey&unseqKey according to `isFileOrder`, true to sort 
+    seqKeys&unseqKeys by fileName priority, false to sort seqKeys&unseqKeys by tsName priority. 
+    When multiple time series are displayed on a graph at the same time, this parameter can provide
+    users with these two observation perspectives.
 
-#### v0.10 / 000002
+#### 3.5.1 How to run Vis
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/95296983-492cc500-08ac-11eb-9f66-c9c78401c61d.png">
+The source code contains two files: `TsFileExtractVisdata.java` and `vis.m`. `TsFileExtractVisdata.java` extracts, from input tsfiles, necessary visualization information, which is what `vis.m` needs to plot figures.
+
+Simply put, you first run `TsFileExtractVisdata.java` and then run `vis.m`.
+
+##### Step 1: run TsFileExtractVisdata.java
+
+`TsFileExtractVisdata.java` extracts visdata [tsName, fileName, chunkId, startTime, endTime, pointCountNum] from every chunk of the input TsFiles and write them to the specified output path.
+
+After building the server, the startup script of this tool will appear under the `server\target\iotdb-server-{version}\tools\tsfileToolSet` directory.
+
+Command:
+
+For Windows:
+
+```
+.\print-tsfile-visdata.bat path1 seqIndicator1 path2 seqIndicator2 ... pathN seqIndicatorN outputPath
+```
+
+For Linux or MacOs:
+
+```
+./print-tsfile-visdata.sh path1 seqIndicator1 path2 seqIndicator2 ... pathN seqIndicatorN outputPath
+```
+
+Args: [`path1` `seqIndicator1` `path2` `seqIndicator2` ... `pathN` `seqIndicatorN` `outputPath`]
+
+Details:
+
+-   2N+1 args in total.
+-   `seqIndicator` should be 'true' or 'false' (not case sensitive). 'true' means is the file is sequence, 'false' means the file is unsequence.
+-   `Path` can be the full path of a tsfile or a directory path. If it is a directory path, make sure that all tsfiles in this directory have the same `seqIndicator`.
+-   The input TsFiles should all be sealed. The handle of unsealed TsFile is left as future work when in need.
+
+##### Step 2: run vis.m
+
+`vis.m` load visdata generated by `TsFileExtractVisdata`, and then plot figures given the loaded visdata and two plot parameters: `showSpecific` and `isFileOrder`.
+
+```matlab
+function [timeMap,countMap] = loadVisData(filePath,timestampUnit)
+% Load visdata generated by TsFileExtractVisdata.
+%
+% filePath: the path of visdata.
+% The format is [tsName,fileName,chunkId,startTime,endTime,pointCountNum].
+% `tsName` and `fileName` are string, the others are long value.
+% If the tsfile is unsequence file, `fileName` will contain "unseq" as an
+% indicator, which is guaranteed by TsFileExtractVisdata.
+%
+% timestampUnit(not case sensitive):
+%   'us' if the timestamp is microsecond, e.g., 1621993620816000
+%   'ms' if it is millisecond, e.g., 1621993620816
+%   's' if it is second, e.g., 1621993620
+%
+% timeMap: record the time range of every chunk.
+% Key [tsName][fileName][chunkId] identifies the only chunk. Value is
+% [startTime,endTime] of the chunk.
+%
+% countMap: record the point count number of every chunk. Key is the same
+% as that of timeMap. Value is pointCountNum.
+```
+
+```matlab
+function draw(timeMap,countMap,showSpecific,isFileOrder)
+% Plot figures given the loaded data and two plot parameters:
+% `showSpecific` and `isFileOrder`.
+%
+% process: 1) traverse `keys(timeMap)` to get the position arrangements on
+%          the y axis dynamically, which is defined simultaneously by
+%           (a)`showSpecific`: traverse `keys(timeMap)`, filter out keys
+%          that don't statisfy `showSpecific`.
+%           (b) seqKey/unseqKey display policies: extract seqKey or unseqKey
+%          from statisfied keys under different display policies:
+%               b-1) unseqKey identifies tsName and fileName, so chunk data with the
+%               same fileName and tsName but different chunkIds are
+%               plotted on the same line.
+%               b-2) seqKey identifies tsName, so chunk data with the same tsName but
+%               different fileNames and chunkIds are plotted on the same
+%               line.
+%           (c)`isFileOrder`: sort seqKey&unseqKey according to `isFileOrder`,
+%          finally get the position arrangements on the y axis.
+%          2) traverse `keys(timeMap)` again, get startTime&endTime from
+%          `treeMap` as positions on the x axis, combined with the
+%          positions on the y axis from the last step, finish plot.
+%
+% timeMap,countMap: generated by loadVisData function.
+%
+% showSpecific: the specific set of time series to be plotted.
+%               If showSpecific is empty{}, then all loaded time series
+%               will be plotted.
+%               Note: Wildcard matching is not supported now. In other
+%               words, showSpecific only support full time series path
+%               names.
+%
+% isFileOrder: true to sort seqKeys&unseqKeys by fileName priority, false
+%              to sort seqKeys&unseqKeys by tsName priority.
+```
+
+
+#### 3.5.2 Examples
+
+##### Example 1
+
+Use the tsfiles written by `IoTDBLargeDataIT.insertData` with a little modification: add `statement.execute("flush");` at the end of `IoTDBLargeDataIT.insertData`.
+
+Step 1: run `TsFileExtractVisdata.java`
+
+```
+.\print-tsfile-visdata.bat data\sequence true data\unsequence false D:\visdata1.csv
+```
+or equivalently:
+```
+.\print-tsfile-visdata.bat data\sequence\root.vehicle\0\0\1622743492580-1-0.tsfile true data\sequence\root.vehicle\0\0\1622743505092-2-0.tsfile true data\sequence\root.vehicle\0\0\1622743505573-3-0.tsfile true data\unsequence\root.vehicle\0\0\1622743505901-4-0.tsfile false D:\visdata1.csv
+```
+
+Step 2: run `vis.m`
+
+```matlab
+clear all;close all;
+
+% 1. load visdata generated by TsFileExtractVisdata
+filePath = 'D:\visdata1.csv';
+[timeMap,countMap] = loadVisData(filePath,'ms'); % mind the timestamp unit
+
+% 2. plot figures given the loaded data and two plot parameters:
+% `showSpecific` and `isFileOrder`
+draw(timeMap,countMap,{},false)
+title("draw(timeMap,countMap,\{\},false)")
+
+draw(timeMap,countMap,{},true)
+title("draw(timeMap,countMap,\{\},true)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0'},false)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0'},false)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},false)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},false)")
+
+draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},true)
+title("draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},true)")
+```
+
+Plot results:
+
+![1](https://user-images.githubusercontent.com/33376433/123760377-5df63080-d8f3-11eb-8ca8-c93590f21bde.png)
+![2](https://user-images.githubusercontent.com/33376433/123760402-63537b00-d8f3-11eb-9393-398c4204ccf1.png)
+![3](https://user-images.githubusercontent.com/33376433/123760418-66e70200-d8f3-11eb-8701-437afd73ac4c.png)
+![4](https://user-images.githubusercontent.com/33376433/123760424-69e1f280-d8f3-11eb-9f45-571496685a6e.png)
+![5](https://user-images.githubusercontent.com/33376433/123760433-6cdce300-d8f3-11eb-8ecd-da04a475af41.png)
