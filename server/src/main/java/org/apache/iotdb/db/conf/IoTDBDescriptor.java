@@ -762,25 +762,38 @@ public class IoTDBDescriptor {
 
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_deduplicated_path_num",
+                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
-          Integer.parseInt(properties.getProperty("frequency_interval_in_minute")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "frequency_interval_in_minute",
+                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
-      conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
-
+      conf.setSlowQueryThreshold(
+          Long.parseLong(
+              properties.getProperty(
+                  "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
+      
       // update debug_state
-      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state")));
+      conf.setDebugState(Boolean.parseBoolean(properties.getProperty("debug_state",Boolean.toString(conf.isDebugOn()))));
 
       // update enable_continuous_compaction
       conf.setEnableContinuousCompaction(
-          Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
-
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
+      
       // update merge_write_throughput_mb_per_sec
       conf.setMergeWriteThroughputMbPerSec(
-          Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
+          Integer.parseInt(
+              properties.getProperty(
+                  "merge_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
