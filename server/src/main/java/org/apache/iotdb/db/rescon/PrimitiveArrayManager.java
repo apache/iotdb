@@ -185,53 +185,53 @@ public class PrimitiveArrayManager {
   /**
    * This method is called when bringing back data array
    *
-   * @param dataArray data array
+   * @param releasingArray data array to be released
    */
-  public static void release(Object dataArray) {
-    TSDataType dataType;
-    if (dataArray instanceof boolean[]) {
-      dataType = TSDataType.BOOLEAN;
-    } else if (dataArray instanceof int[]) {
-      dataType = TSDataType.INT32;
-    } else if (dataArray instanceof long[]) {
-      dataType = TSDataType.INT64;
-    } else if (dataArray instanceof float[]) {
-      dataType = TSDataType.FLOAT;
-    } else if (dataArray instanceof double[]) {
-      dataType = TSDataType.DOUBLE;
-    } else if (dataArray instanceof Binary[]) {
-      Arrays.fill((Binary[]) dataArray, null);
-      dataType = TSDataType.TEXT;
+  public static void release(Object releasingArray) {
+    TSDataType releasingType;
+    if (releasingArray instanceof boolean[]) {
+      releasingType = TSDataType.BOOLEAN;
+    } else if (releasingArray instanceof int[]) {
+      releasingType = TSDataType.INT32;
+    } else if (releasingArray instanceof long[]) {
+      releasingType = TSDataType.INT64;
+    } else if (releasingArray instanceof float[]) {
+      releasingType = TSDataType.FLOAT;
+    } else if (releasingArray instanceof double[]) {
+      releasingType = TSDataType.DOUBLE;
+    } else if (releasingArray instanceof Binary[]) {
+      Arrays.fill((Binary[]) releasingArray, null);
+      releasingType = TSDataType.TEXT;
     } else {
       throw new UnSupportedDataTypeException("Unknown data array type");
     }
 
-    // Check out of buffer array num
-    if (outOfBufferArraysRamSize.get() > 0) {
-      if (!isCurrentDataTypeExceeded(dataType)) {
-        // if the ratio of buffered arrays of this data type does not exceed the schema ratio,
-        // choose one replaced array who has larger ratio than schema recommended ratio
+    if (outOfBufferArraysRamSize.get() <= 0) {
+      // if there is no out of buffer array, bring back as buffered array directly
+      putBackBufferedArray(releasingType, releasingArray);
+    } else {
+      // if the system has out of buffer array, we need to release some memory
+      if (!isCurrentDataTypeExceeded(releasingType)) {
+        // if the buffered array of the releasingType is less than expected
+        // choose an array of redundantDataType to release and try to buffer the array of releasingType
         for (Entry<TSDataType, ArrayDeque<Object>> entry : bufferedArraysMap.entrySet()) {
-          TSDataType replacedDataType = entry.getKey();
-          if (isCurrentDataTypeExceeded(replacedDataType)) {
+          TSDataType dataType = entry.getKey();
+          if (isCurrentDataTypeExceeded(dataType)) {
             // if we find a replaced array, bring back the original array as a buffered array
             if (logger.isDebugEnabled()) {
               logger.debug(
-                  "The ratio of {} in buffered array has not reached the schema ratio. Replaced by {}",
-                  dataType,
-                  replacedDataType);
+                  "The ratio of {} in buffered array has not reached the schema ratio. discard a redundant array of {}",
+                  releasingType,
+                  dataType);
             }
             // bring back the replaced array as OOB array
-            replaceBufferedArray(dataType, replacedDataType, dataArray);
+            replaceBufferedArray(releasingType, releasingArray, dataType);
             break;
           }
         }
       }
 
-      releaseOutOfBuffer(dataType);
-    } else {
-      // if there is no out of buffer array, bring back as buffered array directly
-      putBackBufferedArray(dataType, dataArray);
+      releaseOutOfBuffer(releasingType);
     }
   }
 
@@ -248,20 +248,20 @@ public class PrimitiveArrayManager {
   }
 
   private static void replaceBufferedArray(
-      TSDataType dataType, TSDataType replacedDataType, Object dataArray) {
-    if (bufferedArraysRamSize.get()
-            + (long) ARRAY_SIZE * (dataType.getDataTypeSize() - replacedDataType.getDataTypeSize())
-        < BUFFERED_ARRAY_SIZE_THRESHOLD) {
-      synchronized (bufferedArraysMap.get(dataType)) {
-        bufferedArraysMap.get(dataType).add(dataArray);
+      TSDataType releasingType, Object releasingArray, TSDataType redundantType) {
+    synchronized (bufferedArraysMap.get(redundantType)) {
+      if (bufferedArraysMap.get(redundantType).poll() != null) {
+        bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * redundantType.getDataTypeSize());
       }
-      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * dataType.getDataTypeSize());
     }
 
-    synchronized (bufferedArraysMap.get(replacedDataType)) {
-      if (bufferedArraysMap.get(replacedDataType).poll() != null) {
-        bufferedArraysRamSize.addAndGet((long) -ARRAY_SIZE * replacedDataType.getDataTypeSize());
+    if (bufferedArraysRamSize.get() + (long) ARRAY_SIZE * releasingType.getDataTypeSize()
+        < BUFFERED_ARRAY_SIZE_THRESHOLD) {
+      ArrayDeque<Object> releasingArrays = bufferedArraysMap.get(releasingType);
+      synchronized (releasingArrays) {
+        releasingArrays.add(releasingArray);
       }
+      bufferedArraysRamSize.addAndGet((long) ARRAY_SIZE * releasingType.getDataTypeSize());
     }
   }
 
