@@ -494,7 +494,7 @@ public class StorageGroupProcessor {
               tsFileManagement::mergeEndAction,
               taskName,
               IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-              logicalStorageGroupName + "-" + virtualStorageGroupId);
+              logicalStorageGroupName);
       logger.info(
           "{} - {} a RecoverMergeTask {} starts...",
           logicalStorageGroupName,
