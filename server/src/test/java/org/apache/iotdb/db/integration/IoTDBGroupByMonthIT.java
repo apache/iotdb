@@ -34,6 +34,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TimeZone;
 
 import static org.apache.iotdb.db.constant.TestConstant.sum;
@@ -237,12 +239,18 @@ public class IoTDBGroupByMonthIT {
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
+      List<String> times = new ArrayList<>();
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(sum("root.sg1.d1.temperature"));
+          times.add(resultSet.getString("Time"));
           if (ans.equals("0.0")) {
             cnt++;
           }
+        }
+        if (cnt < 28 || cnt > 31) {
+          System.out.println("cnt: " + cnt);
+          System.out.println(times);
         }
         Assert.assertTrue(cnt >= 28);
         Assert.assertTrue(cnt <= 31);
