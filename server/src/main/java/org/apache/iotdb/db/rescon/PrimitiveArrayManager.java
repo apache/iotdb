@@ -213,7 +213,8 @@ public class PrimitiveArrayManager {
       // if the system has out of buffer array, we need to release some memory
       if (!isCurrentDataTypeExceeded(releasingType)) {
         // if the buffered array of the releasingType is less than expected
-        // choose an array of redundantDataType to release and try to buffer the array of releasingType
+        // choose an array of redundantDataType to release and try to buffer the array of
+        // releasingType
         for (Entry<TSDataType, ArrayDeque<Object>> entry : bufferedArraysMap.entrySet()) {
           TSDataType dataType = entry.getKey();
           if (isCurrentDataTypeExceeded(dataType)) {
