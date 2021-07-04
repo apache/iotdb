@@ -32,16 +32,16 @@ import java.util.concurrent.TimeUnit;
 public class SessionTimeoutManager {
   private static final long SESSION_TIMEOUT =
       IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
-  private static final long CLEANUP_PERIOD_MILLIS = Math.max(5000, SESSION_TIMEOUT / 5);
+  private static final long CLEANUP_PERIOD_MILLIS = Math.max(2000, SESSION_TIMEOUT / 5);
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionTimeoutManager.class);
 
-  private Map<Long, Long> idToLastActiveTime;
+  private Map<Long, Long> sessionIdToLastActiveTime;
   private ScheduledExecutorService executorService;
 
   private SessionTimeoutManager() {
     if (SESSION_TIMEOUT == 0) return;
 
-    this.idToLastActiveTime = new ConcurrentHashMap<>();
+    this.sessionIdToLastActiveTime = new ConcurrentHashMap<>();
 
     this.executorService =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "session-timeout-manager");
@@ -58,25 +58,24 @@ public class SessionTimeoutManager {
   public void register(long id) {
     if (SESSION_TIMEOUT == 0) return;
 
-    idToLastActiveTime.put(id, System.currentTimeMillis());
+    sessionIdToLastActiveTime.put(id, System.currentTimeMillis());
   }
 
   public void unregister(long id) {
     if (SESSION_TIMEOUT == 0) return;
 
-    idToLastActiveTime.remove(id);
+    sessionIdToLastActiveTime.remove(id);
   }
 
   public void refresh(long id) {
     if (SESSION_TIMEOUT == 0) return;
 
-    LOGGER.debug(String.format("session-%d refreshed", id));
-    idToLastActiveTime.computeIfPresent(id, (k, v) -> System.currentTimeMillis());
+    sessionIdToLastActiveTime.computeIfPresent(id, (k, v) -> System.currentTimeMillis());
   }
 
   private void cleanup() {
     long currentTime = System.currentTimeMillis();
-    idToLastActiveTime.entrySet().stream()
+    sessionIdToLastActiveTime.entrySet().stream()
         .filter(entry -> entry.getValue() + SESSION_TIMEOUT < currentTime)
         .forEach(
             entry -> {
