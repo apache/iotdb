@@ -54,8 +54,9 @@ public class IoTDBSessionTimeoutIT {
 
   @Test
   public void sessionTimeoutTest() {
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       Thread.sleep(SESSION_TIMEOUT + 5000);
       statement.execute("show storage group");
       fail("session did not timeout as expected");
@@ -65,8 +66,9 @@ public class IoTDBSessionTimeoutIT {
       fail(e.getMessage());
     }
 
-    try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       Thread.sleep(SESSION_TIMEOUT / 2);
       statement.execute("select * from root.sg.d1");
     } catch (Exception e) {
