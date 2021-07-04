@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
@@ -27,56 +28,79 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class SessionTimeoutManager {
-  private static final long SESSION_TIMEOUT =
-      IoTDBDescriptor.getInstance().getConfig().getSessionTimeoutThreshold();
-  private static final long CLEANUP_PERIOD_MILLIS = Math.max(2000, SESSION_TIMEOUT / 5);
-  private static final Logger LOGGER = LoggerFactory.getLogger(SessionTimeoutManager.class);
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SessionTimeoutManager.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private long sessionTimeout = 0;
   private Map<Long, Long> sessionIdToLastActiveTime;
   private ScheduledExecutorService executorService;
+  private ScheduledFuture future;
 
   private SessionTimeoutManager() {
-    if (SESSION_TIMEOUT == 0) return;
-
     this.sessionIdToLastActiveTime = new ConcurrentHashMap<>();
-
     this.executorService =
         IoTDBThreadPoolFactory.newScheduledThreadPool(1, "session-timeout-manager");
-    executorService.scheduleAtFixedRate(
-        () -> {
-          LOGGER.info("cleaning up expired sessions");
-          cleanup();
-        },
-        0,
-        CLEANUP_PERIOD_MILLIS,
-        TimeUnit.MILLISECONDS);
   }
 
   public void register(long id) {
-    if (SESSION_TIMEOUT == 0) return;
+    reschedule();
+    if (sessionTimeout == 0) {
+      return;
+    }
 
     sessionIdToLastActiveTime.put(id, System.currentTimeMillis());
   }
 
   public void unregister(long id) {
-    if (SESSION_TIMEOUT == 0) return;
+    if (sessionTimeout == 0) {
+      return;
+    }
 
     sessionIdToLastActiveTime.remove(id);
   }
 
   public void refresh(long id) {
-    if (SESSION_TIMEOUT == 0) return;
+    if (sessionTimeout == 0) {
+      return;
+    }
 
     sessionIdToLastActiveTime.computeIfPresent(id, (k, v) -> System.currentTimeMillis());
+  }
+
+  private void reschedule() {
+    long newSessionTimeout = CONFIG.getSessionTimeoutThreshold();
+    if (newSessionTimeout == sessionTimeout) {
+      return;
+    }
+
+    sessionTimeout = newSessionTimeout;
+
+    if (future != null) {
+      future.cancel(false);
+    }
+
+    if (newSessionTimeout != 0) {
+      future =
+          executorService.scheduleAtFixedRate(
+              () -> {
+                LOGGER.info("cleaning up expired sessions");
+                cleanup();
+              },
+              0,
+              Math.max(2000, CONFIG.getSessionTimeoutThreshold()),
+              TimeUnit.MILLISECONDS);
+    }
   }
 
   private void cleanup() {
     long currentTime = System.currentTimeMillis();
     sessionIdToLastActiveTime.entrySet().stream()
-        .filter(entry -> entry.getValue() + SESSION_TIMEOUT < currentTime)
+        .filter(entry -> entry.getValue() + sessionTimeout < currentTime)
         .forEach(
             entry -> {
               if (SessionManager.getInstance().releaseSessionResource(entry.getKey())) {

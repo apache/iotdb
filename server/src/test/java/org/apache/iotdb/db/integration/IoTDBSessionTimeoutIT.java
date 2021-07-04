@@ -23,8 +23,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -38,26 +38,27 @@ public class IoTDBSessionTimeoutIT {
 
   public static final int SESSION_TIMEOUT = 2000;
 
-  @BeforeClass
-  public static void setUp() throws ClassNotFoundException {
+  @Before
+  public void setUp() throws ClassNotFoundException {
     EnvironmentUtils.closeStatMonitor();
-    IoTDBDescriptor.getInstance().getConfig().setSessionTimeoutThreshold(SESSION_TIMEOUT);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSessionTimeoutThreshold(0);
   }
 
   @Test
   public void sessionTimeoutTest() {
+    IoTDBDescriptor.getInstance().getConfig().setSessionTimeoutThreshold(1000);
+
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(SESSION_TIMEOUT + 5000);
+      Thread.sleep(SESSION_TIMEOUT + 10000);
       statement.execute("show storage group");
       fail("session did not timeout as expected");
     } catch (IoTDBSQLException e) {
