@@ -1161,4 +1161,105 @@ public class SessionPool {
     // never go here
     return null;
   }
+
+  public int getMaxSize() {
+    return maxSize;
+  }
+
+  public String getIp() {
+    return ip;
+  }
+
+  public int getPort() {
+    return port;
+  }
+
+  public String getUser() {
+    return user;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public int getFetchSize() {
+    return fetchSize;
+  }
+
+  public long getTimeout() {
+    return timeout;
+  }
+
+  public boolean isEnableCompression() {
+    return enableCompression;
+  }
+
+  public boolean isEnableCacheLeader() {
+    return enableCacheLeader;
+  }
+
+  public ZoneId getZoneId() {
+    return zoneId;
+  }
+
+  public static class Builder {
+    private final String ip;
+    private final int port;
+    private final String user;
+    private final String password;
+    private final int maxSize;
+
+    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private long timeout = 60_000;
+    private boolean enableCompression = false;
+    private ZoneId zoneId = null;
+    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+
+    public Builder(String ip, int port, String user, String password, int maxSize) {
+      this.ip = ip;
+      this.port = port;
+      this.user = user;
+      this.password = password;
+      this.maxSize = maxSize;
+    }
+
+    public Builder fetchSize(int fetchSize) {
+      this.fetchSize = fetchSize;
+      return this;
+    }
+
+    public Builder timeout(long timeout) {
+      this.timeout = timeout;
+      return this;
+    }
+
+    public Builder enableCompression(boolean enableCompression) {
+      this.enableCompression = enableCompression;
+      return this;
+    }
+
+    public Builder enableCacheLeader(boolean enableCacheLeader) {
+      this.enableCacheLeader = enableCacheLeader;
+      return this;
+    }
+
+    public Builder zoneId(ZoneId zoneId) {
+      this.zoneId = zoneId;
+      return this;
+    }
+
+    public SessionPool build() {
+      return new SessionPool(
+          ip,
+          port,
+          user,
+          password,
+          maxSize,
+          fetchSize,
+          timeout,
+          enableCompression,
+          zoneId,
+          enableCacheLeader);
+    }
+  }
 }
