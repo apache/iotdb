@@ -370,7 +370,7 @@ public class SessionPoolTest {
     builder.timeout(2);
     builder.enableCacheLeader(true);
     builder.enableCompression(true);
-    builder.zoneId(ZoneId.of("Asia/Tokyo"));
+    builder.zoneId(ZoneId.of("Asia/Kolkata"));
     SessionPool pool = builder.build();
 
     assertEquals(pool.getIp(), "localhost");
@@ -380,7 +380,7 @@ public class SessionPoolTest {
     assertEquals(pool.getMaxSize(), 10);
     assertEquals(pool.getFetchSize(), 1);
     assertEquals(pool.getTimeout(), 2);
-    assertEquals(pool.getZoneId(), ZoneId.of("Asia/Tokyo"));
+    assertEquals(pool.getZoneId(), ZoneId.of("Asia/Kolkata"));
     assertTrue(pool.isEnableCacheLeader());
     assertTrue(pool.isEnableCompression());
   }
