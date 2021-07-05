@@ -366,7 +366,9 @@ public class SessionPoolTest {
   @Test
   public void testBuilder() {
     SessionPool pool =
-        new SessionPool.Builder("localhost", 1234, "abc", "123", 10)
+        new SessionPool.Builder("localhost", 1234, 10)
+            .user("abc")
+            .password("123")
             .fetchSize(1)
             .timeout(2)
             .enableCacheLeader(true)

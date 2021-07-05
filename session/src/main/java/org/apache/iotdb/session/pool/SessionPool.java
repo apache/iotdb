@@ -1205,22 +1205,30 @@ public class SessionPool {
   public static class Builder {
     private final String ip;
     private final int port;
-    private final String user;
-    private final String password;
     private final int maxSize;
 
+    private String user = Config.DEFAULT_USER;
+    private String password = Config.DEFAULT_PASSWORD;
     private int fetchSize = Config.DEFAULT_FETCH_SIZE;
     private long timeout = 60_000;
     private boolean enableCompression = false;
     private ZoneId zoneId = null;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
 
-    public Builder(String ip, int port, String user, String password, int maxSize) {
+    public Builder(String ip, int port, int maxSize) {
       this.ip = ip;
       this.port = port;
-      this.user = user;
-      this.password = password;
       this.maxSize = maxSize;
+    }
+
+    public Builder user(String user) {
+      this.user = user;
+      return this;
+    }
+
+    public Builder password(String password) {
+      this.password = password;
+      return this;
     }
 
     public Builder fetchSize(int fetchSize) {
