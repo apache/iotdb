@@ -46,7 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class SessionUT {
+public class SessionTest {
 
   private Session session;
 
@@ -248,15 +248,16 @@ public class SessionUT {
 
   @Test
   public void testBuilder() {
-    Session.Builder builder = new Session.Builder("localhost", 1234);
-    builder.fetchSize(1);
-    builder.username("abc");
-    builder.password("123456");
-    builder.thriftDefaultBufferSize(2);
-    builder.thriftMaxFrameSize(3);
-    builder.enableCacheLeader(true);
-    builder.zoneId(ZoneId.of("Asia/Tokyo"));
-    session = builder.build();
+    session =
+        new Session.Builder("localhost", 1234)
+            .fetchSize(1)
+            .username("abc")
+            .password("123456")
+            .thriftDefaultBufferSize(2)
+            .thriftMaxFrameSize(3)
+            .enableCacheLeader(true)
+            .zoneId(ZoneId.of("Asia/Tokyo"))
+            .build();
 
     assertEquals(session.fetchSize, 1);
     assertEquals(session.username, "abc");

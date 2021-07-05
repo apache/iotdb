@@ -365,13 +365,14 @@ public class SessionPoolTest {
 
   @Test
   public void testBuilder() {
-    SessionPool.Builder builder = new SessionPool.Builder("localhost", 1234, "abc", "123", 10);
-    builder.fetchSize(1);
-    builder.timeout(2);
-    builder.enableCacheLeader(true);
-    builder.enableCompression(true);
-    builder.zoneId(ZoneId.of("Asia/Tokyo"));
-    SessionPool pool = builder.build();
+    SessionPool pool =
+        new SessionPool.Builder("localhost", 1234, "abc", "123", 10)
+            .fetchSize(1)
+            .timeout(2)
+            .enableCacheLeader(true)
+            .enableCompression(true)
+            .zoneId(ZoneId.of("Asia/Tokyo"))
+            .build();
 
     assertEquals(pool.getIp(), "localhost");
     assertEquals(pool.getPort(), 1234);
