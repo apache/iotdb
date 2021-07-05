@@ -21,7 +21,7 @@
 
 # Time zone
 
-When a client connects to the iotdb server, it can specify the time zone to be used for this connection. If not specified, the default time zone value is the time zone of the client.
+When a client connects to the IoTDB server, it can specify the time zone to be used for this connection. If not specified, the default time zone value is the time zone of the client.
 
 Time zone is used to: 1. Convert the time format string sent from client to corresponding time stamp; 2. Convert the timestamp in the result returned by the server into a time format string.
 
