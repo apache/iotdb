@@ -41,5 +41,33 @@ The way to view the time zone used by the current connection is as follows:
 session.getTimeZone();
 ```
 
+## Time zone usage scenarios
 
+1. Convert the time format string sent from the client to the corresponding time stamp.
+
+   For example，execute `insert into root.sg.d1(timestamp, s1) values(2021-07-01T08:00:00.000, 3.14)`
+
+   Then `2021-07-01T08:00:00.000` will be converted to the corresponding timestamp value according to the time zone of the client. If it's in GMT+08:00,  the result will be `1625097600000` ，which is equal to the timestamp value of  `2021-07-01T00:00:00.000` in GMT+00:00。
+
+2. Convert the timestamp in the result returned to the client into a time format string.
+
+   Take the above situation as an example，execute `select * from root.sg.d1`，the server will return the time value pair:  `(1625097600000, 3.14)`. If CLI tool is used，then `1625097600000` will be converted into time format string according to time zone, as shown in the figure below：
+
+   ```
+   +-----------------------------+-------------+
+   |                         Time|root.sg.d1.s1|
+   +-----------------------------+-------------+
+   |2021-07-01T08:00:00.000+08:00|         3.14|
+   +-----------------------------+-------------+
+   ```
+
+   If the query is executed on the client in GMT:+00:00, the result will be as follows:
+
+   ```
+   +-----------------------------+-------------+
+   |                         Time|root.sg.d1.s1|
+   +-----------------------------+-------------+
+   |2021-07-01T00:00:00.000+00:00|         3.14|
+   +-----------------------------+-------------+
+   ```
 
