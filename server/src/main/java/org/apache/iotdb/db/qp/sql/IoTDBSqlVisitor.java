@@ -1498,9 +1498,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     time = parseTimeFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if (ctx.getChild(i).getText().equals("+")) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time += parseDuration(ctx.getChild(i + 1).getText());
       } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+        time -= parseDuration(ctx.getChild(i + 1).getText());
       }
     }
     return time;
