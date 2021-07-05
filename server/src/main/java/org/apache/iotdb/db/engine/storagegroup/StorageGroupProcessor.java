@@ -1431,9 +1431,7 @@ public class StorageGroupProcessor {
   }
 
   private void checkFileTTL(TsFileResource resource, long timeLowerBound, boolean isSeq) {
-    if (resource.isMerging()
-        || !resource.isClosed()
-        || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
+    if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
       return;
     }
 
@@ -1441,11 +1439,6 @@ public class StorageGroupProcessor {
     try {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
-      // the file may be chosen for merge after the last check and before writeLock()
-      // double check to ensure the file is not used by a merge
-      if (resource.isMerging()) {
-        return;
-      }
 
       // ensure that the file is not used by any queries
       if (resource.tryWriteLock()) {
