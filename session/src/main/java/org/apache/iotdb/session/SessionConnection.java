@@ -746,27 +746,37 @@ public class SessionConnection {
 
   private boolean reconnect() {
     boolean flag = false;
-    if (transport != null) {
-      transport.close();
-      int currHostIndex = endPointList.indexOf(session.defaultEndPoint);
-      int tag = 0;
-      for (int j = currHostIndex; j < endPointList.size(); j++) {
-        if (tag == endPointList.size()) {
+    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+      if (transport != null) {
+        transport.close();
+        int currHostIndex = endPointList.indexOf(endPoint);
+        if (currHostIndex == -1) {
+          logger.warn(
+              "endPoint:{} not in endPointList,Try the first one in the endPointList", endPoint);
+          currHostIndex = 0;
+        }
+        int tag = 0;
+        for (int j = currHostIndex; j < endPointList.size(); j++) {
+          if (tag == endPointList.size()) {
+            break;
+          }
+          session.defaultEndPoint = endPointList.get(j);
+          this.endPoint = endPointList.get(j);
+          if (j == endPointList.size() - 1) {
+            j = -1;
+          }
+          tag++;
+          try {
+            init(endPoint);
+            flag = true;
+          } catch (IoTDBConnectionException e) {
+            logger.error("The current node may have been down {},try next node", endPoint);
+            continue;
+          }
           break;
         }
-        session.defaultEndPoint = endPointList.get(j);
-        this.endPoint = endPointList.get(j);
-        if (j == endPointList.size() - 1) {
-          j = -1;
-        }
-        tag++;
-        try {
-          init(endPoint);
-          flag = true;
-        } catch (IoTDBConnectionException e) {
-          logger.error("The current node may have been down {},try next node", endPoint);
-          continue;
-        }
+      }
+      if (flag) {
         break;
       }
     }
