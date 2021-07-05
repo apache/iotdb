@@ -369,7 +369,7 @@ public class SessionPoolTest {
         new SessionPool.Builder()
             .host("localhost")
             .port(1234)
-            .maxSize(5)
+            .maxSize(10)
             .user("abc")
             .password("123")
             .fetchSize(1)
