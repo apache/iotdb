@@ -537,6 +537,21 @@ public class DatetimeUtils {
 
   }
 
+  public static long currentTime() {
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return System.currentTimeMillis() * 1000_000
+            + (System.nanoTime() - startupNano) % 1000_000;
+      case "us":
+        return System.currentTimeMillis() * 1000
+            + (System.nanoTime() - startupNano) / 1000 % 1000;
+      default:
+        return System.currentTimeMillis();
+    }
+  }
+
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
     return zoneId.getRules().getOffset(Instant.now());
   }
