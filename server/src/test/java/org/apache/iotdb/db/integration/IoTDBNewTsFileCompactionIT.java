@@ -33,22 +33,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class IoTDBNewTsFileCompactionIT {
 
   private int prevMergePagePointNumber;
   private int preMaxNumberOfPointsInPage;
   private PartialPath storageGroupPath;
+  private int originCompactionFileNum;
   // the unit is ns
   private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
   private static final float FLOAT_DELTA = 0.00001f;
@@ -63,6 +58,9 @@ public class IoTDBNewTsFileCompactionIT {
     storageGroupPath = new PartialPath("root.sg1");
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(1);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
+    originCompactionFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -81,6 +79,9 @@ public class IoTDBNewTsFileCompactionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMergePagePointNumberThreshold(prevMergePagePointNumber);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCompactionCandidateFileNum(originCompactionFileNum);
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);

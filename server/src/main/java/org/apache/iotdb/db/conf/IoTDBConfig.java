@@ -334,6 +334,8 @@ public class IoTDBConfig {
   /** The target tsfile size in compaction. */
   private long targetCompactionFileSize = 2147483648L;
 
+  /** The max candidate file num in compaction */
+  private int maxCompactionCandidateFileNum = 100;
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
@@ -2227,5 +2229,13 @@ public class IoTDBConfig {
 
   public void setCompactionInterval(long compactionInterval) {
     this.compactionInterval = compactionInterval;
+  }
+
+  public int getMaxCompactionCandidateFileNum() {
+    return maxCompactionCandidateFileNum;
+  }
+
+  public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
+    this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
   }
 }

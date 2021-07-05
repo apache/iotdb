@@ -588,6 +588,9 @@ public class StorageGroupProcessorTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
+    int originCandidateFileNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(10);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -623,6 +626,9 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCompactionCandidateFileNum(originCandidateFileNum);
   }
 
   class DummySGP extends StorageGroupProcessor {

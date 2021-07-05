@@ -386,42 +386,41 @@ public class TsFileResourceList implements List<TsFileResource> {
   }
 
   private class TsFileIterator implements Iterator<TsFileResource> {
-    TsFileResource current;
+    List<TsFileResource> tsFileResourceList;
+    int currentIndex = 0;
 
     public TsFileIterator() {
-      this.current = header;
+      this.tsFileResourceList = getArrayList();
     }
 
     @Override
     public boolean hasNext() {
-      return current != null;
+      return currentIndex < tsFileResourceList.size();
     }
 
     @Override
     public TsFileResource next() {
-      TsFileResource temp = current;
-      current = current.next;
-      return temp;
+      return this.tsFileResourceList.get(currentIndex++);
     }
   }
 
   private class TsFileReverseIterator implements Iterator<TsFileResource> {
-    TsFileResource current;
+    List<TsFileResource> tsFileResourceList;
+    int currentIndex;
 
     public TsFileReverseIterator() {
-      current = tail;
+      tsFileResourceList = getArrayList();
+      currentIndex = tsFileResourceList.size() - 1;
     }
 
     @Override
     public boolean hasNext() {
-      return current != null;
+      return currentIndex >= 0;
     }
 
     @Override
     public TsFileResource next() {
-      TsFileResource temp = current;
-      current = current.prev;
-      return temp;
+      return tsFileResourceList.get(currentIndex--);
     }
   }
 

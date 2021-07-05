@@ -91,22 +91,14 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         }
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
-        if (selectedFileSize >= targetCompactionFileSize) {
+        if (selectedFileSize >= targetCompactionFileSize
+            || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
           // submit the task
           createAndSubmitTask(selectedFileList);
           taskSubmitted = true;
           submitTaskNum += 1;
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
-        }
-      }
-      // if some files are selected but the total size is smaller than target size, submit a task
-      if (selectedFileList.size() > 1) {
-        try {
-          createAndSubmitTask(selectedFileList);
-          submitTaskNum += 1;
-        } catch (Exception e) {
-          LOGGER.warn(e.getMessage(), e);
         }
       }
       LOGGER.warn(

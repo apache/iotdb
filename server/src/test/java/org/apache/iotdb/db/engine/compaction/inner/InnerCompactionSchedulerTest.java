@@ -46,7 +46,7 @@ public class InnerCompactionSchedulerTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     CompactionTaskManager.getInstance().start();
     originFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
-    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(100);
+    IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(90);
   }
 
   @After

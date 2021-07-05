@@ -492,6 +492,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "target_compaction_file_size",
                   Long.toString(conf.getTargetCompactionFileSize()))));
+      conf.setMaxCompactionCandidateFileNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_compaction_candidate_file_num",
+                  Integer.toString(conf.getMaxCompactionCandidateFileNum()))));
 
       conf.setContinuousQueryThreadNum(
           Integer.parseInt(
