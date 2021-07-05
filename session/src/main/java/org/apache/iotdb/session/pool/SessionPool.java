@@ -1225,8 +1225,8 @@ public class SessionPool {
     }
 
     public Builder maxSize(int maxSize) {
-     this.maxSize = maxSize;
-     return this;
+      this.maxSize = maxSize;
+      return this;
     }
 
     public Builder user(String user) {

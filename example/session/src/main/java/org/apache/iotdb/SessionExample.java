@@ -53,7 +53,8 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
+    session =
+        new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
     session.open(false);
 
     // set session fetchSize
