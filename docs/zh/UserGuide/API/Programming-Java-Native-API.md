@@ -59,9 +59,22 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 * 初始化Session
 
 ```java
-Session(String host, int rpcPort)
-Session(String host, String rpcPort, String username, String password)
-Session(String host, int rpcPort, String username, String password)
+    // 全部使用默认配置
+    session = new Session.Builder.build();
+
+    // 自行配置参数
+    session = 
+        new Session.Builder()
+            .host(String host)
+            .port(int port)
+            .fetchSize(int fetchSize)
+            .username(String username)
+            .password(String password)
+            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+            .thriftMaxFrameSize(int thriftMaxFrameSize)
+            .enableCacheLeader(boolean enableCacheLeader)
+            .zoneId(Timezone timezone)
+            .build();
 ```
 
 * 开启Session
