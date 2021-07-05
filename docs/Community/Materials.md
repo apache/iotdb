@@ -20,8 +20,8 @@
 -->
 
 Tips: All English Slides and videos are on slideshare.net and Youtube; 
-All Chinese Slides and videos are on myslide.cn and bilibili.
-(所有的中文材料都在 myslide.cn 和 bilibili上.)
+All Chinese Slides and videos are on slidestalk.com and bilibili.
+(所有的中文材料都在 slidestalk.com 和 bilibili上.)
 
 ## Meetups and Talks
 
@@ -145,15 +145,15 @@ All Chinese Slides and videos are on myslide.cn and bilibili.
 
 * <span id = "osssummit2020"> 2020.11, Apache IoTDB 核心技术剖析. Reporter: Jincheng Sun. </span>
 
-<iframe src="https://myslide.cn/player/76612" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/202011ApacheIoTDBReporter82991" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 * <span id = "meetup2020-coscon1"> 2020.10, Apache IoTDB: 从中国高校走向世界. Reporter: Jialin Qiao. </span>
 
-<iframe src="https://myslide.cn/player/76613" width="562.5" height="386.75" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/202010ApacheIoTDBReporterJialinQiao42231" width="562.5" height="386.75" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 * <span id = "meetup2020-coscon2"> 2020.10, Apache IoTDB: 工业物联网数据管理. Reporter: Xiangdong Huang. </span>
 
-<iframe src="https://myslide.cn/player/76615" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/202010ApacheIoTDBReporterXiangdongHuang11117" width="562.5" height="386" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 * <span id = "IoTDBOptimizeAndCaseStudy"> 2020.06, IoTDB 性能优化及案例分享. Reporter: Jialin Qiao. </span>
 
@@ -175,12 +175,12 @@ All Chinese Slides and videos are on myslide.cn and bilibili.
 
 * <span id = "meetup2019-pulsar2"> 2020.01, 北京Meetup 2019. Apache IoTDB的前世今生与技术细节. Reporter: Xiangdong Huang. </span>
 
-<iframe src="https://myslide.cn/player/76621" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
+<iframe src="https://www.slidestalk.com/IoTDB/202001Meetup2019ApacheIoTDBReporterXiangdongHuang24508" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe> 
 
 <iframe src="//player.bilibili.com/player.html?aid=83462398&bvid=BV1sJ411J783&cid=142782348&page=3"   width="640" height="480"  scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 * <span id = "meetup2019-dalian"> 2019.12, 大连Meetup 2019. Apache IoTDB: 工业互联网时序数据库. Reporter: Xiangdong Huang. </span>
 
-<iframe src="https://myslide.cn/player/76620" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
+<iframe src="https://www.slidestalk.com/IoTDB/201912Meetup2019ApacheIoTDBReporterXiangdongHuang71222" width="562.5" height="492.5" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="margin-bottom:5px; max-width: 100%;" allowfullscreen></iframe>
 
 * [IoTDB v0.8.0 Query Process Implementation], Reporter: Lei Rui

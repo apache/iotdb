@@ -55,9 +55,11 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
@@ -132,8 +134,6 @@ public class MManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
-  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
-
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
@@ -156,8 +156,6 @@ public class MManager {
 
   // data type -> number
   private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
-  // reported total series number
-  private long reportedDataTypeTotalNum;
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -256,7 +254,6 @@ public class MManager {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
-    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -299,6 +296,7 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
+
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -313,6 +311,7 @@ public class MManager {
             "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
+
     return idx;
   }
 
@@ -334,7 +333,6 @@ public class MManager {
         tagLogFile = null;
       }
       this.schemaDataTypeNumMap.clear();
-      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -404,6 +402,14 @@ public class MManager {
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+    logWriter.createContinuousQuery(plan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+    logWriter.dropContinuousQuery(plan);
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
@@ -790,16 +796,7 @@ public class MManager {
     schemaDataTypeNumMap.put(
         TSDataType.INT64, schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
 
-    // total current DataType Total Num (twice of number of time series)
-    // used in primitive array manager
-    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
-
-    if (num > 0
-        && currentDataTypeTotalNum - reportedDataTypeTotalNum
-            >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
-      reportedDataTypeTotalNum = currentDataTypeTotalNum;
-    }
+    PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, totalSeriesNumber.get());
   }
 
   /**
