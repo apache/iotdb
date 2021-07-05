@@ -299,6 +299,22 @@ struct ServerProperties {
   3: required string timestampPrecision;
 }
 
+struct TSSetSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string templateName
+  3: required string prefixPath
+}
+
+struct TSCreateSchemaTemplateReq {
+  1: required i64 sessionId
+  2: required string name
+  3: required list<string> schemaNames
+  4: required list<list<string>> measurements
+  5: required list<list<i32>> dataTypes
+  6: required list<list<i32>> encodings
+  7: required list<i32> compressors
+}
+
 service TSIService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -369,4 +385,8 @@ service TSIService {
   TSExecuteStatementResp executeRawDataQuery(1:TSRawDataQueryReq req);
 
   i64 requestStatementId(1:i64 sessionId);
+
+  TSStatus createSchemaTemplate(1:TSCreateSchemaTemplateReq req);
+
+  TSStatus setSchemaTemplate(1:TSSetSchemaTemplateReq req);
 }

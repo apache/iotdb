@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -34,6 +35,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -59,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"java:S107", "java:S1135"}) // need enough parameters, ignore todos
 public class Session {
@@ -325,6 +328,79 @@ public class Session {
     } catch (RedirectException e) {
       handleMetaRedirection(storageGroups.toString(), e);
     }
+  }
+
+  public void setSchemaTemplate(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSSetSchemaTemplateReq request = getTSSetSchemaTemplateReq(templateName, prefixPath);
+    defaultSessionConnection.setSchemaTemplate(request);
+  }
+
+  /**
+   * @param name template name
+   * @param schemaNames list of schema names, if this measurement is vector, name it. if this
+   *     measurement is not vector, keep this name as same as measurement's name
+   * @param measurements List of measurements, if it is a single measurement, just put it's name
+   *     into a list and add to measurements if it is a vector measurement, put all measurements of
+   *     the vector into a list and add to measurements
+   * @param dataTypes List of datatypes, if it is a single measurement, just put it's type into a
+   *     list and add to dataTypes if it is a vector measurement, put all types of the vector into a
+   *     list and add to dataTypes
+   * @param encodings List of encodings, if it is a single measurement, just put it's encoding into
+   *     a list and add to encodings if it is a vector measurement, put all encodings of the vector
+   *     into a list and add to encodings
+   * @param compressors List of compressors
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  public void createSchemaTemplate(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSCreateSchemaTemplateReq request =
+        getTSCreateSchemaTemplateReq(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+    defaultSessionConnection.createSchemaTemplate(request);
+  }
+
+  private TSSetSchemaTemplateReq getTSSetSchemaTemplateReq(String templateName, String prefixPath) {
+    TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
+    request.setTemplateName(templateName);
+    request.setPrefixPath(prefixPath);
+    return request;
+  }
+
+  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors) {
+    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
+    request.setName(name);
+    request.setSchemaNames(schemaNames);
+    request.setMeasurements(measurements);
+
+    List<List<Integer>> requestType = new ArrayList<>();
+    for (List<TSDataType> typesList : dataTypes) {
+      requestType.add(typesList.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
+    }
+    request.setDataTypes(requestType);
+
+    List<List<Integer>> requestEncoding = new ArrayList<>();
+    for (List<TSEncoding> encodingList : encodings) {
+      requestEncoding.add(
+          encodingList.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
+    }
+    request.setEncodings(requestEncoding);
+    request.setCompressors(
+        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
+    return request;
   }
 
   public void createTimeseries(

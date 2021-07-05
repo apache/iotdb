@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -183,10 +185,29 @@ public class Coordinator {
       metaGroupMember.waitLeader();
       return metaGroupMember.forwardPlan(plan, metaGroupMember.getLeader(), null);
     }
-
+    try {
+      createSchemaIfNecessary(plan);
+    } catch (MetadataException | CheckConsistencyException e) {
+      logger.error("{}: Cannot find storage groups for {}", name, plan);
+      return StatusUtils.NO_STORAGE_GROUP;
+    }
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
     return forwardPlan(globalGroups, plan);
+  }
+
+  public void createSchemaIfNecessary(PhysicalPlan plan)
+      throws MetadataException, CheckConsistencyException {
+    if (plan instanceof SetDeviceTemplatePlan) {
+      try {
+        IoTDB.metaManager.getStorageGroupPath(
+            new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()));
+      } catch (IllegalPathException e) {
+        // the plan has been checked
+      } catch (StorageGroupNotSetException e) {
+        ((CMManager) IoTDB.metaManager).createSchema(plan);
+      }
+    }
   }
 
   /**
@@ -276,6 +297,8 @@ public class Coordinator {
         status = forwardPlan(plan, partitionGroup);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && !(plan instanceof SetDeviceTemplatePlan
+              && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())
           && (!(plan instanceof DeleteTimeSeriesPlan)
               || status.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {
         // execution failed, record the error message
@@ -335,8 +358,7 @@ public class Coordinator {
     // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
     // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
     // failure and success should be placed into proper positions in TSStatus.subStatus
-    if (plan instanceof InsertTabletPlan
-        || plan instanceof InsertMultiTabletPlan
+    if (plan instanceof InsertMultiTabletPlan
         || plan instanceof CreateMultiTimeSeriesPlan
         || plan instanceof InsertRowsPlan) {
       status = forwardMultiSubPlan(planGroupMap, plan);

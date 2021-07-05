@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -55,6 +56,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -331,7 +333,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+      throws MetadataException, IOException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
         getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
@@ -342,6 +345,47 @@ public class CMManager extends MManager {
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
     return super.getSeriesSchemasAndReadLockDevice(plan);
+  }
+
+  @Override
+  public MeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
+    return getMeasurementMNode(fullPath).getSchema();
+  }
+
+  private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    MeasurementMNode node = null;
+    // try remote cache first
+    try {
+      cacheLock.readLock().lock();
+      MeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
+      if (measurementMNode != null) {
+        node = measurementMNode;
+      }
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+
+    if (node == null) {
+      // try local MTree
+      try {
+        node = (MeasurementMNode) super.getNodeByPath(fullPath);
+      } catch (PathNotExistException e) {
+        // pull from remote node
+        List<MeasurementSchema> schemas =
+            metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
+        if (!schemas.isEmpty()) {
+          MeasurementSchema measurementSchema = schemas.get(0);
+          MeasurementMNode measurementMNode =
+              new MeasurementMNode(
+                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
+          cacheMeta(fullPath, measurementMNode);
+          node = measurementMNode;
+        } else {
+          throw e;
+        }
+      }
+    }
+    return node;
   }
 
   @Override
@@ -404,6 +448,16 @@ public class CMManager extends MManager {
     }
   }
 
+  @Override
+  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+      throws MetadataException, IOException {
+    return getDeviceNodeWithAutoCreate(
+        path,
+        ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema(),
+        false,
+        config.getDefaultStorageGroupLevel());
+  }
+
   private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
@@ -451,23 +505,14 @@ public class CMManager extends MManager {
     } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
-    } else if (plan instanceof InsertRowsPlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              ((InsertRowsPlan) plan)
-                  .getInsertRowPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
-                      .collect(Collectors.toList())));
-    } else if (plan instanceof InsertMultiTabletPlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              ((InsertMultiTabletPlan) plan)
-                  .getInsertTabletPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
-                      .collect(Collectors.toList())));
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
+    } else if (plan instanceof SetDeviceTemplatePlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              Collections.singletonList(
+                  new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()))));
     } else {
       storageGroups.addAll(getStorageGroups(plan.getPaths()));
     }

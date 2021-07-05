@@ -56,6 +56,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -71,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -343,10 +345,34 @@ public class PlanExecutor implements IPlanExecutor {
           throw new QueryProcessException(e.getMessage());
         }
         return true;
+      case CREATE_TEMPLATE:
+        return createDeviceTemplate((CreateTemplatePlan) plan);
+      case SET_DEVICE_TEMPLATE:
+        return setDeviceTemplate((SetDeviceTemplatePlan) plan);
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
+  }
+
+  private boolean createDeviceTemplate(CreateTemplatePlan createTemplatePlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.createDeviceTemplate(createTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  private boolean setDeviceTemplate(SetDeviceTemplatePlan setDeviceTemplatePlan)
+      throws QueryProcessException {
+    try {
+      IoTDB.metaManager.setDeviceTemplate(setDeviceTemplatePlan);
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
   }
 
   private boolean operateCreateFunction(CreateFunctionPlan plan) throws UDFRegistrationException {
@@ -1055,7 +1081,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList,
       Map<Path, MeasurementSchema> knownSchemas,
       int sgLevel)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException, MetadataException, IOException {
     if (chunkGroupMetadataList.isEmpty()) {
       return;
     }
@@ -1064,7 +1090,9 @@ public class PlanExecutor implements IPlanExecutor {
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
       MNode node =
-          IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
+          IoTDB.metaManager.getDeviceNodeWithAutoCreate(
+                  new PartialPath(device), true, true, sgLevel)
+              .left;
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series =
             new PartialPath(
@@ -1159,7 +1187,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    try {
+      return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   private void checkFailedMeasurments(InsertPlan plan)

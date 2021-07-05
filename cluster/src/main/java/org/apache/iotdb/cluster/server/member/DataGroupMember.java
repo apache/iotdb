@@ -74,6 +74,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -701,7 +702,8 @@ public class DataGroupMember extends RaftMember {
         return StatusUtils.OK;
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
-        if (cause instanceof StorageGroupNotSetException) {
+        if (cause instanceof StorageGroupNotSetException
+            || cause instanceof UndefinedTemplateException) {
           try {
             metaGroupMember.syncLeaderWithConsistencyCheck(true);
             if (plan instanceof InsertPlan && ((InsertPlan) plan).getFailedMeasurements() != null) {
