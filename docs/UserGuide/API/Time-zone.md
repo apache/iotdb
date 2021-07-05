@@ -21,33 +21,37 @@
 
 # Time zone
 
-When a client connects to the IoTDB server, it can specify the time zone to be used for this connection. If not specified, the default time zone value is the time zone of the client.
-
-Time zone is used to: 1. Convert the time format string sent from client to corresponding time stamp; 2. Convert the timestamp in the result returned by the server into a time format string.
+When a client connects to the IoTDB server, it can specify the time zone to be used for this connection. If not specified, the default time zone is the one of the client.
 
 The time zone can be set in both JDBC and session native interface connections. The usage is as follows:
 
 ```java
-(IoTDBConnection) connection.setTimeZone("+08:00");
+JDBC: (IoTDBConnection) connection.setTimeZone("+08:00");
 
-session.setTimeZone("+08:00");
+Session: session.setTimeZone("+08:00");
 ```
 
 The way to view the time zone used by the current connection is as follows:
 
 ```java
-(IoTDBConnection) connection.getTimeZone();
+JDBC: (IoTDBConnection) connection.getTimeZone();
 
-session.getTimeZone();
+Session: session.getTimeZone();
 ```
 
 ## Time zone usage scenarios
+
+The IoTDB server only stores and processes time stamps, and the time zone is only used to interact with clients. The specific scenarios are as follows:
 
 1. Convert the time format string sent from the client to the corresponding time stamp.
 
    For example，execute `insert into root.sg.d1(timestamp, s1) values(2021-07-01T08:00:00.000, 3.14)`
 
    Then `2021-07-01T08:00:00.000` will be converted to the corresponding timestamp value according to the time zone of the client. If it's in GMT+08:00,  the result will be `1625097600000` ，which is equal to the timestamp value of  `2021-07-01T00:00:00.000` in GMT+00:00。
+
+   > Note: At the same time, the dates of different time zones are different, but the timestamps are the same.
+
+   
 
 2. Convert the timestamp in the result returned to the client into a time format string.
 
@@ -71,3 +75,4 @@ session.getTimeZone();
    +-----------------------------+-------------+
    ```
 
+   Note that the timestamps returned are the same, but the dates shown in different time zones are different.
