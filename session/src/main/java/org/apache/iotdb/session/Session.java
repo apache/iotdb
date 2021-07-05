@@ -1835,9 +1835,8 @@ public class Session {
   }
 
   public static class Builder {
-    private final String host;
-    private final int rpcPort;
-
+    private String host = Config.DEFAULT_HOST;
+    private int rpcPort = Config.DEFAULT_PORT;
     private String username = Config.DEFAULT_USER;
     private String password = Config.DEFAULT_PASSWORD;
     private int fetchSize = Config.DEFAULT_FETCH_SIZE;
@@ -1846,9 +1845,14 @@ public class Session {
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
 
-    public Builder(String host, int rpcPort) {
+    public Builder host(String host) {
       this.host = host;
-      this.rpcPort = rpcPort;
+      return this;
+    }
+
+    public Builder port(int port) {
+      this.rpcPort = port;
+      return this;
     }
 
     public Builder username(String username) {

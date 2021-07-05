@@ -366,7 +366,10 @@ public class SessionPoolTest {
   @Test
   public void testBuilder() {
     SessionPool pool =
-        new SessionPool.Builder("localhost", 1234, 10)
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(5)
             .user("abc")
             .password("123")
             .fetchSize(1)
@@ -376,7 +379,7 @@ public class SessionPoolTest {
             .zoneId(ZoneId.of("Asia/Tokyo"))
             .build();
 
-    assertEquals(pool.getIp(), "localhost");
+    assertEquals(pool.getHost(), "localhost");
     assertEquals(pool.getPort(), 1234);
     assertEquals(pool.getUser(), "abc");
     assertEquals(pool.getPassword(), "123");

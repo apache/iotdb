@@ -249,7 +249,9 @@ public class SessionTest {
   @Test
   public void testBuilder() {
     session =
-        new Session.Builder("localhost", 1234)
+        new Session.Builder()
+            .host("localhost")
+            .port(1234)
             .fetchSize(1)
             .username("abc")
             .password("123456")

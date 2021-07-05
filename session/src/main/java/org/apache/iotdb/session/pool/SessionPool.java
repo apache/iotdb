@@ -70,7 +70,7 @@ public class SessionPool {
   private ConcurrentMap<Session, Session> occupied = new ConcurrentHashMap<>();
   private int size = 0;
   private int maxSize = 0;
-  private String ip;
+  private String host;
   private int port;
   private String user;
   private String password;
@@ -83,9 +83,9 @@ public class SessionPool {
 
   private boolean closed; // whether the queue is closed.
 
-  public SessionPool(String ip, int port, String user, String password, int maxSize) {
+  public SessionPool(String host, int port, String user, String password, int maxSize) {
     this(
-        ip,
+        host,
         port,
         user,
         password,
@@ -98,9 +98,9 @@ public class SessionPool {
   }
 
   public SessionPool(
-      String ip, int port, String user, String password, int maxSize, boolean enableCompression) {
+      String host, int port, String user, String password, int maxSize, boolean enableCompression) {
     this(
-        ip,
+        host,
         port,
         user,
         password,
@@ -113,7 +113,7 @@ public class SessionPool {
   }
 
   public SessionPool(
-      String ip,
+      String host,
       int port,
       String user,
       String password,
@@ -121,7 +121,7 @@ public class SessionPool {
       boolean enableCompression,
       boolean enableCacheLeader) {
     this(
-        ip,
+        host,
         port,
         user,
         password,
@@ -134,9 +134,9 @@ public class SessionPool {
   }
 
   public SessionPool(
-      String ip, int port, String user, String password, int maxSize, ZoneId zoneId) {
+      String host, int port, String user, String password, int maxSize, ZoneId zoneId) {
     this(
-        ip,
+        host,
         port,
         user,
         password,
@@ -150,7 +150,7 @@ public class SessionPool {
 
   @SuppressWarnings("squid:S107")
   public SessionPool(
-      String ip,
+      String host,
       int port,
       String user,
       String password,
@@ -161,7 +161,7 @@ public class SessionPool {
       ZoneId zoneId,
       boolean enableCacheLeader) {
     this.maxSize = maxSize;
-    this.ip = ip;
+    this.host = host;
     this.port = port;
     this.user = user;
     this.password = password;
@@ -198,9 +198,9 @@ public class SessionPool {
       if (canCreate) {
         // create a new one.
         if (logger.isDebugEnabled()) {
-          logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
+          logger.debug("Create a new Session {}, {}, {}, {}", host, port, user, password);
         }
-        session = new Session(ip, port, user, password, fetchSize, zoneId, enableCacheLeader);
+        session = new Session(host, port, user, password, fetchSize, zoneId, enableCacheLeader);
         try {
           session.open(enableCompression);
           // avoid someone has called close() the session pool
@@ -244,7 +244,7 @@ public class SessionPool {
                 logger.warn(
                     "the SessionPool has wait for {} seconds to get a new connection: {}:{} with {}, {}",
                     (System.currentTimeMillis() - start) / 1000,
-                    ip,
+                    host,
                     port,
                     user,
                     password);
@@ -255,7 +255,7 @@ public class SessionPool {
                     size);
                 if (System.currentTimeMillis() - start > timeout) {
                   throw new IoTDBConnectionException(
-                      String.format("timeout to get a connection from %s:%s", ip, port));
+                      String.format("timeout to get a connection from %s:%s", host, port));
                 }
               }
             } catch (InterruptedException e) {
@@ -337,7 +337,7 @@ public class SessionPool {
 
   @SuppressWarnings({"squid:S2446"})
   private synchronized void removeSession() {
-    logger.warn("Remove a broken Session {}, {}, {}", ip, port, user);
+    logger.warn("Remove a broken Session {}, {}, {}", host, port, user);
     size--;
     // we do not need to notifyAll as any waited thread can continue to work after waked up.
     this.notify();
@@ -365,7 +365,7 @@ public class SessionPool {
       throw new IoTDBConnectionException(
           String.format(
               "retry to execute statement on %s:%s failed %d times: %s",
-              ip, port, RETRY, e.getMessage()),
+              host, port, RETRY, e.getMessage()),
           e);
     }
   }
@@ -1166,8 +1166,8 @@ public class SessionPool {
     return maxSize;
   }
 
-  public String getIp() {
-    return ip;
+  public String getHost() {
+    return host;
   }
 
   public int getPort() {
@@ -1203,10 +1203,9 @@ public class SessionPool {
   }
 
   public static class Builder {
-    private final String ip;
-    private final int port;
-    private final int maxSize;
-
+    private String host = Config.DEFAULT_HOST;
+    private int port = Config.DEFAULT_PORT;
+    private int maxSize = Config.DEFAULT_SESSION_POOL_MAX_SIZE;
     private String user = Config.DEFAULT_USER;
     private String password = Config.DEFAULT_PASSWORD;
     private int fetchSize = Config.DEFAULT_FETCH_SIZE;
@@ -1215,10 +1214,19 @@ public class SessionPool {
     private ZoneId zoneId = null;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
 
-    public Builder(String ip, int port, int maxSize) {
-      this.ip = ip;
+    public Builder host(String host) {
+      this.host = host;
+      return this;
+    }
+
+    public Builder port(int port) {
       this.port = port;
-      this.maxSize = maxSize;
+      return this;
+    }
+
+    public Builder maxSize(int maxSize) {
+     this.maxSize = maxSize;
+     return this;
     }
 
     public Builder user(String user) {
@@ -1258,7 +1266,7 @@ public class SessionPool {
 
     public SessionPool build() {
       return new SessionPool(
-          ip,
+          host,
           port,
           user,
           password,
