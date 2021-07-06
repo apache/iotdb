@@ -1259,11 +1259,6 @@ public class SessionPool {
       return this;
     }
 
-    public Builder zoneId(ZoneId zoneId) {
-      this.zoneId = zoneId;
-      return this;
-    }
-
     public SessionPool build() {
       return new SessionPool(
           host,

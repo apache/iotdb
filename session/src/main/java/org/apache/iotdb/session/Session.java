@@ -1870,11 +1870,6 @@ public class Session {
       return this;
     }
 
-    public Builder zoneId(ZoneId zoneId) {
-      this.zoneId = zoneId;
-      return this;
-    }
-
     public Builder thriftDefaultBufferSize(int thriftDefaultBufferSize) {
       this.thriftDefaultBufferSize = thriftDefaultBufferSize;
       return this;
