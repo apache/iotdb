@@ -376,7 +376,6 @@ public class SessionPoolTest {
             .timeout(2)
             .enableCacheLeader(true)
             .enableCompression(true)
-            .zoneId(ZoneId.of("Asia/Tokyo"))
             .build();
 
     assertEquals(pool.getHost(), "localhost");
@@ -386,7 +385,6 @@ public class SessionPoolTest {
     assertEquals(pool.getMaxSize(), 10);
     assertEquals(pool.getFetchSize(), 1);
     assertEquals(pool.getTimeout(), 2);
-    assertEquals(pool.getZoneId(), ZoneId.of("Asia/Tokyo"));
     assertTrue(pool.isEnableCacheLeader());
     assertTrue(pool.isEnableCompression());
   }

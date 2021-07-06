@@ -1198,10 +1198,6 @@ public class SessionPool {
     return enableCacheLeader;
   }
 
-  public ZoneId getZoneId() {
-    return zoneId;
-  }
-
   public static class Builder {
     private String host = Config.DEFAULT_HOST;
     private int port = Config.DEFAULT_PORT;

@@ -258,7 +258,6 @@ public class SessionTest {
             .thriftDefaultBufferSize(2)
             .thriftMaxFrameSize(3)
             .enableCacheLeader(true)
-            .zoneId(ZoneId.of("Asia/Tokyo"))
             .build();
 
     assertEquals(session.fetchSize, 1);
@@ -267,6 +266,5 @@ public class SessionTest {
     assertEquals(session.thriftDefaultBufferSize, 2);
     assertEquals(session.thriftMaxFrameSize, 3);
     assertTrue(session.enableCacheLeader);
-    assertEquals(session.zoneId, ZoneId.of("Asia/Tokyo"));
   }
 }
