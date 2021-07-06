@@ -1520,7 +1520,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
-    AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPaths());
+    AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPath());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
