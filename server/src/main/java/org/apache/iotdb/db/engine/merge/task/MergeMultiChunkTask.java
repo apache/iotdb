@@ -179,6 +179,9 @@ public class MergeMultiChunkTask {
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
+      if (currMergingPaths.get(i).getFullPath().equals("root.group_69.1252.XN195_1min_time")) {
+        System.out.println();
+      }
       if (unseqReaders[i].hasNextTimeValuePair()) {
         currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
       }
@@ -207,12 +210,9 @@ public class MergeMultiChunkTask {
 
   private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
+    // all paths in one call are from the same device
     String deviceId = currMergingPaths.get(0).getDevice();
     long currDeviceMinTime = currTsFile.getStartTime(deviceId);
-    // all paths in one call are from the same device
-    if (currDeviceMinTime == Long.MAX_VALUE) {
-      return;
-    }
 
     for (PartialPath path : currMergingPaths) {
       mergeContext.getUnmergedChunkStartTimes().get(currTsFile).put(path, new ArrayList<>());
@@ -336,10 +336,8 @@ public class MergeMultiChunkTask {
     // series should also be written into a new chunk
     List<Integer> ret = new ArrayList<>();
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (seqChunkMeta[i] == null
-          || seqChunkMeta[i].isEmpty()
-              && !(seqFileIdx + 1 == resource.getSeqFiles().size()
-                  && currTimeValuePairs[i] != null)) {
+      if ((seqChunkMeta[i] == null || seqChunkMeta[i].isEmpty())
+          && !(seqFileIdx + 1 == resource.getSeqFiles().size() && currTimeValuePairs[i] != null)) {
         continue;
       }
       ret.add(i);
