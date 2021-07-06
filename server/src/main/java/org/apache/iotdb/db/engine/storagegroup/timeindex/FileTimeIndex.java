@@ -173,7 +173,8 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
-    devices.add(deviceId);
+    String cachedDeviceId = cachedDevicePool.computeIfAbsent(deviceId, k -> k);
+    devices.add(cachedDeviceId);
     if (this.startTime > time) {
       this.startTime = time;
     }
@@ -181,7 +182,8 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(String deviceId, long time) {
-    devices.add(deviceId);
+    String cachedDeviceId = cachedDevicePool.computeIfAbsent(deviceId, k -> k);
+    devices.add(cachedDeviceId);
     if (this.endTime < time) {
       this.endTime = time;
     }
@@ -189,13 +191,15 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void putStartTime(String deviceId, long time) {
-    devices.add(deviceId);
+    String cachedDeviceId = cachedDevicePool.computeIfAbsent(deviceId, k -> k);
+    devices.add(cachedDeviceId);
     this.startTime = time;
   }
 
   @Override
   public void putEndTime(String deviceId, long time) {
-    devices.add(deviceId);
+    String cachedDeviceId = cachedDevicePool.computeIfAbsent(deviceId, k -> k);
+    devices.add(cachedDeviceId);
     this.endTime = time;
   }
 
