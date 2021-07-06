@@ -179,9 +179,6 @@ public class MergeMultiChunkTask {
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
-      if (currMergingPaths.get(i).getFullPath().equals("root.group_69.1252.XN195_1min_time")) {
-        System.out.println();
-      }
       if (unseqReaders[i].hasNextTimeValuePair()) {
         currTimeValuePairs[i] = unseqReaders[i].currentTimeValuePair();
       }
