@@ -315,20 +315,24 @@ public class TsFileResource {
   }
 
   public void updateStartTime(String device, long time) {
+    device = device.intern();
     timeIndex.updateStartTime(device, time);
   }
 
   // used in merge, refresh all start time
   public void putStartTime(String device, long time) {
+    device = device.intern();
     timeIndex.putStartTime(device, time);
   }
 
   public void updateEndTime(String device, long time) {
+    device = device.intern();
     timeIndex.updateEndTime(device, time);
   }
 
   // used in merge, refresh all end time
   public void putEndTime(String device, long time) {
+    device = device.intern();
     timeIndex.putEndTime(device, time);
   }
 
