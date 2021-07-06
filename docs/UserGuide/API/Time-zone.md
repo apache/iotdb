@@ -31,6 +31,12 @@ JDBC: (IoTDBConnection) connection.setTimeZone("+08:00");
 Session: session.setTimeZone("+08:00");
 ```
 
+In the CLI command line tool, the way to manually set the time zone through SQL is as follows:
+
+```java
+SET time_zone=+08:00
+```
+
 The way to view the time zone used by the current connection is as follows:
 
 ```java

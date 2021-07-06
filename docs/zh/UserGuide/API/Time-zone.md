@@ -31,6 +31,12 @@ JDBC: (IoTDBConnection) connection.setTimeZone("+08:00");
 Session: session.setTimeZone("+08:00");
 ```
 
+在 CLI 命令行工具中，通过 SQL 手动设置时区的方式为：
+
+```java
+SET time_zone=+08:00
+```
+
 查看当前连接使用的时区的方法如下：
 
 ```java
