@@ -197,6 +197,8 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class PlanExecutor implements IPlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(PlanExecutor.class);
+  private static final Logger AUDIT_LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
@@ -959,6 +961,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
+    AUDIT_LOGGER.info(
+        "delete data from {} in [{},{}]",
+        deletePlan.getPaths(),
+        deletePlan.getDeleteStartTime(),
+        deletePlan.getDeleteEndTime());
     for (PartialPath path : deletePlan.getPaths()) {
       delete(
           path,
@@ -1445,6 +1452,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
+    AUDIT_LOGGER.info("delete timeseries {}", deleteTimeSeriesPlan.getPaths());
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
@@ -1512,6 +1520,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public boolean setStorageGroup(SetStorageGroupPlan setStorageGroupPlan)
       throws QueryProcessException {
+    AUDIT_LOGGER.info("set storage group to {}", setStorageGroupPlan.getPath());
     PartialPath path = setStorageGroupPlan.getPath();
     try {
       IoTDB.metaManager.setStorageGroup(path);
@@ -1523,6 +1532,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
+    AUDIT_LOGGER.info("delete storage group {}", deleteStorageGroupPlan.getPaths());
     List<PartialPath> deletePathList = new ArrayList<>();
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
