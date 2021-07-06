@@ -75,6 +75,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
@@ -276,6 +277,8 @@ public class TSServiceImpl implements TSIService.Iface {
           "User {} opens Session failed with an incorrect password", req.getUsername());
     }
 
+    SessionTimeoutManager.getInstance().register(sessionId);
+
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(sessionId);
   }
@@ -292,7 +295,7 @@ public class TSServiceImpl implements TSIService.Iface {
     currSessionId.remove();
 
     return new TSStatus(
-        !sessionManager.releaseSessionResource(sessionId)
+        !SessionTimeoutManager.getInstance().unregister(sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -306,7 +309,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -339,7 +342,7 @@ public class TSServiceImpl implements TSIService.Iface {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
 
     if (!checkLogin(req.getSessionId())) {
-      return resp.setStatus(RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+      return resp.setStatus(getNotLoggedInStatus());
     }
 
     TSStatus status;
@@ -485,7 +488,7 @@ public class TSServiceImpl implements TSIService.Iface {
     List<TSStatus> result = new ArrayList<>();
     boolean isAllSuccessful = true;
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     InsertRowsPlan insertRowsPlan;
@@ -590,7 +593,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
       String statement = req.getStatement();
@@ -621,7 +624,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
       String statement = req.getStatement();
@@ -655,7 +658,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
       PhysicalPlan physicalPlan =
@@ -686,7 +689,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) throws TException {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
       PhysicalPlan physicalPlan =
@@ -1045,7 +1048,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSFetchResultsResp(TSStatusCode.NOT_LOGIN_ERROR);
+        return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
 
       if (!sessionManager.hasDataset(req.queryId)) {
@@ -1165,7 +1168,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
 
     try {
@@ -1213,9 +1216,11 @@ public class TSServiceImpl implements TSIService.Iface {
    * @return true: If logged in; false: If not logged in
    */
   private boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getZoneId(sessionId) != null;
+    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+    } else {
+      SessionTimeoutManager.getInstance().refresh(sessionId);
     }
     return isLoggedIn;
   }
@@ -1278,7 +1283,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertRecords(TSInsertRecordsReq req) {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1344,7 +1349,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1386,7 +1391,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1493,7 +1498,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
@@ -1522,7 +1527,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       AUDIT_LOGGER.debug(
@@ -1551,7 +1556,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       DeletePlan plan = new DeletePlan();
@@ -1575,7 +1580,7 @@ public class TSServiceImpl implements TSIService.Iface {
     long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       InsertTabletPlan insertTabletPlan =
@@ -1605,7 +1610,7 @@ public class TSServiceImpl implements TSIService.Iface {
     long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       return insertTabletsInternal(req);
@@ -1662,7 +1667,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
       if (!checkLogin(sessionId)) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
@@ -1679,7 +1684,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
       if (!checkLogin(sessionId)) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       List<PartialPath> storageGroupList = new ArrayList<>();
@@ -1700,7 +1705,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1730,7 +1735,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       // if measurements.size() == 1, convert to create timeseries
@@ -1783,7 +1788,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1869,7 +1874,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     try {
       if (!checkLogin(sessionId)) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       List<PartialPath> pathList = new ArrayList<>();
@@ -1895,7 +1900,7 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) throws TException {
     try {
       if (!checkLogin(req.getSessionId())) {
-        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+        return getNotLoggedInStatus();
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1953,7 +1958,7 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
     if (!checkLogin(req.getSessionId())) {
-      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -2080,6 +2085,12 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.warn(message, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
+  }
+
+  private TSStatus getNotLoggedInStatus() {
+    return RpcUtils.getStatus(
+        TSStatusCode.NOT_LOGIN_ERROR,
+        "Log in failed. Either you are not authorized or the session has timed out.");
   }
 
   private String getRootCause(Throwable e) {
