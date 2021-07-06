@@ -197,7 +197,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
     globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
-    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    if (successPointsNum != 0) {
+      globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    }
   }
 
   public void updateFailedStatValue() {
