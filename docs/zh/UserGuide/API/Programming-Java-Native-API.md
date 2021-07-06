@@ -73,7 +73,6 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
             .thriftDefaultBufferSize(int thriftDefaultBufferSize)
             .thriftMaxFrameSize(int thriftMaxFrameSize)
             .enableCacheLeader(boolean enableCacheLeader)
-            .zoneId(Timezone timezone)
             .build();
 ```
 

@@ -70,7 +70,6 @@ Here we show the commonly used interfaces and their parameters in the Native API
             .thriftDefaultBufferSize(int thriftDefaultBufferSize)
             .thriftMaxFrameSize(int thriftMaxFrameSize)
             .enableCacheLeader(boolean enableCacheLeader)
-            .zoneId(Timezone timezone)
             .build();
 ```
 
