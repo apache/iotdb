@@ -21,6 +21,7 @@
 
 ## Features
 
+The main functional features of IOTDB.
 
 * Flexible deployment. 
 
