@@ -29,7 +29,7 @@ According to the data attribute layers, it is expressed as an attribute hierarch
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577327-7aa50780-1ef4-11e9-9d75-cadabb62444e.jpg"></center>
 
-**Attribute hierarchy structure**
+**Attribute hierarchy organization structure**
 
 After getting the name of the timeseries, we need to set up the storage group according to the actual scenario and scale of the data. Because in the scenario of this chapter data is usually arrived in the unit of groups (i.e., data may be across electric fields and devices), in order to avoid frequent switch of IO when writing data, and meet the user's requirement of physical isolation of data in the unit of groups, storage group is set at the group layer.
 
@@ -41,7 +41,7 @@ A device is an installation equipped with sensors in real scenarios. In IoTDB, a
 
 * Sensor
 
-A sensor is a detection equipment in an actual scene, which can sense the information to be measured, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB. In IoTDB, all data and paths stored are organized in units of sensors.
+A sensor is a detection equipment in an actual scene, which can sense the information to be measured, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB.  In IoTDB, all stored data and paths are organized as sensors.
 
 * Storage Group
 
@@ -51,7 +51,7 @@ Users can set any prefix path as a storage group. Provided that there are four t
 
 > Note: A full path (`root.vehicle.d1.s1` as in the above example) is not allowed to be set as a storage group.
 
-Setting a reasonable number of storage groups can lead to performance gains: there is neither the slowdown of the system due to frequent switching of IO (which will also take up a lot of memory and result in frequent memory-file switching) caused by too many storage files (or folders), nor the block of write commands caused by too few storage files (or folders) (which reduces concurrency).
+Setting a reasonable number of storage groups can lead to performance gains: there will be nither too many storage files (folders) causing frequent swiching of IO to slow down the system (which will also take up a lot of memory and result in frequent memory-file switching), nor too few storage floders (which reduces concurrency) causing write commonds to block.
 
 Users should balance the storage group settings of storage files according to their own data size and usage scenarios to achieve better system performance. (There will be officially provided storage group scale and performance test reports in the future).
 
