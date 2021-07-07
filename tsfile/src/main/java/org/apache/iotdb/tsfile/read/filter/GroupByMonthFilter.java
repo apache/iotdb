@@ -92,12 +92,12 @@ public class GroupByMonthFilter extends GroupByFilter {
     } else {
       // get the interval which contains the start time
       long count = getTimePointPosition(startTime);
-      getNthTimeInterval((int) count);
+      getNthTimeInterval(count);
       // judge two adjacent intervals
       if (satisfyCurrentInterval(startTime, endTime)) {
         return true;
       } else {
-        getNthTimeInterval((int) count + 1);
+        getNthTimeInterval(count + 1);
         return satisfyCurrentInterval(startTime, endTime);
       }
     }
@@ -123,7 +123,7 @@ public class GroupByMonthFilter extends GroupByFilter {
     } else {
       // get the interval which contains the start time
       long count = getTimePointPosition(startTime);
-      getNthTimeInterval((int) count);
+      getNthTimeInterval(count);
       // judge single interval that contains start time
       return isContainedByCurrentInterval(startTime, endTime);
     }
@@ -157,7 +157,7 @@ public class GroupByMonthFilter extends GroupByFilter {
         interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
   }
 
-  /** Get the interval that @param time belongs to */
+  /** Get the interval that @param time belongs to. */
   private long getTimePointPosition(long time) {
     long count;
     if (isSlidingStepByMonth) {
@@ -179,7 +179,7 @@ public class GroupByMonthFilter extends GroupByFilter {
     return count;
   }
 
-  /** get the Nth time interval */
+  /** get the Nth time interval. */
   private void getNthTimeInterval(long n) {
     // get start time of time interval
     if (isSlidingStepByMonth) {
