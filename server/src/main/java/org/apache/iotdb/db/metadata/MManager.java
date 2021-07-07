@@ -137,8 +137,6 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -308,7 +306,6 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNumMap.clear();
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();

@@ -146,7 +146,7 @@ public class PrimitiveArrayManager {
     //     limitBase * ∑(datatype[i].getDataTypeSize() * ratios[i]) * ARRAY_SIZE
     // => limitBase = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE
     //     / ∑(datatype[i].getDataTypeSize() * ratios[i])
-    long weightedSumOfRatios = 0;
+    double weightedSumOfRatios = 0;
     for (TSDataType dataType : TSDataType.values()) {
       weightedSumOfRatios += dataType.getDataTypeSize() * ratios[dataType.serialize()];
     }
