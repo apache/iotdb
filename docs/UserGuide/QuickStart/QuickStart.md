@@ -23,16 +23,16 @@
 
 This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../IoTDB-Introduction/What-is-IoTDB.md).
 
-## Prerequisites
+## Installation Condition
 
 To use IoTDB, you need to have:
 
 1. Java >= 1.8 (Please make sure the environment path has been set)
 2. Set the max open files num as 65535 to avoid "too many open files" problem.
 
-## Installation
+## Installation Procedure
 
-IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
+IoTDB provides three installation methods, users can refer to the following suggestions, choose one of them:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Coming Soon...)
@@ -44,7 +44,7 @@ IoTDB provides you three installation methods, you can refer to the following su
 You can download the binary file from:
 [Download Page](https://iotdb.apache.org/Download/)
 
-## Configurations
+## Software directory strcuture
 
 configuration files are under "conf" folder
 
@@ -54,7 +54,7 @@ configuration files are under "conf" folder
 
 For more, see [Config](../Appendix/Config-Manual.md) in detail.
 
-## Start
+## IOTDB Trial
 
 You can go through the following step to test the installation, if there is no error after execution, the installation is completed. 
 
@@ -85,13 +85,12 @@ if you want to use JMX to connect IOTDB, you may need to add
 to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
 
 
-### Use Cli
+### Use Cli Tools
 
 IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
 
-After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
-IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
+After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this default user to login Cli to operate IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
+IP, PORT, USER_NAME and PASSWORD. If the script does not give the corresponding parameters, the default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
 
 Here is the command for starting the Cli:
 
@@ -120,7 +119,7 @@ IoTDB>
 
 ### Basic commands for IoTDB
 
-Now, let us introduce the way of creating timeseries, inserting data and querying data. 
+Now, let us introduce the way of creating timeseries, inserting data and querying data using Cli tools. 
 
 The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP, and here is an example: 
 
@@ -174,7 +173,7 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 Total timeseries number = 1
 ```
 
-Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insert you should assign the timestamp and the suffix path name:
+Next, we used INSERT command to insert timeseriesdata into the root.ln.wf01.wt01.status. Before insert you should assign the timestamp and the suffix path name:
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
