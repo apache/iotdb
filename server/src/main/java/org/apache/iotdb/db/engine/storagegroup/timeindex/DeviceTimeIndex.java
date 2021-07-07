@@ -90,6 +90,7 @@ public class DeviceTimeIndex implements ITimeIndex {
 
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
+      deviceName = cachedDevicePool.computeIfAbsent(deviceName, k -> k);
       int index = stringIntegerEntry.getValue();
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
