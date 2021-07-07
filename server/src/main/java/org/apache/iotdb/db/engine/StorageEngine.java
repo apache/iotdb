@@ -395,13 +395,13 @@ public class StorageEngine implements IService {
   /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
    *
-   * @param path device path
+   * @param deviceId device path
    * @return storage group processor
    */
-  public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
+  public StorageGroupProcessor getProcessor(PartialPath deviceId) throws StorageEngineException {
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-      return getStorageGroupProcessorByPath(path, storageGroupMNode);
+      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(deviceId);
+      return getStorageGroupProcessorByPath(deviceId, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
     }
@@ -445,8 +445,7 @@ public class StorageEngine implements IService {
     if (virtualStorageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
-        waitAllSgReady(devicePath);
-        synchronized (storageGroupMNode) {
+        synchronized (this) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
             virtualStorageGroupManager = new VirtualStorageGroupManager();
