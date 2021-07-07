@@ -280,12 +280,12 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllMeasurementSchema(
-      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler)
-      throws TException {
+      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
-            () ->
-                new DataAsyncService(dataGroupMemberMap.get(header))
-                    .getAllMeasurementSchema(header, planBinary, resultHandler))
+            () -> {
+              new DataAsyncService(dataGroupMemberMap.get(header))
+                  .getAllMeasurementSchema(header, planBinary, resultHandler);
+            })
         .start();
   }
 }
