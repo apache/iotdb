@@ -445,8 +445,7 @@ public class StorageEngine implements IService {
     if (virtualStorageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
-        waitAllSgReady(devicePath);
-        synchronized (storageGroupMNode) {
+        synchronized (this) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
             virtualStorageGroupManager = new VirtualStorageGroupManager();
