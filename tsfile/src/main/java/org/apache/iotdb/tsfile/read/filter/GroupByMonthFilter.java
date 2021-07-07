@@ -74,16 +74,14 @@ public class GroupByMonthFilter extends GroupByFilter {
   // TODO: time descending order
   @Override
   public boolean satisfy(long time, Object value) {
-    if (time < startTime || time >= endTime) {
+    if (time < initialStartTime || time >= endTime) {
       return false;
-    } else if (time - startTime < interval) {
-      return true;
-    } else if (time - startTime < slidingStep) {
-      return false;
+    } else if (time >= startTime && time < startTime + slidingStep) {
+      return time - startTime < interval;
     } else {
       long count = getTimePointPosition(time);
       getNthTimeInterval(count);
-      return satisfy(time, value);
+      return time - startTime < interval;
     }
   }
 
@@ -183,6 +181,7 @@ public class GroupByMonthFilter extends GroupByFilter {
 
   /** get the Nth time interval */
   private void getNthTimeInterval(long n) {
+    // get start time of time interval
     if (isSlidingStepByMonth) {
       calendar.setTimeInMillis(initialStartTime);
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
@@ -191,9 +190,14 @@ public class GroupByMonthFilter extends GroupByFilter {
     }
     this.startTime = calendar.getTimeInMillis();
 
+    // get interval and sliding step
     if (isIntervalByMonth) {
-      calendar.setTimeInMillis(initialStartTime);
-      calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n) + intervalInMo);
+      if (isSlidingStepByMonth) {
+        calendar.setTimeInMillis(initialStartTime);
+        calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n) + intervalInMo);
+      } else {
+        calendar.add(Calendar.MONTH, intervalInMo);
+      }
       this.interval = calendar.getTimeInMillis() - startTime;
     }
     if (isSlidingStepByMonth) {
