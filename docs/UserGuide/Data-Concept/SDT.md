@@ -22,7 +22,7 @@
 ## SDT
 
 The Swinging Door Trending (SDT) algorithm is a lossy compression algorithm. 
-SDT has low computational complexity and uses a linear trend to represent a quantity of data. 
+SDT has a low computational complexity and uses linear trends to represent large amount of data. 
 
 In IoTDB SDT compresses and discards data when flushing into the disk. 
 
@@ -103,7 +103,7 @@ Total line number = 5
 It costs 0.044s
 ```
 
-SDT takes effect when flushing to the disk. The SDT algorithm always stores the first point and does not store the last point. 
+SDT compresses when it is flushed to disk. The SDT algorithm always stores the first point and does not store the last point. 
 
 The data in [2017-11-01T00:06:00.001, 2017-11-01T00:06:00.007] is within the compression deviation thus discarded.
 The data point at time 2017-11-01T00:06:00.007 is stored because the next data point at time 2017-11-01T00:06:00.015 
