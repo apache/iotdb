@@ -35,6 +35,7 @@ public class GroupByMonthFilter extends GroupByFilter {
   private int intervalInMo;
   private Calendar calendar = Calendar.getInstance();
   private static final long MS_TO_MONTH = 30 * 86400_000L;
+  private long curIntervalCnt = 0;
   /** 10.31 -> 11.30 -> 12.31, not 10.31 -> 11.30 -> 12.30 */
   private final long initialStartTime;
 
@@ -74,12 +75,14 @@ public class GroupByMonthFilter extends GroupByFilter {
   // TODO: time descending order
   @Override
   public boolean satisfy(long time, Object value) {
-    if (satisfyCurrentInterval(time)) {
+    if (time < startTime || time >= endTime) {
+      return false;
+    } else if (time - startTime < interval) {
       return true;
     } else {
-      long count = getTimePointPosition(time);
-      getNthTimeInterval(count);
-      return satisfyCurrentInterval(time);
+      curIntervalCnt = curIntervalCnt == 0 ? getTimePointPosition(time) : curIntervalCnt;
+      getNthTimeInterval(curIntervalCnt++);
+      return satisfy(time, value);
     }
   }
 
@@ -104,14 +107,6 @@ public class GroupByMonthFilter extends GroupByFilter {
   @Override
   public Filter copy() {
     return new GroupByMonthFilter(this);
-  }
-
-  private boolean satisfyCurrentInterval(long time) {
-    if (time < startTime || time >= endTime) {
-      return false;
-    } else {
-      return time - startTime < interval;
-    }
   }
 
   private boolean satisfyCurrentInterval(long startTime, long endTime) {
@@ -203,14 +198,9 @@ public class GroupByMonthFilter extends GroupByFilter {
       calendar.setTimeInMillis(initialStartTime);
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
       this.startTime = calendar.getTimeInMillis();
-
       calendar.setTimeInMillis(initialStartTime);
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * (n + 1)));
       this.slidingStep = calendar.getTimeInMillis() - startTime;
-    } else {
-      // move calendar to the startTime of interval anyway
-      calendar.setTimeInMillis(initialStartTime + n * slidingStep);
-      this.startTime = calendar.getTimeInMillis();
     }
   }
 }
