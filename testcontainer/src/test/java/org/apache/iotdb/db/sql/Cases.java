@@ -21,12 +21,10 @@ package org.apache.iotdb.db.sql;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -368,139 +366,6 @@ public abstract class Cases {
           "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
       Assert.assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testUDTFQuery1() {
-    try {
-      CreateFunctionPlan createFunctionPlan =
-          (CreateFunctionPlan)
-              processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
-
-      String sqlStr =
-          "select udf(d2.s1, d1.s1), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d1.s1, d2.s1), udf(d2.s1, d1.s1), d1.s1, d2.s1 from root.vehicle";
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
-
-      if (!(plan instanceof UDTFPlan)) {
-        Assert.fail();
-      }
-
-      UDTFPlan udtfPlan = (UDTFPlan) plan;
-
-      Assert.assertTrue(udtfPlan.isAlignByTime());
-
-      Assert.assertEquals(8, udtfPlan.getPaths().size());
-      Assert.assertEquals(8, udtfPlan.getDataTypes().size());
-
-      Assert.assertEquals(2, udtfPlan.getDeduplicatedPaths().size());
-      Assert.assertEquals(2, udtfPlan.getDeduplicatedDataTypes().size());
-
-      Assert.assertEquals(4, udtfPlan.getPathToIndex().size());
-      Assert.assertTrue(
-          udtfPlan.getPathToIndex().containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
-      Assert.assertTrue(
-          udtfPlan.getPathToIndex().containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
-      Assert.assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
-      Assert.assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
-    } catch (Exception e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testUDTFQuery2() {
-    try {
-      CreateFunctionPlan createFunctionPlan =
-          (CreateFunctionPlan)
-              processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
-
-      String sqlStr =
-          "select udf(d2.s1, d1.s1, \"addend\"=\"100\"), udf(d1.s1, d2.s1), d1.s1, d2.s1, udf(d2.s1, d1.s1) from root.vehicle";
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
-      if (!(plan instanceof UDTFPlan)) {
-        Assert.fail();
-      }
-
-      UDTFPlan udtfPlan = (UDTFPlan) plan;
-
-      Assert.assertTrue(udtfPlan.isAlignByTime());
-
-      Assert.assertEquals(5, udtfPlan.getPaths().size());
-      Assert.assertEquals(5, udtfPlan.getDataTypes().size());
-
-      Assert.assertEquals(2, udtfPlan.getDeduplicatedPaths().size());
-      Assert.assertEquals(2, udtfPlan.getDeduplicatedDataTypes().size());
-
-      Assert.assertEquals(5, udtfPlan.getPathToIndex().size());
-      Assert.assertTrue(
-          udtfPlan
-              .getPathToIndex()
-              .containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1, \"addend\"=\"100\")"));
-      Assert.assertTrue(
-          udtfPlan.getPathToIndex().containsKey("udf(root.vehicle.d2.s1, root.vehicle.d1.s1)"));
-      Assert.assertTrue(
-          udtfPlan.getPathToIndex().containsKey("udf(root.vehicle.d1.s1, root.vehicle.d2.s1)"));
-      Assert.assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d1.s1"));
-      Assert.assertTrue(udtfPlan.getPathToIndex().containsKey("root.vehicle.d2.s1"));
-    } catch (Exception e) {
-      Assert.fail(e.toString());
-    }
-  }
-
-  @Test
-  public void testUDTFQuery3() {
-    try {
-      CreateFunctionPlan createFunctionPlan =
-          (CreateFunctionPlan)
-              processor.parseSQLToPhysicalPlan(
-                  "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
-      UDFRegistrationService.getInstance()
-          .register(
-              createFunctionPlan.getUdfName(),
-              createFunctionPlan.getClassName(),
-              createFunctionPlan.isTemporary(),
-              true);
-
-      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
-      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
-
-      UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());
-      if (!(plan instanceof UDTFPlan)) {
-        Assert.fail();
-      }
-
-      UDTFPlan udtfPlan = (UDTFPlan) plan;
-
-      Assert.assertTrue(udtfPlan.isAlignByTime());
-
-      Assert.assertEquals(44, udtfPlan.getPaths().size());
-      Assert.assertEquals(44, udtfPlan.getDataTypes().size());
-
-      Assert.assertEquals(4, udtfPlan.getDeduplicatedPaths().size());
-      Assert.assertEquals(4, udtfPlan.getDeduplicatedDataTypes().size());
-
-      Assert.assertEquals(20, udtfPlan.getPathToIndex().size());
-    } catch (Exception e) {
       Assert.fail(e.toString());
     }
   }
