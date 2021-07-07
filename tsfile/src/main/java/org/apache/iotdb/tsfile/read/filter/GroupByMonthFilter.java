@@ -74,21 +74,18 @@ public class GroupByMonthFilter extends GroupByFilter {
   // TODO: time descending order
   @Override
   public boolean satisfy(long time, Object value) {
-    boolean isSatisfy;
-    long count = getTimePointPosition(time);
-    getNthTimeInterval(count);
-    if (time < startTime || time >= endTime) {
-      isSatisfy = false;
+    if (satisfyCurrentInterval(time)) {
+      return true;
     } else {
-      isSatisfy = time - startTime < interval;
+      long count = getTimePointPosition(time);
+      getNthTimeInterval(count);
+      return satisfyCurrentInterval(time);
     }
-    return isSatisfy;
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    boolean isSatisfy = satisfyCurrentInterval(startTime, endTime);
-    if (isSatisfy) {
+    if (satisfyCurrentInterval(startTime, endTime)) {
       return true;
     } else {
       // get the interval which contains the start time
@@ -96,20 +93,25 @@ public class GroupByMonthFilter extends GroupByFilter {
       getNthTimeInterval((int) count);
       // judge two adjacent intervals
       if (satisfyCurrentInterval(startTime, endTime)) {
-        isSatisfy = true;
+        return true;
       } else {
         getNthTimeInterval((int) count + 1);
-        if (satisfyCurrentInterval(startTime, endTime)) {
-          isSatisfy = true;
-        }
+        return satisfyCurrentInterval(startTime, endTime);
       }
-      return isSatisfy;
     }
   }
 
   @Override
   public Filter copy() {
     return new GroupByMonthFilter(this);
+  }
+
+  private boolean satisfyCurrentInterval(long time) {
+    if (time < startTime || time >= endTime) {
+      return false;
+    } else {
+      return time - startTime < interval;
+    }
   }
 
   private boolean satisfyCurrentInterval(long startTime, long endTime) {
@@ -122,18 +124,14 @@ public class GroupByMonthFilter extends GroupByFilter {
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    boolean isContained = isContainedByCurrentInterval(startTime, endTime);
-    if (isContained) {
+    if (isContainedByCurrentInterval(startTime, endTime)) {
       return true;
     } else {
       // get the interval which contains the start time
       long count = getTimePointPosition(startTime);
       getNthTimeInterval((int) count);
       // judge single interval that contains start time
-      if (isContainedByCurrentInterval(startTime, endTime)) {
-        isContained = true;
-      }
-      return isContained;
+      return isContainedByCurrentInterval(startTime, endTime);
     }
   }
 
