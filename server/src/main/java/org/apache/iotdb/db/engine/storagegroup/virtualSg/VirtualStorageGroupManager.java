@@ -116,7 +116,9 @@ public class VirtualStorageGroupManager {
       } else {
         // not finished recover, refuse the request
         throw new StorageEngineException(
-            "the sg " + storageGroupMNode.getFullPath() + " may not ready now, please wait and retry later",
+            "the sg "
+                + storageGroupMNode.getFullPath()
+                + " may not ready now, please wait and retry later",
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
