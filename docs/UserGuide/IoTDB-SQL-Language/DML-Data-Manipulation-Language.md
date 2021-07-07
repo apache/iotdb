@@ -27,6 +27,7 @@
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Appendix/SQL-Reference.md) in [Client/Shell tools](../CLI/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Appendix/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Appendix/SQL-Reference.md) for real-time data import in the scenario.
+Check the insert statemenets section of this article for detailed syntax for INSERT SQL statements.
 
 #### Use of INSERT Statements
 The [INSERT SQL statement](../Appendix/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
@@ -43,7 +44,7 @@ The above example code inserts the long integer timestamp and the value "true" i
 
 > Note: In IoTDB, TEXT type data can be represented by single and double quotation marks. The insertion statement above uses double quotation marks for TEXT type data. The following example will use single quotation marks for TEXT type data.
 
-The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
+The INSERT statement can also support the insertion of muti-columns data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
 
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
@@ -83,7 +84,7 @@ IoTDB > insert into root.sg.d1(timestamp,(s1,s2),(s3,s4)) values (1509466680000,
 IoTDB > insert into root.sg.d1(timestamp,(s1,s2)) values (1509466680001,(NULL,1))
 ```
 
-## SELECT
+## Data Query
 
 ### Time Slice Query
 
@@ -98,7 +99,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is the temperature sensor (temperature). The SQL statement requires that all temperature sensor values before the time point of "2017-11-01T00:08:00.000" be selected.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is the temperature sensor (temperature). The SQL statement requires that all temperature sensor values before the time point of "2017-11-01T00:08:00.000" be selected.（Various time formats can used here, please check the details in the section 2.1.）
 
 The execution result of this SQL statement is as follows:
 
@@ -128,7 +129,7 @@ select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:
 ```
 which means:
 
-The selected device is ln group wf01 plant wt01 device; the selected timeseries is "status" and "temperature". The SQL statement requires that the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
+The selected device is ln group wf01 plant wt01 device; the selected timeseries is "power supply status" and "temperature sensor". The SQL statement requires that the status and temperature sensor values between the time point of "2017-11-01T00:05:00.000" and "2017-11-01T00:12:00.000" be selected.
 
 The execution result of this SQL statement is as follows:
 
@@ -210,7 +211,7 @@ It costs 0.014s
 ```
 
 #### Order By Time Query
-IoTDB supports the 'order by time' statement since 0.11, it's used to display results in descending order by time.
+IoTDB has supported 'order by time' statement since version 0.11, it's used to display results in descending order by time.
 For example, the SQL statement is:
 
 ```sql
@@ -513,9 +514,10 @@ Total line number = 1
 It costs 0.013s
 ```
 
+Aggregate by level queries can also be used for other aggregate functions.
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
 When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
-Otherwise, it will generate a syntax error.
+Otherwise, it will generate a syntax error. Other aggregate functions do not have this limitation.
 
 ### Down-Frequency Aggregate Query
 
@@ -553,6 +555,7 @@ select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2
 which means:
 
 Since the sliding step length is not specified, the GROUP BY statement by default set the sliding step the same as the time interval which is `1d`.
+In other words, we want to take the data of the first month of every two natural months from 2017-11-01 to 2019-11-07.
 
 The fist parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
@@ -708,6 +711,7 @@ The SQL execution result is:
 
 #### Left Open And Right Close Range
 
+The result timestamp for each interval is the right endpoint of the interval.
 The SQL statement is:
 
 ```
@@ -1068,8 +1072,7 @@ When the fill method is not specified, each data type bears its own default fill
 
 > Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
 
-### Row and Column Control over Query Results
-
+### LIMIT and OFFEST
 IoTDB provides [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) clause and [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
@@ -1366,7 +1369,7 @@ select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 
 ### Use Alias
 
-Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
+Since the unique data model of IoTDB, Infornt of each sensor is attached a lot of additional information, such as the device. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
 
 For example：
 
@@ -1544,7 +1547,7 @@ delete from root.ln.wf02.wt02.status where time >= 20
 delete from root.ln.wf02.wt02.status where time = 20
 ```
 
-Please pay attention that multiple intervals connected by "OR" expression are not supported in delete statement:
+Note that the current delete statement does not support muliple time intervals concatenated by "OR" after where clause：
 
 ```
 delete from root.ln.wf02.wt02.status where time > 4 or time < 0
