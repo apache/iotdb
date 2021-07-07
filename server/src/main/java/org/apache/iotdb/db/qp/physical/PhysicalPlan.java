@@ -377,6 +377,12 @@ public abstract class PhysicalPlan {
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           break;
+        case CREATE_CONTINUOUS_QUERY:
+          plan = new CreateContinuousQueryPlan();
+          break;
+        case DROP_CONTINUOUS_QUERY:
+          plan = new DropContinuousQueryPlan();
+          break;
         case MERGE:
           plan = new MergePlan();
           break;
@@ -385,12 +391,6 @@ public abstract class PhysicalPlan {
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
-          break;
-        case CREATE_CONTINUOUS_QUERY:
-          plan = new CreateContinuousQueryPlan();
-          break;
-        case DROP_CONTINUOUS_QUERY:
-          plan = new DropContinuousQueryPlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -448,12 +448,12 @@ public abstract class PhysicalPlan {
     DROP_TRIGGER,
     START_TRIGGER,
     STOP_TRIGGER,
-    MERGE,
-    CREATE_SNAPSHOT,
-    CLEARCACHE,
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    MERGE,
+    CREATE_SNAPSHOT,
+    CLEARCACHE
   }
 
   public long getIndex() {
