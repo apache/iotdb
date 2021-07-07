@@ -32,8 +32,7 @@
 
 ### Installation
 
-The compilation of CPP client requires the module "compile-tools" to be built first. 
-"compile-tools" is mainly responsible for building Thrift libraries locally.
+Before users can compile a C++ cilent, users need to compile the Thrift libraries locally first. The model "compile-tools" takes the mainly responsible to compile the Thrift, then compile the client-cpp.
 
 
 
@@ -41,7 +40,7 @@ The compilation of CPP client requires the module "compile-tools" to be built fi
 
 - Bison
 
-Bison 2.3 is preinstalled on OSX, but this version is too low.
+Bison version 2.3 is pre-installed on the Mac; however, the version is too low to be used to compile Thrift.
 
 When building Thrift with Bison 2.3, the following error would pop out:
 
@@ -95,6 +94,7 @@ to specify the OpenSSL installation directory on your Mac.
 
 #### Build Thrift on Linux
 
+Users need to make sure g++ is installed under the Linux.
 To install all dependencies, run:
 
 Debian/Ubuntu:
@@ -138,7 +138,7 @@ to your mvn build command.
 
 #### Cmake generator on Windows
 
-There is a long list of supported Cmake generators on Windows environment. 
+Cmake needs to use different generators for different compilation platforms. There is the list of generatord supported by Cmake( the result of cmake–help ). 
 
 
 ```
@@ -192,6 +192,7 @@ The compiling requires the module "compile-tools" to be built first.
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
+Here is the complete C++ cilent command.
 To compile on Windows, please install Boost first and add following Maven settings:
 ```shell
 -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
