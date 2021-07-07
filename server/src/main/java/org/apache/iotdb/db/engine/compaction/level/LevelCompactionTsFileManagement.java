@@ -476,7 +476,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String file : sourceFileList) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-            sourceTsFileResources.add(getTsFileResource(file, isSeq));
+            TsFileResource sourceTsFileResource = getTsFileResource(file, isSeq);
+            if (sourceTsFileResource == null) {
+              throw new IOException();
+            }
+            sourceTsFileResources.add(sourceTsFileResource);
           }
           int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
           RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
@@ -526,6 +530,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       }
     } catch (IOException | IllegalPathException | InterruptedException e) {
       logger.error("recover level tsfile management error ", e);
+      restoreCompaction();
     } finally {
       if (logFile.exists()) {
         try {
@@ -801,34 +806,45 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     throw new IOException();
   }
 
-  private TsFileResource getTsFileResource(String filePath, boolean isSeq) throws IOException {
-    if (isSeq) {
-      for (List<SortedSet<TsFileResource>> tsFileResourcesWithLevel :
-          sequenceTsFileResources.values()) {
-        for (SortedSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
-          for (TsFileResource tsFileResource : tsFileResources) {
-            if (Files.isSameFile(
-                tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-              return tsFileResource;
+  private TsFileResource getTsFileResource(String filePath, boolean isSeq) {
+    readLock();
+    try {
+      File file = new File(filePath);
+      if (!file.exists()) {
+        return null;
+      }
+      if (isSeq) {
+        for (List<SortedSet<TsFileResource>> tsFileResourcesWithLevel :
+            sequenceTsFileResources.values()) {
+          for (SortedSet<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
+            for (TsFileResource tsFileResource : tsFileResources) {
+              if (Files.isSameFile(
+                  tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+                return tsFileResource;
+              }
+            }
+          }
+        }
+      } else {
+        for (List<List<TsFileResource>> tsFileResourcesWithLevel :
+            unSequenceTsFileResources.values()) {
+          for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
+            for (TsFileResource tsFileResource : tsFileResources) {
+              if (Files.isSameFile(
+                  tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
+                return tsFileResource;
+              }
             }
           }
         }
       }
-    } else {
-      for (List<List<TsFileResource>> tsFileResourcesWithLevel :
-          unSequenceTsFileResources.values()) {
-        for (List<TsFileResource> tsFileResources : tsFileResourcesWithLevel) {
-          for (TsFileResource tsFileResource : tsFileResources) {
-            if (Files.isSameFile(
-                tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-              return tsFileResource;
-            }
-          }
-        }
-      }
+    } catch (Exception e) {
+      logger.error("cannot get tsfile resource path: {}", filePath, e);
+      return null;
+    } finally {
+      readUnLock();
     }
-    logger.error("cannot get tsfile resource path: {}", filePath);
-    throw new IOException();
+    return null;
   }
 
   /** restore the files back to the status before the compaction task is submitted */
@@ -845,7 +861,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         boolean isSeq = logAnalyzer.isSeq();
         for (String file : sourceFileList) {
           TsFileResource fileResource = getTsFileResource(file, isSeq);
-          fileResource.setMerging(false);
+          if (fileResource != null) {
+            fileResource.setMerging(false);
+          }
         }
         if (targetFilePath != null) {
           File targetFile = new File(targetFilePath);

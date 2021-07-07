@@ -494,7 +494,7 @@ public class StorageGroupProcessor {
               tsFileManagement::mergeEndAction,
               taskName,
               IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-              logicalStorageGroupName + "-" + virtualStorageGroupId);
+              logicalStorageGroupName);
       logger.info(
           "{} - {} a RecoverMergeTask {} starts...",
           logicalStorageGroupName,
@@ -1431,9 +1431,7 @@ public class StorageGroupProcessor {
   }
 
   private void checkFileTTL(TsFileResource resource, long timeLowerBound, boolean isSeq) {
-    if (resource.isMerging()
-        || !resource.isClosed()
-        || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
+    if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
       return;
     }
 
@@ -1441,11 +1439,6 @@ public class StorageGroupProcessor {
     try {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
-      // the file may be chosen for merge after the last check and before writeLock()
-      // double check to ensure the file is not used by a merge
-      if (resource.isMerging()) {
-        return;
-      }
 
       // ensure that the file is not used by any queries
       if (resource.tryWriteLock()) {
@@ -1540,8 +1533,7 @@ public class StorageGroupProcessor {
 
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(
-      PartialPath deviceId,
-      String measurementId,
+      PartialPath fullPath,
       QueryContext context,
       QueryFileManager filePathsManager,
       Filter timeFilter)
@@ -1552,8 +1544,7 @@ public class StorageGroupProcessor {
           getFileResourceListForQuery(
               tsFileManagement.getTsFileList(true),
               upgradeSeqFileList,
-              deviceId,
-              measurementId,
+              fullPath,
               context,
               timeFilter,
               true);
@@ -1561,12 +1552,11 @@ public class StorageGroupProcessor {
           getFileResourceListForQuery(
               tsFileManagement.getTsFileList(false),
               upgradeUnseqFileList,
-              deviceId,
-              measurementId,
+              fullPath,
               context,
               timeFilter,
               false);
-      QueryDataSource dataSource = new QueryDataSource(deviceId, seqResources, unseqResources);
+      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       // is null only in tests
@@ -1611,24 +1601,25 @@ public class StorageGroupProcessor {
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,
-      PartialPath deviceId,
-      String measurementId,
+      PartialPath fullPath,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
       throws MetadataException {
 
+    String deviceId = fullPath.getDevice();
+
     if (context.isDebug()) {
       DEBUG_LOGGER.info(
           "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
-          deviceId.getFullPath(),
-          measurementId,
+          deviceId,
+          fullPath.getMeasurement(),
           tsFileResources,
           isSeq,
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(deviceId, measurementId);
+    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long timeLowerBound =
@@ -1638,7 +1629,7 @@ public class StorageGroupProcessor {
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
       if (!tsFileResource.isSatisfied(
-          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
+          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1651,7 +1642,7 @@ public class StorageGroupProcessor {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          deviceId.getFullPath(), timeFilter, isSeq, dataTTL, context.isDebug())) {
+          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1662,8 +1653,8 @@ public class StorageGroupProcessor {
           tsFileResource
               .getUnsealedFileProcessor()
               .query(
-                  deviceId.getFullPath(),
-                  measurementId,
+                  deviceId,
+                  fullPath.getMeasurement(),
                   schema.getType(),
                   schema.getEncodingType(),
                   schema.getProps(),

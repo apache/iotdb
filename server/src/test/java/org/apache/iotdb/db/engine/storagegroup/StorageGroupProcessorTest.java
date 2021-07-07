@@ -162,7 +162,7 @@ public class StorageGroupProcessorTest {
     }
     processor.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -191,7 +191,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
@@ -252,7 +252,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -282,7 +282,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -322,7 +322,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -404,7 +404,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -486,7 +486,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -568,7 +568,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -606,7 +606,7 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId), measurementId, context, null, null);
+        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
