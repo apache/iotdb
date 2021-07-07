@@ -76,6 +76,7 @@ statement
     | SHOW VERSION #showVersion
     | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP prefixPath? #showStorageGroup
+    | SHOW LOCK INFO prefixPath? #showLockInfo
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW CHILD NODES prefixPath? #showChildNodes
     | SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
@@ -104,6 +105,11 @@ statement
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
     | selectClause fromClause whereClause? specialClause? #selectStatement
+    | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
+      resampleClause?
+      cqSelectIntoClause #createContinuousQueryStatement
+    | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
+    | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
     ;
 
 selectClause
@@ -326,6 +332,25 @@ indexPredicateClause
 
 sequenceClause
     : LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
+
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : BEGIN
+    selectClause
+    INTO (fullPath | nodeNameWithoutStar)
+    fromClause
+    cqGroupByTimeClause
+    END
+    ;
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
     ;
 
 comparisonOperator
@@ -607,6 +632,13 @@ nodeNameWithoutStar
     | PARTITION
     | DESC
     | ASC
+    | CONTINUOUS
+    | CQ
+    | CQS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
     ;
 
 dataType
@@ -638,7 +670,7 @@ dateExpression
     ;
 
 encoding
-    : PLAIN | PLAIN_DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
+    : PLAIN | DICTIONARY | RLE | DIFF | TS_2DIFF | GORILLA | REGULAR
     ;
 
 realLiteral
@@ -864,8 +896,8 @@ PLAIN
     : P L A I N
     ;
 
-PLAIN_DICTIONARY
-    : P L A I N '_' D I C T I O N A R Y
+DICTIONARY
+    : D I C T I O N A R Y
     ;
 
 RLE
@@ -883,7 +915,6 @@ TS_2DIFF
 GORILLA
     : G O R I L L A
     ;
-
 
 REGULAR
     : R E G U L A R
@@ -1220,6 +1251,38 @@ EXPLAIN
     : E X P L A I N
     ;
 
+CONTINUOUS
+    : C O N T I N U O U S
+    ;
+
+QUERIES
+    : Q U E R I E S
+    ;
+
+CQ
+    : C Q
+    ;
+
+CQS
+    : C Q S
+    ;
+
+BEGIN
+    : B E G I N
+    ;
+
+END
+    : E N D
+    ;
+
+RESAMPLE
+    : R E S A M P L E
+    ;
+
+EVERY
+    : E V E R Y
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -1234,6 +1297,10 @@ WITHOUT
 
 ANY
     : A N Y
+    ;
+
+LOCK
+    : L O C K
     ;
 
 //============================
@@ -1342,6 +1409,8 @@ NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 
@@ -1358,6 +1427,8 @@ FIRST_NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 

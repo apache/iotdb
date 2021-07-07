@@ -92,6 +92,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
+  /** a flush thread handles flush task */
   class FlushThread extends WrappedRunnable {
 
     @Override
@@ -121,7 +122,11 @@ public class FlushManager implements FlushManagerMBean, IService {
     }
   }
 
-  /** Add TsFileProcessor to asyncTryToFlush manager */
+  /**
+   * Add tsFileProcessor to asyncTryToFlush manager
+   *
+   * @param tsFileProcessor tsFileProcessor to be flushed
+   */
   @SuppressWarnings("squid:S2445")
   public void registerTsFileProcessor(TsFileProcessor tsFileProcessor) {
     synchronized (tsFileProcessor) {

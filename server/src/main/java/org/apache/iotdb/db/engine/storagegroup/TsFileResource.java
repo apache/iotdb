@@ -80,7 +80,7 @@ public class TsFileResource {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // tsfile
+  /** this tsfile */
   private File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
@@ -95,6 +95,7 @@ public class TsFileResource {
 
   private TsFileProcessor processor;
 
+  /** time index */
   protected ITimeIndex timeIndex;
 
   /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
@@ -216,6 +217,10 @@ public class TsFileResource {
     this.timeIndexType = 1;
   }
 
+  /**
+   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
+   * have chunkMetadata, but query will use these, so we need to generate it for them.
+   */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   private void generateTimeSeriesMetadata() throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
@@ -340,6 +345,7 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
+  /** deserialize from disk */
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
@@ -357,6 +363,7 @@ public class TsFileResource {
     }
   }
 
+  /** deserialize tsfile resource from old file */
   public void deserializeFromOldFile() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // deserialize old TsfileResource
@@ -810,11 +817,11 @@ public class TsFileResource {
   }
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
-    return another.maxPlanIndex >= this.minPlanIndex && another.minPlanIndex <= this.maxPlanIndex;
+    return another.maxPlanIndex > this.minPlanIndex && another.minPlanIndex < this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {
-    return this.minPlanIndex <= another.minPlanIndex && another.maxPlanIndex <= this.maxPlanIndex;
+    return this.minPlanIndex < another.minPlanIndex && another.maxPlanIndex < this.maxPlanIndex;
   }
 
   public void setMaxPlanIndex(long maxPlanIndex) {
@@ -850,20 +857,28 @@ public class TsFileResource {
         + TSFILE_SUFFIX;
   }
 
-  public static TsFileName getTsFileName(String FileName) {
-    String[] fileName =
-        FileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
+  public static TsFileName getTsFileName(String fileName) throws IOException {
+    String[] fileNameParts =
+        fileName.split(FILE_NAME_SUFFIX_SEPARATOR)[FILE_NAME_SUFFIX_INDEX].split(
             FILE_NAME_SEPARATOR);
-    TsFileName tsFileName =
-        new TsFileName(
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_TIME_INDEX]),
-            Long.parseLong(fileName[FILE_NAME_SUFFIX_VERSION_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
-            Integer.parseInt(fileName[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
-    return tsFileName;
+    if (fileNameParts.length != 4) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
+    try {
+      TsFileName tsFileName =
+          new TsFileName(
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_TIME_INDEX]),
+              Long.parseLong(fileNameParts[FILE_NAME_SUFFIX_VERSION_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_MERGECNT_INDEX]),
+              Integer.parseInt(fileNameParts[FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX]));
+      return tsFileName;
+    } catch (NumberFormatException e) {
+      throw new IOException("tsfile file name format is incorrect:" + fileName);
+    }
   }
 
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource) {
+  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
+      throws IOException {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
@@ -882,7 +897,7 @@ public class TsFileResource {
     return tsFileResource;
   }
 
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) {
+  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
     tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
@@ -898,7 +913,7 @@ public class TsFileResource {
             + TSFILE_SUFFIX);
   }
 
-  public static File modifyTsFileNameMergeCnt(File tsFile) {
+  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
     tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);

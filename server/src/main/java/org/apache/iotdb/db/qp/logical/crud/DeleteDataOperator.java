@@ -18,8 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,5 +64,11 @@ public class DeleteDataOperator extends Operator {
 
   public void setEndTime(long time) {
     this.endTime = time;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new DeletePlan(getStartTime(), getEndTime(), getPaths());
   }
 }

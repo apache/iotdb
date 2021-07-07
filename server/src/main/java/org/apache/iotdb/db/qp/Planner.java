@@ -26,7 +26,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
@@ -62,6 +65,15 @@ public class Planner {
     return new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
+  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator, int fetchSize)
+      throws QueryProcessException {
+    // optimize the logical operator (no need to check since the operator has been checked
+    // beforehand)
+    operator = (QueryOperator) logicalOptimize(operator, fetchSize);
+    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
+  }
+
+  /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(
       TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException, QueryProcessException {
@@ -73,6 +85,20 @@ public class Planner {
     operator = logicalOptimize(operator, rawDataQueryReq.fetchSize);
     // from logical operator to physical plan
     return new PhysicalGenerator().transformToPhysicalPlan(operator, rawDataQueryReq.fetchSize);
+  }
+
+  /** convert last data query to physical plan directly */
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
+      throws QueryProcessException, IllegalPathException {
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // optimize the logical operator
+    operator = logicalOptimize(operator, lastDataQueryReq.fetchSize);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator, lastDataQueryReq.fetchSize);
   }
 
   /**
@@ -100,14 +126,15 @@ public class Planner {
       throws LogicalOperatorException, PathNumOverLimitException {
     root = (QueryOperator) new ConcatPathOptimizer().transform(root, fetchSize);
 
-    FilterOperator filter = root.getFilterOperator();
-    if (filter == null) {
+    WhereComponent whereComponent = root.getWhereComponent();
+    if (whereComponent == null) {
       return root;
     }
+    FilterOperator filter = whereComponent.getFilterOperator();
     filter = new RemoveNotOptimizer().optimize(filter);
     filter = new DnfFilterOptimizer().optimize(filter);
     filter = new MergeSingleFilterOptimizer().optimize(filter);
-    root.setFilterOperator(filter);
+    whereComponent.setFilterOperator(filter);
 
     return root;
   }

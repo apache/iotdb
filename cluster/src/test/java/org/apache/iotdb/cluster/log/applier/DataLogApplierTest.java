@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -110,7 +111,7 @@ public class DataLogApplierTest extends IoTDBTest {
         }
 
         @Override
-        public DataGroupMember getLocalDataMember(Node header, Object request) {
+        public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
           return testDataGroupMember;
         }
 
@@ -175,7 +176,7 @@ public class DataLogApplierTest extends IoTDBTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void getAllPaths(
-                  Node header,
+                  RaftNode header,
                   List<String> path,
                   boolean withAlias,
                   AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -257,7 +258,7 @@ public class DataLogApplierTest extends IoTDBTest {
     log.setPlan(insertPlan);
 
     // this series is already created
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(1)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
@@ -276,7 +277,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series is not created but can be fetched
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(4)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(4)));
     applier.apply(log);
     dataSet = query(Collections.singletonList(TestUtils.getTestSeries(4, 0)), null);
     assertTrue(dataSet.hasNext());
@@ -287,17 +288,17 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series does not exists any where
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(5)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(5)));
     applier.apply(log);
     assertEquals(
         "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
         log.getException().getMessage());
 
     // this storage group is not even set
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
+    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
-        "Storage group is not set for current seriesPath: [root.test16]",
+        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
   }
 

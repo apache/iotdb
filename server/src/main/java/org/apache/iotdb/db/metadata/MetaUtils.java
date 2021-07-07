@@ -114,20 +114,7 @@ public class MetaUtils {
    * @return measurement names. For example: [s1, s2, s3]
    */
   public static List<String> getMeasurementsInPartialPath(PartialPath fullPath) {
-    if (fullPath.getMeasurement().contains("(") && fullPath.getMeasurement().contains(",")) {
-      return getMeasurementsInPartialPath(fullPath.getMeasurement());
-    } else {
-      return Arrays.asList(fullPath.getMeasurement());
-    }
-  }
-
-  public static List<String> getMeasurementsInPartialPath(String measurementString) {
-    String[] measurements = measurementString.replace("(", "").replace(")", "").split(",");
-    List<String> measurementList = new ArrayList<>();
-    for (String measurement : measurements) {
-      measurementList.add(measurement.trim());
-    }
-    return measurementList;
+    return Arrays.asList(fullPath.getMeasurement());
   }
 
   @TestOnly

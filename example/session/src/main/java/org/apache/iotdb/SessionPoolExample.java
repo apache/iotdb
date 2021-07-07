@@ -37,7 +37,14 @@ public class SessionPoolExample {
 
   public static void main(String[] args)
       throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
-    pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    pool =
+        new SessionPool.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .user("root")
+            .password("root")
+            .maxSize(3)
+            .build();
     service = Executors.newFixedThreadPool(10);
 
     insertRecord();

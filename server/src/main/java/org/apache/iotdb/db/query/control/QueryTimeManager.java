@@ -94,6 +94,8 @@ public class QueryTimeManager implements IService {
           if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
           }
+          SessionTimeoutManager.getInstance()
+              .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
           return null;
         });
     return successRemoved;
