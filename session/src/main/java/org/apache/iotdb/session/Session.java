@@ -1839,4 +1839,69 @@ public class Session {
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
     this.enableQueryRedirection = enableQueryRedirection;
   }
+
+  public static class Builder {
+    private String host = Config.DEFAULT_HOST;
+    private int rpcPort = Config.DEFAULT_PORT;
+    private String username = Config.DEFAULT_USER;
+    private String password = Config.DEFAULT_PASSWORD;
+    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private ZoneId zoneId = null;
+    private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
+    private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
+    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+
+    public Builder host(String host) {
+      this.host = host;
+      return this;
+    }
+
+    public Builder port(int port) {
+      this.rpcPort = port;
+      return this;
+    }
+
+    public Builder username(String username) {
+      this.username = username;
+      return this;
+    }
+
+    public Builder password(String password) {
+      this.password = password;
+      return this;
+    }
+
+    public Builder fetchSize(int fetchSize) {
+      this.fetchSize = fetchSize;
+      return this;
+    }
+
+    public Builder thriftDefaultBufferSize(int thriftDefaultBufferSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      return this;
+    }
+
+    public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    public Builder enableCacheLeader(boolean enableCacheLeader) {
+      this.enableCacheLeader = enableCacheLeader;
+      return this;
+    }
+
+    public Session build() {
+      return new Session(
+          host,
+          rpcPort,
+          username,
+          password,
+          fetchSize,
+          zoneId,
+          thriftDefaultBufferSize,
+          thriftMaxFrameSize,
+          enableCacheLeader);
+    }
+  }
 }
