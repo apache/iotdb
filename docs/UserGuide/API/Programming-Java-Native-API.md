@@ -49,7 +49,7 @@ In root directory:
 
 
 
-### Native APIs
+### Native APIS Sepcification
 
 Here we show the commonly used interfaces and their parameters in the Native API:
 
@@ -248,11 +248,11 @@ The sample code of using these interfaces is in example/session/src/main/java/or
 ### Session Pool for Native API
 
 We provide a connection pool (`SessionPool) for Native API.
-Using the interface, you need to define the pool size.
+Using the interface, you only need to specify the size of the session pool to retrieve connections from the pool at using time.
 
-If you can not get a session connection in 60 seconds, there is a warning log but the program will hang.
+If users cannot get a session connection in 60 seconds, there will be printed a warning log; however, the program will continue to wait.
 
-If a session has finished an operation, it will be put back to the pool automatically.
+When a connection is used up, it will return to the pool automatically and wait to be used again.
 If a session connection is broken, the session will be removed automatically and the pool will try 
 to create a new session and redo the operation.
 
