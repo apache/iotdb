@@ -80,17 +80,6 @@ public class ClusterSessionSimpleIT {
 
     session.createTimeseries(
         "root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-
-    for (long time = 0; time < 100; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      session.insertRecord(deviceId, time, measurements, values);
-    }
     session.close();
   }
 }
