@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class SessionConnection {
 
@@ -745,19 +746,15 @@ public class SessionConnection {
   }
 
   private boolean reconnect() {
-    boolean flag = false;
+    boolean connectedSuccess = false;
+    Random random = new Random();
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
-        int currHostIndex = endPointList.indexOf(endPoint);
-        if (currHostIndex == -1) {
-          logger.warn(
-              "endPoint:{} not in endPointList,Try the first one in the endPointList", endPoint);
-          currHostIndex = 0;
-        }
-        int tag = 0;
+        int currHostIndex = random.nextInt(endPointList.size());
+        int tryHostNum = 0;
         for (int j = currHostIndex; j < endPointList.size(); j++) {
-          if (tag == endPointList.size()) {
+          if (tryHostNum == endPointList.size()) {
             break;
           }
           session.defaultEndPoint = endPointList.get(j);
@@ -765,10 +762,10 @@ public class SessionConnection {
           if (j == endPointList.size() - 1) {
             j = -1;
           }
-          tag++;
+          tryHostNum++;
           try {
             init(endPoint);
-            flag = true;
+            connectedSuccess = true;
           } catch (IoTDBConnectionException e) {
             logger.error("The current node may have been down {},try next node", endPoint);
             continue;
@@ -776,11 +773,11 @@ public class SessionConnection {
           break;
         }
       }
-      if (flag) {
+      if (connectedSuccess) {
         break;
       }
     }
-    return flag;
+    return connectedSuccess;
   }
 
   protected void createSchemaTemplate(TSCreateSchemaTemplateReq request)
