@@ -67,6 +67,7 @@ public class FileTimeIndex implements ITimeIndex {
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(devices.size(), outputStream);
     for (String device : devices) {
+      device = device.intern();
       ReadWriteIOUtils.write(device, outputStream);
     }
     ReadWriteIOUtils.write(startTime, outputStream);
