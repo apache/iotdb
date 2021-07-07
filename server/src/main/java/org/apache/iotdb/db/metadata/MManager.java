@@ -691,11 +691,9 @@ public class MManager {
       try {
         mNodes[i] = (MeasurementMNode) getNodeByPath(deviceId.concatNode(measurements[i]));
       } catch (PathNotExistException ignored) {
-      } finally {
-        if (mNodes[i] == null
-            && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-          throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
-        }
+      }
+      if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+        throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
     }
     return mNodes;
