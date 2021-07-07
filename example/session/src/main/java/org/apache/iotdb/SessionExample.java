@@ -20,6 +20,7 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -30,7 +31,6 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,6 @@ public class SessionExample {
   private static final String ROOT_SG1_D1_S4 = "root.sg1.d1.s4";
   private static final String ROOT_SG1_D1_S5 = "root.sg1.d1.s5";
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
-  private static final String ROOT_SG1_D2 = "root.sg1.d2";
   private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
@@ -58,66 +57,39 @@ public class SessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    try {
-    //      session.setStorageGroup("root.sg1");
-    //    } catch (StatementExecutionException e) {
-    //      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-    //        throw e;
-    //      }
-    //    }
-
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s0"));
-    measurementList.add(Collections.singletonList("s1"));
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.DOUBLE));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 2; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    try {
+      session.setStorageGroup("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+        throw e;
+      }
     }
 
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s0");
-    schemaNames.add("s1");
-
-    session.createSchemaTemplate(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
-    session.setSchemaTemplate("template1", "root.sg1");
-
+    createTimeseries();
+    createMultiTimeseries();
     insertRecord();
     insertTablet();
+    insertTablets();
+    insertRecords();
+    nonQuery();
+    query();
+    queryWithTimeout();
+    rawDataQuery();
+    queryByIterator();
+    deleteData();
+    deleteTimeseries();
+    setTimeout();
 
-    //    createMultiTimeseries();
-    //    insertRecord();
-    //    insertTablet();
-    //    insertTablets();
-    //    insertRecords();
-    //    nonQuery();
-    //    query();
-    //    queryWithTimeout();
-    //    rawDataQuery();
-    //    queryByIterator();
-    //    deleteData();
-    //    deleteTimeseries();
-    //    setTimeout();
-    //
-    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    //    sessionEnableRedirect.setEnableQueryRedirection(true);
-    //    sessionEnableRedirect.open(false);
-    //
-    //    // set session fetchSize
-    //    sessionEnableRedirect.setFetchSize(10000);
-    //
-    //    insertRecord4Redirect();
-    //    query4Redirect();
-    //    sessionEnableRedirect.close();
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -216,18 +188,21 @@ public class SessionExample {
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D2;
+    String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
-    measurements.add("s0");
     measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
     types.add(TSDataType.INT64);
-    types.add(TSDataType.DOUBLE);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
 
     for (long time = 0; time < 100; time++) {
       List<Object> values = new ArrayList<>();
       values.add(1L);
-      values.add(2.0);
+      values.add(2L);
+      values.add(3L);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
   }
@@ -347,8 +322,9 @@ public class SessionExample {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s0", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s1", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1, schemaList, 100);
 
@@ -358,19 +334,37 @@ public class SessionExample {
     for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
-      for (int s = 0; s < 2; s++) {
+      for (int s = 0; s < 3; s++) {
         long value = new Random().nextLong();
-        if (s == 0) {
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
-        } else {
-          tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, 0.0);
-        }
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
         tablet.reset();
       }
       timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
+    }
+
+    // Method 2 to add tablet data
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+
+    for (long time = 0; time < 100; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[row] = i;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet, true);
+        tablet.reset();
+      }
     }
 
     if (tablet.rowSize != 0) {
