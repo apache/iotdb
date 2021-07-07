@@ -35,7 +35,6 @@ public class GroupByMonthFilter extends GroupByFilter {
   private int intervalInMo;
   private Calendar calendar = Calendar.getInstance();
   private static final long MS_TO_MONTH = 30 * 86400_000L;
-  private long curIntervalCnt = 0;
   /** 10.31 -> 11.30 -> 12.31, not 10.31 -> 11.30 -> 12.30 */
   private final long initialStartTime;
 
@@ -79,9 +78,11 @@ public class GroupByMonthFilter extends GroupByFilter {
       return false;
     } else if (time - startTime < interval) {
       return true;
+    } else if (time - startTime < slidingStep) {
+      return false;
     } else {
-      curIntervalCnt = curIntervalCnt == 0 ? getTimePointPosition(time) : curIntervalCnt;
-      getNthTimeInterval(curIntervalCnt++);
+      long count = getTimePointPosition(time);
+      getNthTimeInterval(count);
       return satisfy(time, value);
     }
   }
@@ -182,22 +183,20 @@ public class GroupByMonthFilter extends GroupByFilter {
 
   /** get the Nth time interval */
   private void getNthTimeInterval(long n) {
+    if (isSlidingStepByMonth) {
+      calendar.setTimeInMillis(initialStartTime);
+      calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
+    } else {
+      calendar.setTimeInMillis(initialStartTime + slidingStep * n);
+    }
+    this.startTime = calendar.getTimeInMillis();
+
     if (isIntervalByMonth) {
-      if (isSlidingStepByMonth) {
-        calendar.setTimeInMillis(initialStartTime);
-        calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
-      } else {
-        calendar.setTimeInMillis(initialStartTime + slidingStep * n);
-      }
-      this.startTime = calendar.getTimeInMillis();
       calendar.setTimeInMillis(initialStartTime);
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n) + intervalInMo);
       this.interval = calendar.getTimeInMillis() - startTime;
     }
     if (isSlidingStepByMonth) {
-      calendar.setTimeInMillis(initialStartTime);
-      calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * n));
-      this.startTime = calendar.getTimeInMillis();
       calendar.setTimeInMillis(initialStartTime);
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * (n + 1)));
       this.slidingStep = calendar.getTimeInMillis() - startTime;
