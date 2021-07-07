@@ -298,6 +298,7 @@ public class SessionExample {
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
+        typesList.clear();
         timestamps.clear();
       }
     }
