@@ -33,9 +33,9 @@ IoTDB > set storage group to root.ln
 IoTDB > set storage group to root.sgcc
 ```
 
-We can thus create two storage groups using the above two SQL statements.
+Based on the about two SQL statements, we can creat two storage groups.
 
-It is worth noting that when the path itself or the parent/child layer of the path is already set as a storage group, the path is then not allowed to be set as a storage group. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
+It should be note that, neither parent/child path of a storage group or itself can set a storage group anymore. For example, it is not feasible to set `root.ln.wf01` as a storage group when two storage groups `root.ln` and `root.sgcc` exist. The system gives the corresponding error prompt as shown below:
 
 ```
 IoTDB> set storage group to root.ln.wf01
@@ -80,7 +80,7 @@ IoTDB > DELETE STORAGE GROUP root.*
 ### Timeseries Management
 #### Create Timeseries
 
-According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
+According to the established data model, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
 
 ```
 IoTDB > create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN
@@ -100,7 +100,7 @@ IoTDB > create aligned timeseries root.sg.d1.(s3 FLOAT, s4 INT32) with encoding=
 
 Attention: Aligned timeseries must have the same compression type.
 
-Notice that when in the CREATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
+It should be noted that when the encoding mode specified in the creation of timeseries does not match the data type, the system will give the corresponding error promot as shown below:
 
 ```
 IoTDB > create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -155,6 +155,7 @@ error: Not support deleting part of aligned timeseies!
 * SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
   There are four optional clauses added in SHOW TIMESERIES, return information of time series 
+  The query results are all information for these timeseries.
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
@@ -339,7 +340,7 @@ The only difference between tag and attribute is that we will maintain an invert
 
 > Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
 
-We can update the tag information after creating it as following:
+After creating the timeseries, we can also update its original tag point attributes, there are mainly in following six ways:
 
 * Rename the tag/attribute key
 ```
