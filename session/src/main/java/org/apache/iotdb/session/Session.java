@@ -72,6 +72,7 @@ public class Session {
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
   public static final String MSG_DONOT_ENABLE_REDIRECT =
       "Query do not enable redirect," + " please confirm the session and server conf.";
+  protected List<String> nodeUrls;
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -237,6 +238,66 @@ public class Session {
     this.enableCacheLeader = enableCacheLeader;
   }
 
+  public Session(List<String> nodeUrls, String username, String password) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  /**
+   * Multiple nodeUrl,If one node down, connect to the next one
+   *
+   * @param nodeUrls List<String> Multiple ip:rpcPort eg.127.0.0.1:9001
+   */
+  public Session(List<String> nodeUrls, String username, String password, int fetchSize) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader) {
+    this.nodeUrls = nodeUrls;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableCacheLeader = enableCacheLeader;
+  }
+
   public void setFetchSize(int fetchSize) {
     this.fetchSize = fetchSize;
   }
@@ -291,6 +352,9 @@ public class Session {
 
   public SessionConnection constructSessionConnection(
       Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+    if (endpoint == null) {
+      return new SessionConnection(session, zoneId);
+    }
     return new SessionConnection(session, endpoint, zoneId);
   }
 
