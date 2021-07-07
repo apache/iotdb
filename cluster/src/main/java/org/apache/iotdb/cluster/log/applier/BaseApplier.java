@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -77,7 +78,8 @@ abstract class BaseApplier implements LogApplier {
       } catch (BatchProcessException e) {
         handleBatchProcessException(e, plan);
       } catch (QueryProcessException e) {
-        if (e.getCause() instanceof StorageGroupNotSetException) {
+        if (e.getCause() instanceof StorageGroupNotSetException
+            || e.getCause() instanceof UndefinedTemplateException) {
           executeAfterSync(plan);
         } else {
           throw e;

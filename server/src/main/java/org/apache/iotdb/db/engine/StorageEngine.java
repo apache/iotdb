@@ -713,10 +713,9 @@ public class StorageEngine implements IService {
       throws StorageEngineException, QueryProcessException {
     PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
-    String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.query(
-        deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
+        fullPath, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**

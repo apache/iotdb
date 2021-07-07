@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -27,7 +28,7 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -38,7 +39,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -51,7 +51,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class InsertTabletPlanTest {
+public class InsertRowPlanTest {
 
   private final Planner processor = new Planner();
 
@@ -62,50 +62,43 @@ public class InsertTabletPlanTest {
 
   @After
   public void clean() throws IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testInsertTabletPlan()
+  public void testInsertRowPlan()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    long[] times = new long[] {110L, 111L, 112L, 113L};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
 
-    Object[] columns = new Object[6];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
+    String[] columns = new String[6];
+    columns[0] = 1.0 + "";
+    columns[1] = 2 + "";
+    columns[2] = 10000 + "";
+    columns[3] = 100 + "";
+    columns[4] = false + "";
+    columns[5] = "hh" + 0;
 
-    for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 1.0;
-      ((float[]) columns[1])[r] = 2;
-      ((long[]) columns[2])[r] = 10000;
-      ((int[]) columns[3])[r] = 100;
-      ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
-    }
-
-    InsertTabletPlan tabletPlan =
-        new InsertTabletPlan(
+    InsertRowPlan rowPlan =
+        new InsertRowPlan(
             new PartialPath("root.isp.d1"),
+            time,
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
-    tabletPlan.setTimes(times);
-    tabletPlan.setColumns(columns);
-    tabletPlan.setRowCount(times.length);
+            dataTypes,
+            columns);
 
     PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(tabletPlan);
+    executor.insert(rowPlan);
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -117,35 +110,9 @@ public class InsertTabletPlanTest {
   }
 
   @Test
-  public void testInsertTabletPlanWithDeviceTemplate()
+  public void testInsertRowPlanWithDeviceTemplate()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
-
-    IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp"));
-
-    InsertTabletPlan tabletPlan = getInsertTabletPlan();
-
-    PlanExecutor executor = new PlanExecutor();
-
-    // nothing can be found when we not insert data
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp");
-    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(0, dataSet.getPaths().size());
-
-    executor.insertTablet(tabletPlan);
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
-    }
-  }
-
-  private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s1"));
     measurementList.add(Collections.singletonList("s2"));
@@ -171,22 +138,24 @@ public class InsertTabletPlanTest {
     schemaNames.add("s2");
     schemaNames.add("s3");
 
-    return new CreateTemplatePlan(
-        "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
-  }
-
-  @Test
-  public void testInsertTabletPlanWithDeviceTemplateAndAutoCreateSchema()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypesList,
+            encodingList,
+            compressionTypes);
 
     IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp"));
-    InsertTabletPlan tabletPlan = getInsertTabletPlan();
+    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp.d1"));
+
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+
+    InsertRowPlan rowPlan = getInsertRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(tabletPlan);
+    executor.insert(rowPlan);
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -195,71 +164,37 @@ public class InsertTabletPlanTest {
       RowRecord record = dataSet.next();
       Assert.assertEquals(3, record.getFields().size());
     }
-
-    // test recover
-    EnvironmentUtils.stopDaemon();
-    IoTDB.metaManager.clear();
-    // wait for close
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-      Thread.currentThread().interrupt();
-    }
-    EnvironmentUtils.activeDaemon();
-
-    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
-    }
   }
 
   @Test
-  public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
-    InsertTabletPlan plan1 = getInsertTabletPlan();
+  public void testInsertRowSerialization() throws IllegalPathException, QueryProcessException {
+    InsertRowPlan plan1 = getInsertRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(plan1);
+    executor.insert(plan1);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
     plan1.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+    Assert.assertEquals(PhysicalPlanType.INSERT.ordinal(), byteBuffer.get());
 
-    InsertTabletPlan plan2 = new InsertTabletPlan();
+    InsertRowPlan plan2 = new InsertRowPlan();
     plan2.deserialize(byteBuffer);
-
     Assert.assertEquals(plan1, plan2);
   }
 
-  private InsertTabletPlan getInsertTabletPlan() throws IllegalPathException {
-    long[] times = new long[] {110L, 111L, 112L, 113L};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
+  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64};
 
-    Object[] columns = new Object[3];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
+    String[] columns = new String[3];
+    columns[0] = 1.0 + "";
+    columns[1] = 2 + "";
+    columns[2] = 10000 + "";
 
-    for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 1.0;
-      ((float[]) columns[1])[r] = 2;
-      ((long[]) columns[2])[r] = 10000;
-    }
-
-    InsertTabletPlan tabletPlan =
-        new InsertTabletPlan(
-            new PartialPath("root.isp.d1"), new String[] {"s1", "s2", "s3"}, dataTypes);
-    tabletPlan.setTimes(times);
-    tabletPlan.setColumns(columns);
-    tabletPlan.setRowCount(times.length);
-    return tabletPlan;
+    return new InsertRowPlan(
+        new PartialPath("root.isp.d1"), time, new String[] {"s1", "s2", "s3"}, dataTypes, columns);
   }
 }
