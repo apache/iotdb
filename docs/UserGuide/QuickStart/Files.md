@@ -44,6 +44,7 @@ Pre-write log files store WAL files. It can be configured through the `wal_dir` 
 For a clearer understanding of configuring the data storage directory, we will give an example in this section.
 
 The data directory path included in storage directory setting are: base_dir, data_dirs, multi_dir_strategy, and wal_dir, which refer to system files, data folders, storage strategy, and pre-write log files.
+Users can choose the input path to configure by themselves, or users can use the system default configuration items without doing anything.
 
 An example of the configuration items are as follows:
 
