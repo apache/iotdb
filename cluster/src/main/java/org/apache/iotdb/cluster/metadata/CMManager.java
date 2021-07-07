@@ -1726,7 +1726,7 @@ public class CMManager extends MManager {
               () -> {
                 try {
                   showTimeseries(group, plan, resultSet, context);
-                } catch (CheckConsistencyException | MetadataException e) {
+                } catch (CheckConsistencyException e) {
                   logger.error("Cannot get show timeseries result of {} from {}", plan, group);
                 }
                 return null;

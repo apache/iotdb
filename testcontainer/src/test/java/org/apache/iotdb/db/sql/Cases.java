@@ -276,5 +276,29 @@ public abstract class Cases {
       Assert.assertEquals(2, cnt);
       resultSet.close();
     }
+
+    // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag1=v3"
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(0, cnt);
+      resultSet.close();
+    }
+
+    // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag3=v1"
+    for (Statement readStatement : readStatements) {
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
+      int cnt = 0;
+      while (resultSet.next()) {
+        cnt++;
+      }
+      Assert.assertEquals(0, cnt);
+      resultSet.close();
+    }
   }
 }
