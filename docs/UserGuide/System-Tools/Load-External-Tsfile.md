@@ -19,7 +19,7 @@
 
 -->
 # System Tools
-## Load External TsFile Tool
+## Loading TsFile
 
 ### Introduction
 
@@ -27,7 +27,7 @@ The load external tsfile tool allows users to load tsfiles, delete a tsfile, or 
 
 ### Usage
 
-The user sends specified commands to the Apache IoTDB system through the Cli tool or JDBC to use the tool.
+The user sends specified commands to the Apache IoTDB system through the cli tool or JDBC to realize the function of file loading.
 
 #### load tsfiles
 
@@ -38,7 +38,7 @@ This command has two usages:
 1. Load a single tsfile by specifying a file path (absolute path). 
 
 The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile`. The third and fourth parameters are optional. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If the third parameter is true, the schema is created automatically. If the third parameter is false, the schema will not be created. By default, the schema will be created. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-engine.properties`.
-If the `.resource` file corresponding to the file exists, it will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding `.resource` file will be regenerated from the tsfile file.
+If the `.resource` file corresponding to the file exists, it will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding `.resource` file will be regenerated from the tsfile file. The. resource file corresponding to the loaded TsFile is not required. 
 
 Examples:
 
@@ -50,8 +50,7 @@ Examples:
 2. Load a batch of files by specifying a folder path (absolute path). 
 
 The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile`. The third and fourth parameters are optional. When the metadata corresponding to the time series in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If the third parameter is true, the schema will be created automatically. If the third parameter is false, the schema will not be created. By default, the schema will be created. When the storage group corresponding to tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it'll use the storage group level which is set in `iotdb-engine.properties`.
-If the `.resource` file corresponding to the file  exists, they will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding` .resource` files will be regenerated from the tsfile sfile.
-
+If the `.resource` file corresponding to the file  exists, they will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding` .resource` files will be regenerated from the tsfile sfile. The. resource file corresponding to the loaded TsFile is not required. 
 Examples:
 
 * `load "/Users/Desktop/data"`
@@ -59,7 +58,7 @@ Examples:
 * `load "/Users/Desktop/data" true`
 * `load "/Users/Desktop/data" true 1`
 
-#### remove a tsfile
+#### Delete the TsFile
 
 The command to delete a tsfile is: `remove "<path>"`.
 
