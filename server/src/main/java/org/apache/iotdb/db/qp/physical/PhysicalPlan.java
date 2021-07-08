@@ -386,6 +386,7 @@ public abstract class PhysicalPlan {
           break;
         case UPDATE_STORAGE_GROUP:
           plan = new UpdateStorageGroupPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
