@@ -1568,7 +1568,16 @@ public class CMManager extends MManager {
     ExecutorService pool =
         new ThreadPoolExecutor(
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
-    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    List<PartitionGroup> globalGroups = new ArrayList<>();
+    try {
+      PartitionGroup partitionGroup =
+          metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
+      globalGroups.add(partitionGroup);
+    } catch (MetadataException e) {
+      // if the path location is not find, obtain the path location from all groups.
+      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    }
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
     int offset = plan.getOffset();
