@@ -985,7 +985,8 @@ public abstract class RaftMember {
         ClusterUtils.setVersionForSpecialPlan(plan, log.getCurrLogIndex());
       } catch (MetadataException e) {
         logger.error("process plan failed, plan={}", plan, e);
-        return StatusUtils.INTERNAL_ERROR;
+        TSStatus tsStatus = StatusUtils.INTERNAL_ERROR.deepCopy();
+        return tsStatus.setMessage(e.getMessage());
       }
 
       // appendLogInGroup will serialize log, and set log size, and we will use the size after it

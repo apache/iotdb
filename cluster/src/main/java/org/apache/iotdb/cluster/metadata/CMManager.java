@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MajorVersionNotEqualException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -1880,9 +1881,11 @@ public class CMManager extends MManager {
    * @return true if the sg node major version == the path's major version; false if the sg node
    *     major version > the path's major version; throw MetadataException if the sg node major
    *     version < the path's major version.
-   * @throws MetadataException sync meta leader failed
+   * @throws MajorVersionNotEqualException sync meta leader failed and the
+   * @throws StorageGroupNotSetException some error occurred.
    */
-  private boolean checkSgNodeAndPlanMajorVersion(PartialPath path) throws MetadataException {
+  private boolean checkSgNodeAndPlanMajorVersion(PartialPath path)
+      throws MetadataException, StorageGroupNotSetException {
     StorageGroupMNode node = null;
     try {
       node = getStorageGroupNodeByPath(path);
@@ -1902,7 +1905,10 @@ public class CMManager extends MManager {
       logger.error(
           "unknown error occurred when sync the meta leader, the storage group node major version "
               + "is still smaller than the plan's major version after sync the meta leader");
-      throw new MetadataException("node major version smaller error");
+      throw new MajorVersionNotEqualException(
+          String.format(
+              "node major version=%d smaller than path's=%d error",
+              nodeMajorVersion, path.getMajorVersion()));
     }
 
     if (nodeMajorVersion > path.getMajorVersion()) {
