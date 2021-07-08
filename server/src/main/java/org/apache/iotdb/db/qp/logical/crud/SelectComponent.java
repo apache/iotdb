@@ -47,6 +47,13 @@ public final class SelectComponent {
     this.zoneId = zoneId;
   }
 
+  public SelectComponent(SelectComponent selectComponent) {
+    zoneId = selectComponent.zoneId;
+    hasAggregationFunction = selectComponent.hasAggregationFunction;
+    hasTimeSeriesGeneratingFunction = selectComponent.hasTimeSeriesGeneratingFunction;
+    resultColumns.addAll(selectComponent.resultColumns);
+  }
+
   public ZoneId getZoneId() {
     return zoneId;
   }

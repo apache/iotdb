@@ -36,4 +36,6 @@ public class MetadataOperationType {
   public static final String DROP_INDEX = "32";
   public static final String CHANGE_OFFSET = "12";
   public static final String CHANGE_ALIAS = "13";
+  public static final String CREATE_CONTINUOUS_QUERY = "14";
+  public static final String DROP_CONTINUOUS_QUERY = "15";
 }

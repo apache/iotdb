@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.cluster.server.service;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -40,6 +43,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
 
 public class MetaAsyncService extends BaseAsyncService implements TSMetaService.AsyncIface {
 
@@ -70,7 +75,10 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
-    } catch (AddSelfException | LogExecutionException e) {
+    } catch (AddSelfException | LogExecutionException | CheckConsistencyException e) {
+      resultHandler.onError(e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       resultHandler.onError(e);
     }
     if (addNodeResponse != null) {
@@ -78,7 +86,9 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       return;
     }
 
-    if (member.getCharacter() == NodeCharacter.FOLLOWER && member.getLeader() != null) {
+    if (member.getCharacter() == NodeCharacter.FOLLOWER
+        && member.getLeader() != null
+        && !ClusterConstant.EMPTY_NODE.equals(member.getLeader())) {
       logger.info("Forward the join request of {} to leader {}", node, member.getLeader());
       if (forwardAddNode(node, startUpStatus, resultHandler)) {
         return;
@@ -143,12 +153,27 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   }
 
   @Override
+  public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+    resultHandler.onComplete(
+        ClusterUtils.serializeMigrationStatus(metaGroupMember.collectMigrationStatus()));
+  }
+
+  @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
-    long result = Response.RESPONSE_NULL;
+    long result;
     try {
       result = metaGroupMember.removeNode(node);
-    } catch (PartitionTableUnavailableException | LogExecutionException e) {
+    } catch (PartitionTableUnavailableException
+        | LogExecutionException
+        | CheckConsistencyException e) {
+      logger.error("Can not remove node {}", node, e);
       resultHandler.onError(e);
+      return;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Can not remove node {}", node, e);
+      resultHandler.onError(e);
+      return;
     }
 
     if (result != Response.RESPONSE_NULL) {
@@ -196,8 +221,13 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    * @param resultHandler
    */
   @Override
-  public void exile(AsyncMethodCallback<Void> resultHandler) {
-    metaGroupMember.applyRemoveNode(metaGroupMember.getThisNode());
+  public void exile(ByteBuffer removeNodeLogBuffer, AsyncMethodCallback<Void> resultHandler) {
+    logger.info("{}: start to exile.", name);
+    removeNodeLogBuffer.get();
+    RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+    removeNodeLog.deserialize(removeNodeLogBuffer);
+    metaGroupMember.getPartitionTable().deserialize(removeNodeLog.getPartitionTable());
+    metaGroupMember.applyRemoveNode(removeNodeLog);
     resultHandler.onComplete(null);
   }
 

@@ -45,7 +45,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TTransport;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -148,11 +147,10 @@ public abstract class DataSnapshotTest {
                       }
 
                       @Override
-                      public void updateKnownMessageSize(long size) throws TTransportException {}
+                      public void updateKnownMessageSize(long size) {}
 
                       @Override
-                      public void checkReadBytesAvailable(long numBytes)
-                          throws TTransportException {}
+                      public void checkReadBytesAvailable(long numBytes) {}
                     })) {
               @Override
               public ByteBuffer readFile(String filePath, long offset, int length)
