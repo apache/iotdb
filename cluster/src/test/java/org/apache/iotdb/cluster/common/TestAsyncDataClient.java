@@ -276,7 +276,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   @Override
   public void getAllMeasurementSchema(
-      RaftNode header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(
             () -> {
               new DataAsyncService(dataGroupMemberMap.get(header))
