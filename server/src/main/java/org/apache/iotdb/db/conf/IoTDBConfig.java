@@ -380,6 +380,9 @@ public class IoTDBConfig {
   /** the max executing time of query in ms. */
   private int queryTimeoutThreshold = 60000;
 
+  /** compaction interval in ms */
+  private long compactionInterval = 30000;
+
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
@@ -490,7 +493,7 @@ public class IoTDBConfig {
    * despite how much they are overflowed). This may increase merge overhead depending on how much
    * the SeqFiles are overflowed.
    */
-  private boolean forceFullMerge = false;
+  private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
@@ -547,7 +550,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 1;
+  private int concurrentWritingTimePartition = 100;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -561,7 +564,7 @@ public class IoTDBConfig {
   private long defaultTTL = Long.MAX_VALUE;
 
   /** The default value of primitive array size in array pool */
-  private int primitiveArraySize = 128;
+  private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
   private boolean enablePartition = false;
@@ -1373,6 +1376,14 @@ public class IoTDBConfig {
     this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
   }
 
+  public long getCompactionInterval() {
+    return compactionInterval;
+  }
+
+  public void setCompactionInterval(long compactionInterval) {
+    this.compactionInterval = compactionInterval;
+  }
+
   public boolean isEnableMemControl() {
     return enableMemControl;
   }
@@ -1974,6 +1985,7 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    RpcTransportFactory.setThriftMaxFrameSize(this.thriftMaxFrameSize);
   }
 
   public int getThriftDefaultBufferSize() {
@@ -1982,6 +1994,7 @@ public class IoTDBConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    RpcTransportFactory.setDefaultBufferCapacity(this.thriftDefaultBufferSize);
   }
 
   public int getMaxQueryDeduplicatedPathNum() {

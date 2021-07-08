@@ -156,7 +156,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromFile() throws IOException {
     try {
       tsFileResource.deserialize();
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.warn(
           "Cannot deserialize TsFileResource {}, construct it using " + "TsFileSequenceReader",
           tsFileResource.getTsFile(),

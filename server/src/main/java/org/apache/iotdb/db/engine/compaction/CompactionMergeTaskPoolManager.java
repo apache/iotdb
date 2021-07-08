@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -36,12 +37,12 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -53,8 +54,11 @@ public class CompactionMergeTaskPoolManager implements IService {
       LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
-  private ExecutorService pool;
+  private ScheduledExecutorService pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
 
   public static CompactionMergeTaskPoolManager getInstance() {
     return INSTANCE;
@@ -159,16 +163,6 @@ public class CompactionMergeTaskPoolManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public void submitTask(String storageGroupName, Callable<Void> compactionMergeTask)
-      throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
-      Future<Void> future = pool.submit(compactionMergeTask);
-      storageGroupTasks
-          .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
-          .add(future);
-    }
-  }
-
   /**
    * Abort all compactions of a storage group. The caller must acquire the write lock of the
    * corresponding storage group.
@@ -181,8 +175,39 @@ public class CompactionMergeTaskPoolManager implements IService {
       Future<Void> next = subIterator.next();
       if (!next.isDone() && !next.isCancelled()) {
         next.cancel(true);
+        sgCompactionStatus.put(storageGroup, false);
       }
       subIterator.remove();
+    }
+  }
+
+  public synchronized void clearCompactionStatus(String storageGroupName) {
+    // for test
+    if (sgCompactionStatus == null) {
+      sgCompactionStatus = new ConcurrentHashMap<>();
+    }
+    sgCompactionStatus.put(storageGroupName, false);
+  }
+
+  public void init(Runnable function) {
+    pool.scheduleWithFixedDelay(
+        function, 1000, config.getCompactionInterval(), TimeUnit.MILLISECONDS);
+  }
+
+  public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
+      throws RejectedExecutionException {
+    if (pool != null && !pool.isTerminated()) {
+      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
+      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
+      if (isCompacting) {
+        return;
+      }
+      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
+      sgCompactionStatus.put(storageGroup, true);
+      Future<Void> future = pool.submit(storageGroupCompactionTask);
+      storageGroupTasks
+          .computeIfAbsent(storageGroup, k -> new ConcurrentSkipListSet<>())
+          .add(future);
     }
   }
 

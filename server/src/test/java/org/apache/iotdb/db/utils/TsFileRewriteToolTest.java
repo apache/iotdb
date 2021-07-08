@@ -102,7 +102,7 @@ public class TsFileRewriteToolTest {
       boolean success = f.mkdir();
       Assert.assertTrue(success);
     }
-    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0.tsfile";
+    path = folder + File.separator + System.currentTimeMillis() + "-" + 0 + "-0-0.tsfile";
   }
 
   @After

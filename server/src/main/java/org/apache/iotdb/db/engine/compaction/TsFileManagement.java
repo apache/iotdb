@@ -44,7 +44,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -109,13 +108,14 @@ public abstract class TsFileManagement {
   public abstract void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
   /** add one TsFile to list */
-  public abstract void add(TsFileResource tsFileResource, boolean sequence);
+  public abstract void add(TsFileResource tsFileResource, boolean sequence) throws IOException;
 
   /** add one TsFile to list for recover */
   public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
 
   /** add some TsFiles to list */
-  public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
+  public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence)
+      throws IOException;
 
   /** is one TsFile contained in list */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
@@ -135,11 +135,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  protected void readLock() {
+  public void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  protected void readUnLock() {
+  public void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -157,7 +157,7 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask implements Callable<Void> {
+  public class CompactionMergeTask {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
@@ -168,7 +168,6 @@ public abstract class TsFileManagement {
       this.timePartitionId = timePartitionId;
     }
 
-    @Override
     public Void call() {
       merge(timePartitionId);
       closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
@@ -176,19 +175,19 @@ public abstract class TsFileManagement {
     }
   }
 
-  public class CompactionRecoverTask implements Callable<Void> {
+  public class CompactionRecoverTask extends StorageGroupCompactionTask {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
     public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      super(storageGroupName);
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 
     @Override
     public Void call() {
       recover();
-      // in recover logic, we do not have to start next compaction task, and in this case the param
-      // time partition is useless, we can just pass 0L
+      // in recover logic, the param time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
       return null;
     }
@@ -199,15 +198,6 @@ public abstract class TsFileManagement {
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
       long dataTTL) {
-    if (isUnseqMerging) {
-      if (logger.isInfoEnabled()) {
-        logger.info(
-            "{} Last merge is ongoing, currently consumed time: {}ms",
-            storageGroupName,
-            (System.currentTimeMillis() - mergeStartTime));
-      }
-      return false;
-    }
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
@@ -237,9 +227,7 @@ public abstract class TsFileManagement {
           "{} too much unseq files to be merged, reduce it to {}",
           storageGroupName,
           maxOpenFileNumInEachUnseqCompaction);
-      unSeqMergeList =
-          unSeqMergeList.subList(
-              unSeqMergeList.size() - maxOpenFileNumInEachUnseqCompaction, unSeqMergeList.size());
+      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
@@ -289,6 +277,16 @@ public abstract class TsFileManagement {
             taskName,
             mergeFiles[0].size(),
             mergeFiles[1].size());
+      }
+      // wait until unseq merge has finished
+      while (isUnseqMerging) {
+        try {
+          Thread.sleep(200);
+        } catch (InterruptedException e) {
+          logger.error("{} [Compaction] shutdown", storageGroupName, e);
+          Thread.currentThread().interrupt();
+          return false;
+        }
       }
       return true;
     } catch (MergeException | IOException e) {

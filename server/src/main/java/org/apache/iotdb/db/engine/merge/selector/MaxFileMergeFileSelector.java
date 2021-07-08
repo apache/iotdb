@@ -168,7 +168,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           useTightBound
               ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit)
               : calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
-      updateSelectedFiles(newCost, unseqFile);
+      if (!updateSelectedFiles(newCost, unseqFile)) {
+        // older unseq files must be merged before newer ones
+        break;
+      }
 
       tmpSelectedSeqFiles.clear();
       unseqIndex++;
@@ -181,7 +184,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     }
   }
 
-  private void updateSelectedFiles(long newCost, TsFileResource unseqFile) {
+  private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
     if (totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;
@@ -198,7 +201,9 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           tmpSelectedSeqFiles,
           newCost,
           totalCost);
+      return true;
     }
+    return false;
   }
 
   private boolean checkClosed(TsFileResource unseqFile) {

@@ -395,13 +395,33 @@ public class StorageEngine implements IService {
   /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
    *
-   * @param path device path
+   * @param deviceId device path
    * @return storage group processor
    */
-  public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
+  public StorageGroupProcessor getProcessor(PartialPath deviceId) throws StorageEngineException {
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-      return getStorageGroupProcessorByPath(path, storageGroupMNode);
+      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(deviceId);
+      return getStorageGroupProcessorByPath(deviceId, storageGroupMNode);
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
+   * get lock holder for each sg
+   *
+   * @return storage group processor
+   */
+  public List<String> getLockInfo(List<PartialPath> pathList) throws StorageEngineException {
+    try {
+      List<String> lockHolderList = new ArrayList<>(pathList.size());
+      for (PartialPath path : pathList) {
+        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        StorageGroupProcessor storageGroupProcessor =
+            getStorageGroupProcessorByPath(path, storageGroupMNode);
+        lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
+      }
+      return lockHolderList;
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
     }
@@ -425,8 +445,7 @@ public class StorageEngine implements IService {
     if (virtualStorageGroupManager == null) {
       // if finish recover
       if (isAllSgReady.get()) {
-        waitAllSgReady(devicePath);
-        synchronized (storageGroupMNode) {
+        synchronized (this) {
           virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
           if (virtualStorageGroupManager == null) {
             virtualStorageGroupManager = new VirtualStorageGroupManager();
@@ -693,10 +712,9 @@ public class StorageEngine implements IService {
       throws StorageEngineException, QueryProcessException {
     PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
-    String measurementId = seriesExpression.getSeriesPath().getMeasurement();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.query(
-        deviceId, measurementId, context, filePathsManager, seriesExpression.getFilter());
+        fullPath, context, filePathsManager, seriesExpression.getFilter());
   }
 
   /**

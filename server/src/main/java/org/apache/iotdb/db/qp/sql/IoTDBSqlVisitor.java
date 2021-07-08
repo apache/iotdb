@@ -68,6 +68,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
@@ -183,6 +184,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildPathsContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowDevicesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFlushTaskInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowFunctionsContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowLockInfoContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowMergeStatusContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowQueryProcesslistContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowStorageGroupContext;
@@ -844,6 +846,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitShowLockInfo(ShowLockInfoContext ctx) {
+    if (ctx.prefixPath() != null) {
+      return new ShowLockInfoOperator(SQLConstant.TOK_LOCK_INFO, parsePrefixPath(ctx.prefixPath()));
+    } else {
+      return new ShowLockInfoOperator(
+          SQLConstant.TOK_LOCK_INFO, new PartialPath(SQLConstant.getSingleRootArray()));
+    }
+  }
+
+  @Override
   public Operator visitShowChildPaths(ShowChildPathsContext ctx) {
     if (ctx.prefixPath() != null) {
       return new ShowChildPathsOperator(
@@ -1467,7 +1479,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
     // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
+    queryOp.setUnit(DatetimeUtils.convertDurationStrToLong(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
 
     parseTimeInterval(ctx.timeInterval(), queryOp);
@@ -1485,7 +1497,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         if (typeClause.previousUntilLastClause() != null) {
           long preRange;
           if (typeClause.previousUntilLastClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousUntilLastClause().DURATION().getText());
+            preRange =
+                DatetimeUtils.convertDurationStrToLong(
+                    typeClause.previousUntilLastClause().DURATION().getText());
           } else {
             preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
           }
@@ -1493,7 +1507,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         } else {
           long preRange;
           if (typeClause.previousClause().DURATION() != null) {
-            preRange = parseDuration(typeClause.previousClause().DURATION().getText());
+            preRange =
+                DatetimeUtils.convertDurationStrToLong(
+                    typeClause.previousClause().DURATION().getText());
           } else {
             preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
           }
@@ -1524,22 +1540,27 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     if (ctx.linearClause() != null) { // linear
       if (ctx.linearClause().DURATION(0) != null) {
-        long beforeRange = parseDuration(ctx.linearClause().DURATION(0).getText());
-        long afterRange = parseDuration(ctx.linearClause().DURATION(1).getText());
+        long beforeRange =
+            DatetimeUtils.convertDurationStrToLong(ctx.linearClause().DURATION(0).getText());
+        long afterRange =
+            DatetimeUtils.convertDurationStrToLong(ctx.linearClause().DURATION(1).getText());
         fillTypes.put(dataType, new LinearFill(beforeRange, afterRange));
       } else {
         fillTypes.put(dataType, new LinearFill(defaultFillInterval, defaultFillInterval));
       }
     } else if (ctx.previousClause() != null) { // previous
       if (ctx.previousClause().DURATION() != null) {
-        long preRange = parseDuration(ctx.previousClause().DURATION().getText());
+        long preRange =
+            DatetimeUtils.convertDurationStrToLong(ctx.previousClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
-        long preRange = parseDuration(ctx.previousUntilLastClause().DURATION().getText());
+        long preRange =
+            DatetimeUtils.convertDurationStrToLong(
+                ctx.previousUntilLastClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange, true));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval, true));
@@ -1586,19 +1607,20 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private void parseTimeInterval(TimeIntervalContext timeInterval, QueryOperator queryOp) {
     long startTime;
     long endTime;
+    long currentTime = DatetimeUtils.currentTime();
     if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression());
+      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
     } else {
-      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
+      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText(), currentTime);
     }
     if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
     } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression());
+      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
     } else {
-      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
+      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText(), currentTime);
     }
 
     queryOp.setStartTime(startTime);
@@ -1822,85 +1844,44 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     time = parseTimeFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
       if (ctx.getChild(i).getText().equals("+")) {
-        time += parseDuration(ctx.getChild(i + 1).getText());
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       } else {
-        time -= parseDuration(ctx.getChild(i + 1).getText());
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      }
+    }
+    return time;
+  }
+
+  private Long parseDateExpression(DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseTimeFormat(ctx.getChild(0).getText(), currentTime);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if (ctx.getChild(i).getText().equals("+")) {
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      } else {
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
       }
     }
     return time;
   }
 
   /**
-   * parse duration to time value.
-   *
-   * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
-   * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
-   */
-  private Long parseDuration(String durationStr) {
-    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-
-    long total = 0;
-    long tmp = 0;
-    for (int i = 0; i < durationStr.length(); i++) {
-      char ch = durationStr.charAt(i);
-      if (Character.isDigit(ch)) {
-        tmp *= 10;
-        tmp += (ch - '0');
-      } else {
-        String unit = durationStr.charAt(i) + "";
-        // This is to identify units with two letters.
-        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
-          i++;
-          unit += durationStr.charAt(i);
-        }
-        total +=
-            DatetimeUtils.convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
-        tmp = 0;
-      }
-    }
-    if (total <= 0) {
-      throw new SQLParserException("Interval must more than 0.");
-    }
-    return total;
-  }
-
-  /**
    * parse time unit or sliding step in group by query. If 'mo' is used, then other units can not be
    * used together, like '1mo1d'.
    *
-   * @param durationStr represent duration string like: 12d8m9ns, 1y1mo, etc.
+   * @param durationStr represent duration string like: 12d8m9ns, 1y1d, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
   private long parseTimeUnitOrSlidingStep(
       QueryOperator queryOp, String durationStr, boolean isParsingTimeUnit) {
-    boolean hasMonthUnit = false;
-    boolean hasOtherUnits = false;
-    for (int i = 0; i < durationStr.length(); i++) {
-      char ch = durationStr.charAt(i);
-      if (!Character.isDigit(ch)) {
-        String unit = durationStr.charAt(i) + "";
-        // This is to identify units with two letters.
-        if (i + 1 < durationStr.length() && !Character.isDigit(durationStr.charAt(i + 1))) {
-          i++;
-          unit += durationStr.charAt(i);
-        }
-        if (unit.equalsIgnoreCase("mo")) {
-          if (isParsingTimeUnit) {
-            queryOp.setIntervalByMonth(true);
-          } else {
-            queryOp.setSlidingStepByMonth(true);
-          }
-          hasMonthUnit = true;
-        } else {
-          hasOtherUnits = true;
-        }
+    if (durationStr.toLowerCase().contains("mo")) {
+      if (isParsingTimeUnit) {
+        queryOp.setIntervalByMonth(true);
+      } else {
+        queryOp.setSlidingStepByMonth(true);
       }
     }
-    if (hasMonthUnit && hasOtherUnits) {
-      throw new SQLParserException(
-          "Natural month unit can not be used with other time units together now.");
-    }
-    return parseDuration(durationStr);
+    return DatetimeUtils.convertDurationStrToLong(durationStr);
   }
 
   private PartialPath parseSuffixPath(SuffixPathContext ctx) {
@@ -2115,19 +2096,28 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
-    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
+
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-      switch (timePrecision) {
-        case "ns":
-          return System.currentTimeMillis() * 1000_000
-              + (System.nanoTime() - startupNano) % 1000_000;
-        case "us":
-          return System.currentTimeMillis() * 1000
-              + (System.nanoTime() - startupNano) / 1000 % 1000;
-        default:
-          return System.currentTimeMillis();
-      }
+      return DatetimeUtils.currentTime();
+    }
+    try {
+      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+    } catch (Exception e) {
+      throw new SQLParserException(
+          String.format(
+              "Input time format %s error. "
+                  + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+                  + "refer to user document for more info.",
+              timestampStr));
+    }
+  }
+
+  public long parseTimeFormat(String timestampStr, long currentTime) throws SQLParserException {
+    if (timestampStr == null || timestampStr.trim().equals("")) {
+      throw new SQLParserException("input timestamp cannot be empty");
+    }
+    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+      return currentTime;
     }
     try {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);

@@ -378,7 +378,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair =
         getMetadataAndEndOffset(deviceMetadataIndexNode, path.getDevice(), true, true);
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode = deviceMetadataIndexNode;
@@ -393,7 +393,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           getMetadataAndEndOffset(metadataIndexNode, path.getMeasurement(), false, false);
     }
     if (metadataIndexPair == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
@@ -732,7 +732,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             metadataIndex.getChildIndexEntry(name, false);
         ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
         return getMetadataAndEndOffset(
-            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, false);
+            MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
       }
     } catch (BufferOverflowException e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
