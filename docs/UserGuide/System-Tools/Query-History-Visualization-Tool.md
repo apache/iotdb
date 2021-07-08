@@ -21,7 +21,7 @@
 
 ## Query History Visualization Tool
 
-IoTDB Query History Visualization Tool uses a monitoring web page to provide metrics service for viewing the query history and SQL execution time. It also provides the memory and CPU usage of the current host.
+IoTDB Query History Visualization Tools uses a monitoring web page to provide a service to view query history and SQL statement execution time, it can also view the current memory and CPU usage of the host.
 
 The port of IoTDB Query History Visualization Tool is `8181`. Just print your `ip:8181` in your browser, and the page view looks like this:
 
