@@ -17,7 +17,7 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-## Watermark Tool
+## Watermarking Tools
 
 This tool has two functions: 1) watermark embedding of the IoTDB query result and 2) watermark detection of the suspected data.
 
@@ -25,7 +25,7 @@ This tool has two functions: 1) watermark embedding of the IoTDB query result an
 
 #### Configuration
 
-Watermark is disabled by default in IoTDB. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-engine.properties`:
+IoTDB turns off watermark embedding by default. To enable watermark embedding, the first thing is to modify the following fields in the configuration file `iotdb-engine.properties`:
 
 | Name                    | Example                                                | Explanation                                                  |
 | ----------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
