@@ -346,7 +346,7 @@ public abstract class TVList {
   }
 
   protected Object getPrimitiveArraysByType(TSDataType dataType) {
-    return PrimitiveArrayManager.getPrimitiveArraysByType(dataType);
+    return PrimitiveArrayManager.allocate(dataType);
   }
 
   protected long[] cloneTime(long[] array) {
