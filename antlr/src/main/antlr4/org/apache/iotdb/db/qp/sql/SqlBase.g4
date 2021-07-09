@@ -587,7 +587,6 @@ nodeNameWithoutStar
     | PREVIOUSUNTILLAST
     | METADATA
     | TIMESERIES
-    | TIMESTAMP
     | PROPERTY
     | WITH
     | DATATYPE
@@ -642,7 +641,6 @@ nodeNameWithoutStar
     | DISABLE
     | ALIGN
     | COMPRESSION
-    | TIME
     | ATTRIBUTES
     | TAGS
     | RENAME
