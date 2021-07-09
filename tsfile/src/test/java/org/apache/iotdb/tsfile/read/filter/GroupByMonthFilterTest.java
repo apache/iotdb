@@ -92,6 +92,9 @@ public class GroupByMonthFilterTest {
     // 1970-03-01 08:00:00
     assertTrue(filter.satisfy(5097600000L, null));
 
+    // 1970-12-30 08:00:00
+    assertTrue(filter.satisfy(31363200000L, null));
+
     // 1970-12-31 23:59:58
     assertTrue(filter.satisfy(31507198000L, null));
 
@@ -128,6 +131,25 @@ public class GroupByMonthFilterTest {
 
     // 1970-12-31 23:59:59
     assertFalse(filter.satisfy(31507199000L, null));
+  }
+
+  /** Test filter with slidingStep = 100 days, and timeInterval = 1 mo */
+  @Test
+  public void TestSatisfy4() {
+    GroupByMonthFilter filter =
+        new GroupByMonthFilter(MS_TO_MONTH, MS_TO_DAY * 100, 0, END_TIME, false, true);
+
+    // 1970-01-01 08:00:00, timezone = GMT+08:00
+    assertTrue(filter.satisfy(0, null));
+
+    // 1970-02-01 07:59:59
+    assertTrue(filter.satisfy(2678399000L, null));
+
+    // 1970-03-01 08:00:00
+    assertFalse(filter.satisfy(5097600000L, null));
+
+    // 1970-05-01 08:00:00
+    assertTrue(filter.satisfy(10368000000L, null));
   }
 
   /** Test filter with slidingStep = 1 month, and timeInterval = 1 day */
