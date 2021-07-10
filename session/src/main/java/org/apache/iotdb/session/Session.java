@@ -589,7 +589,7 @@ public class Session {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      logger.info("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
+      logger.debug("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
       return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());

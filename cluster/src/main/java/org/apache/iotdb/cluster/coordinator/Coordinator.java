@@ -451,8 +451,7 @@ public class Coordinator {
     // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
     // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
     // failure and success should be placed into proper positions in TSStatus.subStatus
-    if (plan instanceof InsertTabletPlan
-        || plan instanceof InsertMultiTabletPlan
+    if (plan instanceof InsertMultiTabletPlan
         || plan instanceof CreateMultiTimeSeriesPlan
         || plan instanceof InsertRowsPlan) {
       status = forwardMultiSubPlan(planGroupMap, plan);
