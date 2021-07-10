@@ -385,10 +385,10 @@ public class Coordinator {
 
   private TSStatus createTimeseriesForFailedInsertion(
       Map<PhysicalPlan, PartitionGroup> planGroupMap, InsertPlan plan) {
-    // try to create timeseries
-    if (plan.getFailedMeasurements() != null) {
-      plan.getPlanFromFailed();
+    for (PhysicalPlan subPlan : planGroupMap.keySet()) {
+      ((InsertPlan) subPlan).recoverFromFailure();
     }
+    // try to create timeseries
     boolean hasCreate;
     try {
       hasCreate = ((CMManager) IoTDB.metaManager).createTimeseries(plan);
