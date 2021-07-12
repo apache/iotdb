@@ -19,18 +19,14 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.Rate;
-import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.type.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public interface MetricManager {
-  /*
+  /**
    * The following functions will create or get a exist Metric
    * @param metric: the metric name
    * @param tags:
@@ -73,6 +69,16 @@ public interface MetricManager {
 
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
+  void removeCounter(String metric, String... tags);
+
+  void removeGauge(String metric, String... tags);
+
+  void removeRate(String metric, String... tags);
+
+  void removeHistogram(String metric, String... tags);
+
+  void removeTimer(String metric, String... tags);
+
   /**
    * get all metric keys.
    *
@@ -106,6 +112,20 @@ public interface MetricManager {
    * @return whether success
    */
   boolean init();
+
+  /**
+   * stop everything and clear
+   * @return
+   */
+  boolean stop();
+
+  /**
+   * bind metric to Reporter
+   * @param metric
+   * @param metricReporter
+   * @return
+   */
+  boolean bind(IMetric metric, MetricReporter metricReporter);
 
   String getName();
 }
