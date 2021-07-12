@@ -1,4 +1,3 @@
----
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -477,9 +476,23 @@ components:
       title: GroupByTimeFillPlan
       type: object
       properties:
-        interval:
+        aggregation:
           type: string
           description: group by
+        groupBy:
+          type: object
+          properties:
+            step:
+              type: string
+            samplingInterval:
+              type: string
+        limitAll:
+          type: object
+          properties:
+            limit:
+              type: string
+            slimit:
+              type: string
         stime:
           type: number
         etime:
@@ -579,9 +592,11 @@ components:
     GroupByFillPlan_fills:
       type: object
       properties:
-        dtype:
+        dataType:
           type: string
-        fun:
+        previous:
+          type: string
+        duration:
           type: string
     GrafanaDataFrame_inner:
       required:

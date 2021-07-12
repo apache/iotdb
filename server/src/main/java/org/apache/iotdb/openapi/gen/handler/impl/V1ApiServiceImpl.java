@@ -33,10 +33,10 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 import org.apache.iotdb.openapi.gen.handler.V1ApiService;
@@ -50,7 +50,6 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.ProtocolStringList;
@@ -80,6 +79,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -129,10 +129,11 @@ public class V1ApiServiceImpl extends V1ApiService {
               etime,
               stime,
               etime,
-              groupByFillPlan.getInterval(),
-              groupByFillPlan.getFills().get(0).getDtype(),
-              groupByFillPlan.getFills().get(0).getFun(),
-              groupByFillPlan.getInterval());
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getGroupBy().getStep(),
+              groupByFillPlan.getFills().get(0).getDataType(),
+              groupByFillPlan.getFills().get(0).getPrevious(),
+              groupByFillPlan.getFills().get(0).getDuration());
     } else {
       sql =
           String.format(
@@ -143,7 +144,8 @@ public class V1ApiServiceImpl extends V1ApiService {
               etime,
               stime,
               etime,
-              groupByFillPlan.getInterval());
+              "1s");
+      // groupByFillPlan.getInterval());
     }
     try {
       Planner planner = new Planner();
@@ -191,15 +193,15 @@ public class V1ApiServiceImpl extends V1ApiService {
           }
           if (listtemp.get(i).get("type") == null
               && (fields.get(i - 1) == null || fields.get(i - 1).getDataType() == null)) {
-            listtemp.get(i).put("type", "");
+            listtemp.get(i).put("type", "number");
           } else if (listtemp.get(i).get("type") == null
               && fields.get(i - 1) != null
               && fields.get(i - 1).getDataType() != null) {
-            listtemp.get(i).put("type", fields.get(i - 1).getDataType());
+            listtemp.get(i).put("type", "number");
           } else if (listtemp.get(i).get("type").toString().length() == 0
               && fields.get(i - 1) != null
               && fields.get(i - 1).getDataType() != null) {
-            listtemp.get(i).put("type", fields.get(i - 1).getDataType());
+            listtemp.get(i).put("type", "number");
           }
         }
       }
@@ -236,9 +238,86 @@ public class V1ApiServiceImpl extends V1ApiService {
     List<String> pathList = groupByFillPlan.getPaths();
     String path = Joiner.on(".").join(pathList);
     String sql = "";
+
     long stime = (long) (groupByFillPlan.getStime().doubleValue() * timePrecision);
     long etime = (long) (groupByFillPlan.getEtime().doubleValue() * timePrecision);
-    if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
+    if (StringUtils.isEmpty(groupByFillPlan.getAggregation())
+        && groupByFillPlan.getGroupBy() == null) {
+      sql =
+          String.format(
+              "select %s FROM %s where time>=%d and time<%d",
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime);
+    } else if (StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && (groupByFillPlan.getGroupBy() == null
+            || StringUtils.isEmpty(groupByFillPlan.getGroupBy().getSamplingInterval()))) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime);
+    } else if (groupByFillPlan.getGroupBy() != null
+            && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+            && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+            && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
+        || (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
+        && (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getGroupBy().getStep());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
+        && (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
+        && groupByFillPlan.getFills() != null
+        && groupByFillPlan.getFills().size() > 0
+        && groupByFillPlan.getFills().get(0).getDataType() != null
+        && groupByFillPlan.getFills().get(0).getPrevious() != null
+        && groupByFillPlan.getFills().get(0).getDuration() != null) {
       sql =
           String.format(
               "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
@@ -248,21 +327,64 @@ public class V1ApiServiceImpl extends V1ApiService {
               etime,
               stime,
               etime,
-              groupByFillPlan.getInterval(),
-              groupByFillPlan.getFills().get(0).getDtype(),
-              groupByFillPlan.getFills().get(0).getFun(),
-              groupByFillPlan.getInterval());
-    } else {
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getFills().get(0).getDataType(),
+              groupByFillPlan.getFills().get(0).getPrevious(),
+              groupByFillPlan.getFills().get(0).getDuration());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
+        && groupByFillPlan.getFills() != null
+        && groupByFillPlan.getFills().size() > 0
+        && groupByFillPlan.getFills().get(0).getDataType() != null
+        && groupByFillPlan.getFills().get(0).getPrevious() != null
+        && groupByFillPlan.getFills().get(0).getDuration() != null) {
       sql =
           String.format(
-              "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s) fill (%s[%s,%s])",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
               stime,
               etime,
               stime,
               etime,
-              groupByFillPlan.getInterval());
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getGroupBy().getStep(),
+              groupByFillPlan.getFills().get(0).getDataType(),
+              groupByFillPlan.getFills().get(0).getPrevious(),
+              groupByFillPlan.getFills().get(0).getDuration());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
+        && groupByFillPlan.getFills() != null
+        && groupByFillPlan.getFills().size() > 0
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
+        && StringUtils.isEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
+      sql =
+          String.format(
+              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s) fill (%s[%s])",
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getGroupBy().getStep(),
+              groupByFillPlan.getFills().get(0).getDataType());
+    } else {
+      return Response.ok().entity(result.toJson(resultList)).build();
+    }
+    if (groupByFillPlan.getLimitAll() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getLimitAll().getLimit())) {
+      sql = String.format(sql + " limit %s", groupByFillPlan.getLimitAll().getLimit());
+    }
+    if (groupByFillPlan.getLimitAll() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getLimitAll().getSlimit())) {
+      sql = String.format(sql + " slimit %s", groupByFillPlan.getLimitAll().getSlimit());
+    } else {
+      sql = String.format(sql + " slimit %s", 10);
     }
     try {
       Planner planner = new Planner();
@@ -272,32 +394,40 @@ public class V1ApiServiceImpl extends V1ApiService {
           physicalPlan.getPaths(),
           physicalPlan.getOperatorType(),
           null)) {
-
         return Response.ok().entity(NOPERMSSION + physicalPlan.getOperatorType()).build();
       }
       QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
-      Map<String, Object> tmpmap = new HashMap<String, Object>();
+      Map<String, List> tmpmapsub = new HashMap<String, List>();
       List<Object> temlist = new ArrayList<Object>();
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
+        int i = 0;
         for (Field field : fields) {
+          List<Object> temlistSub = new ArrayList<Object>();
           if (field == null || field.getDataType() == null) {
-            temlist.add(null);
+            temlistSub.add(null);
           } else {
-            temlist.add(field.getObjectValue(field.getDataType()));
+            temlistSub.add(field.getObjectValue(field.getDataType()));
           }
-          temlist.add(rowRecord.getTimestamp());
+          temlistSub.add(rowRecord.getTimestamp());
+          if (tmpmapsub.get(dataSet.getPaths().get(i).getFullPath()) == null) {
+            List<Object> listsub = new ArrayList<Object>();
+            listsub.add(temlistSub);
+            tmpmapsub.put(dataSet.getPaths().get(i).getFullPath(), listsub);
+          } else {
+            tmpmapsub.get(dataSet.getPaths().get(i).getFullPath()).add(temlistSub);
+          }
+          i++;
         }
       }
-      if (dataSet != null && dataSet.getPaths().size() > 0) {
-        tmpmap.put("target", dataSet.getPaths().get(0).getFullPath());
-      } else {
-        tmpmap.put("target", "");
+      Set<Entry<String, List>> entrySet = tmpmapsub.entrySet();
+      for (Map.Entry<String, List> entry : entrySet) {
+        Map<String, Object> tmpmap = new HashMap<String, Object>();
+        tmpmap.put("target", entry.getKey());
+        tmpmap.put("datapoints", entry.getValue());
+        resultList.add(tmpmap);
       }
-
-      tmpmap.put("datapoints", temlist);
-      resultList.add(tmpmap);
     } catch (IOException | QueryProcessException | AuthException e) {
       e.printStackTrace();
     }
@@ -309,52 +439,28 @@ public class V1ApiServiceImpl extends V1ApiService {
       throws NotFoundException {
     Gson result = new Gson();
     PartialPath path = null;
-    List<Map> leafnodes = new ArrayList<Map>();
-    List<String> internalNodes = new ArrayList<String>();
-    Map<String, List> resultMap = Maps.newHashMap();
+    List<Object> nodes = new ArrayList<Object>();
     try {
       if (requestBody != null && requestBody.size() > 0) {
         String timeser = Joiner.on(".").join(requestBody);
         path = new PartialPath(timeser);
-        ShowTimeSeriesPlan showTimeSeriesPlan =
-            new ShowTimeSeriesPlan(path, false, null, null, 0, 0, false);
+        ShowChildPathsPlan showChildPathsPlan =
+            new ShowChildPathsPlan(ShowContentType.CHILD_PATH, path);
         if (!AuthorityChecker.check(
             securityContext.getUserPrincipal().getName(),
-            showTimeSeriesPlan.getPaths(),
-            showTimeSeriesPlan.getOperatorType(),
+            showChildPathsPlan.getPaths(),
+            showChildPathsPlan.getOperatorType(),
             null)) {
-          return Response.ok().entity(NOPERMSSION + showTimeSeriesPlan.getOperatorType()).build();
+          return Response.ok().entity(NOPERMSSION + showChildPathsPlan.getOperatorType()).build();
         }
-        QueryContext context = new QueryContext();
-        ShowTimeseriesDataSet showTimeseriesDataSet =
-            new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
-        List<RowRecord> list = showTimeseriesDataSet.getQueryDataSet();
-        Map<String, Boolean> temNodeMap = new HashMap<String, Boolean>();
-        for (RowRecord rowRecord : list) {
-          String series = rowRecord.getFields().get(0).toString();
-          String[] nodes = series.split("\\.");
-          if (nodes.length > requestBody.size()) {
-            String node = nodes[requestBody.size()];
-            if (nodes.length - 2 >= requestBody.size()
-                && (temNodeMap.get(node) == null || temNodeMap.get(node))) { // second to last node
-              temNodeMap.put(node, false);
-            } else if (nodes.length - 1 == requestBody.size()
-                && temNodeMap.get(node) == null) { // first to last node
-              temNodeMap.put(node, true);
-            }
-          }
-        }
-        for (Map.Entry<String, Boolean> entry : temNodeMap.entrySet()) {
-          Map<String, Object> nodeMap = Maps.newHashMap();
-          if (entry.getValue()) {
-            nodeMap.put("name", entry.getKey());
-            nodeMap.put("leaf", entry.getValue());
-            leafnodes.add(nodeMap);
-          } else {
-            nodeMap.put("name", entry.getKey());
-            nodeMap.put("leaf", entry.getValue());
-            leafnodes.add(nodeMap);
-            internalNodes.add(entry.getKey());
+        QueryDataSet dataSet = getDataBySelect(securityContext, showChildPathsPlan);
+        while (dataSet.hasNext()) {
+          RowRecord rowRecord = dataSet.next();
+          List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
+          for (Field field : fields) {
+            String nodePaths = field.getObjectValue(field.getDataType()).toString();
+            String[] nodeSubPath = nodePaths.split("\\.");
+            nodes.add(nodeSubPath[nodeSubPath.length - 1]);
           }
         }
       }
@@ -364,10 +470,10 @@ public class V1ApiServiceImpl extends V1ApiService {
       e.printStackTrace();
     } catch (AuthException e) {
       e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-    resultMap.put("internal", internalNodes);
-    resultMap.put("series", leafnodes);
-    return Response.ok().entity(result.toJson(resultMap)).build();
+    return Response.ok().entity(result.toJson(nodes)).build();
   }
 
   @Override
@@ -443,7 +549,7 @@ public class V1ApiServiceImpl extends V1ApiService {
         }
         for (LabelMatcher labelMatcher : query.getMatchersList()) {
           if (!"__name__".equals(labelMatcher.getName())) {
-            appendtimeseries(labelMatcher, pathList, merticName);
+            appendTimeseries(labelMatcher, pathList, merticName);
           }
         }
         Types.ReadHints readHints = query.getHints();
@@ -539,7 +645,6 @@ public class V1ApiServiceImpl extends V1ApiService {
             Remote.QueryResult.newBuilder().setTimeseries(0, timeSeries);
         readResponse.setResults(0, queryResult.build());
         byte[] datas = readResponse.build().toByteArray();
-        ;
         datas = Snappy.compress(datas);
         return Response.ok().header("type", "application/x-protobuf").entity(datas).build();
       }
@@ -625,7 +730,7 @@ public class V1ApiServiceImpl extends V1ApiService {
     list = newSubPathList;
   }
 
-  private void appendtimeseries(LabelMatcher labelMatcher, List pathList, String merticName) {
+  private void appendTimeseries(LabelMatcher labelMatcher, List pathList, String merticName) {
     String tagV = labelMatcher.getValue();
     String tagK = labelMatcher.getName();
     tagV = tagV.replaceAll("'", "\\'");
@@ -746,7 +851,6 @@ public class V1ApiServiceImpl extends V1ApiService {
       Map<String, Object> tmpmap = new HashMap<String, Object>();
       List<Object> temlist = new ArrayList<Object>();
       List<Path> listpaths = dataSet.getPaths();
-
       timemap.put("name", "Time");
       timemap.put("type", "INT64");
       timemap.put("values", temlist);
@@ -931,7 +1035,6 @@ public class V1ApiServiceImpl extends V1ApiService {
         return;
       }
       QueryDataSet dataSet = getDataBySelect(securityContext, physicalPlan);
-
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
         List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();

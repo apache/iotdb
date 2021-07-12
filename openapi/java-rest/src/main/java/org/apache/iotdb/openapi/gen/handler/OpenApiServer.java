@@ -28,13 +28,19 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.glassfish.jersey.servlet.ServletContainer;
 
+import javax.servlet.DispatcherType;
+
+import java.util.EnumSet;
+
 public class OpenApiServer {
   public void start(int port) {
     Server server = new Server(port);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
-
+    context.addFilter(
+        ApiOriginFilter.class, "/*", EnumSet.of(DispatcherType.INCLUDE, DispatcherType.REQUEST));
     ServletHolder holder = context.addServlet(ServletContainer.class, "/*");
     holder.setInitOrder(1);
+
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
         "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.openapi.gen.handler");
@@ -42,6 +48,7 @@ public class OpenApiServer {
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
     holder.setInitParameter("jersey.config.server.wadl.disableWadl", "true");
+
     context.setContextPath("/");
     server.setHandler(context);
     try {
