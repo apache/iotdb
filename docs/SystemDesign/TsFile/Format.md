@@ -222,15 +222,15 @@ The degree of the index tree (that is, the max number of each node's children) c
 
 * Example 1: 5 entities with 5 measurements each
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677230-134e2780-d214-11eb-9603-ac7b95bc0668.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
 
-In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
+In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root node is `INTERNAL_ENTITY` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
 
 * Example 2: 1 entity with 150 measurements
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677233-15b08180-d214-11eb-8d09-c741cca59262.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254022-a0c0fb00-e32c-11eb-8fd1-462936358288.png">
 
-In the case of 1 entity with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
+In the case of 1 entity with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. Other nodes are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type. The root node is `INTERNAL_ENTITY` type.
 
 * Example 3: 150 entities with 1 measurement each
 

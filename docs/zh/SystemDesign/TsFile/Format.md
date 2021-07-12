@@ -224,15 +224,15 @@ PageHeader 结构：
 
 * 例1：5个实体，每个实体有5个物理量
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677230-134e2780-d214-11eb-9603-ac7b95bc0668.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
 
-在5个实体，每个实体有5个物理量的情况下，由于实体数和物理量数均不超过 `max_degree_of_index_node`，因此索引树只有默认的物理量部分。在这部分中，每个 IndexNode 最多由10个 IndexEntry 组成。根节点的 IndexNode 是 `INTERNAL_MEASUREMENT` 类型，其中的5个 IndexEntry 指向对应的实体的 IndexNode，这些节点直接指向 `TimeseriesIndex`，是 `LEAF_MEASUREMENT`。
+在5个实体，每个实体有5个物理量的情况下，由于实体数和物理量数均不超过 `max_degree_of_index_node`，因此索引树只有默认的物理量部分。在这部分中，每个 IndexNode 最多由10个 IndexEntry 组成。根节点是 `LEAF_ENTITY` 类型，其中的5个 IndexEntry 指向对应的实体的 IndexNode，这些节点直接指向 `TimeseriesIndex`，是 `LEAF_MEASUREMENT`。
 
 * 例2：1个实体，150个物理量
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677233-15b08180-d214-11eb-8d09-c741cca59262.png">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254022-a0c0fb00-e32c-11eb-8fd1-462936358288.png">
 
-在1个实体，实体中有150个物理量的情况下，物理量个数超过了 `max_degree_of_index_node`，索引树有默认的物理量层级。在这个层级里，每个 IndexNode 最多由10个 IndexEntry 组成。直接指向 `TimeseriesIndex`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点和根节点不是物理量索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`。
+在1个实体，实体中有150个物理量的情况下，物理量个数超过了 `max_degree_of_index_node`，索引树有默认的物理量层级。在这个层级里，每个 IndexNode 最多由10个 IndexEntry 组成。直接指向 `TimeseriesIndex`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点不是物理量索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`；根节点是 `LEAF_ENTITY` 类型。
 
 * 例3：150个实体，每个实体有1个物理量
 
