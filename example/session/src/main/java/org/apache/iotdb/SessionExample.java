@@ -189,7 +189,8 @@ public class SessionExample {
     }
   }
 
-  private static void createTemplate() throws IoTDBConnectionException, StatementExecutionException {
+  private static void createTemplate()
+      throws IoTDBConnectionException, StatementExecutionException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s1"));
     measurementList.add(Collections.singletonList("s2"));
