@@ -179,7 +179,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getDeviceId();
+    return insertTabletPlanList.get(0).getPrefixPath();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {

@@ -28,6 +28,7 @@ import org.apache.iotdb.openapi.gen.model.ReadData;
 import org.apache.iotdb.openapi.gen.model.WriteData;
 
 import com.google.gson.Gson;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -62,6 +63,11 @@ public class OpenApiServiceTest {
     groupByFillPlan.setEtime(etime);
     groupByFillPlan.setPaths(path);
     // groupByFillPlan.set("1ms");
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
   }
 
   @Test
