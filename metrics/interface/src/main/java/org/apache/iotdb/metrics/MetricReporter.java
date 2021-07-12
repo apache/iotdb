@@ -27,4 +27,5 @@ public interface MetricReporter {
   boolean stop();
 
   String getName();
+
 }

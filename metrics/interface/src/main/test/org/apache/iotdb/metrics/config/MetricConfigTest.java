@@ -34,7 +34,7 @@ public class MetricConfigTest {
 
   @Test
   public void yamlConfigTest() {
-    String url = this.getClass().getClassLoader().getResource("iotdb-metric.yml").getPath();
+    String url = this.getClass().getClassLoader().getResource("resources/iotdb-metric.yml").getPath();
     System.out.println(url);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
@@ -52,6 +52,6 @@ public class MetricConfigTest {
 
     Assert.assertEquals(lists.size(), 2);
     Assert.assertEquals(metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "80990");
-    Assert.assertEquals(metricConfig.getIoTDBReporterConfig().getIotdbIp(), "0.0.0.0");
+    Assert.assertEquals(metricConfig.getIotdbReporterConfig().getIotdbIp(), "0.0.0.0");
   }
 }
