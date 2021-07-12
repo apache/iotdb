@@ -227,7 +227,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void RefreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {
+  public void refreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {
     resultHandler.onComplete(null);
   }
 
@@ -340,7 +340,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void RefreshConnection(RefreshReuqest request) {}
+  public void refreshConnection(RefreshReuqest request) {}
 
   @Override
   public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {

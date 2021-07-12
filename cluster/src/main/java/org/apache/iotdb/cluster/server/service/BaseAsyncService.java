@@ -146,7 +146,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   }
 
   @Override
-  public void RefreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {}
+  public void refreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {}
 
   @Override
   public void executeNonQueryPlan(

@@ -153,7 +153,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   }
 
   @Override
-  public void RefreshConnection(RefreshReuqest request) {}
+  public void refreshConnection(RefreshReuqest request) {}
 
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {

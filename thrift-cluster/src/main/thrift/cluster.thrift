@@ -340,7 +340,7 @@ service RaftService {
   **/
   void removeHardLink(1:string hardLinkPath)
 
-  void RefreshConnection(1:RefreshReuqest request)
+  void refreshConnection(1:RefreshReuqest request)
 }
 
 
