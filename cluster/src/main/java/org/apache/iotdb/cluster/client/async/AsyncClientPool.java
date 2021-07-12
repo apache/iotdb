@@ -52,6 +52,14 @@ public class AsyncClientPool {
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
   }
 
+  /**
+   * Get a client of the given node from the cache if one is available, or null.
+   *
+   * <p>IMPORTANT!!! The caller should check whether the return value is null or not!
+   *
+   * @param node the node want to connect
+   * @return if the node can connect, return the client, otherwise null
+   */
   public AsyncClient getClientForRefresh(Node node) {
     ClusterNode clusterNode = new ClusterNode(node);
     // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
