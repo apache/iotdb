@@ -195,12 +195,8 @@ public class SessionExample {
     measurementList.add(Collections.singletonList("s1"));
     measurementList.add(Collections.singletonList("s2"));
     measurementList.add(Collections.singletonList("s3"));
-    measurementList.add(Collections.singletonList("s4"));
-    measurementList.add(Collections.singletonList("s5"));
 
     List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
     dataTypeList.add(Collections.singletonList(TSDataType.INT64));
@@ -209,19 +205,15 @@ public class SessionExample {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
     List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       compressionTypes.add(CompressionType.SNAPPY);
     }
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s1");
     schemaNames.add("s2");
     schemaNames.add("s3");
-    schemaNames.add("s4");
-    schemaNames.add("s5");
 
     session.createSchemaTemplate(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
