@@ -120,12 +120,12 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
+  public boolean stillLives(long ttlLowerBound) {
+    if (ttlLowerBound == Long.MAX_VALUE) {
       return true;
     }
     // the file cannot be deleted if any device still lives
-    return endTime >= timeLowerBound;
+    return endTime >= ttlLowerBound;
   }
 
   @Override
