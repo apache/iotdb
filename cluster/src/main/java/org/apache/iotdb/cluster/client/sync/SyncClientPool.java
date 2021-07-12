@@ -51,6 +51,19 @@ public class SyncClientPool {
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
   }
 
+  public Client getClientForRefresh(Node node) {
+    ClusterNode clusterNode = new ClusterNode(node);
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    synchronized (clientStack) {
+      if (clientStack.isEmpty()) {
+        return null;
+      } else {
+        return clientStack.poll();
+      }
+    }
+  }
+
   /**
    * See getClient(Node node, boolean activatedOnly)
    *

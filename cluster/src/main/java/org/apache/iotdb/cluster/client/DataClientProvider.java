@@ -74,6 +74,15 @@ public class DataClientProvider {
     return client;
   }
 
+  public AsyncDataClient getAsyncDataClientForRefresh(Node node, int timeout) throws IOException {
+    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClientForRefresh(node);
+    if (client == null) {
+      throw new IOException("can not get client for node=" + node);
+    }
+    client.setTimeout(timeout);
+    return client;
+  }
+
   /**
    * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
    * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
@@ -86,6 +95,15 @@ public class DataClientProvider {
    */
   public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
     SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    if (client == null) {
+      throw new TException("can not get client for node=" + node);
+    }
+    client.setTimeout(timeout);
+    return client;
+  }
+
+  public SyncDataClient getSyncDataClientForRefresh(Node node, int timeout) throws TException {
+    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClientForRefresh(node);
     if (client == null) {
       throw new TException("can not get client for node=" + node);
     }
