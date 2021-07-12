@@ -754,7 +754,7 @@ public class StorageGroupProcessor {
                   virtualStorageGroupId,
                   storageGroupInfo,
                   tsFileResource,
-                  this::closeUnsealedTsFileProcessorCallBack, // ????? delete
+                  this::closeUnsealedTsFileProcessorCallBack,
                   this::updateLatestFlushTimeCallback,
                   true,
                   writer);
