@@ -90,6 +90,7 @@ public class TsFileResource {
   public static final byte VERSION_NUMBER = 1;
 
   private TsFileProcessor processor;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
