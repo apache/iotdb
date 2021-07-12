@@ -482,22 +482,22 @@ public class MetaGroupMember extends RaftMember {
         CLEAN_HARDLINK_INTERVAL_SEC,
         TimeUnit.SECONDS);
     dataClientRefresher.scheduleAtFixedRate(
-        this::RefreshClientOnce, REFRESH_CLIENT_SEC, REFRESH_CLIENT_SEC, TimeUnit.SECONDS);
+        this::refreshClientOnce, REFRESH_CLIENT_SEC, REFRESH_CLIENT_SEC, TimeUnit.SECONDS);
   }
 
-  private void RefreshClientOnce() {
+  private void refreshClientOnce() {
     for (Node receiver : allNodes) {
       if (!receiver.equals(thisNode)) {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-          RefreshClientOnceAsync(receiver);
+          refreshClientOnceAsync(receiver);
         } else {
-          RefreshClientOnceSync(receiver);
+          refreshClientOnceSync(receiver);
         }
       }
     }
   }
 
-  private void RefreshClientOnceSync(Node receiver) {
+  private void refreshClientOnceSync(Node receiver) {
     RaftService.Client client;
     try {
       client =
@@ -518,7 +518,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  private void RefreshClientOnceAsync(Node receiver) {
+  private void refreshClientOnceAsync(Node receiver) {
     RaftService.AsyncClient client;
     try {
       client =
