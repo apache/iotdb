@@ -1041,6 +1041,61 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testCountTimeseriesWithTemplate(){
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+            new CreateTemplatePlan(
+                    "template1",
+                    schemaNames,
+                    measurementList,
+                    dataTypeList,
+                    encodingList,
+                    compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+              new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      Assert.assertEquals(2,manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1,manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountDeviceWithTemplate(){
+
+  }
+
+  @Test
   public void testTotalSeriesNumber() throws Exception {
     MManager manager = IoTDB.metaManager;
 
