@@ -927,7 +927,7 @@ public class MTree implements Serializable {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
           if (node.isUseTemplate()
-              && node.getDeviceTemplate().getSchemaMap().containsKey(nodes[idx])) {
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
             return 1;
           }
           if (!wildcard) {
@@ -941,7 +941,7 @@ public class MTree implements Serializable {
     } else {
       int sum = node instanceof MeasurementMNode ? 1 : 0;
       if (node.isUseTemplate()) {
-        sum += node.getDeviceTemplate().getSchemaMap().size();
+        sum += node.getUpperTemplate().getSchemaMap().size();
       }
       for (MNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);

@@ -1081,8 +1081,24 @@ public class MManagerBasicTest {
       manager.setDeviceTemplate(setDeviceTemplatePlan);
       manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
+      manager.createTimeseries(
+          new PartialPath("root.computer.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.computer.d1")).setUseTemplate(true);
+
       Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer")));
+      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
