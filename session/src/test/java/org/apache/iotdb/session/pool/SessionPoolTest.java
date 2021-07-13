@@ -361,4 +361,30 @@ public class SessionPoolTest {
     // e.g., thread A created a new session, but not returned; thread B close the pool; A get the
     // session.
   }
+
+  @Test
+  public void testBuilder() {
+    SessionPool pool =
+        new SessionPool.Builder()
+            .host("localhost")
+            .port(1234)
+            .maxSize(10)
+            .user("abc")
+            .password("123")
+            .fetchSize(1)
+            .timeout(2)
+            .enableCacheLeader(true)
+            .enableCompression(true)
+            .build();
+
+    assertEquals(pool.getHost(), "localhost");
+    assertEquals(pool.getPort(), 1234);
+    assertEquals(pool.getUser(), "abc");
+    assertEquals(pool.getPassword(), "123");
+    assertEquals(pool.getMaxSize(), 10);
+    assertEquals(pool.getFetchSize(), 1);
+    assertEquals(pool.getTimeout(), 2);
+    assertTrue(pool.isEnableCacheLeader());
+    assertTrue(pool.isEnableCompression());
+  }
 }
