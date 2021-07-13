@@ -22,9 +22,11 @@ package org.apache.iotdb.metrics;
 public interface MetricReporter {
   boolean start();
 
-  void setMetricManager(MetricManager metricManager);
+  boolean start(String reportName);
 
   boolean stop();
+
+  boolean stop(String reportName);
 
   String getName();
 }

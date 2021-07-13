@@ -21,11 +21,8 @@ package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.Rate;
-import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.type.*;
 
 import java.util.Collections;
 import java.util.List;
@@ -158,5 +155,62 @@ public class DoNothingMetricManager implements MetricManager {
   @Override
   public String getName() {
     return "DoNothingMetricManager";
+  }
+
+  @Override
+  public void removeCounter(String metric, String... tags) {
+
+  }
+
+  @Override
+  public void removeGauge(String metric, String... tags) {
+
+  }
+
+  @Override
+  public void removeRate(String metric, String... tags) {
+
+  }
+
+  @Override
+  public void removeHistogram(String metric, String... tags) {
+
+  }
+
+  @Override
+  public void removeTimer(String metric, String... tags) {
+
+  }
+
+  /**
+   * stop everything and clear
+   *
+   * @return
+   */
+  @Override
+  public boolean stop() {
+    return false;
+  }
+
+  /**
+   * bind metric to Reporter
+   *
+   * @param metric
+   * @param metricReporter
+   * @return
+   */
+  @Override
+  public boolean bind(IMetric metric, MetricReporter metricReporter) {
+    return false;
+  }
+
+  @Override
+  public boolean startReporter(String reporterName) {
+    return false;
+  }
+
+  @Override
+  public boolean stopReporter(String reporterName) {
+    return false;
   }
 }
