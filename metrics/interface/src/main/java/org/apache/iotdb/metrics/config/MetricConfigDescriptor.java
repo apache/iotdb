@@ -52,7 +52,8 @@ public class MetricConfigDescriptor {
    * @return the file path
    */
   public String getPropsUrl() {
-    String url = System.getProperty(MetricConstant.METRIC_CONF, null);
+    // String url = System.getProperty(MetricConstant.METRIC_CONF, null);
+    String url = "E:\\iotdb\\metrics\\micrometer-metrics\\src\\test\\java\\resources";
     if (url == null) {
       url = System.getProperty(MetricConstant.IOTDB_HOME, null);
       if (url != null) {
