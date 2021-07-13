@@ -87,9 +87,9 @@ public class IoTDBInsertWithoutTimeIT {
   @Test
   public void testInsertWithoutTime() throws SQLException {
     Statement st0 = connection.createStatement();
-    st0.execute("insert into root.t1.wf01.wt01(time, status, temperature) values (1, true, 22)");
+    st0.execute("insert into root.t1.wf01.wt01(time, status, temperature) values (1, true, 11)");
     st0.execute(
-        "insert into root.t1.wf01.wt01(time, status, temperature) values (2, false, 33),(3, true, 44)");
+        "insert into root.t1.wf01.wt01(time, status, temperature) values (2, false, 22),(3, true, 33)");
     st0.execute("insert into root.t1.wf01.wt01(status, temperature) values (true, 10)");
     st0.execute("insert into root.t1.wf01.wt01(status) values (false)");
 
