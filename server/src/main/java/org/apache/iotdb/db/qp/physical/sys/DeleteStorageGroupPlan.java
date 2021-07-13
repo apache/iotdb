@@ -91,13 +91,6 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "DeleteStorageGroupPlan{"
-        + " deletePathList="
-        + deletePathList
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
-        + "}";
+    return "DeleteStorageGroupPlan{" + " deletePathList=" + deletePathList + "}";
   }
 }

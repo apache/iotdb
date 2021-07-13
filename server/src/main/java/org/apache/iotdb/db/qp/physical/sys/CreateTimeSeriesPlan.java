@@ -75,8 +75,6 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       this.props.putAll(props);
     }
-    this.majorVersion = path.getMajorVersion();
-    this.minorVersion = path.getMinorVersion();
   }
 
   public PartialPath getPath() {
@@ -154,8 +152,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   @Override
   public String toString() {
     return String.format(
-        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s, majorVersion: %s, minorVersion: %s",
-        path, dataType, encoding, compressor, tagOffset, majorVersion, minorVersion);
+        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
+        path, dataType, encoding, compressor, tagOffset);
   }
 
   @Override
@@ -207,8 +205,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     }
 
     stream.writeLong(index);
-    stream.writeLong(majorVersion);
-    stream.writeLong(minorVersion);
+    stream.writeLong(path.getMajorVersion());
+    stream.writeLong(path.getMinorVersion());
   }
 
   @Override
@@ -256,8 +254,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
     buffer.putLong(index);
 
-    buffer.putLong(majorVersion);
-    buffer.putLong(minorVersion);
+    buffer.putLong(path.getMajorVersion());
+    buffer.putLong(path.getMinorVersion());
   }
 
   @Override
@@ -293,10 +291,8 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
     this.index = buffer.getLong();
 
-    this.majorVersion = buffer.getLong();
-    this.minorVersion = buffer.getLong();
-    path.setMajorVersion(majorVersion);
-    path.setMinorVersion(minorVersion);
+    path.setMajorVersion(buffer.getLong());
+    path.setMinorVersion(buffer.getLong());
   }
 
   @Override
@@ -313,14 +309,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
         && dataType == that.dataType
         && encoding == that.encoding
         && compressor == that.compressor
-        && tagOffset == that.tagOffset
-        && majorVersion == that.majorVersion
-        && minorVersion == that.minorVersion;
+        && tagOffset == that.tagOffset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        path, dataType, encoding, compressor, tagOffset, majorVersion, minorVersion);
+    return Objects.hash(path, dataType, encoding, compressor, tagOffset);
   }
 }

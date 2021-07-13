@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -595,6 +596,9 @@ public class CMManager extends MManager {
 
     // need to verify the storage group is created
     verifyCreatedSgSuccess(storageGroups, plan);
+
+    // reset the majorVersion as long as we have create new storage groups above;
+    ClusterUtils.setVersionForSpecialPlan(plan, plan.getIndex());
 
     // try to create timeseries for insertPlan
     if (plan instanceof InsertPlan && !createTimeseries((InsertPlan) plan)) {
@@ -1924,7 +1928,7 @@ public class CMManager extends MManager {
 
     if (nodeMajorVersion > path.getMajorVersion()) {
       // do nothing, skip
-      logger.info(
+      logger.warn(
           "the node's major version={} is larger than the path's={}, ignore the execution, path={}, storage group={}",
           nodeMajorVersion,
           path.getMajorVersion(),

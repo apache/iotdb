@@ -258,11 +258,19 @@ public class MTree implements Serializable {
     // only write on mtree will be synchronized
     synchronized (this) {
       // double check
-      if (sgNode != null && sgNode.getMajorVersion() != path.getMajorVersion()) {
-        // skip
-        throw new MetadataException("storage group node major version changed");
+      if (sgNode != null && hasSetStorageGroup) {
+        if (sgNode.getMajorVersion() != path.getMajorVersion()) {
+          // skip
+          throw new MetadataException("storage group node major version changed");
+        }
+        sgNode.setMinorVersion(path.getMinorVersion());
+        logger.debug(
+            "create timeseries, sg={}, timeseries={}, majorVersion={}, minorVersion={}",
+            sgNode.getFullPath(),
+            path.getFullPath(),
+            sgNode.getMajorVersion(),
+            sgNode.getMinorVersion());
       }
-
       MNode child = cur.getChild(leafName);
       if (child instanceof MeasurementMNode || child instanceof StorageGroupMNode) {
         throw new PathAlreadyExistException(path.getFullPath());
@@ -523,6 +531,14 @@ public class MTree implements Serializable {
                 IoTDBDescriptor.getInstance().getConfig().getDefaultTTL(),
                 path.getMajorVersion());
         cur.addChild(nodeNames[i], storageGroupMNode);
+        logger.debug(
+            "set storage group success, sg={}, sg majorVersion={}, sg minorVersion={}, path={}, path's majorVersion={},  path's minorVersion={}",
+            storageGroupMNode.getFullPath(),
+            storageGroupMNode.getMajorVersion(),
+            storageGroupMNode.getMinorVersion(),
+            path,
+            path.getMajorVersion(),
+            path.getMinorVersion());
       }
     }
   }

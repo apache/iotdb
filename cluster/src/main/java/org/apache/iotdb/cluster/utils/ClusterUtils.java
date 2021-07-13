@@ -377,10 +377,14 @@ public class ClusterUtils {
 
   public static void setVersionForSpecialPlan(PhysicalPlan plan, long currLogIndex)
       throws MetadataException {
+    long majorVersion = 0;
+    long minorVersion = 0;
     switch (plan.getOperatorType()) {
       case SET_STORAGE_GROUP:
-        plan.setMajorVersion(currLogIndex);
-        plan.setMinorVersion(0);
+        majorVersion = currLogIndex;
+        minorVersion = 0;
+        plan.setMajorVersion(majorVersion);
+        plan.setMinorVersion(minorVersion);
         break;
       case DELETE_STORAGE_GROUP:
         List<PartialPath> deletePathList = new ArrayList<>();
@@ -392,8 +396,10 @@ public class ClusterUtils {
           }
           for (PartialPath path : allRelatedStorageGroupPath) {
             StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-            path.setMajorVersion(storageGroupMNode.getMajorVersion());
-            path.setMinorVersion(storageGroupMNode.getMinorVersion());
+            majorVersion = storageGroupMNode.getMajorVersion();
+            minorVersion = storageGroupMNode.getMinorVersion();
+            path.setMajorVersion(majorVersion);
+            path.setMinorVersion(minorVersion);
           }
         }
         // replace the to be deleted paths
@@ -403,37 +409,49 @@ public class ClusterUtils {
         PartialPath partialPath = ((CreateTimeSeriesPlan) plan).getPath();
         StorageGroupMNode storageGroupMNode =
             IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((CreateTimeSeriesPlan) plan)
-            .getPath()
-            .setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((CreateTimeSeriesPlan) plan).getPath().setMinorVersion(currLogIndex);
+        majorVersion = storageGroupMNode.getMajorVersion();
+        minorVersion = currLogIndex;
+        ((CreateTimeSeriesPlan) plan).getPath().setMajorVersion(majorVersion);
+        ((CreateTimeSeriesPlan) plan).getPath().setMinorVersion(minorVersion);
         break;
       case ALTER_TIMESERIES:
         partialPath = ((AlterTimeSeriesPlan) plan).getPath();
         storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((AlterTimeSeriesPlan) plan).getPath().setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((AlterTimeSeriesPlan) plan).getPath().setMinorVersion(currLogIndex);
+        majorVersion = storageGroupMNode.getMajorVersion();
+        minorVersion = currLogIndex;
+        ((AlterTimeSeriesPlan) plan).getPath().setMajorVersion(majorVersion);
+        ((AlterTimeSeriesPlan) plan).getPath().setMinorVersion(minorVersion);
         break;
       case CREATE_ALIGNED_TIMESERIES:
         partialPath = ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath();
         storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(partialPath);
-        ((CreateAlignedTimeSeriesPlan) plan)
-            .getPrefixPath()
-            .setMajorVersion(storageGroupMNode.getMajorVersion());
-        ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath().setMinorVersion(currLogIndex);
+        majorVersion = storageGroupMNode.getMajorVersion();
+        minorVersion = currLogIndex;
+        ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath().setMajorVersion(majorVersion);
+        ((CreateAlignedTimeSeriesPlan) plan).getPrefixPath().setMinorVersion(minorVersion);
         break;
       case CREATE_MULTI_TIMESERIES:
       case DELETE_TIMESERIES:
         List<PartialPath> partialPaths = plan.getPaths();
         for (PartialPath path : partialPaths) {
           storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+          majorVersion = storageGroupMNode.getMajorVersion();
           path.setMajorVersion(storageGroupMNode.getMajorVersion());
           path.setMinorVersion(currLogIndex);
+          logger.debug(
+              "set majorVersion={}, minorVersion={} for path={}, plan={}",
+              majorVersion,
+              currLogIndex,
+              path,
+              plan);
         }
         break;
       default:
         // do nothing
+        break;
     }
+    logger.debug(
+        "set majorVersion={}, minorVersion={} for plan={}", majorVersion, minorVersion, plan);
   }
 
   public static int getSlotByPathTimeWithSync(

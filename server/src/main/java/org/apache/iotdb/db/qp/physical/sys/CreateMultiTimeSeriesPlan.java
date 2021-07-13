@@ -140,6 +140,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     this.indexes = indexes;
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -331,14 +332,12 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     return Objects.equals(paths, that.paths)
         && Objects.equals(dataTypes, that.dataTypes)
         && Objects.equals(encodings, that.encodings)
-        && Objects.equals(compressors, that.compressors)
-        && Objects.equals(majorVersion, that.majorVersion)
-        && Objects.equals(minorVersion, that.minorVersion);
+        && Objects.equals(compressors, that.compressors);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(paths, dataTypes, encodings, compressors, majorVersion, minorVersion);
+    return Objects.hash(paths, dataTypes, encodings, compressors);
   }
 
   @Override

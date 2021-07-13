@@ -79,8 +79,6 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     this.alias = alias;
     this.tagsMap = tagsMap;
     this.attributesMap = attributesMap;
-    this.majorVersion = path.getMajorVersion();
-    this.minorVersion = path.getMinorVersion();
   }
 
   public PartialPath getPath() {
@@ -154,8 +152,8 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     }
     stream.writeLong(index);
 
-    stream.writeLong(majorVersion);
-    stream.writeLong(minorVersion);
+    stream.writeLong(path.getMajorVersion());
+    stream.writeLong(path.getMinorVersion());
   }
 
   @Override
@@ -191,8 +189,8 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
       attributesMap = ReadWriteIOUtils.readMap(buffer);
     }
     this.index = buffer.getLong();
-    this.majorVersion = buffer.getLong();
-    this.minorVersion = buffer.getLong();
+    path.setMajorVersion(buffer.getLong());
+    path.setMinorVersion(buffer.getLong());
   }
 
   @Override
@@ -216,8 +214,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        path, alias, alterType, alterMap, attributesMap, tagsMap, majorVersion, minorVersion);
+    return Objects.hash(path, alias, alterType, alterMap, attributesMap, tagsMap);
   }
 
   @Override
@@ -236,10 +233,6 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
         + tagsMap
         + ", attributesMap="
         + attributesMap
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
         + "}";
   }
 }

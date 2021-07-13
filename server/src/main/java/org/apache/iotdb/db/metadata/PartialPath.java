@@ -275,7 +275,14 @@ public class PartialPath extends Path implements Comparable<Path> {
 
   @Override
   public String toString() {
-    return getFullPath();
+    return "PartialPath{"
+        + "fullPath="
+        + getFullPath()
+        + ", majorVersion="
+        + majorVersion
+        + ", minorVersion="
+        + minorVersion
+        + "}";
   }
 
   public PartialPath getDevicePath() {

@@ -90,9 +90,6 @@ public abstract class PhysicalPlan {
 
   private boolean debug;
 
-  protected long majorVersion;
-  protected long minorVersion;
-
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
     return canBeSplit;

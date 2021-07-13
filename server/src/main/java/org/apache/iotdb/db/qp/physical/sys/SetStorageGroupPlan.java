@@ -41,8 +41,6 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   public SetStorageGroupPlan(PartialPath path) {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
-    this.majorVersion = path.getMajorVersion();
-    this.minorVersion = 0;
   }
 
   public PartialPath getPath() {
@@ -63,8 +61,8 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     stream.write((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(stream, path.getFullPath());
     stream.writeLong(index);
-    stream.writeLong(majorVersion);
-    stream.writeLong(minorVersion);
+    stream.writeLong(path.getMajorVersion());
+    stream.writeLong(path.getMinorVersion());
   }
 
   @Override
@@ -72,30 +70,21 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);
-    buffer.putLong(majorVersion);
-    buffer.putLong(minorVersion);
+    buffer.putLong(path.getMajorVersion());
+    buffer.putLong(path.getMinorVersion());
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     path = new PartialPath(readString(buffer));
     this.index = buffer.getLong();
-    this.majorVersion = buffer.getLong();
-    this.minorVersion = buffer.getLong();
-    path.setMajorVersion(majorVersion);
-    path.setMinorVersion(minorVersion);
+    path.setMajorVersion(buffer.getLong());
+    path.setMinorVersion(buffer.getLong());
   }
 
   @Override
   public String toString() {
-    return "SetStorageGroupPlan{"
-        + " path="
-        + path
-        + ", majorVersion="
-        + majorVersion
-        + ", minorVersion="
-        + minorVersion
-        + "}";
+    return "SetStorageGroupPlan{" + " path=" + path + "}";
   }
 
   @Override
@@ -109,17 +98,11 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
     SetStorageGroupPlan that = (SetStorageGroupPlan) o;
 
-    if (majorVersion != that.majorVersion) {
-      return false;
-    }
-    if (minorVersion != that.minorVersion) {
-      return false;
-    }
     return Objects.equals(path, that.path);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, majorVersion, minorVersion);
+    return Objects.hash(path);
   }
 }

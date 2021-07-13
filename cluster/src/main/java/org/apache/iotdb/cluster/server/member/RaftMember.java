@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -76,6 +77,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1038,6 +1040,17 @@ public abstract class RaftMember {
       // Set version for some special plans
       try {
         ClusterUtils.setVersionForSpecialPlan(plan, log.getCurrLogIndex());
+      } catch (StorageGroupNotSetException sge) {
+        // if sg not set, sync the meta leader and try again
+        try {
+          ((CMManager) IoTDB.metaManager).syncMetaLeader();
+          ClusterUtils.setVersionForSpecialPlan(plan, log.getCurrLogIndex());
+        } catch (MetadataException e1) {
+          logger.error("process plan failed, plan={}", plan, e1);
+          TSStatus tsStatus = StatusUtils.INTERNAL_ERROR.deepCopy();
+          return tsStatus.setMessage(e1.getMessage());
+        }
+
       } catch (MetadataException e) {
         logger.error("process plan failed, plan={}", plan, e);
         TSStatus tsStatus = StatusUtils.INTERNAL_ERROR.deepCopy();
