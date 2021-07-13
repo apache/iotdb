@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -375,16 +376,18 @@ public class SessionPoolTest {
             .timeout(2)
             .enableCacheLeader(true)
             .enableCompression(true)
+            .zoneId(ZoneOffset.UTC)
             .build();
 
-    assertEquals(pool.getHost(), "localhost");
-    assertEquals(pool.getPort(), 1234);
-    assertEquals(pool.getUser(), "abc");
-    assertEquals(pool.getPassword(), "123");
-    assertEquals(pool.getMaxSize(), 10);
-    assertEquals(pool.getFetchSize(), 1);
-    assertEquals(pool.getTimeout(), 2);
+    assertEquals("localhost", pool.getHost());
+    assertEquals(1234, pool.getPort());
+    assertEquals("abc", pool.getUser());
+    assertEquals("123", pool.getPassword());
+    assertEquals(10, pool.getMaxSize());
+    assertEquals(1, pool.getFetchSize());
+    assertEquals(2, pool.getTimeout());
     assertTrue(pool.isEnableCacheLeader());
     assertTrue(pool.isEnableCompression());
+    assertEquals(ZoneOffset.UTC, pool.getZoneId());
   }
 }
