@@ -74,8 +74,6 @@ public class MetricService {
       logger.warn(
           "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
-    // do some init work
-    metricManager.init();
 
     ServiceLoader<MetricReporter> reporter = ServiceLoader.load(MetricReporter.class);
     size = 0;
@@ -92,10 +90,13 @@ public class MetricService {
       metricReporter = new DoNothingMetricReporter();
     } else if (size > 1) {
       logger.warn(
-          "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
+              "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
     }
     // do some init work
     metricManager.setReporter(metricReporter);
+
+    // do some init work
+    metricManager.init();
 
     if (isEnable()) {
       metricReporter.start();

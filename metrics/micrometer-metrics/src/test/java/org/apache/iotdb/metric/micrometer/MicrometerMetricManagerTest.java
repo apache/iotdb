@@ -35,7 +35,6 @@ public class MicrometerMetricManagerTest {
 
   @Test
   public void testRegister() {
-
     Timer timer = metricManager.getOrCreateTimer("timer1", "sg", "root");
     Counter counter = metricManager.getOrCreateCounter("counter1", "sg", "root");
 //    metricManager.bind(counter, "jmx");
