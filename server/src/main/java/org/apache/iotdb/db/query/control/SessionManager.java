@@ -68,7 +68,12 @@ public class SessionManager {
   }
 
   public TimeZone getCurrSessionTimeZone() {
-    return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
+    if (getCurrSessionId() != null) {
+      return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
+    } else {
+      // only used for test
+      return TimeZone.getDefault();
+    }
   }
 
   public long requestSessionId(String username, String zoneId) {
