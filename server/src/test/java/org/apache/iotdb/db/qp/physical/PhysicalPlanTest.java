@@ -1331,7 +1331,7 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals("CQ: x of ${x} should be an integer.", e.getMessage());
+      assertTrue(e.getMessage().contains("the x of ${x} should be an integer."));
     }
   }
 
@@ -1345,9 +1345,10 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals(
-          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
   }
 
@@ -1392,9 +1393,10 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals(
-          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
   }
 

@@ -104,8 +104,7 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause fromClause whereClause? specialClause? #selectStatement
-    | selectClause intoClause fromClause whereClause? specialClause? #selectIntoStatement
+    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
     | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
       resampleClause?
       cqSelectIntoClause #createContinuousQueryStatement
@@ -137,6 +136,11 @@ functionAttribute
 
 intoClause
     : INTO intoPath (COMMA intoPath)*
+    ;
+
+intoPath
+    : fullPath
+    | nodeNameWithoutStar
     ;
 
 alias
@@ -344,11 +348,6 @@ resampleClause
 
 cqSelectIntoClause
     : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
-    ;
-
-intoPath
-    : fullPath
-    | nodeNameWithoutStar
     ;
 
 cqGroupByTimeClause
