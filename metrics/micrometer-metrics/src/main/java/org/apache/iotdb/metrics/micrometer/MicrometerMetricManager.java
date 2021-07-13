@@ -551,27 +551,6 @@ public class MicrometerMetricManager implements MetricManager {
     return "MicrometerMetricManager";
   }
 
-  /**
-   * bind metric to Reporter
-   *
-   * @param metric
-   * @param reporterName global for all
-   * @return
-   */
-  @Override
-  public boolean bind(IMetric metric, String reporterName) {
-    Set<MeterRegistry> meterRegistrySet = getMeterRegistries(reporterName);
-    for(MeterRegistry meterRegistry: meterRegistrySet){
-      if(metric instanceof MicrometerCounter){
-        ((MicrometerCounter) metric).bindTo(meterRegistry);
-        System.out.println("Bind");
-      }else{
-        return false;
-      }
-    }
-    return true;
-  }
-
   public MeterRegistry getMeterRegistry() {
     return meterRegistry;
   }
