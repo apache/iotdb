@@ -582,12 +582,6 @@ public class InsertRowPlan extends InsertPlan {
   @Override
   public void checkIntegrity() throws QueryProcessException {
     super.checkIntegrity();
-    if (this.measurements.length == 1) {
-      if (this.measurements[0].equalsIgnoreCase("time")
-          || this.measurements[0].equalsIgnoreCase("timestamp")) {
-        throw new QueryProcessException("Should insert non-time column");
-      }
-    }
     if (values == null) {
       throw new QueryProcessException("Values are null");
     }
