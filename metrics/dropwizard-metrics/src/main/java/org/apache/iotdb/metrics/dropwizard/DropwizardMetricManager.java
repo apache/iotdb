@@ -85,7 +85,7 @@ public class DropwizardMetricManager implements MetricManager {
     }
     MetricName name = new MetricName(metric, tags);
     return (Counter)
-        currentMeters.computeIfAbsent(
+        currentMeters .computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
   }
 
