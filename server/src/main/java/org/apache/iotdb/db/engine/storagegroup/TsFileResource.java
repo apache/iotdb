@@ -253,10 +253,16 @@ public class TsFileResource {
     try (OutputStream outputStream =
         fsFactory.getBufferedOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
       ReadWriteIOUtils.write(this.deviceToIndex.size(), outputStream);
+      Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
       for (Entry<String, Integer> entry : this.deviceToIndex.entrySet()) {
+        // To reduce the String number in memory,
+        // use the deviceId from cached pool
+        stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(entry.getKey(), k -> k),
+            entry.getValue());
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
         ReadWriteIOUtils.write(startTimes[entry.getValue()], outputStream);
       }
+      this.deviceToIndex = stringMemoryReducedMap;
       ReadWriteIOUtils.write(this.deviceToIndex.size(), outputStream);
       for (Entry<String, Integer> entry : this.deviceToIndex.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
