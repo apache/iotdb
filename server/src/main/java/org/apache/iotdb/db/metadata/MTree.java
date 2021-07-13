@@ -1018,7 +1018,7 @@ public class MTree implements Serializable {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
           if (node.isUseTemplate()
-                  && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
             return 1;
           }
           if (!wildcard) {

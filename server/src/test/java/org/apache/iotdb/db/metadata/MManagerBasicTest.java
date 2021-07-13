@@ -1289,29 +1289,29 @@ public class MManagerBasicTest {
     schemaNames.add("s1");
 
     CreateTemplatePlan plan =
-            new CreateTemplatePlan(
-                    "template1",
-                    schemaNames,
-                    measurementList,
-                    dataTypeList,
-                    encodingList,
-                    compressionTypes);
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
     MManager manager = IoTDB.metaManager;
     try {
       manager.createDeviceTemplate(plan);
 
       // set device template
       SetDeviceTemplatePlan setDeviceTemplatePlan =
-              new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
       manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
       manager.createTimeseries(
-              new PartialPath("root.computer.d1.s2"),
-              TSDataType.INT32,
-              TSEncoding.PLAIN,
-              CompressionType.GZIP,
-              null);
+          new PartialPath("root.computer.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
 
       setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
@@ -1355,29 +1355,29 @@ public class MManagerBasicTest {
     schemaNames.add("s1");
 
     CreateTemplatePlan plan =
-            new CreateTemplatePlan(
-                    "template1",
-                    schemaNames,
-                    measurementList,
-                    dataTypeList,
-                    encodingList,
-                    compressionTypes);
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
     MManager manager = IoTDB.metaManager;
 
     try {
       manager.createDeviceTemplate(plan);
       // set device template
       SetDeviceTemplatePlan setDeviceTemplatePlan =
-              new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
       manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
 
       manager.createTimeseries(
-              new PartialPath("root.laptop.d2.s1"),
-              TSDataType.INT32,
-              TSEncoding.PLAIN,
-              CompressionType.GZIP,
-              null);
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
 
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
