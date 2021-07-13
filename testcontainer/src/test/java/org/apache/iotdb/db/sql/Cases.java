@@ -333,6 +333,9 @@ public abstract class Cases {
         "create timeseries root.ln.wf01.wt2 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
     writeStatement.execute(createTimeSeries1);
     writeStatement.execute(createTimeSeries2);
+
+    Thread.sleep(200);
+
     // try to read data on each node. select .*
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
