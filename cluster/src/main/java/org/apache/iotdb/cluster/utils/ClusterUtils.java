@@ -379,6 +379,10 @@ public class ClusterUtils {
       throws MetadataException {
     long majorVersion = 0;
     long minorVersion = 0;
+    if (plan.getOperatorType() == null) {
+      logger.warn("the plan={} have no operator, ignore it", plan);
+      return;
+    }
     switch (plan.getOperatorType()) {
       case SET_STORAGE_GROUP:
         majorVersion = currLogIndex;
