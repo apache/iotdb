@@ -21,14 +21,16 @@ public class Test {
         return stop - start;
     }
 
-    public static void main(String[] args) {
-        System.setProperty("METRIC_CONF", "E:\\iotdb\\metrics\\dropwizard-metrics\\src\\main\\test\\resources");
+    public static void main(String[] args) throws InterruptedException {
+        System.setProperty("METRIC_CONF", "path of yml");
         Test test = new Test();
-        String[] tags = new String[10];
+        Integer number = 1000000;
+        Integer tagNumber = 10;
+        String[] tags = new String[tagNumber];
         for(int i = 0; i < tags.length; i ++){
             tags[i] = TAGS[i];
         }
-        Integer number = 1000000;
+
         long create = test.createMeter(number, tags);
         long find = test.createMeter(number, tags);
 
