@@ -129,6 +129,9 @@ public class IoTDBUDTFBuiltinFunctionIT {
     testMathFunction("asin", Math::asin);
     testMathFunction("acos", Math::acos);
     testMathFunction("atan", Math::atan);
+    testMathFunction("sinh", Math::sinh);
+    testMathFunction("cosh", Math::cosh);
+    testMathFunction("tanh", Math::tanh);
     testMathFunction("degrees", Math::toDegrees);
     testMathFunction("radians", Math::toRadians);
     testMathFunction("abs", Math::abs);
