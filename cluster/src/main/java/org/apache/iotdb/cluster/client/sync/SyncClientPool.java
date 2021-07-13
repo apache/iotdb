@@ -52,6 +52,27 @@ public class SyncClientPool {
   }
 
   /**
+   * Get a client of the given node from the cache if one is available, or null.
+   *
+   * <p>IMPORTANT!!! The caller should check whether the return value is null or not!
+   *
+   * @param node the node want to connect
+   * @return if the node can connect, return the client, otherwise null
+   */
+  public Client getClientForRefresh(Node node) {
+    ClusterNode clusterNode = new ClusterNode(node);
+    // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
+    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    synchronized (clientStack) {
+      if (clientStack.isEmpty()) {
+        return null;
+      } else {
+        return clientStack.pollLast();
+      }
+    }
+  }
+
+  /**
    * See getClient(Node node, boolean activatedOnly)
    *
    * @param node the node want to connect

@@ -984,6 +984,9 @@ public class MManager {
       throws MetadataException {
     MNode deviceMNode = getDeviceNode(device);
     MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    if (measurementMNode == null) {
+      return getSeriesSchema(device.concatNode(measurement));
+    }
     return measurementMNode.getSchema();
   }
 

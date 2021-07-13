@@ -56,6 +56,8 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RefreshReuqest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
@@ -163,6 +165,12 @@ public class MetaGroupMember extends RaftMember {
    */
   private static final int REPORT_INTERVAL_SEC = 10;
 
+  /**
+   * every "REFRESH_CLIENT_SEC" seconds, a dataClientRefresher thread will try to refresh one thrift
+   * connection for each nodes other than itself.
+   */
+  private static final int REFRESH_CLIENT_SEC = 5;
+
   /** how many times is a data record replicated, also the number of nodes in a data group */
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
@@ -210,6 +218,8 @@ public class MetaGroupMember extends RaftMember {
   private ClientServer clientServer;
 
   private DataClientProvider dataClientProvider;
+
+  private ScheduledExecutorService dataClientRefresher;
 
   /**
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
@@ -331,6 +341,8 @@ public class MetaGroupMember extends RaftMember {
         Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "NodeReportThread"));
     hardLinkCleanerThread =
         Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "HardLinkCleaner"));
+    dataClientRefresher =
+        Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "DataClientRefresher"));
   }
 
   /**
@@ -348,6 +360,15 @@ public class MetaGroupMember extends RaftMember {
     }
     if (clientServer != null) {
       clientServer.stop();
+    }
+    if (dataClientRefresher != null) {
+      dataClientRefresher.shutdownNow();
+      try {
+        dataClientRefresher.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption when waiting for reportThread to end", e);
+      }
     }
     if (reportThread != null) {
       reportThread.shutdownNow();
@@ -460,6 +481,57 @@ public class MetaGroupMember extends RaftMember {
         CLEAN_HARDLINK_INTERVAL_SEC,
         CLEAN_HARDLINK_INTERVAL_SEC,
         TimeUnit.SECONDS);
+    dataClientRefresher.scheduleAtFixedRate(
+        this::refreshClientOnce, REFRESH_CLIENT_SEC, REFRESH_CLIENT_SEC, TimeUnit.SECONDS);
+  }
+
+  private void refreshClientOnce() {
+    for (Node receiver : allNodes) {
+      if (!receiver.equals(thisNode)) {
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          refreshClientOnceAsync(receiver);
+        } else {
+          refreshClientOnceSync(receiver);
+        }
+      }
+    }
+  }
+
+  private void refreshClientOnceSync(Node receiver) {
+    RaftService.Client client;
+    try {
+      client =
+          getClientProvider()
+              .getSyncDataClientForRefresh(receiver, RaftServer.getWriteOperationTimeoutMS());
+    } catch (TException e) {
+      return;
+    }
+    try {
+      RefreshReuqest req = new RefreshReuqest();
+      client.refreshConnection(req);
+    } catch (TException e) {
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
+      // the connection may be broken, close it to avoid it being reused
+      client.getInputProtocol().getTransport().close();
+    } finally {
+      ClientUtils.putBackSyncClient(client);
+    }
+  }
+
+  private void refreshClientOnceAsync(Node receiver) {
+    RaftService.AsyncClient client;
+    try {
+      client =
+          getClientProvider()
+              .getAsyncDataClientForRefresh(receiver, RaftServer.getWriteOperationTimeoutMS());
+    } catch (IOException e) {
+      return;
+    }
+    try {
+      client.refreshConnection(new RefreshReuqest(), new GenericHandler<>(receiver, null));
+    } catch (TException e) {
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
+    }
   }
 
   private void generateNodeReport() {
