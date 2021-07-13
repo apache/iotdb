@@ -184,10 +184,10 @@ public class TsFileResource {
   }
 
   /** unsealed TsFile */
-  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
