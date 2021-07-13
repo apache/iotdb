@@ -474,9 +474,10 @@ public abstract class Cases {
   }
 
   @Test
-  public void testApplyClearCache() {
+  public void testApplyClearCache() throws InterruptedException {
     String sql = "CLEAR CACHE";
     try {
+      Thread.sleep(200);
       writeStatement.execute(sql);
     } catch (SQLException e) {
       Assert.assertNull(e);
@@ -484,9 +485,10 @@ public abstract class Cases {
   }
 
   @Test
-  public void testApplyMerge() {
+  public void testApplyMerge() throws InterruptedException {
     String sql = "MERGE";
     try {
+      Thread.sleep(200);
       writeStatement.execute(sql);
     } catch (SQLException e) {
       Assert.assertNull(e);
@@ -494,9 +496,10 @@ public abstract class Cases {
   }
 
   @Test
-  public void testCreateSnapshot() {
+  public void testCreateSnapshot() throws InterruptedException {
     String sql = "CREATE SNAPSHOT FOR SCHEMA";
     try {
+      Thread.sleep(200);
       writeStatement.execute(sql);
     } catch (SQLException e) {
       Assert.assertNull(e);
