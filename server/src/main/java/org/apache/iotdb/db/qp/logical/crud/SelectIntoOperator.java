@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.List;
 
@@ -34,6 +40,16 @@ public class SelectIntoOperator extends Operator {
   public SelectIntoOperator() {
     super(SQLConstant.TOK_SELECT_INTO);
     operatorType = OperatorType.SELECT_INTO;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new SelectIntoPlan((QueryPlan) queryOperator.generatePhysicalPlan(generator), intoPaths);
+  }
+
+  public void check() throws LogicalOperatorException {
+    queryOperator.check();
   }
 
   public void setQueryOperator(QueryOperator queryOperator) {

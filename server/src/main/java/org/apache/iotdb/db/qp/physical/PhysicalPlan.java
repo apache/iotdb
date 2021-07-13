@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -380,6 +381,8 @@ public abstract class PhysicalPlan {
         case DROP_CONTINUOUS_QUERY:
           plan = new DropContinuousQueryPlan();
           break;
+        case SELECT_INTO:
+          plan = new SelectIntoPlan();
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -438,7 +441,8 @@ public abstract class PhysicalPlan {
     STOP_TRIGGER,
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    SELECT_INTO
   }
 
   public long getIndex() {
