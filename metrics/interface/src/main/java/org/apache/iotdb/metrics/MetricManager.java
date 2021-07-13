@@ -119,14 +119,6 @@ public interface MetricManager {
    */
   boolean stop();
 
-  /**
-   * bind metric to Reporter
-   * @param metric
-   * @param reporterName global for all
-   * @return
-   */
-  boolean bind(IMetric metric, String reporterName);
-
   boolean startReporter(String reporterName);
 
   boolean stopReporter(String reporterName);
