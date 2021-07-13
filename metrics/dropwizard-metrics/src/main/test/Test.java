@@ -29,8 +29,8 @@ public class Test {
             tags[i] = TAGS[i];
         }
         Integer number = 1000000;
-        long create = test.createMeter(1000000, tags);
-        long find = test.createMeter(100000, tags);
+        long create = test.createMeter(number, tags);
+        long find = test.createMeter(number, tags);
 
         StringBuilder stringBuilder = new StringBuilder();
         for(String tag: tags){

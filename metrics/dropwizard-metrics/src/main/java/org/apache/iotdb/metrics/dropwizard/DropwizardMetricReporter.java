@@ -79,7 +79,6 @@ public class DropwizardMetricReporter implements MetricReporter {
         JmxReporter.forRegistry(
                 ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
             .build();
-    jmxReporter.start();
   }
 
   public void setDropwizardMetricManager(MetricManager metricManager){
