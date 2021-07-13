@@ -389,7 +389,7 @@ public abstract class Cases {
     Assert.assertTrue(plan.isQuery());
     Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
-  
+
   // test https://issues.apache.org/jira/browse/IOTDB-1407
   @Test
   public void showTimeseriesTagsTest() throws SQLException {
