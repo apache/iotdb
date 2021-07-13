@@ -1217,8 +1217,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       trueLevel = fromLen - 1;
     }
 
-    if (ctx.fullPath() != null) {
-      targetPath = parseFullPath(ctx.fullPath());
+    if (ctx.intoPath().fullPath() != null) {
+      targetPath = parseFullPath(ctx.intoPath().fullPath());
       Matcher m = cqLevelNodePattern.matcher(targetPath.getFullPath());
       while (m.find()) {
         String param = m.group();
@@ -1233,7 +1233,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
               "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
         }
       }
-    } else if (ctx.nodeNameWithoutStar() != null) {
+    } else if (ctx.intoPath().nodeNameWithoutStar() != null) {
 
       List<String> targetNodes = new ArrayList<>();
 
@@ -1242,7 +1242,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       for (int i = 1; i <= trueLevel; i++) {
         targetNodes.add("${" + i + "}");
       }
-      targetNodes.add(ctx.nodeNameWithoutStar().getText());
+      targetNodes.add(ctx.intoPath().nodeNameWithoutStar().getText());
       targetPath = new PartialPath(targetNodes.toArray(new String[0]));
     }
 
