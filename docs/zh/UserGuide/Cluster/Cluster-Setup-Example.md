@@ -19,12 +19,25 @@
 
 -->
 
-__集群模式目前是测试版！请谨慎在生产环境中使用。__
-
 ## 前提条件
 如果您在使用Windows系统，请安装MinGW，WSL或者git bash。
 
-## 1节点1副本伪分布式搭建示例
+## 3节点3副本分布式搭建示例
+
+假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 A_public_ip，B_public_ip 和 C_public_ip，私网 ip 分别为 A_private_ip，B_private_ip 和 C_private_ip。
+注：如果没有公网 ip 或者私网 ip 则两者设置成一致即可, 只需要保证客户端能够访问到服务端即可。
+
+以下为操作步骤：
+1. 使用 `mvn clean package -pl cluster -am -DskipTests` 编译分布式模块或直接到 [官网](https://iotdb.apache.org/Download/) 下载最新版本。
+2. 保证三个节点的 6567, 6667, 9003, 9004, 40010, 40011 和 31999 端口是开放的。
+3. 将包上传到所有的服务器上。
+4. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 seed_nodes 为 "A_private_ip:9003,B_private_ip:9003,C_private_ip:9003"
+5. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 internal_ip 为各自节点的 private_ip。
+6. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 default_replica_num 为 3。
+7. 配置所有节点 conf/iotdb-engine.properties 配置文件中的 rpc_address 为各自节点的 public_ip。
+8. 在 3 个节点上分别运行 sh sbin/start-node.sh 即可(后台运行也可)。
+
+## 1节点1副本分布式搭建示例
 ### 源码编译：
 ```
 mvn clean package -DskipTests
@@ -41,7 +54,7 @@ sed -i -e 's/^default_replica_num=3$/default_replica_num=1/g' conf/iotdb-cluster
 nohup ./sbin/start-node.sh >/dev/null 2>&1 &
 ```
 
-## 3节点1副本伪分布式搭建示例
+## 单机部署3节点1副本示例
 ### 源码编译：
 ```
 mvn clean package -DskipTests
@@ -51,19 +64,4 @@ nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluste
 nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 ### 使用官网发布版本：
-可以参考以下示例，不过在一台机器上启动多个实例时需要处理好端口和数据目录的冲突。
-
-## 3节点3副本分布式搭建示例
-
-假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 A_public_ip，B_public_ip 和 C_public_ip，私网 ip 分别为 A_private_ip，B_private_ip 和 C_private_ip。
-注：如果没有公网 ip 或者私网 ip 则两者设置成一致即可, 只需要保证客户端能够访问到服务端即可。
-
-以下为操作步骤：
-1. 使用 `mvn clean package -pl cluster -am -DskipTests` 编译分布式模块或直接到 [官网](https://iotdb.apache.org/Download/) 下载最新版本。
-2. 保证三个节点的 6567, 6667, 9003, 9004, 40010, 40011 和 31999 端口是开放的。
-3. 将包上传到所有的服务器上。
-4. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 seed_nodes 为 "A_private_ip:9003,B_private_ip:9003,C_private_ip:9003"
-5. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 internal_ip 为各自节点的 private_ip。
-6. 配置所有节点 conf/iotdb-cluster.properties 配置文件中的 default_replica_num 为 3。
-7. 配置所有节点 conf/iotdb-engine.properties 配置文件中的 rpc_address 为各自节点的 public_ip。
-8. 在 3 个节点上分别运行 sh sbin/start-node.sh 即可(后台运行也可)。
+可以参考以上示例，不过在单机启动多个实例时需要处理好端口和文件目录的冲突。

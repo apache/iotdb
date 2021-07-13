@@ -24,14 +24,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -92,7 +91,8 @@ public class EnvironmentUtils {
     try {
       UDFRegistrationService.getInstance().deregisterAll();
       TriggerRegistrationService.getInstance().deregisterAll();
-    } catch (UDFRegistrationException | TriggerManagementException e) {
+      ContinuousQueryService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }
 
