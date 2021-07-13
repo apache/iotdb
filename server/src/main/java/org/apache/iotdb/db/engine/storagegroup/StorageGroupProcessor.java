@@ -90,20 +90,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -2288,12 +2276,23 @@ public class StorageGroupProcessor {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
-//      if (insertPos == POS_ALREADY_EXIST) {
-//        return;
-//      }
+      //      if (insertPos == POS_ALREADY_EXIST) {
+      //        return;
+      //      }
 
       // loading tsfile by type
       if (insertPos == POS_OVERLAP) {
+        String newFileName =
+            getFileNameForUnSequenceLoadingFile(
+                tsfileToBeInserted.getName(), newTsFileResource.getTimePartition());
+        if (!newFileName.equals(tsfileToBeInserted.getName())) {
+          logger.info(
+              "Tsfile {} must be renamed to {} for loading into the sequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+          newTsFileResource.setFile(
+              fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
+        }
         loadTsFileByType(
             LoadTsFileType.LOAD_UNSEQUENCE,
             tsfileToBeInserted,
@@ -2302,22 +2301,22 @@ public class StorageGroupProcessor {
       } else {
 
         // check whether the file name needs to be renamed.
-        if (!tsFileManagement.isEmpty(true)) {
-          String newFileName =
-              getFileNameForLoadingFile(
-                  tsfileToBeInserted.getName(),
-                  insertPos,
-                  newTsFileResource.getTimePartition(),
-                  sequenceList);
-          if (!newFileName.equals(tsfileToBeInserted.getName())) {
-            logger.info(
-                "Tsfile {} must be renamed to {} for loading into the sequence list.",
+        //        if (!tsFileManagement.isEmpty(true)) {
+        String newFileName =
+            getFileNameForSequenceLoadingFile(
                 tsfileToBeInserted.getName(),
-                newFileName);
-            newTsFileResource.setFile(
-                fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
-          }
+                insertPos,
+                newTsFileResource.getTimePartition(),
+                sequenceList);
+        if (!newFileName.equals(tsfileToBeInserted.getName())) {
+          logger.info(
+              "Tsfile {} must be renamed to {} for loading into the sequence list.",
+              tsfileToBeInserted.getName(),
+              newFileName);
+          newTsFileResource.setFile(
+              fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
         }
+        //        }
         loadTsFileByType(
             LoadTsFileType.LOAD_SEQUENCE,
             tsfileToBeInserted,
@@ -2380,10 +2379,10 @@ public class StorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
       long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-//      if (localPartitionId == newFilePartitionId
-//          && localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
-//        return POS_ALREADY_EXIST;
-//      }
+      //      if (localPartitionId == newFilePartitionId
+      //          && localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
+      //        return POS_ALREADY_EXIST;
+      //      }
 
       if (i == sequenceList.size() - 1 && localFile.endTimeEmpty()
           || newFilePartitionId > localPartitionId) {
@@ -2559,9 +2558,9 @@ public class StorageGroupProcessor {
    *     1]
    * @return appropriate filename
    */
-  private String getFileNameForLoadingFile(
+  private String getFileNameForSequenceLoadingFile(
       String tsfileName, int insertIndex, long timePartitionId, List<TsFileResource> sequenceList) {
-//    long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
+    long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     long preTime, subsequenceTime;
 
     if (insertIndex == -1) {
@@ -2571,28 +2570,62 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-//      if (preTime < currentTsFileTime) {
-//        return tsfileName;
-//      } else {
-//        return getNewTsFileName(timePartitionId);
-//      }
-      subsequenceTime = preTime + 2;
+      //      if (preTime < currentTsFileTime) {
+      //        return tsfileName;
+      //      } else {
+      //        return getNewTsFileName(timePartitionId);
+      //      }
+      //      subsequenceTime = preTime + 2;
+      subsequenceTime = (preTime <= currentTsFileTime) ? currentTsFileTime : preTime + 2;
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
       subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
     }
 
-//    String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
-//    long subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
-//    long subsequenceVersion = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
-//    if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
-//      return tsfileName;
-//    }
+    //    String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
+    //    long subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
+    //    long subsequenceVersion = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
+    //    if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
+    //      return tsfileName;
+    //    }
 
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
+    //    return TsFileResource.getNewTsFileName(
+    //        preTime + ((subsequenceTime - preTime) >> 1), version, 0, 0);
     return TsFileResource.getNewTsFileName(
-        preTime + ((subsequenceTime - preTime) >> 1), version, 0, 0);
+        (currentTsFileTime >= preTime && currentTsFileTime <= subsequenceTime)
+            ? currentTsFileTime
+            : preTime + ((subsequenceTime - preTime) >> 1),
+        version,
+        0,
+        0);
+  }
+
+  private String getFileNameForUnSequenceLoadingFile(String tsfileName, long timePartitionId) {
+    long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
+    List<TsFileResource> unsequenceList =
+        tsFileManagement.getTsFileListByTimePartition(false, timePartitionId);
+
+    Set<Long> establishTime = new HashSet<>();
+    int size = unsequenceList.size();
+    for (int i = 0; i < size; i++) {
+      String unsequenceFileName = unsequenceList.get(i).getTsFile().getName();
+      establishTime.add(Long.parseLong(unsequenceFileName.split(FILE_NAME_SEPARATOR)[0]));
+    }
+
+    long interval = 0;
+    while (establishTime.contains(currentTsFileTime + interval)) {
+      if (!establishTime.contains(currentTsFileTime - interval)) {
+        interval = -interval;
+        break;
+      }
+      interval += 1;
+    }
+
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
+    partitionMaxFileVersions.put(timePartitionId, version);
+    return TsFileResource.getNewTsFileName(currentTsFileTime + interval, version, 0, 0);
   }
 
   /**
