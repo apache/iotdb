@@ -62,7 +62,7 @@ public class DataClientProvider {
   }
 
   /**
-   * Get a thrift client from the tail of deque that will connect to "node" using the data port.
+   * Get a thrift client from the head of deque that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
@@ -77,7 +77,7 @@ public class DataClientProvider {
   }
 
   /**
-   * Get a thrift client from the head of deque that will connect to "node" using the data port for
+   * Get a thrift client from the tail of deque that will connect to "node" using the data port for
    * refresh.
    *
    * @param node the node to be connected
@@ -97,7 +97,7 @@ public class DataClientProvider {
    * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
    * into the client pool, otherwise there is a risk of client leakage.
    *
-   * <p>Get a thrift client from the tail of deque that will connect to "node" using the data port.
+   * <p>Get a thrift client from the head of deque that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
@@ -116,7 +116,7 @@ public class DataClientProvider {
    * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
    * into the client pool, otherwise there is a risk of client leakage.
    *
-   * <p>Get a thrift client from the head of deque that will connect to "node" using the data port.
+   * <p>Get a thrift client from the tail of deque that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection

@@ -69,7 +69,7 @@ public class AsyncClientPool {
       if (clientStack.isEmpty()) {
         return null;
       } else {
-        return clientStack.poll();
+        return clientStack.pollLast();
       }
     }
   }
