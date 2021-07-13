@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RefreshReuqest;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -143,6 +144,9 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
     resultHandler.onComplete(member.matchLog(index, term));
   }
+
+  @Override
+  public void refreshConnection(RefreshReuqest request, AsyncMethodCallback<Void> resultHandler) {}
 
   @Override
   public void executeNonQueryPlan(
