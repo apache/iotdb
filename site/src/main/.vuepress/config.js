@@ -694,7 +694,8 @@ var config = {
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','Time zone']
 						]
 					},
 					{
@@ -1485,7 +1486,8 @@ var config = {
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','时区']
 						]
 					},
 					{

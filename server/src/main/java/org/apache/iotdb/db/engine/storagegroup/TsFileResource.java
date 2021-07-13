@@ -89,12 +89,11 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
+  private TsFileProcessor processor;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
-
-  private TsFileProcessor processor;
-
   /** time index */
   protected ITimeIndex timeIndex;
 

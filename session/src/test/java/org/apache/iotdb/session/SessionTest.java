@@ -43,9 +43,10 @@ import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class SessionUT {
+public class SessionTest {
 
   private Session session;
 
@@ -243,5 +244,27 @@ public class SessionUT {
     session.createSchemaTemplate(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
     session.setSchemaTemplate("template1", "root.sg.1");
+  }
+
+  @Test
+  public void testBuilder() {
+    session =
+        new Session.Builder()
+            .host("localhost")
+            .port(1234)
+            .fetchSize(1)
+            .username("abc")
+            .password("123456")
+            .thriftDefaultBufferSize(2)
+            .thriftMaxFrameSize(3)
+            .enableCacheLeader(true)
+            .build();
+
+    assertEquals(session.fetchSize, 1);
+    assertEquals(session.username, "abc");
+    assertEquals(session.password, "123456");
+    assertEquals(session.thriftDefaultBufferSize, 2);
+    assertEquals(session.thriftMaxFrameSize, 3);
+    assertTrue(session.enableCacheLeader);
   }
 }

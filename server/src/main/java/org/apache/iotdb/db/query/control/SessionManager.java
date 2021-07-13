@@ -77,6 +77,20 @@ public class SessionManager {
     return sessionIdToUsername.remove(sessionId) != null;
   }
 
+  public long getSessionIdByQueryId(long queryId) {
+    // TODO: make this more efficient with a queryId -> sessionId map
+    for (Map.Entry<Long, Set<Long>> statementToQueries : statementIdToQueryId.entrySet()) {
+      if (statementToQueries.getValue().contains(queryId)) {
+        for (Map.Entry<Long, Set<Long>> sessionToStatements : sessionIdToStatementId.entrySet()) {
+          if (sessionToStatements.getValue().contains(statementToQueries.getKey())) {
+            return sessionToStatements.getKey();
+          }
+        }
+      }
+    }
+    return -1;
+  }
+
   public long requestStatementId(long sessionId) {
     long statementId = statementIdGenerator.incrementAndGet();
     sessionIdToStatementId
