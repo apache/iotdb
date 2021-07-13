@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardCounter;
@@ -67,10 +68,12 @@ public class DropwizardMetricManager implements MetricManager {
 
   com.codahale.metrics.MetricRegistry metricRegistry;
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  MetricReporter metricReporter;
 
   /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
+    metricReporter = new DropwizardMetricReporter();
     isEnable = metricConfig.getEnableMetric();
     currentMeters = new ConcurrentHashMap<>();
   }
@@ -259,6 +262,51 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
+  public void removeCounter(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    currentMeters.remove(name);
+  }
+
+  @Override
+  public void removeGauge(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    currentMeters.remove(name);
+  }
+
+  @Override
+  public void removeRate(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    currentMeters.remove(name);
+  }
+
+  @Override
+  public void removeHistogram(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    currentMeters.remove(name);
+  }
+
+  @Override
+  public void removeTimer(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    MetricName name = new MetricName(metric, tags);
+    currentMeters.remove(name);
+  }
+
+  @Override
   public List<String[]> getAllMetricKeys() {
     if (!isEnable) {
       return Collections.emptyList();
@@ -363,7 +411,35 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public boolean init() {
+    logger.info("DropWizard init registry");
+    List<String> reporters = metricConfig.getMetricReporterList();
+    for(String report: reporters){
+      if(!startReporter(report)){
+        return false;
+      }
+    }
     return true;
+  }
+
+  @Override
+  public boolean stop() {
+    return metricReporter.stop();
+  }
+
+  @Override
+  public boolean startReporter(String reporterName) {
+    return metricReporter.start(reporterName);
+  }
+
+  @Override
+  public boolean stopReporter(String reporterName) {
+    return metricReporter.stop(reporterName);
+  }
+
+  @Override
+  public void setReporter(MetricReporter metricReporter) {
+    this.metricReporter = metricReporter;
+    ((DropwizardMetricReporter) metricReporter).setDropwizardMetricManager(this);
   }
 
   @Override

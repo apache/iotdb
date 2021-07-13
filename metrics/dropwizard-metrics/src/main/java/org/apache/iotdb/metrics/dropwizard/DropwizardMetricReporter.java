@@ -57,6 +57,23 @@ public class DropwizardMetricReporter implements MetricReporter {
     return false;
   }
 
+  @Override
+  public boolean start(String reporter) {
+    switch (ReporterType.get(reporter)) {
+      case JMX:
+        startJmxReporter();
+        break;
+      case IOTDB:
+        break;
+      case PROMETHEUS:
+        break;
+      default:
+        logger.warn("Dropwizard don't support reporter type {}", reporter);
+        return false;
+    }
+    return true;
+  }
+
   private void startJmxReporter() {
     jmxReporter =
         JmxReporter.forRegistry(
@@ -65,10 +82,10 @@ public class DropwizardMetricReporter implements MetricReporter {
     jmxReporter.start();
   }
 
-  @Override
-  public void setMetricManager(MetricManager metricManager) {
-    dropwizardMetricManager = metricManager;
+  public void setDropwizardMetricManager(MetricManager metricManager){
+    this.dropwizardMetricManager = metricManager;
   }
+
 
   @Override
   public boolean stop() {
@@ -85,6 +102,23 @@ public class DropwizardMetricReporter implements MetricReporter {
         default:
           logger.warn("Dropwizard don't support reporter type {}", reporter);
       }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean stop(String reporter) {
+    switch (ReporterType.get(reporter)) {
+      case JMX:
+        stopJmxReporter(jmxReporter);
+        break;
+      case IOTDB:
+        break;
+      case PROMETHEUS:
+        break;
+      default:
+        logger.warn("Dropwizard don't support reporter type {}", reporter);
+        return false;
     }
     return true;
   }
