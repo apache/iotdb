@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.MetricManager;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
-import io.micrometer.jmx.JmxMeterRegistry;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -34,11 +34,13 @@ import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class MicrometerMetricReporter implements MetricReporter {
   private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricReporter.class);
-  private MetricManager micrometerMetricManager;
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final String NAME = "MicrometerMetricReporter";
   private Thread runThread;
 
   @Override
@@ -46,69 +48,95 @@ public class MicrometerMetricReporter implements MetricReporter {
 
     List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
-      switch (ReporterType.get(reporter)) {
-        case JMX:
-          startJmxReporter(
-              ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry());
-          break;
-        case IOTDB:
-          break;
-        case PROMETHEUS:
-          startPrometheusReporter(
-              ((MicrometerMetricManager) micrometerMetricManager).getPrometheusMeterRegistry());
-          break;
-        default:
-          logger.warn("Dropwizard don't support reporter type {}", reporter);
+      if(!start(reporter)) {
+        return false;
       }
     }
-
     return true;
   }
 
-  private void startPrometheusReporter(PrometheusMeterRegistry prometheusMeterRegistry) {
+  @Override
+  public boolean start(String reporter) {
+    switch (ReporterType.get(reporter)) {
+      case JMX:
+        startJmxReporter();
+        break;
+      case IOTDB:
+        break;
+      case PROMETHEUS:
+        startPrometheusReporter();
+        break;
+      default:
+        logger.warn("Dropwizard don't support reporter type {}", reporter);
+        return false;
+    }
+    return true;
+  }
+
+  private void startPrometheusReporter() {
+    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
+            .stream()
+            .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
+            .collect(Collectors.toSet());
+    if(meterRegistrySet.size() != 1){
+      logger.warn("Too many prometheusReporters");
+    }
+    PrometheusMeterRegistry prometheusMeterRegistry =
+            (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
     DisposableServer server =
-        HttpServer.create()
-            .port(
-                Integer.parseInt(
-                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
-            .route(
-                routes ->
-                    routes.get(
-                        "/prometheus",
-                        (request, response) ->
-                            response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
-            .bindNow();
+      HttpServer.create()
+        .port(
+          Integer.parseInt(
+                  metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+        .route(
+          routes ->
+            routes.get(
+              "/prometheus",
+              (request, response) ->
+                      response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
+        .bindNow();
 
     runThread = new Thread(server::onDispose);
     runThread.start();
   }
 
-  private void startJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
-    logger.info("start jmx reporter from micrometer {}", jmxMeterRegistry);
+  private void startJmxReporter() {
+    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
+            .stream()
+            .filter(reporter -> reporter instanceof JmxMeterRegistry)
+            .collect(Collectors.toSet());
+    for(MeterRegistry meterRegistry: meterRegistrySet){
+      ((JmxMeterRegistry) meterRegistry).start();
+    }
+
   }
 
-  @Override
-  public void setMetricManager(MetricManager metricManager) {
-    micrometerMetricManager = metricManager;
-  }
 
   @Override
   public boolean stop() {
     List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
-      switch (ReporterType.get(reporter)) {
-        case JMX:
-          stopJmxReporter(
-              ((MicrometerMetricManager) micrometerMetricManager).getJmxMeterRegistry());
-          break;
-        case IOTDB:
-          break;
-        case PROMETHEUS:
-          stopPrometheusReporter();
-          break;
-        default:
-          logger.warn("Dropwizard don't support reporter type {}", reporter);
+      if(!stop(reporter)){
+        return false;
       }
+    }
+    return true;
+  }
+
+  @Override
+  public boolean stop(String reporter) {
+    switch (ReporterType.get(reporter)) {
+      case JMX:
+        stopJmxReporter();
+        break;
+      case IOTDB:
+        break;
+      case PROMETHEUS:
+        stopPrometheusReporter();
+        break;
+      default:
+        logger.warn("Dropwizard don't support reporter type {}", reporter);
+        return false;
     }
     return true;
   }
@@ -125,14 +153,18 @@ public class MicrometerMetricReporter implements MetricReporter {
     }
   }
 
-  private void stopJmxReporter(JmxMeterRegistry jmxMeterRegistry) {
-    if (jmxMeterRegistry != null) {
-      jmxMeterRegistry.stop();
+  private void stopJmxReporter() {
+    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
+            .stream()
+            .filter(reporter -> reporter instanceof JmxMeterRegistry)
+            .collect(Collectors.toSet());
+    for(MeterRegistry meterRegistry: meterRegistrySet){
+      ((JmxMeterRegistry) meterRegistry).stop();
     }
   }
 
   @Override
   public String getName() {
-    return "MicrometerMetricReporter";
+    return NAME;
   }
 }

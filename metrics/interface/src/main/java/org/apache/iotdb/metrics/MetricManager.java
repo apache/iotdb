@@ -122,14 +122,16 @@ public interface MetricManager {
   /**
    * bind metric to Reporter
    * @param metric
-   * @param metricReporter
+   * @param reporterName global for all
    * @return
    */
-  boolean bind(IMetric metric, MetricReporter metricReporter);
+  boolean bind(IMetric metric, String reporterName);
 
   boolean startReporter(String reporterName);
 
   boolean stopReporter(String reporterName);
+
+  void setReporter(MetricReporter metricReporter);
 
   String getName();
 }

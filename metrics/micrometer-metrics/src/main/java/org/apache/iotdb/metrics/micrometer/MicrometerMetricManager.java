@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
+import io.netty.util.internal.ConcurrentSet;
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -56,14 +58,11 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -72,71 +71,44 @@ public class MicrometerMetricManager implements MetricManager {
 
   Map<Meter.Id, IMetric> currentMeters;
   boolean isEnable;
-
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
+  MetricReporter metricReporter;
+
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
+    metricReporter = new MicrometerMetricReporter();
     currentMeters = new ConcurrentHashMap<>();
     isEnable = metricConfig.getEnableMetric();
   }
 
+  /**
+   * init of manager
+   * @see org.apache.iotdb.metrics.MetricService
+   * @return
+   */
   @Override
   public boolean init() {
     logger.info("micrometer init registry");
     List<String> reporters = metricConfig.getMetricReporterList();
-    for (String reporter : reporters) {
-      switch (ReporterType.get(reporter)) {
-        case JMX:
-          Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
-          break;
-        case PROMETHEUS:
-          Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
-          break;
-        case IOTDB:
-          break;
-        default:
-          logger.warn("Unsupported report type {}, please check the config.", reporter);
-          return false;
+    for(String report: reporters){
+      if(!startMeterRegistry(report)){
+        return false;
       }
     }
     return true;
   }
 
-  public MeterRegistry getMeterRegistry() {
-    return meterRegistry;
-  }
-
   /**
-   * Reporter use it to get metrics to expose data to prometheus.
-   *
-   * @return prometheus registry
+   * set reporter to manager
+   * @see org.apache.iotdb.metrics.MetricService
+   * @param metricReporter
    */
-  public PrometheusMeterRegistry getPrometheusMeterRegistry() {
-    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
-    for (MeterRegistry childMeterRegistry : meterRegistrySet) {
-      if (childMeterRegistry instanceof PrometheusMeterRegistry) {
-        return (PrometheusMeterRegistry) childMeterRegistry;
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Reporter use it to get metrics to expose data to jmx.
-   *
-   * @return jmxMeterRegistry
-   */
-  public JmxMeterRegistry getJmxMeterRegistry() {
-    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries();
-    for (MeterRegistry childMeterRegistry : meterRegistrySet) {
-      if (childMeterRegistry instanceof JmxMeterRegistry) {
-        return (JmxMeterRegistry) childMeterRegistry;
-      }
-    }
-    return null;
+  @Override
+  public void setReporter(MetricReporter metricReporter) {
+    this.metricReporter = metricReporter;
   }
 
   @Override
@@ -148,18 +120,6 @@ public class MicrometerMetricManager implements MetricManager {
     return (Counter)
         currentMeters.computeIfAbsent(
             innerCounter.getId(), key -> new MicrometerCounter(innerCounter));
-  }
-
-  @Override
-  public void count(int delta, String metric, String... tags) {
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    innerCounter.increment(delta);
-  }
-
-  @Override
-  public void count(long delta, String metric, String... tags) {
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    innerCounter.increment(delta);
   }
 
   @Override
@@ -204,6 +164,7 @@ public class MicrometerMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingRate;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+
     return (Rate)
         currentMeters.computeIfAbsent(
             id,
@@ -228,6 +189,18 @@ public class MicrometerMetricManager implements MetricManager {
               logger.info("create getOrCreateTimer {}", metric);
               return new MicrometerTimer(timer);
             });
+  }
+
+  @Override
+  public void count(int delta, String metric, String... tags) {
+    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
+    innerCounter.increment(delta);
+  }
+
+  @Override
+  public void count(long delta, String metric, String... tags) {
+    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
+    innerCounter.increment(delta);
   }
 
   @Override
@@ -435,6 +408,9 @@ public class MicrometerMetricManager implements MetricManager {
     }
   }
 
+  /**
+   * bind default metric to registry(or reporter
+   */
   private void enableJvmMetrics() {
     if (!isEnable) {
       return;
@@ -455,6 +431,117 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
+  public void removeCounter(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.COUNTER, tags);
+    currentMeters.remove(id);
+  }
+
+  @Override
+  public void removeGauge(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+    currentMeters.remove(id);
+  }
+
+  @Override
+  public void removeRate(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+    currentMeters.remove(id);
+  }
+
+  @Override
+  public void removeHistogram(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
+    currentMeters.remove(id);
+  }
+
+  @Override
+  public void removeTimer(String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
+    currentMeters.remove(id);
+  }
+
+  /**
+   * stop everything and clear
+   *
+   * @return
+   */
+  @Override
+  public boolean stop() {
+    return metricReporter.stop();
+  }
+
+  @Override
+  public boolean startReporter(String reporterName) {
+    return startMeterRegistry(reporterName);
+  }
+
+  @Override
+  public boolean stopReporter(String reporterName) {
+    return metricReporter.stop(reporterName);
+  }
+
+  private boolean startMeterRegistry(String reporter){
+    switch (ReporterType.get(reporter)) {
+      case JMX:
+        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
+        break;
+      case PROMETHEUS:
+        Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+        break;
+      case IOTDB:
+        break;
+      default:
+        logger.warn("Unsupported report type {}, please check the config.", reporter);
+        return false;
+    }
+    return true;
+  }
+
+  /**
+   * find registries by name
+   * @param reporterName ReporterType
+   * @see ReporterType
+   * @return
+   */
+  private Set<MeterRegistry> getMeterRegistries(String reporterName){
+    Set<MeterRegistry> meterRegistrySet = new ConcurrentSet<>();
+    switch (ReporterType.get(reporterName)){
+      case JMX:
+        meterRegistrySet = Metrics.globalRegistry.getRegistries()
+                .stream()
+                .filter(m -> m instanceof JmxMeterRegistry)
+                .collect(Collectors.toSet());
+        break;
+      case PROMETHEUS:
+        meterRegistrySet = Metrics.globalRegistry.getRegistries()
+                .stream()
+                .filter(m -> m instanceof PrometheusMeterRegistry)
+                .collect(Collectors.toSet());
+        break;
+      case IOTDB:
+        break;
+      default:
+        logger.warn("Unsupported report type {}, please check the config.", reporterName);
+    }
+    return meterRegistrySet;
+  }
+
+  @Override
   public boolean isEnable() {
     return isEnable;
   }
@@ -462,5 +549,30 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public String getName() {
     return "MicrometerMetricManager";
+  }
+
+  /**
+   * bind metric to Reporter
+   *
+   * @param metric
+   * @param reporterName global for all
+   * @return
+   */
+  @Override
+  public boolean bind(IMetric metric, String reporterName) {
+    Set<MeterRegistry> meterRegistrySet = getMeterRegistries(reporterName);
+    for(MeterRegistry meterRegistry: meterRegistrySet){
+      if(metric instanceof MicrometerCounter){
+        ((MicrometerCounter) metric).bindTo(meterRegistry);
+        System.out.println("Bind");
+      }else{
+        return false;
+      }
+    }
+    return true;
+  }
+
+  public MeterRegistry getMeterRegistry() {
+    return meterRegistry;
   }
 }
