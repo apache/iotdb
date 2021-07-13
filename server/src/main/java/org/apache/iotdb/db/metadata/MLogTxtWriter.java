@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -241,6 +242,14 @@ public class MLogTxtWriter implements AutoCloseable {
     s.append(plan.getChildSize());
     s.append(LINE_SEPARATOR);
     ByteBuffer buff = ByteBuffer.wrap(s.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void autoCreateDeviceMode(String Device) throws IOException {
+    String outputStr =
+        MetadataOperationType.AUTO_CREATE_DEVICE + "," + Device + LINE_SEPARATOR;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
     channel.write(buff);
     lineNumber.incrementAndGet();
   }

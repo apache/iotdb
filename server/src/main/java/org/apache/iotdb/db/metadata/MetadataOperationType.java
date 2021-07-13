@@ -33,4 +33,5 @@ public class MetadataOperationType {
   public static final String DROP_INDEX = "32";
   public static final String CHANGE_OFFSET = "12";
   public static final String CHANGE_ALIAS = "13";
+  public static final String AUTO_CREATE_DEVICE = "4";
 }
