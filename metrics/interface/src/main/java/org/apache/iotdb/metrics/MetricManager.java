@@ -127,5 +127,9 @@ public interface MetricManager {
    */
   boolean bind(IMetric metric, MetricReporter metricReporter);
 
+  boolean startReporter(String reporterName);
+
+  boolean stopReporter(String reporterName);
+
   String getName();
 }
