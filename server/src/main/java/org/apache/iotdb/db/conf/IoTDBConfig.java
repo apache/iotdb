@@ -265,8 +265,11 @@ public class IoTDBConfig {
   /** index directory. */
   private String indexRootFolder = "data" + File.separator + "index";
 
-  /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long tsFileSizeThreshold = 1L;
+  /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long unSeqTsFileSize = 1L;
+
+  /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long seqTsFileSize = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
@@ -1048,12 +1051,20 @@ public class IoTDBConfig {
     this.concurrentQueryThread = concurrentQueryThread;
   }
 
-  public long getTsFileSizeThreshold() {
-    return tsFileSizeThreshold;
+  public long getSeqTsFileSize() {
+    return seqTsFileSize;
   }
 
-  public void setTsFileSizeThreshold(long tsFileSizeThreshold) {
-    this.tsFileSizeThreshold = tsFileSizeThreshold;
+  public void setSeqTsFileSize(long seqTsFileSize) {
+    this.seqTsFileSize = seqTsFileSize;
+  }
+
+  public long getUnSeqTsFileSize() {
+    return unSeqTsFileSize;
+  }
+
+  public void setUnSeqTsFileSize(long unSeqTsFileSize) {
+    this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
   public boolean isEnableStatMonitor() {
