@@ -21,11 +21,13 @@ package org.apache.iotdb.metric.micrometer;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
-
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Timer;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
+
 
 public class MicrometerMetricManagerTest {
 
@@ -33,7 +35,12 @@ public class MicrometerMetricManagerTest {
 
   @Test
   public void testRegister() {
-    metricManager.getOrCreateTimer("timer1", "sg", "root").update(12, TimeUnit.MILLISECONDS);
+
+    Timer timer = metricManager.getOrCreateTimer("timer1", "sg", "root");
+    Counter counter = metricManager.getOrCreateCounter("counter1", "sg", "root");
+//    metricManager.bind(counter, "jmx");
+    counter.inc();
+    timer.update(12, TimeUnit.MILLISECONDS);
     Assert.assertEquals(1, metricManager.getAllTimers().size());
   }
 }
