@@ -82,6 +82,10 @@ public class DropwizardMetricReporter implements MetricReporter {
     jmxReporter.start();
   }
 
+  public void setDropwizardMetricManager(MetricManager metricManager){
+    this.dropwizardMetricManager = metricManager;
+  }
+
 
   @Override
   public boolean stop() {

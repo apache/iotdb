@@ -27,8 +27,8 @@ metricReporterList:
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter
-metricManagerType: MicrometerMetricManager
-metricReporterType: MicrometerMetricReporter
+metricManagerType: DropwizardMetricManager
+metricReporterType: DropwizardMetricReporter
 
 pushPeriodInSecond: 5
 

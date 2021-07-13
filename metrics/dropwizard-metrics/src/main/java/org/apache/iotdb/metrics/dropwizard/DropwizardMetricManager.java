@@ -439,6 +439,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public void setReporter(MetricReporter metricReporter) {
     this.metricReporter = metricReporter;
+    ((DropwizardMetricReporter) metricReporter).setDropwizardMetricManager(this);
   }
 
   @Override

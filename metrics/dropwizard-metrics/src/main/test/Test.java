@@ -1,5 +1,3 @@
-package org.apache.iotdb.metric.micrometer;
-
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
 
@@ -24,7 +22,7 @@ public class Test {
     }
 
     public static void main(String[] args) {
-        System.setProperty("METRIC_CONF", "E:\\iotdb\\metrics\\micrometer-metrics\\src\\test\\java\\resources");
+        System.setProperty("METRIC_CONF", "E:\\iotdb\\metrics\\dropwizard-metrics\\src\\main\\test\\resources");
         Test test = new Test();
         String[] tags = new String[10];
         for(int i = 0; i < tags.length; i ++){
@@ -39,8 +37,5 @@ public class Test {
             stringBuilder.append(tag + "|");
         }
         System.out.println("In number=" + number + " and tags=" + stringBuilder.toString() + ", create uses " + create + " ms, find uses "+ find + " ms.");
-        while (true){
-
-        }
     }
 }
