@@ -202,18 +202,6 @@ public class DoNothingMetricManager implements MetricManager {
     return false;
   }
 
-  /**
-   * bind metric to Reporter
-   *
-   * @param metric
-   * @param reporterName global for all
-   * @return
-   */
-  @Override
-  public boolean bind(IMetric metric, String reporterName) {
-    return false;
-  }
-
   @Override
   public void setReporter(MetricReporter metricReporter) {
 
