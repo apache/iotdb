@@ -92,7 +92,7 @@ public interface IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema schema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
