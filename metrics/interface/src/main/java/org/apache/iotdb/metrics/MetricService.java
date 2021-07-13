@@ -95,7 +95,8 @@ public class MetricService {
           "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
     }
     // do some init work
-    metricReporter.setMetricManager(metricManager);
+    metricManager.setReporter(metricReporter);
+
     if (isEnable()) {
       metricReporter.start();
     }
