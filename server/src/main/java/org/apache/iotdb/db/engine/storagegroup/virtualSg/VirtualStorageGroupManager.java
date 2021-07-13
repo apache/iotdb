@@ -56,7 +56,10 @@ public class VirtualStorageGroupManager {
   /** all virtual storage group processor */
   StorageGroupProcessor[] virtualStorageGroupProcessor;
 
-  /** recover status of each virtual storage group processor */
+  /**
+   * recover status of each virtual storage group processor, null if this logical storage group is
+   * new created
+   */
   private AtomicBoolean[] isVsgReady;
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
@@ -68,10 +71,13 @@ public class VirtualStorageGroupManager {
 
   public VirtualStorageGroupManager(boolean needRecovering) {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
-    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
-    boolean recoverStatus = !needRecovering;
-    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      isVsgReady[i] = new AtomicBoolean(recoverStatus);
+    if (needRecovering) {
+      isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+      for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+        isVsgReady[i] = new AtomicBoolean(false);
+      }
+    } else {
+      isVsgReady = null;
     }
   }
 
@@ -118,7 +124,7 @@ public class VirtualStorageGroupManager {
     StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
       // if finish recover
-      if (isVsgReady[loc].get()) {
+      if (isVsgReady == null || isVsgReady[loc].get()) {
         synchronized (storageGroupMNode) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
