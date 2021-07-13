@@ -33,6 +33,11 @@ import java.util.List;
 
 public class DropwizardMetricReporter implements MetricReporter {
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricReporter.class);
+
+  public void setDropwizardMetricManager(MetricManager dropwizardMetricManager) {
+    this.dropwizardMetricManager = dropwizardMetricManager;
+  }
+
   private MetricManager dropwizardMetricManager;
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
