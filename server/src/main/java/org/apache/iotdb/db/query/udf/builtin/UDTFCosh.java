@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.udf.builtin;
 
 public class UDTFCosh extends UDTFMath {
 
-    @Override
-    protected void setTransformer() {
-        transformer = Math::cosh;
-    }
+  @Override
+  protected void setTransformer() {
+    transformer = Math::cosh;
+  }
 }

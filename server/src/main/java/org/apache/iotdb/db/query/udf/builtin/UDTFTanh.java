@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.udf.builtin;
 
 public class UDTFTanh extends UDTFMath {
 
-    @Override
-    protected void setTransformer() {
-        transformer = Math::tanh;
-    }
+  @Override
+  protected void setTransformer() {
+    transformer = Math::tanh;
+  }
 }
