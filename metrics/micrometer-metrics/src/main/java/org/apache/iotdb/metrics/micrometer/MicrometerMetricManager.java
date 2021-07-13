@@ -84,6 +84,11 @@ public class MicrometerMetricManager implements MetricManager {
     isEnable = metricConfig.getEnableMetric();
   }
 
+  /**
+   * init of manager
+   * @see org.apache.iotdb.metrics.MetricService
+   * @return
+   */
   @Override
   public boolean init() {
     logger.info("micrometer init registry");
@@ -96,6 +101,11 @@ public class MicrometerMetricManager implements MetricManager {
     return true;
   }
 
+  /**
+   * set reporter to manager
+   * @see org.apache.iotdb.metrics.MetricService
+   * @param metricReporter
+   */
   @Override
   public void setReporter(MetricReporter metricReporter) {
     this.metricReporter = metricReporter;
@@ -110,18 +120,6 @@ public class MicrometerMetricManager implements MetricManager {
     return (Counter)
         currentMeters.computeIfAbsent(
             innerCounter.getId(), key -> new MicrometerCounter(innerCounter));
-  }
-
-  @Override
-  public void count(int delta, String metric, String... tags) {
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    innerCounter.increment(delta);
-  }
-
-  @Override
-  public void count(long delta, String metric, String... tags) {
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    innerCounter.increment(delta);
   }
 
   @Override
@@ -165,7 +163,6 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
-    // TODO check Whether rate use gauge is ok
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
 
     return (Rate)
@@ -192,6 +189,18 @@ public class MicrometerMetricManager implements MetricManager {
               logger.info("create getOrCreateTimer {}", metric);
               return new MicrometerTimer(timer);
             });
+  }
+
+  @Override
+  public void count(int delta, String metric, String... tags) {
+    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
+    innerCounter.increment(delta);
+  }
+
+  @Override
+  public void count(long delta, String metric, String... tags) {
+    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
+    innerCounter.increment(delta);
   }
 
   @Override
@@ -399,6 +408,9 @@ public class MicrometerMetricManager implements MetricManager {
     }
   }
 
+  /**
+   * bind default metric to registry(or reporter
+   */
   private void enableJvmMetrics() {
     if (!isEnable) {
       return;
@@ -470,7 +482,7 @@ public class MicrometerMetricManager implements MetricManager {
    */
   @Override
   public boolean stop() {
-    return false;
+    return metricReporter.stop();
   }
 
   @Override
@@ -480,12 +492,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public boolean stopReporter(String reporterName) {
-    Set<MeterRegistry> meterRegistrySet = getMeterRegistries(reporterName);
-    for(MeterRegistry meterRegistry: meterRegistrySet){
-      meterRegistry.close();
-      Metrics.removeRegistry(meterRegistry);
-    }
-    return true;
+    return metricReporter.stop(reporterName);
   }
 
   private boolean startMeterRegistry(String reporter){
@@ -553,7 +560,16 @@ public class MicrometerMetricManager implements MetricManager {
    */
   @Override
   public boolean bind(IMetric metric, String reporterName) {
-    return false;
+    Set<MeterRegistry> meterRegistrySet = getMeterRegistries(reporterName);
+    for(MeterRegistry meterRegistry: meterRegistrySet){
+      if(metric instanceof MicrometerCounter){
+        ((MicrometerCounter) metric).bindTo(meterRegistry);
+        System.out.println("Bind");
+      }else{
+        return false;
+      }
+    }
+    return true;
   }
 
   public MeterRegistry getMeterRegistry() {

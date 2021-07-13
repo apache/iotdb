@@ -21,14 +21,12 @@ package org.apache.iotdb.metrics.micrometer;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
-import org.apache.iotdb.metrics.MetricManager;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
-import io.micrometer.jmx.JmxMeterRegistry;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -108,7 +106,7 @@ public class MicrometerMetricReporter implements MetricReporter {
             .filter(reporter -> reporter instanceof JmxMeterRegistry)
             .collect(Collectors.toSet());
     for(MeterRegistry meterRegistry: meterRegistrySet){
-      logger.info("start jmx reporter from micrometer {}", meterRegistry);
+      ((JmxMeterRegistry) meterRegistry).start();
     }
 
   }
