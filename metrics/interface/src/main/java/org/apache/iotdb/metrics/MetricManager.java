@@ -107,13 +107,6 @@ public interface MetricManager {
   void enableKnownMetric(KnownMetric metric);
 
   /**
-   * init something.
-   *
-   * @return whether success
-   */
-  boolean init();
-
-  /**
    * stop everything and clear
    * @return
    */
