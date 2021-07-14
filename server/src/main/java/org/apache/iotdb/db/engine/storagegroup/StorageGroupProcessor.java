@@ -2512,7 +2512,7 @@ public class StorageGroupProcessor {
 
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
-   * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
+   * ({systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile).
    *
    * <p>The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the
    * list based on the file name and ensure the correctness of the order, so there are three cases.
@@ -2521,7 +2521,7 @@ public class StorageGroupProcessor {
    * name is less than the timestamp in the file name of the first tsfile in the list, then the file
    * name is legal and the file name is returned directly. Otherwise, its timestamp can be set to
    * half of the timestamp value in the file name of the first tsfile in the list , and the version
-   * number is the version number in the file name of the first tsfile in the list.
+   * number will be updated to the largest number in this time partition.
    *
    * <p>2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
    * name is lager than the timestamp in the file name of the last tsfile in the list, then the file
@@ -2531,7 +2531,7 @@ public class StorageGroupProcessor {
    * <p>3. This file is inserted between two files. If the timestamp in the name of the file
    * satisfies the timestamp between the timestamps in the name of the two files, then it is a legal
    * name and returns directly; otherwise, the time stamp is the mean of the timestamps of the two
-   * files, the version number is the version number in the tsfile with a larger timestamp.
+   * files, the version number will be updated to the largest number in this time partition.
    *
    * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
@@ -2550,7 +2550,10 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-      subsequenceTime = (preTime <= currentTsFileTime) ? currentTsFileTime : preTime + 2;
+      subsequenceTime =
+          (preTime <= currentTsFileTime)
+              ? currentTsFileTime
+              : preTime + ((System.currentTimeMillis() - preTime) << 1);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
       subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
@@ -2567,6 +2570,18 @@ public class StorageGroupProcessor {
         0);
   }
 
+  /**
+   * Get a appropriate file name for the loading tsfile. The tsfile is named after *
+   * ({systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile).
+   *
+   * <p>The systemTime will be renamed to the nearest time stamp to the loading tsfile. The version
+   * will be set to the largest version number in this time partition. merNum and unsequenceMergeNum
+   * will be set to 0.
+   *
+   * @param tsfileName the loading tsfile's name
+   * @param timePartitionId the loading tsfile's time partition id
+   * @return a appropriate file name for the loading tsfile
+   */
   private String getFileNameForUnSequenceLoadingFile(String tsfileName, long timePartitionId) {
     long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     List<TsFileResource> unsequenceList =
