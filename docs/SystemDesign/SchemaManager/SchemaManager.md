@@ -274,7 +274,7 @@ Schema operation examples and the corresponding parsed mlog record:
    
    > mlog:5,temp1,0,s2,3,2,1
    
-   > format： 5,template name,is Aligned Timeseries,measurementId,TSDataType,TSEncoding,CompressionType
+   > format: 5,template name,is Aligned Timeseries,measurementId,TSDataType,TSEncoding,CompressionType
 
 * set schema template temp1 to root.turbine
  
@@ -288,7 +288,7 @@ Schema operation examples and the corresponding parsed mlog record:
    
     > format: 4,path
 
-* set root.turbine.d1 is using template (after set a template to a device path，this log shows the device is using template)
+* set root.turbine.d1 is using template (after set a template to a device path, this log shows the device is using template)
  
     > mlog: 61,root.turbine.d1
    
