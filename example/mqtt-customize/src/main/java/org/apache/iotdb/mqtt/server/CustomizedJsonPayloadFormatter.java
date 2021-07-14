@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.mqtt.server;
 
-import io.netty.buffer.ByteBuf;
 import org.apache.iotdb.db.mqtt.Message;
 import org.apache.iotdb.db.mqtt.PayloadFormatter;
+
+import io.netty.buffer.ByteBuf;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
