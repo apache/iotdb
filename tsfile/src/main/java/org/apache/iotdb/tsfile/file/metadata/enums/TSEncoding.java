@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public enum TSEncoding {
   PLAIN((byte) 0),
   DICTIONARY((byte) 1),
@@ -45,29 +48,21 @@ public enum TSEncoding {
     return getTsEncoding(encoding);
   }
 
-  private static TSEncoding getTsEncoding(byte encoding) {
-    switch (encoding) {
-      case 0:
-        return TSEncoding.PLAIN;
-      case 1:
-        return TSEncoding.DICTIONARY;
-      case 2:
-        return TSEncoding.RLE;
-      case 3:
-        return TSEncoding.DIFF;
-      case 4:
-        return TSEncoding.TS_2DIFF;
-      case 5:
-        return TSEncoding.BITMAP;
-      case 6:
-        return TSEncoding.GORILLA_V1;
-      case 7:
-        return TSEncoding.REGULAR;
-      case 8:
-        return TSEncoding.GORILLA;
-      default:
-        throw new IllegalArgumentException("Invalid input: " + encoding);
+  private static final Map<Byte, TSEncoding> map = new HashMap<>();
+
+  static {
+    TSEncoding[] array = TSEncoding.values();
+    for (TSEncoding e : array) {
+      map.put(e.type, e);
     }
+  }
+
+  private static TSEncoding getTsEncoding(byte encoding) {
+    TSEncoding ret = map.get(encoding);
+    if (ret == null) {
+      throw new IllegalArgumentException("Invalid input: " + encoding);
+    }
+    return ret;
   }
 
   public static int getSerializedSize() {
