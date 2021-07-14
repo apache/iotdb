@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,6 +130,7 @@ public class MergeMultiChunkTask {
     }
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
+      // record the unmergeChunkStartTime for each sensor in each file
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
@@ -211,6 +211,7 @@ public class MergeMultiChunkTask {
     long currDeviceMinTime = currTsFile.getStartTime(deviceId);
     // all paths in one call are from the same device
     if (currDeviceMinTime == Long.MAX_VALUE) {
+      // if currTsFile does not contains this device, the MinTime will be Long.MAX_VALUE
       return;
     }
 
@@ -633,6 +634,7 @@ public class MergeMultiChunkTask {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);
         IMeasurementSchema measurementSchema = resource.getSchema(path);
+        // chunkWriter will keep the data in memory
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();
