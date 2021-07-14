@@ -85,6 +85,8 @@ public abstract class ClusterIT extends Cases {
     }
     session = new Session(getWriteRpcIp(), getWriteRpcPort());
     session.open();
+    antherSession = new Session(getWriteRpcIp(), getWriteRpcPort());
+    antherSession.open();
     TimeUnit.MILLISECONDS.sleep(3000);
   }
 
