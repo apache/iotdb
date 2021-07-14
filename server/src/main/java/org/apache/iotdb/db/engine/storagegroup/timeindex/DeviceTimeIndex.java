@@ -305,10 +305,6 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   @Override
   public boolean checkDeviceIdExist(String deviceId) {
-    if (!deviceToIndex.containsKey(deviceId)) {
-      return false;
-    } else {
-      return true;
-    }
+    return deviceToIndex.containsKey(deviceId);
   }
 }
