@@ -264,16 +264,11 @@ public class QueryOperator extends Operator {
                   nonExistMeasurement, new MeasurementInfo(MeasurementType.NonExist));
             }
           } else {
-            for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
-              PartialPath path = actualPaths.get(pathIdx);
+            for (PartialPath path : actualPaths) {
               String measurementName = getMeasurementName(path.getMeasurement(), aggregation);
-              // Data type with aggregation function `columnDataTypes` is used for:
-              //  1. Data type consistency check 2. Header calculation, output result set
-              // The actual data type of the time series `measurementDataTypes` is used for
-              //  the actual query in the AlignByDeviceDataSet
               TSDataType measurementDataType = IoTDB.metaManager.getSeriesType(path);
-              TSDataType columnDataType =
-                  aggregation == null ? measurementDataType : getAggregationType(aggregation);
+              TSDataType columnDataType = getAggregationType(aggregation);
+              columnDataType = columnDataType == null ? measurementDataType : columnDataType;
               MeasurementInfo measurementInfo =
                   measurementInfoMap.getOrDefault(measurementName, new MeasurementInfo());
 
@@ -315,21 +310,13 @@ public class QueryOperator extends Operator {
       measurements.addAll(measurementSetOfGivenSuffix);
     }
 
-    convertSpecialClauseValues(alignByDevicePlan);
-    // sLimit trim on the measurementColumnList
-    if (specialClauseComponent.hasSlimit()) {
-      int seriesSLimit = specialClauseComponent.getSeriesLimit();
-      int seriesOffset = specialClauseComponent.getSeriesOffset();
-      measurements = slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
-    }
-
+    convertSpecialClauseValues(alignByDevicePlan, measurements);
     // assigns to alignByDevicePlan
     alignByDevicePlan.setMeasurements(measurements);
     alignByDevicePlan.setMeasurementInfoMap(measurementInfoMap);
     alignByDevicePlan.setDevices(devices);
     alignByDevicePlan.setPaths(paths);
 
-    // get deviceToFilterMap
     if (whereComponent != null) {
       alignByDevicePlan.setDeviceToFilterMap(
           concatFilterByDevice(generator, devices, whereComponent.getFilterOperator()));
@@ -346,6 +333,17 @@ public class QueryOperator extends Operator {
       queryPlan.setRowOffset(specialClauseComponent.getRowOffset());
       queryPlan.setAscending(specialClauseComponent.isAscending());
       queryPlan.setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
+  }
+
+  private void convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
+      throws QueryProcessException {
+    convertSpecialClauseValues(queryPlan);
+    // sLimit trim on the measurementColumnList
+    if (specialClauseComponent.hasSlimit()) {
+      int seriesSLimit = specialClauseComponent.getSeriesLimit();
+      int seriesOffset = specialClauseComponent.getSeriesOffset();
+      slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
     }
   }
 

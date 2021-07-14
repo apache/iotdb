@@ -35,7 +35,7 @@ public class MeasurementInfo {
   // to record different kinds of measurement
   private MeasurementType measurementType;
 
-  // to record the real type of the measurement
+  // to record the real type of the measurement, used for actual query
   private TSDataType measurementDataType;
 
   // to record the datatype of the column in the result set

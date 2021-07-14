@@ -134,24 +134,6 @@ public class SchemaUtils {
   }
 
   /**
-   * @param paths time series paths
-   * @param aggregation aggregation function, may be null
-   * @return The data type of aggregation or (data type of paths if aggregation is null)
-   */
-  public static List<TSDataType> getSeriesTypesByPaths(
-      Collection<PartialPath> paths, String aggregation) throws MetadataException {
-    TSDataType dataType = getAggregationType(aggregation);
-    if (dataType != null) {
-      return Collections.nCopies(paths.size(), dataType);
-    }
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
-    }
-    return dataTypes;
-  }
-
-  /**
    * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value),
    * return 'measurementDataType' directly, or return a list whose elements are all the datatype of
    * 'aggregation' and its length is the same as 'measurementDataType'.

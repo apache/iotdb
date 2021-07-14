@@ -979,7 +979,7 @@ public class TSServiceImpl implements TSIService.Iface {
         for (ResultColumn resultColumn : resultColumns) {
           respColumns.add(resultColumn.getResultColumnName());
         }
-        seriesTypes = getSeriesTypesByPaths(paths, aggregations);
+        seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
         break;
       case UDTF:
         seriesTypes = new ArrayList<>();
@@ -2005,11 +2005,6 @@ public class TSServiceImpl implements TSIService.Iface {
     return isSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-  }
-
-  protected List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
