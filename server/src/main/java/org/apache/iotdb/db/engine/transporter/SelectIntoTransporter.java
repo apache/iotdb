@@ -19,9 +19,15 @@
 
 package org.apache.iotdb.db.engine.transporter;
 
-import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.util.List;
 
 public class SelectIntoTransporter {
 
-  public void execute(SelectIntoPlan selectIntoPlan) {}
+  public SelectIntoTransporter(QueryDataSet queryDataSet, List<PartialPath> intoPaths) {}
+
+  public void execute() throws IoTDBException {}
 }

@@ -45,6 +45,11 @@ public class SelectIntoPlan extends PhysicalPlan {
   }
 
   @Override
+  public boolean isSelectInto() {
+    return true;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -62,5 +67,13 @@ public class SelectIntoPlan extends PhysicalPlan {
   @Override
   public List<PartialPath> getPaths() {
     throw new UnsupportedOperationException();
+  }
+
+  public QueryPlan getQueryPlan() {
+    return queryPlan;
+  }
+
+  public List<PartialPath> getIntoPaths() {
+    return intoPaths;
   }
 }

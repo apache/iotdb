@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.engine.transporter.SelectIntoTransporter;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -59,6 +60,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
@@ -498,7 +500,7 @@ public class TSServiceImpl implements TSIService.Iface {
         PhysicalPlan physicalPlan =
             processor.parseSQLToPhysicalPlan(
                 statement, sessionManager.getZoneId(req.sessionId), DEFAULT_FETCH_SIZE);
-        if (physicalPlan.isQuery()) {
+        if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
         }
 
@@ -597,16 +599,21 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.getSessionId()), req.fetchSize);
 
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              req.timeout,
-              sessionManager.getUsername(req.getSessionId()),
-              req.isEnableRedirectQuery())
-          : executeUpdateStatement(physicalPlan, req.getSessionId());
+      if (physicalPlan.isQuery()) {
+        return internalExecuteQueryStatement(
+            statement,
+            req.statementId,
+            physicalPlan,
+            req.fetchSize,
+            req.timeout,
+            sessionManager.getUsername(req.getSessionId()),
+            req.isEnableRedirectQuery());
+      } else if (physicalPlan.isSelectInto()) {
+        return executeSelectIntoStatement(
+            statement, req.statementId, physicalPlan, req.fetchSize, req.timeout);
+      } else {
+        return executeUpdateStatement(physicalPlan, req.getSessionId());
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -1022,6 +1029,46 @@ public class TSServiceImpl implements TSIService.Iface {
 
     // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
     plan.setPaths(null);
+  }
+
+  private TSExecuteStatementResp executeSelectIntoStatement(
+      String statement, long statementId, PhysicalPlan physicalPlan, int fetchSize, long timeout)
+      throws IoTDBException, TException, SQLException, IOException, InterruptedException,
+          QueryFilterOptimizationException {
+    final long startTime = System.currentTimeMillis();
+
+    final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
+    final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
+
+    queryCount.incrementAndGet();
+    AUDIT_LOGGER.debug("Session {} execute select into: {}", currSessionId.get(), statement);
+
+    Pair<Integer, Integer> fetchSizeDeduplicatedPathNumPair =
+        getMemoryParametersFromPhysicalPlan(queryPlan, fetchSize);
+    fetchSize = fetchSizeDeduplicatedPathNumPair.left;
+    long queryId =
+        sessionManager.requestQueryId(
+            statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
+
+    tracingManager.writeQueryInfo(queryId, statement, startTime, queryPlan);
+    try {
+      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
+      new SelectIntoTransporter(
+              createQueryDataSet(queryId, queryPlan, fetchSize), selectIntoPlan.getIntoPaths())
+          .execute();
+      return RpcUtils.getTSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS))
+          .setQueryId(queryId);
+    } catch (Exception e) {
+      sessionManager.releaseQueryResourceNoExceptions(queryId);
+      throw e;
+    } finally {
+      queryTimeManager.unRegisterQuery(queryId, queryPlan);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= config.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
+      }
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

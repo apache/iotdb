@@ -116,6 +116,10 @@ public abstract class PhysicalPlan {
     return isQuery;
   }
 
+  public boolean isSelectInto() {
+    return false;
+  }
+
   public Operator.OperatorType getOperatorType() {
     return operatorType;
   }
