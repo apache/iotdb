@@ -39,17 +39,16 @@ public class Test {
         return stop - start;
     }
 
-    public static void main(String[] args) {
-        Runtime.getRuntime().gc();
-        System.setProperty("METRIC_CONF", "C:\\Users\\ncut\\Desktop\\summer\\iotdb\\metrics\\dropwizard-metrics\\src\\main\\oldtest\\resources");
+    public static void main(String[] args) throws InterruptedException {
+        System.setProperty("METRIC_CONF", "path of yml");
         Test test = new Test();
-        String[] tags = new String[10];
+        Integer number = 1000000;
+        Integer tagNumber = 10;
+        String[] tags = new String[tagNumber];
         for(int i = 0; i < tags.length; i ++){
             tags[i] = TAGS[i];
         }
-        Integer number = 1000000;
         long create = test.createMeterInorder(number, tags);
-        //startMemory = Runtime.getRuntime().freeMemory();
         long find = test.createMeterDisorder(number, tags);
 
         StringBuilder stringBuilder = new StringBuilder();

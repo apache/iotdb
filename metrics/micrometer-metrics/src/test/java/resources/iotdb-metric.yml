@@ -23,7 +23,7 @@ enableMetric: true
 # can be multiple reporter, e.g., jmx,prometheus,iotdb
 metricReporterList:
   - jmx
-  - prometheus
+  # - prometheus
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter
@@ -40,7 +40,7 @@ pushPeriodInSecond: 5
 #                                                      #
 ########################################################
 prometheusReporterConfig:
-  prometheusExporterPort: 8099
+  prometheusExporterPort: 9090
 
 ########################################################
 #                                                      #
