@@ -59,7 +59,7 @@ public class Test {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        System.setProperty("METRIC_CONF", "path of yml");
+        System.setProperty("METRIC_CONF", "C:\\Users\\ncut\\Desktop\\summer\\iotdb\\metrics\\dropwizard-metrics\\src\\main\\test\\resources");
         Test test = new Test();
         Integer number = 1000000;
         Integer tagNumber = 10;
