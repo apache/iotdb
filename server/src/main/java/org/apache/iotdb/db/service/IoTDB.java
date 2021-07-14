@@ -163,8 +163,9 @@ public class IoTDB implements IoTDBMBean {
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     logger.info(
-        "After initializing, tsFile threshold is {}, memtableSize is {}",
-        IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold(),
+        "After initializing, sequence tsFile threshold is {}, unsequence tsFile threshold is {}, memtableSize is {}",
+        IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize(),
+        IoTDBDescriptor.getInstance().getConfig().getUnSeqTsFileSize(),
         IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold());
   }
 
