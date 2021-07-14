@@ -90,7 +90,7 @@ public class MetricService {
       metricReporter = new DoNothingMetricReporter();
     } else if (size > 1) {
       logger.warn(
-              "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
+          "detect more than one MetricReporter, will use {}", metricReporter.getClass().getName());
     }
     // do some init work
     metricManager.setReporter(metricReporter);

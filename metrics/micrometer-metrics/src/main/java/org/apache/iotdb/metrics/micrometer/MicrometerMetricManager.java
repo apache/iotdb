@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.binder.jvm.*;
-import io.micrometer.jmx.JmxConfig;
-import io.micrometer.jmx.JmxMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
@@ -32,11 +26,18 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.micrometer.type.*;
+import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.utils.ReporterType;
+
+import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.binder.jvm.*;
+import io.micrometer.jmx.JmxConfig;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +69,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   /**
    * init of manager
+   *
    * @see org.apache.iotdb.metrics.MetricService
    * @return
    */
@@ -75,8 +77,8 @@ public class MicrometerMetricManager implements MetricManager {
   public boolean init() {
     logger.info("micrometer init registry");
     List<String> reporters = metricConfig.getMetricReporterList();
-    for(String report: reporters){
-      if(!startMeterRegistry(report)){
+    for (String report : reporters) {
+      if (!startMeterRegistry(report)) {
         return false;
       }
     }
@@ -85,6 +87,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   /**
    * set reporter to manager
+   *
    * @see org.apache.iotdb.metrics.MetricService
    * @param metricReporter
    */
@@ -390,9 +393,7 @@ public class MicrometerMetricManager implements MetricManager {
     }
   }
 
-  /**
-   * bind default metric to registry(or reporter
-   */
+  /** bind default metric to registry(or reporter */
   private void enableJvmMetrics() {
     if (!isEnable) {
       return;
@@ -477,7 +478,7 @@ public class MicrometerMetricManager implements MetricManager {
     return metricReporter.stop(reporterName);
   }
 
-  private boolean startMeterRegistry(String reporter){
+  private boolean startMeterRegistry(String reporter) {
     switch (ReporterType.get(reporter)) {
       case JMX:
         Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
@@ -496,22 +497,23 @@ public class MicrometerMetricManager implements MetricManager {
 
   /**
    * find registries by name
+   *
    * @param reporterName ReporterType
    * @see ReporterType
    * @return
    */
-  private Set<MeterRegistry> getMeterRegistries(String reporterName){
+  private Set<MeterRegistry> getMeterRegistries(String reporterName) {
     Set<MeterRegistry> meterRegistrySet = new HashSet<>();
-    switch (ReporterType.get(reporterName)){
+    switch (ReporterType.get(reporterName)) {
       case JMX:
-        meterRegistrySet = Metrics.globalRegistry.getRegistries()
-                .stream()
+        meterRegistrySet =
+            Metrics.globalRegistry.getRegistries().stream()
                 .filter(m -> m instanceof JmxMeterRegistry)
                 .collect(Collectors.toSet());
         break;
       case PROMETHEUS:
-        meterRegistrySet = Metrics.globalRegistry.getRegistries()
-                .stream()
+        meterRegistrySet =
+            Metrics.globalRegistry.getRegistries().stream()
                 .filter(m -> m instanceof PrometheusMeterRegistry)
                 .collect(Collectors.toSet());
         break;

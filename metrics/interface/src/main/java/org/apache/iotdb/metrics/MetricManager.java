@@ -28,9 +28,10 @@ import java.util.concurrent.TimeUnit;
 public interface MetricManager {
   /**
    * The following functions will create or get a exist Metric
+   *
    * @param metric: the metric name
-   * @param tags:
-   *    string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
+   * @param tags: string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
+   *     "user1"
    * @return Metric Instance
    */
   Counter getOrCreateCounter(String metric, String... tags);
@@ -115,6 +116,7 @@ public interface MetricManager {
 
   /**
    * stop everything and clear
+   *
    * @return
    */
   boolean stop();

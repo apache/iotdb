@@ -413,8 +413,8 @@ public class DropwizardMetricManager implements MetricManager {
   public boolean init() {
     logger.info("DropWizard init registry");
     List<String> reporters = metricConfig.getMetricReporterList();
-    for(String report: reporters){
-      if(!startReporter(report)){
+    for (String report : reporters) {
+      if (!startReporter(report)) {
         return false;
       }
     }
