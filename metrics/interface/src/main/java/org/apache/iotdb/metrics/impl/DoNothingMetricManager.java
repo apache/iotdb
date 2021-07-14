@@ -158,29 +158,19 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void removeCounter(String metric, String... tags) {
-
-  }
+  public void removeCounter(String metric, String... tags) {}
 
   @Override
-  public void removeGauge(String metric, String... tags) {
-
-  }
+  public void removeGauge(String metric, String... tags) {}
 
   @Override
-  public void removeRate(String metric, String... tags) {
-
-  }
+  public void removeRate(String metric, String... tags) {}
 
   @Override
-  public void removeHistogram(String metric, String... tags) {
-
-  }
+  public void removeHistogram(String metric, String... tags) {}
 
   @Override
-  public void removeTimer(String metric, String... tags) {
-
-  }
+  public void removeTimer(String metric, String... tags) {}
 
   /**
    * stop everything and clear
@@ -203,7 +193,5 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void setReporter(MetricReporter metricReporter) {
-
-  }
+  public void setReporter(MetricReporter metricReporter) {}
 }

@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.jmx.JmxMeterRegistry;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
+
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -48,7 +49,7 @@ public class MicrometerMetricReporter implements MetricReporter {
 
     List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
-      if(!start(reporter)) {
+      if (!start(reporter)) {
         return false;
       }
     }
@@ -74,49 +75,47 @@ public class MicrometerMetricReporter implements MetricReporter {
   }
 
   private void startPrometheusReporter() {
-    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
-            .stream()
+    Set<MeterRegistry> meterRegistrySet =
+        Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
             .collect(Collectors.toSet());
-    if(meterRegistrySet.size() != 1){
+    if (meterRegistrySet.size() != 1) {
       logger.warn("Too many prometheusReporters");
     }
     PrometheusMeterRegistry prometheusMeterRegistry =
-            (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
+        (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
     DisposableServer server =
-      HttpServer.create()
-        .port(
-          Integer.parseInt(
-                  metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
-        .route(
-          routes ->
-            routes.get(
-              "/prometheus",
-              (request, response) ->
-                      response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
-        .bindNow();
+        HttpServer.create()
+            .port(
+                Integer.parseInt(
+                    metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
+            .route(
+                routes ->
+                    routes.get(
+                        "/prometheus",
+                        (request, response) ->
+                            response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
+            .bindNow();
 
     runThread = new Thread(server::onDispose);
     runThread.start();
   }
 
   private void startJmxReporter() {
-    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
-            .stream()
+    Set<MeterRegistry> meterRegistrySet =
+        Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof JmxMeterRegistry)
             .collect(Collectors.toSet());
-    for(MeterRegistry meterRegistry: meterRegistrySet){
+    for (MeterRegistry meterRegistry : meterRegistrySet) {
       ((JmxMeterRegistry) meterRegistry).start();
     }
-
   }
-
 
   @Override
   public boolean stop() {
     List<String> reporters = metricConfig.getMetricReporterList();
     for (String reporter : reporters) {
-      if(!stop(reporter)){
+      if (!stop(reporter)) {
         return false;
       }
     }
@@ -154,11 +153,11 @@ public class MicrometerMetricReporter implements MetricReporter {
   }
 
   private void stopJmxReporter() {
-    Set<MeterRegistry> meterRegistrySet = Metrics.globalRegistry.getRegistries()
-            .stream()
+    Set<MeterRegistry> meterRegistrySet =
+        Metrics.globalRegistry.getRegistries().stream()
             .filter(reporter -> reporter instanceof JmxMeterRegistry)
             .collect(Collectors.toSet());
-    for(MeterRegistry meterRegistry: meterRegistrySet){
+    for (MeterRegistry meterRegistry : meterRegistrySet) {
       ((JmxMeterRegistry) meterRegistry).stop();
     }
   }
