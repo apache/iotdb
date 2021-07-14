@@ -406,4 +406,34 @@ public abstract class Cases {
       }
     }
   }
+
+  @Test
+  public void testApplyClearCache() {
+    String sql = "CLEAR CACHE";
+    try {
+      writeStatement.execute(sql);
+    } catch (SQLException e) {
+      Assert.assertNull(e);
+    }
+  }
+
+  @Test
+  public void testApplyMerge() {
+    String sql = "MERGE";
+    try {
+      writeStatement.execute(sql);
+    } catch (SQLException e) {
+      Assert.assertNull(e);
+    }
+  }
+
+  @Test
+  public void testCreateSnapshot() {
+    String sql = "CREATE SNAPSHOT FOR SCHEMA";
+    try {
+      writeStatement.execute(sql);
+    } catch (SQLException e) {
+      Assert.assertNull(e);
+    }
+  }
 }

@@ -68,7 +68,7 @@ public class MergeResource {
       new HashMap<>(); // is this too waste?
   private Map<IMeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
-  private long timeLowerBound = Long.MIN_VALUE;
+  private long ttlLowerBound = Long.MIN_VALUE;
 
   private boolean cacheDeviceMeta = false;
 
@@ -81,12 +81,12 @@ public class MergeResource {
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(timeLowerBound));
+        && (!res.isClosed() || res.stillLives(ttlLowerBound));
   }
 
   public MergeResource(
-      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long timeLowerBound) {
-    this.timeLowerBound = timeLowerBound;
+      Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, long ttlLowerBound) {
+    this.ttlLowerBound = ttlLowerBound;
     this.seqFiles = seqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
     this.unseqFiles = unseqFiles.stream().filter(this::filterResource).collect(Collectors.toList());
   }

@@ -876,6 +876,14 @@ public class MManagerBasicTest {
     }
 
     assertTrue(allSchema.isEmpty());
+
+    MeasurementMNode[] mNodes =
+        manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s11"});
+    assertNotNull(mNodes[0]);
+    assertEquals(mNodes[0].getSchema(), s11);
+
+    mNodes = manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s100"});
+    assertNull(mNodes[0]);
   }
 
   private CreateTemplatePlan getCreateTemplatePlan() {
@@ -1254,6 +1262,130 @@ public class MManagerBasicTest {
       assertEquals(
           "Cannot get node of children in different aligned timeseries (Path: (s0,s1))",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountTimeseriesWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.createDeviceTemplate(plan);
+
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      manager.createTimeseries(
+          new PartialPath("root.computer.d1.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.computer.d1")).setUseTemplate(true);
+
+      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
+      Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer")));
+      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root")));
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCountDeviceWithTemplate() {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+    measurementList.add(Collections.singletonList("s1"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+    dataTypeList.add(Collections.singletonList(TSDataType.FLOAT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      compressionTypes.add(compressionType);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s0");
+    schemaNames.add("s1");
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypeList,
+            encodingList,
+            compressionTypes);
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.createDeviceTemplate(plan);
+      // set device template
+      SetDeviceTemplatePlan setDeviceTemplatePlan =
+          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop")));
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 

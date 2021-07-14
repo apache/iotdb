@@ -35,10 +35,12 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -52,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
@@ -381,6 +384,15 @@ public abstract class PhysicalPlan {
         case DROP_CONTINUOUS_QUERY:
           plan = new DropContinuousQueryPlan();
           break;
+        case MERGE:
+          plan = new MergePlan();
+          break;
+        case CREATE_SNAPSHOT:
+          plan = new CreateSnapshotPlan();
+          break;
+        case CLEARCACHE:
+          plan = new ClearCachePlan();
+          break;
         case UPDATE_STORAGE_GROUP:
           plan = new UpdateStorageGroupPlan();
           break;
@@ -443,6 +455,9 @@ public abstract class PhysicalPlan {
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
+    MERGE,
+    CREATE_SNAPSHOT,
+    CLEARCACHE,
     UPDATE_STORAGE_GROUP
   }
 
