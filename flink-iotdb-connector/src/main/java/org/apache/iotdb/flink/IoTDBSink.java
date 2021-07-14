@@ -102,7 +102,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
               option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
         } catch (StatementExecutionException e) {
           // path could have been created by the other process here
-          if (e.getStatusCode() != (TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())) {
+          if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
             throw e;
           }
         }
