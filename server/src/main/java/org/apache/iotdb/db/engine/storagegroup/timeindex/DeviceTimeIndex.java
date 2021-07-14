@@ -47,7 +47,6 @@ public class DeviceTimeIndex implements ITimeIndex {
   protected static final Map<String, String> cachedDevicePool =
       CachedStringPool.getInstance().getCachedPool();
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** start times array. */
   protected long[] startTimes;
