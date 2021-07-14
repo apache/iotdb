@@ -67,9 +67,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     this.skippedDevicesSet = new HashSet<>();
   }
 
-  public void renameLevelFilesMods(
+  public static void renameLevelFilesMods(
       Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
-    LOGGER.debug("{} [compaction] merge starts to rename real file's mod", fullStorageGroupName);
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       try (ModificationFile sourceCompactionModificationFile =

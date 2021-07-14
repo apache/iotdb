@@ -1,15 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -33,6 +24,19 @@ import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class CompactionCheckerUtils {
 
   /**
@@ -42,14 +46,23 @@ public class CompactionCheckerUtils {
    * @return All time series and their corresponding data points
    */
   public static Map<String, List<TimeValuePair>> readFiles(List<TsFileResource> tsFileResources)
-      throws IOException {
+      throws IOException, IllegalPathException {
     Map<String, List<TimeValuePair>> result = new HashMap<>();
     for (TsFileResource tsFileResource : tsFileResources) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath())) {
         List<Path> allPaths = reader.getAllPaths();
         for (Path path : allPaths) {
-          List<TimeValuePair> timeValuePairs = new ArrayList<>();
+          List<TimeValuePair> timeValuePairs =
+              result.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
+          List<Modification> seriesModifications = new LinkedList<>();
+
+          for (Modification modification : tsFileResource.getModFile().getModifications()) {
+            if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+              seriesModifications.add(modification);
+            }
+          }
+          modifyChunkMetaData(chunkMetadataList, seriesModifications);
           for (ChunkMetadata chunkMetadata : chunkMetadataList) {
             Chunk chunk = reader.readMemChunk(chunkMetadata);
             ChunkReader chunkReader = new ChunkReader(chunk, null);
@@ -57,11 +70,10 @@ public class CompactionCheckerUtils {
               BatchData batchData = chunkReader.nextPageData();
               BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
               while (batchDataIterator.hasNextTimeValuePair()) {
-                timeValuePairs.add(batchDataIterator.currentTimeValuePair());
+                timeValuePairs.add(batchDataIterator.nextTimeValuePair());
               }
             }
           }
-          result.put(path.getFullPath(), timeValuePairs);
         }
       }
     }

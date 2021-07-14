@@ -1,9 +1,11 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import java.io.File;
-import java.io.IOException;
+import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import java.io.File;
+import java.io.IOException;
 
 public class CompactionClearUtils {
 
@@ -21,6 +23,16 @@ public class CompactionClearUtils {
     File[] mergeFiles = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
     for (File mergeFile : mergeFiles) {
       mergeFile.delete();
+    }
+    File[] compactionLogFiles =
+        FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix("target", CompactionLogger.COMPACTION_LOG_NAME);
+    for (File compactionLogFile : compactionLogFiles) {
+      compactionLogFile.delete();
+    }
+    File[] modsFiles = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".mods");
+    for (File modsFile : modsFiles) {
+      modsFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     FileReaderManager.getInstance().stop();

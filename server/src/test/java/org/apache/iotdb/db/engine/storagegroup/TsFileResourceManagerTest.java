@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.inner;
+package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -34,31 +32,49 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
+public class TsFileResourceManagerTest {
 
   File tempSGDir;
+  private TsFileResourceManager tsFileResourceManager;
+  private List<TsFileResource> seqResources;
+  private List<TsFileResource> unseqResources;
 
-  @Override
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
-    tsFileResourceManager =
-        new TsFileResourceManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileResourceManager = new TsFileResourceManager("test", "0", tempSGDir.getAbsolutePath());
+    seqResources = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      TsFileResource resource = generateTsFileResource(i);
+      seqResources.add(resource);
+    }
+    unseqResources = new ArrayList<>();
+    for (int i = 6; i < 10; i++) {
+      TsFileResource resource = generateTsFileResource(i);
+      unseqResources.add(resource);
+    }
   }
 
-  @Override
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
+  }
+
+  private TsFileResource generateTsFileResource(int id) {
+    File file =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH, id, id, id, id));
+    return new TsFileResource(file);
   }
 
   /** just compaction once */
@@ -68,10 +84,10 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
       tsFileResourceManager.add(tsFileResource, true);
     }
     tsFileResourceManager.addAll(unseqResources, false);
-    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
-    assertEquals(1, tsFileResourceManager.getTsFileList(false).size());
-    assertEquals(6, tsFileResourceManager.size(true));
-    assertEquals(1, tsFileResourceManager.size(false));
+    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(4, tsFileResourceManager.getTsFileList(false).size());
+    assertEquals(5, tsFileResourceManager.size(true));
+    assertEquals(4, tsFileResourceManager.size(false));
     assertTrue(tsFileResourceManager.contains(seqResources.get(0), true));
     assertFalse(
         tsFileResourceManager.contains(
@@ -87,7 +103,6 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
                             + 0
                             + ".tsfile"))),
             false));
-    assertTrue(tsFileResourceManager.contains(seqResources.get(0), false));
     assertFalse(
         tsFileResourceManager.contains(
             new TsFileResource(
@@ -106,7 +121,7 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
     assertFalse(tsFileResourceManager.isEmpty(false));
     tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(true).get(0), true);
     tsFileResourceManager.remove(tsFileResourceManager.getTsFileList(false).get(0), false);
-    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(4, tsFileResourceManager.getTsFileList(true).size());
     tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(false), false);
     assertEquals(0, tsFileResourceManager.getTsFileList(false).size());
     long count = 0;
@@ -115,7 +130,7 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
       iterator.next();
       count++;
     }
-    assertEquals(5, count);
+    assertEquals(4, count);
     tsFileResourceManager.removeAll(tsFileResourceManager.getTsFileList(true), true);
     assertEquals(0, tsFileResourceManager.getTsFileList(true).size());
     assertTrue(tsFileResourceManager.isEmpty(true));
@@ -159,7 +174,7 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
       tsFileResourceManager.add(tsFileResource, true);
     }
     tsFileResourceManager.addAll(seqResources, false);
-    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
 
     Iterator<TsFileResource> tsFileResourceIterator = tsFileResourceManager.getIterator(true);
     tsFileResourceIterator.next();
@@ -168,7 +183,7 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
     } catch (UnsupportedOperationException e) {
       // pass
     }
-    assertEquals(6, tsFileResourceManager.getTsFileList(true).size());
+    assertEquals(5, tsFileResourceManager.getTsFileList(true).size());
 
     TsFileResource tsFileResource1 =
         new TsFileResource(
@@ -215,6 +230,6 @@ public class InnerCompactionTsFileManagementTest extends InnerCompactionTest {
       count++;
       tsFileResourceIterator2.next();
     }
-    assertEquals(9, count);
+    assertEquals(8, count);
   }
 }
