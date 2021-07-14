@@ -405,6 +405,7 @@ public class ClusterUtils {
             minorVersion = storageGroupMNode.getMinorVersion();
             path.setMajorVersion(majorVersion);
             path.setMinorVersion(minorVersion);
+            deletePathList.add(path);
           }
         }
         // replace the to be deleted paths
