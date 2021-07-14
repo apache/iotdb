@@ -90,7 +90,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     try {
       pool.setStorageGroup(options.getStorageGroup());
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != (TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
         throw e;
       }
     }
