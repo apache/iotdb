@@ -385,11 +385,6 @@ public abstract class PhysicalPlan {
         case DROP_CONTINUOUS_QUERY:
           plan = new DropContinuousQueryPlan();
           break;
-        case CREATE_FUNCTION:
-          plan = new CreateFunctionPlan();
-          break;
-        case DROP_FUNCTION:
-          plan = new DropFunctionPlan();
         case MERGE:
           plan = new MergePlan();
           break;
@@ -398,6 +393,12 @@ public abstract class PhysicalPlan {
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
+          break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -458,11 +459,11 @@ public abstract class PhysicalPlan {
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
-    CREATE_FUNCTION,
-    DROP_FUNCTION,
     MERGE,
     CREATE_SNAPSHOT,
-    CLEARCACHE
+    CLEARCACHE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION
   }
 
   public long getIndex() {
