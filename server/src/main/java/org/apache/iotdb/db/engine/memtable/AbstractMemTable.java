@@ -306,7 +306,7 @@ public abstract class AbstractMemTable implements IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema partialVectorSchema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     if (partialVectorSchema.getType() == TSDataType.VECTOR) {
