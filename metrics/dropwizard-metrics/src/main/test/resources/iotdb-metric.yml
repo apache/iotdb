@@ -40,7 +40,7 @@ pushPeriodInSecond: 5
 #                                                      #
 ########################################################
 prometheusReporterConfig:
-  prometheusExporterPort: 8099
+  prometheusExporterPort: 9092
 
 ########################################################
 #                                                      #

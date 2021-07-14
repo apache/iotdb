@@ -1,5 +1,3 @@
-package org.apache.iotdb.metric.micrometer;
-
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
 
@@ -10,7 +8,7 @@ import org.apache.iotdb.metrics.MetricService;
  **/
 
 public class Test {
-    MetricManager metricManager = MetricService.getMetricManager();
+    public MetricManager metricManager = MetricService.getMetricManager();
     private static final String[] TAGS = {"tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"};
 
     private long createMeter(Integer meterNumber, String[] tags){
@@ -19,28 +17,33 @@ public class Test {
             metricManager.getOrCreateCounter("counter" + i, tags);
         }
         long stop = System.currentTimeMillis();
-        System.out.println(stop - start);
         return stop - start;
     }
 
-    public static void main(String[] args) {
-        System.setProperty("METRIC_CONF", "C:\\Users\\ncut\\Desktop\\summer\\iotdb\\metrics\\micrometer-metrics\\src\\test\\java\\resources");
+
+    public static void main(String[] args) throws InterruptedException {
+        System.setProperty("METRIC_CONF", "path of yml");
         Test test = new Test();
-        String[] tags = new String[10];
+        Integer number = 1000000;
+        Integer tagNumber = 10;
+        String[] tags = new String[tagNumber];
         for(int i = 0; i < tags.length; i ++){
             tags[i] = TAGS[i];
         }
-        Integer number = 1000000;
-        long create = test.createMeter(1000000, tags);
-        long find = test.createMeter(100000, tags);
+
+        long create = test.createMeter(number, tags);
+        long find = test.createMeter(number, tags);
 
         StringBuilder stringBuilder = new StringBuilder();
         for(String tag: tags){
             stringBuilder.append(tag + "|");
         }
         System.out.println("In number=" + number + " and tags=" + stringBuilder.toString() + ", create uses " + create + " ms, find uses "+ find + " ms.");
-        while (true){
-
-        }
+//        while (true){
+//            TimeUnit.SECONDS.sleep(1);
+//            Counter count = test.metricManager.getOrCreateCounter("count0", tags);
+//            count.inc();
+//            System.out.println(count.count());
+//        }
     }
 }

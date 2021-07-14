@@ -19,42 +19,24 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import io.netty.util.internal.ConcurrentSet;
+import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.binder.jvm.*;
+import io.micrometer.jmx.JmxConfig;
+import io.micrometer.jmx.JmxMeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.utils.ReporterType;
-
-import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.jmx.JmxConfig;
-import io.micrometer.jmx.JmxMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -519,7 +501,7 @@ public class MicrometerMetricManager implements MetricManager {
    * @return
    */
   private Set<MeterRegistry> getMeterRegistries(String reporterName){
-    Set<MeterRegistry> meterRegistrySet = new ConcurrentSet<>();
+    Set<MeterRegistry> meterRegistrySet = new HashSet<>();
     switch (ReporterType.get(reporterName)){
       case JMX:
         meterRegistrySet = Metrics.globalRegistry.getRegistries()
