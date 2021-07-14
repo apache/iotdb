@@ -289,11 +289,12 @@ public class MLogTxtWriter implements AutoCloseable {
     for (int i = 0; i < plan.getSchemaNames().size(); i++) {
       for (int j = 0; j < plan.getMeasurements().get(i).size(); j++) {
         String measurement;
-        if (plan.getMeasurements().get(i).size() == 1
-            && plan.getMeasurements().get(i).get(j).equals(plan.getSchemaNames().get(i))) {
+        boolean isAligned = false;
+        if (plan.getMeasurements().get(i).size() == 1) {
           measurement = plan.getSchemaNames().get(i);
         } else {
           // for aligned timeseries
+          isAligned = true;
           measurement =
               plan.getSchemaNames().get(i)
                   + TsFileConstant.PATH_SEPARATOR
@@ -304,7 +305,7 @@ public class MLogTxtWriter implements AutoCloseable {
                 "%s,%s,%s,%s,%s,%s,%s",
                 MetadataOperationType.CREATE_TEMPLATE,
                 plan.getName(),
-                0,
+                isAligned ? 1 : 0,
                 measurement,
                 plan.getDataTypes().get(i).get(j).serialize(),
                 plan.getEncodings().get(i).get(j).serialize(),
