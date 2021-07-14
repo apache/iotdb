@@ -29,4 +29,5 @@ public interface MetricReporter {
   boolean stop(String reporter);
 
   String getName();
+
 }

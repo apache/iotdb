@@ -17,16 +17,16 @@ public class Test {
     return stop - start;
   }
 
-  public static void main(String[] args) throws InterruptedException {
-    System.setProperty(
-        "METRIC_CONF", "E:\\iotdb\\metrics\\micrometer-metrics\\src\\test\\java\\resources");
-    Test test = new Test();
-    Integer number = 1000000;
-    Integer tagNumber = 10;
-    String[] tags = new String[tagNumber];
-    for (int i = 0; i < tags.length; i++) {
-      tags[i] = TAGS[i];
-    }
+
+    public static void main(String[] args) throws InterruptedException {
+        System.setProperty("METRIC_CONF", "path of yml");
+        Test test = new Test();
+        Integer number = 1000000;
+        Integer tagNumber = 10;
+        String[] tags = new String[tagNumber];
+        for(int i = 0; i < tags.length; i ++){
+            tags[i] = TAGS[i];
+        }
 
     long create = test.createMeter(number, tags);
     long find = test.createMeter(number, tags);
