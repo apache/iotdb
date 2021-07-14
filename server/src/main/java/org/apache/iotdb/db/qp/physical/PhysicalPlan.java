@@ -348,6 +348,12 @@ public abstract class PhysicalPlan {
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -398,6 +404,8 @@ public abstract class PhysicalPlan {
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION
   }
 
   public long getIndex() {
