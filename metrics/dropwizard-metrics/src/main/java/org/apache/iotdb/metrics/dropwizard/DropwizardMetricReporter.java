@@ -81,10 +81,9 @@ public class DropwizardMetricReporter implements MetricReporter {
             .build();
   }
 
-  public void setDropwizardMetricManager(MetricManager metricManager){
+  public void setDropwizardMetricManager(MetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
-
 
   @Override
   public boolean stop() {
