@@ -62,11 +62,22 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
     // 全部使用默认配置
     session = new Session.Builder.build();
 
-    // 自行配置参数
+    // 指定一个可连接节点
     session = 
         new Session.Builder()
             .host(String host)
             .port(int port)
+            .build();
+
+    // 指定多个可连接节点
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // 其他配置项
+    session = 
+        new Session.Builder()
             .fetchSize(int fetchSize)
             .username(String username)
             .password(String password)

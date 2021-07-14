@@ -1487,12 +1487,12 @@ public class StorageGroupProcessor {
           logicalStorageGroupName + "-" + virtualStorageGroupId);
       return;
     }
-    long timeLowerBound = System.currentTimeMillis() - dataTTL;
+    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: TTL removing files before {}",
           logicalStorageGroupName + "-" + virtualStorageGroupId,
-          new Date(timeLowerBound));
+          new Date(ttlLowerBound));
     }
 
     // copy to avoid concurrent modification of deletion
@@ -1500,17 +1500,17 @@ public class StorageGroupProcessor {
     List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManagement.getTsFileList(false));
 
     for (TsFileResource tsFileResource : seqFiles) {
-      checkFileTTL(tsFileResource, timeLowerBound, true);
+      checkFileTTL(tsFileResource, ttlLowerBound, true);
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      checkFileTTL(tsFileResource, timeLowerBound, false);
+      checkFileTTL(tsFileResource, ttlLowerBound, false);
     }
   }
 
-  private void checkFileTTL(TsFileResource resource, long timeLowerBound, boolean isSeq) {
+  private void checkFileTTL(TsFileResource resource, long ttlLowerBound, boolean isSeq) {
     if (resource.isMerging()
         || !resource.isClosed()
-        || !resource.isDeleted() && resource.stillLives(timeLowerBound)) {
+        || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
       return;
     }
 
@@ -1533,7 +1533,7 @@ public class StorageGroupProcessor {
             logger.info(
                 "Removed a file {} before {} by ttl ({}ms)",
                 resource.getTsFilePath(),
-                new Date(timeLowerBound),
+                new Date(ttlLowerBound),
                 dataTTL);
           }
           tsFileManagement.remove(resource, isSeq);
@@ -1719,9 +1719,9 @@ public class StorageGroupProcessor {
     IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    long timeLowerBound =
+    long ttlLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
+    context.setQueryTimeLowerBound(ttlLowerBound);
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
