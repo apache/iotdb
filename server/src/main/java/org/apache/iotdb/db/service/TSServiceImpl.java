@@ -77,7 +77,6 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.TracingManager;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -174,9 +173,11 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final String INFO_QUERY_PROCESS_ERROR = "Error occurred in query process: ";
   private static final String INFO_NOT_ALLOWED_IN_BATCH_ERROR =
       "The query statement is not allowed in batch: ";
-
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
+
+  public static final TSProtocolVersion CURRENT_RPC_VERSION =
+      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -185,23 +186,18 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final long MS_TO_MONTH = 30 * 86400_000L;
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private final boolean enableMetric = config.isEnableMetricService();
-
-  private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-  protected Planner processor;
-  protected IPlanExecutor executor;
-
-  private SessionManager sessionManager = SessionManager.getInstance();
 
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
+  private final SessionManager sessionManager = SessionManager.getInstance();
 
-  public static final TSProtocolVersion CURRENT_RPC_VERSION =
-      TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
-
+  private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   private static final AtomicInteger queryCount = new AtomicInteger(0);
+  private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+  private final TracingManager tracingManager = TracingManager.getInstance();
 
-  private QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+  protected Planner processor;
+  protected IPlanExecutor executor;
 
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
@@ -733,33 +729,24 @@ public class TSServiceImpl implements TSIService.Iface {
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
     queryCount.incrementAndGet();
-    AUDIT_LOGGER.debug("Session {} execute Query: {}", currSessionId.get(), statement);
+    AUDIT_LOGGER.debug("Session {} execute query: {}", currSessionId.get(), statement);
+
     long startTime = System.currentTimeMillis();
     long queryId = -1;
+
     try {
-
-      // pair.left = fetchSize, pair.right = deduplicatedNum
-      Pair<Integer, Integer> p = getMemoryParametersFromPhysicalPlan(plan, fetchSize);
-      fetchSize = p.left;
-
+      Pair<Integer, Integer> fetchSizeDeduplicatedPathNumPair =
+          getMemoryParametersFromPhysicalPlan(plan, fetchSize);
+      fetchSize = fetchSizeDeduplicatedPathNumPair.left;
       // generate the queryId for the operation
-      queryId = sessionManager.requestQueryId(statementId, true, fetchSize, p.right);
-      // register query info to queryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
-      }
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager tracingManager = TracingManager.getInstance();
-        if (!(plan instanceof AlignByDevicePlan)) {
-          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
-        } else {
-          tracingManager.writeQueryInfo(queryId, statement, startTime);
-        }
-      }
+      queryId =
+          sessionManager.requestQueryId(
+              statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
 
-      if (plan instanceof AuthorPlan) {
-        plan.setLoginUserName(username);
-      }
+      queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
+      tracingManager.writeQueryInfo(queryId, statement, startTime, plan);
+
+      plan.setLoginUserName(username);
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
@@ -823,14 +810,12 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         }
       }
+
       resp.setQueryId(queryId);
 
-      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance()
-            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
-      }
-
-      if (enableMetric) {
+      tracingManager.writePathsNum(queryId, newDataSet);
+      queryTimeManager.unRegisterQuery(queryId, plan);
+      if (config.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
         SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
         synchronized (sqlArgumentList) {
@@ -841,10 +826,6 @@ public class TSServiceImpl implements TSIService.Iface {
         }
       }
 
-      // remove query info in QueryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.unRegisterQuery(queryId);
-      }
       return resp;
     } catch (Exception e) {
       sessionManager.releaseQueryResourceNoExceptions(queryId);

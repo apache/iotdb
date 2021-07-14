@@ -219,7 +219,9 @@ public abstract class PhysicalPlan {
   }
 
   public void setLoginUserName(String loginUserName) {
-    this.loginUserName = loginUserName;
+    if (this instanceof AuthorPlan) {
+      this.loginUserName = loginUserName;
+    }
   }
 
   public static class Factory {
