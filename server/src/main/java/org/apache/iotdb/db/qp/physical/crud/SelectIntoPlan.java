@@ -35,7 +35,7 @@ public class SelectIntoPlan extends PhysicalPlan {
   private List<PartialPath> intoPaths;
 
   public SelectIntoPlan() {
-    super(false, OperatorType.SELECT_INTO);
+    super(true, OperatorType.SELECT_INTO);
   }
 
   public SelectIntoPlan(QueryPlan queryPlan, List<PartialPath> intoPaths) {
