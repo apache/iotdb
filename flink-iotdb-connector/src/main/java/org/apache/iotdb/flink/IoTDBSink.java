@@ -90,15 +90,22 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     try {
       pool.setStorageGroup(options.getStorageGroup());
     } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+      if (e.getStatusCode() != (TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())) {
         throw e;
       }
     }
 
     for (IoTDBSinkOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
       if (!pool.checkTimeseriesExists(option.getPath())) {
-        pool.createTimeseries(
-            option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
+        try {
+          pool.createTimeseries(
+              option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
+        } catch (StatementExecutionException e) {
+          // path could have been created by the other process here
+          if (e.getStatusCode() != (TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())) {
+            throw e;
+          }
+        }
       }
     }
   }
