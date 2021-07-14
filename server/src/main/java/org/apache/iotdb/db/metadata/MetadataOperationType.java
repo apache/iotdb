@@ -35,4 +35,6 @@ public class MetadataOperationType {
   public static final String CHANGE_ALIAS = "13";
   public static final String AUTO_CREATE_DEVICE = "4";
   public static final String CREATE_TEMPLATE = "5";
+  public static final String SET_TEMPLATE = "51";
+  public static final String SET_USING_TEMPLATE = "52";
 }

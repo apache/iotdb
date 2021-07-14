@@ -1,20 +1,16 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
+ * agreements. See the NOTICE file distributed with this work for additional information regarding
+ * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License. You may obtain a
+ * copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 package org.apache.iotdb.db.metadata.logfile;
 
@@ -22,9 +18,11 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -249,14 +247,6 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void autoCreateDeviceMode(String Device) throws IOException {
-    String outputStr =
-        MetadataOperationType.AUTO_CREATE_DEVICE + "," + Device + LINE_SEPARATOR;
-    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
-    channel.write(buff);
-    lineNumber.incrementAndGet();
-  }
-
   public void serializeStorageGroupMNode(StorageGroupMNodePlan plan) throws IOException {
     StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
     s.append(",").append(plan.getName()).append(",");
@@ -268,7 +258,29 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void serializeTemplate(CreateTemplatePlan plan) throws IOException {
+  public void setTemplate(SetDeviceTemplatePlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_TEMPLATE));
+    buf.append(",");
+    buf.append(plan.getTemplateName());
+    buf.append(",");
+    buf.append(plan.getPrefixPath());
+    buf.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void setUsingTemplate(SetUsingDeviceTemplatePlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
+    buf.append(",");
+    buf.append(plan.getPrefixPath());
+    buf.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void createTemplate(CreateTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder();
     for (int i = 0; i < plan.getSchemaNames().size(); i++) {
       for (int j = 0; j < plan.getMeasurements().get(i).size(); j++) {
@@ -291,6 +303,14 @@ public class MLogTxtWriter implements AutoCloseable {
     }
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
+  }
+
+  public void autoCreateDeviceNode(String Device) throws IOException {
+    String outputStr =
+        MetadataOperationType.AUTO_CREATE_DEVICE + "," + Device + LINE_SEPARATOR;
+    ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
   }
 
   int getLineNumber() {
