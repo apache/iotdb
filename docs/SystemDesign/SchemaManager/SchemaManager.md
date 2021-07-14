@@ -288,7 +288,7 @@ Schema operation examples and the corresponding parsed mlog record:
    
     > format: 4,path
 
-* set root.turbine.d1 is using template (after set a template to a prefix path，this log shows a path is using template)
+* set root.turbine.d1 is using template (after set a template to a device path，this log shows the device is using template)
  
     > mlog: 61,root.turbine.d1
    
