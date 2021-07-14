@@ -2183,12 +2183,13 @@ public class MManager {
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
-          throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
+          throw new PathAlreadyExistException(
+              deviceId.getFullPath() + PATH_SEPARATOR + measurement);
         } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
           // empty
         } else {
           if (!config.isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+            throw new PathNotExistException(deviceId.getFullPath() + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
               if (!plan.isAligned()) {

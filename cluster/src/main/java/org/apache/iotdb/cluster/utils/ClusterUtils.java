@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -407,7 +408,7 @@ public class ClusterUtils {
           }
         }
         // replace the to be deleted paths
-        plan.setPaths(deletePathList);
+        ((DeleteStorageGroupPlan) plan).setPaths(deletePathList);
         break;
       case CREATE_TIMESERIES:
         PartialPath partialPath = ((CreateTimeSeriesPlan) plan).getPath();
