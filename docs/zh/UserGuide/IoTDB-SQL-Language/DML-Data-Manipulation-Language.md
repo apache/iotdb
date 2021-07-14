@@ -1247,6 +1247,9 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 | ASIN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#asin(double)                                            |
 | ACOS    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#acos(double)                                            |
 | ATAN    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#atan(double)                                            |
+| SINH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#sinh(double)                                            |
+| COSH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#cosh(double)                                            |
+| TANH    | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#tanh(double)                                            |
 | DEGREES | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toDegrees(double)                                       |
 | RADIANS | INT32 / INT64 / FLOAT / DOUBLE | DOUBLE                   | Math#toRadians(double)                                       |
 | ABS     | INT32 / INT64 / FLOAT / DOUBLE | 与输入序列的实际类型一致 | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
@@ -1551,11 +1554,11 @@ delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
 
-需要注意的是，当删除的路径不存在时，IoTDB会提示路径不存在，无法删除数据，如下所示。
+需要注意的是，当删除的路径不存在时，IoTDB不会提示路径不存在，而是显示执行成功，因为SQL是一种声明式的编程方式，除非是语法错误、权限不足等，否则都不认为是错误，如下所示。
 
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: TimeSeries does not exist and its data cannot be deleted
+Msg: The statement is executed successfully.
 ```
 
 ### 删除时间分区 (实验性功能)

@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -58,8 +59,10 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -110,7 +113,7 @@ public class DataLogApplierTest extends IoTDBTest {
         }
 
         @Override
-        public DataGroupMember getLocalDataMember(Node header, Object request) {
+        public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
           return testDataGroupMember;
         }
 
@@ -175,7 +178,7 @@ public class DataLogApplierTest extends IoTDBTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void getAllPaths(
-                  Node header,
+                  RaftNode header,
                   List<String> path,
                   boolean withAlias,
                   AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -297,7 +300,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
-        "Storage group is not set for current seriesPath: [root.test16]",
+        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
   }
 
@@ -372,5 +375,21 @@ public class DataLogApplierTest extends IoTDBTest {
     applier.apply(log);
     assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
     assertNull(log.getException());
+  }
+
+  @Test
+  public void testApplyClearCache() {
+    ClearCachePlan clearCachePlan = new ClearCachePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(clearCachePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
+  }
+
+  @Test
+  public void testApplyMerge() {
+    MergePlan mergePlan = new MergePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(mergePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
   }
 }

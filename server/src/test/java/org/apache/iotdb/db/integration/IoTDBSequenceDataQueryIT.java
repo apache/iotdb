@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.junit.AfterClass;
@@ -313,6 +314,45 @@ public class IoTDBSequenceDataQueryIT {
       cnt++;
     }
     assertEquals(count, cnt);
+
+    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+  }
+
+  @Test
+  public void readIncorrectTimeFilterTest()
+      throws IllegalPathException, QueryProcessException, StorageEngineException, IOException {
+
+    QueryRouter queryRouter = new QueryRouter();
+    List<PartialPath> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    pathList.add(
+        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(
+        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
+    dataTypes.add(TSDataType.INT32);
+
+    TimeFilter.TimeGt gtRight = TimeFilter.gt(10L);
+    TimeFilter.TimeLt ltLeft = TimeFilter.lt(5L);
+    AndFilter andFilter = new AndFilter(ltLeft, gtRight);
+
+    GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(andFilter);
+    TEST_QUERY_JOB_ID =
+        QueryResourceManager.getInstance().assignQueryId(true, 1024, pathList.size());
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPathsAndUpdate(pathList);
+    queryPlan.setExpression(globalTimeExpression);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
+
+    int cnt = 0;
+    while (queryDataSet.hasNext()) {
+      queryDataSet.next();
+      cnt++;
+    }
+    assertEquals(0, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }

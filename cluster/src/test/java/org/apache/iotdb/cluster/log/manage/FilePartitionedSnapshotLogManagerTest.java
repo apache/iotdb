@@ -41,6 +41,7 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,7 +92,12 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
       PlanExecutor executor = new PlanExecutor();
       executor.processNonQuery(plan);
 
-      manager.takeSnapshot();
+      List<Integer> requireSlots = new ArrayList<>();
+      ((SlotPartitionTable) manager.partitionTable)
+          .getAllNodeSlots()
+          .values()
+          .forEach(requireSlots::addAll);
+      manager.takeSnapshotForSpecificSlots(requireSlots, true);
       PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
       for (int i = 1; i < 4; i++) {
         FileSnapshot fileSnapshot =

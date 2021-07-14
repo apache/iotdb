@@ -250,6 +250,9 @@ Currently IoTDB supports the following mathematical functions. The behavior of t
 | ASIN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#asin(double)                                            |
 | ACOS          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#acos(double)                                            |
 | ATAN          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#atan(double)                                            |
+| SINH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#sinh(double)                                            |
+| COSH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#cosh(double)                                            |
+| TANH          | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#tanh(double)                                            |
 | DEGREES       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toDegrees(double)                                       |
 | RADIANS       | INT32 / INT64 / FLOAT / DOUBLE  | DOUBLE                        | Math#toRadians(double)                                       |
 | ABS           | INT32 / INT64 / FLOAT / DOUBLE  | Same type as the input series | Math#abs(int) / Math#abs(long) /Math#abs(float) /Math#abs(double) |
@@ -1562,11 +1565,10 @@ or
 ```
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
-It should be noted that when the deleted path does not exist, IoTDB will give the corresponding error prompt as shown below:
-
+It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: TimeSeries does not exist and its data cannot be deleted
+Msg: The statement is executed successfully.
 ```
 
 ### Delete Time Partition (experimental)

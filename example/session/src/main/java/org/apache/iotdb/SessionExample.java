@@ -53,7 +53,8 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session(LOCAL_HOST, 6667, "root", "root");
+    session =
+        new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
     session.open(false);
 
     // set session fetchSize
@@ -73,6 +74,7 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
+    createAndDropContinuousQueries();
     nonQuery();
     query();
     queryWithTimeout();
@@ -94,6 +96,26 @@ public class SessionExample {
     query4Redirect();
     sessionEnableRedirect.close();
     session.close();
+  }
+
+  private static void createAndDropContinuousQueries()
+      throws StatementExecutionException, IoTDBConnectionException {
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq1 "
+            + "BEGIN SELECT max_value(s1) INTO temperature_max FROM root.sg1.* "
+            + "GROUP BY time(10s) END");
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq2 "
+            + "BEGIN SELECT count(s2) INTO temperature_cnt FROM root.sg1.* "
+            + "GROUP BY time(10s), level=1 END");
+    session.executeNonQueryStatement(
+        "CREATE CONTINUOUS QUERY cq3 "
+            + "RESAMPLE EVERY 20s FOR 20s "
+            + "BEGIN SELECT avg(s3) INTO temperature_avg FROM root.sg1.* "
+            + "GROUP BY time(10s), level=1 END");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq1");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq2");
+    session.executeNonQueryStatement("DROP CONTINUOUS QUERY cq3");
   }
 
   private static void createTimeseries()
@@ -301,6 +323,7 @@ public class SessionExample {
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
+        typesList.clear();
         timestamps.clear();
       }
     }
@@ -643,5 +666,15 @@ public class SessionExample {
   private static void setTimeout() throws StatementExecutionException {
     Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
     tempSession.setTimeout(60000);
+  }
+
+  private static void createClusterSession() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    Session clusterSession = new Session(nodeList, "root", "root");
+    clusterSession.open();
+    clusterSession.close();
   }
 }

@@ -34,6 +34,7 @@ public class DescReadWriteBatchData extends DescReadBatchData {
 
   public DescReadWriteBatchData(TSDataType dataType) {
     super();
+    this.batchDataType = BatchDataType.DescReadWrite;
     this.dataType = dataType;
     this.readCurListIndex = 0;
     this.readCurArrayIndex = 0;

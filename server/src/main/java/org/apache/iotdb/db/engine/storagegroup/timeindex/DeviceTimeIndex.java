@@ -88,12 +88,17 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
+    Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(deviceName, k -> k), index);
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
+    deviceToIndex = stringMemoryReducedMap;
   }
 
   @Override
@@ -164,13 +169,13 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
+  public boolean stillLives(long ttlLowerBound) {
+    if (ttlLowerBound == Long.MAX_VALUE) {
       return true;
     }
     for (long endTime : endTimes) {
       // the file cannot be deleted if any device still lives
-      if (endTime >= timeLowerBound) {
+      if (endTime >= ttlLowerBound) {
         return true;
       }
     }

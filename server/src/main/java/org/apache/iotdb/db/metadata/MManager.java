@@ -55,9 +55,11 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
@@ -67,7 +69,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
-import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -132,8 +133,6 @@ public class MManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
-  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
-
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
@@ -154,10 +153,6 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
-  // reported total series number
-  private long reportedDataTypeTotalNum;
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -256,7 +251,6 @@ public class MManager {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
-    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -299,6 +293,7 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
+
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -313,6 +308,7 @@ public class MManager {
             "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
+
     return idx;
   }
 
@@ -333,8 +329,6 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNumMap.clear();
-      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -406,6 +400,14 @@ public class MManager {
     }
   }
 
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+    logWriter.createContinuousQuery(plan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+    logWriter.dropContinuousQuery(plan);
+  }
+
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
   }
@@ -467,7 +469,6 @@ public class MManager {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
       }
-      updateSchemaDataTypeNumMap(type, 1);
 
       // write log
       if (!isRecovering) {
@@ -558,9 +559,6 @@ public class MManager {
       if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
-      }
-      for (TSDataType type : dataTypes) {
-        updateSchemaDataTypeNumMap(type, 1);
       }
       // write log
       if (!isRecovering) {
@@ -689,18 +687,11 @@ public class MManager {
     int timeseriesNum = 0;
     if (schema instanceof MeasurementSchema) {
       removeFromTagInvertedIndex(pair.right);
-      updateSchemaDataTypeNumMap(schema.getType(), -1);
       timeseriesNum = 1;
     } else if (schema instanceof VectorMeasurementSchema) {
-      for (TSDataType dataType : schema.getValueTSDataTypeList()) {
-        updateSchemaDataTypeNumMap(dataType, -1);
-        timeseriesNum++;
-      }
+      timeseriesNum += schema.getValueTSDataTypeList().size();
     }
     PartialPath storageGroupPath = pair.left;
-
-    // update statistics in schemaDataTypeNumMap
-    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
 
     // drop trigger with no exceptions
     TriggerEngine.drop(pair.right);
@@ -756,8 +747,6 @@ public class MManager {
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
-          // update statistics in schemaDataTypeNumMap
-          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
         // drop triggers with no exceptions
@@ -774,31 +763,6 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
-    }
-  }
-
-  /**
-   * update statistics in schemaDataTypeNumMap
-   *
-   * @param type data type
-   * @param num 1 for creating timeseries and -1 for deleting timeseries
-   */
-  private synchronized void updateSchemaDataTypeNumMap(TSDataType type, int num) {
-    // add an array of the series type
-    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
-    // add an array of time
-    schemaDataTypeNumMap.put(
-        TSDataType.INT64, schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
-
-    // total current DataType Total Num (twice of number of time series)
-    // used in primitive array manager
-    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
-
-    if (num > 0
-        && currentDataTypeTotalNum - reportedDataTypeTotalNum
-            >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
-      reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
 
@@ -840,10 +804,13 @@ public class MManager {
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    MNode deviceNode = getNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
-      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
+      try {
+        mNodes[i] = (MeasurementMNode) getNodeByPath(deviceId.concatNode(measurements[i]));
+      } catch (PathNotExistException ignored) {
+        logger.warn("{} does not exist in {}", measurements[i], deviceId);
+      }
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
@@ -1145,6 +1112,11 @@ public class MManager {
       throws MetadataException {
     MNode deviceMNode = getDeviceNode(device);
     MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    if (measurementMNode == null) {
+      // Just for the initial adaptation of the template functionality and merge functionality
+      // The getSeriesSchema interface needs to be cleaned up later
+      return getSeriesSchema(device.concatNode(measurement));
+    }
     return measurementMNode.getSchema();
   }
 
