@@ -44,6 +44,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -57,14 +58,12 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
-      List<PartialPath> paths, String aggregation) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, aggregation);
-  }
-
-  @Override
   public List<TSDataType> getSeriesTypes(List<PartialPath> paths) throws MetadataException {
-    return getCMManager().getSeriesTypesByPaths(paths, null).left;
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (PartialPath path : paths) {
+      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+    }
+    return dataTypes;
   }
 
   @Override

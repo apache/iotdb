@@ -262,20 +262,6 @@ public class ClientServer extends TSServiceImpl {
   }
 
   /**
-   * Get the data types of each path in “paths”. If "aggregation" is not null, all "paths" will use
-   * this aggregation.
-   *
-   * @param paths full timeseries paths
-   * @param aggregation if not null, it means "paths" all use this aggregation
-   * @return the data types of "paths" (using the aggregation)
-   * @throws MetadataException
-   */
-  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
-      throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPaths(paths, aggregation).left;
-  }
-
-  /**
    * Generate and cache a QueryContext using "queryId". In the distributed version, the QueryContext
    * is a RemoteQueryContext.
    *

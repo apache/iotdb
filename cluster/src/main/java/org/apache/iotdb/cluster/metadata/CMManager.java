@@ -943,42 +943,6 @@ public class CMManager extends MManager {
   }
 
   /**
-   * Get the data types of "paths". If "aggregation" is not null, every path will use the
-   * aggregation. First get types locally and if some paths does not exists, pull them from other
-   * nodes.
-   *
-   * @return the left one of the pair is the column types (considering aggregation), the right one
-   *     of the pair is the measurement types (not considering aggregation)
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(
-      List<PartialPath> pathStrs, String aggregation) throws MetadataException {
-    try {
-      return getSeriesTypesByPathsLocally(pathStrs, aggregation);
-    } catch (PathNotExistException e) {
-      // pull schemas remotely and cache them
-      metaPuller.pullTimeSeriesSchemas(pathStrs, null);
-      return getSeriesTypesByPathsLocally(pathStrs, aggregation);
-    }
-  }
-
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathsLocally(
-      List<PartialPath> pathStrs, String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes =
-        SchemaUtils.getSeriesTypesByPaths(pathStrs, (String) null);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregation == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes =
-          SchemaUtils.getAggregatedDataTypes(measurementDataTypes, aggregation);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
-    }
-  }
-
-  /**
    * Get the data types of "paths". If "aggregations" is not null, each one of it correspond to one
    * in "paths". First get types locally and if some paths does not exists, pull them from other
    * nodes.
