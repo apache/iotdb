@@ -2276,53 +2276,38 @@ public class StorageGroupProcessor {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
-      //      if (insertPos == POS_ALREADY_EXIST) {
-      //        return;
-      //      }
+      String newFileName, renameInfo;
+      LoadTsFileType tsFileType;
 
       // loading tsfile by type
       if (insertPos == POS_OVERLAP) {
-        String newFileName =
+        newFileName =
             getFileNameForUnSequenceLoadingFile(
                 tsfileToBeInserted.getName(), newTsFileResource.getTimePartition());
-        if (!newFileName.equals(tsfileToBeInserted.getName())) {
-          logger.info(
-              "Tsfile {} must be renamed to {} for loading into the sequence list.",
-              tsfileToBeInserted.getName(),
-              newFileName);
-          newTsFileResource.setFile(
-              fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
-        }
-        loadTsFileByType(
-            LoadTsFileType.LOAD_UNSEQUENCE,
-            tsfileToBeInserted,
-            newTsFileResource,
-            newFilePartitionId);
+        renameInfo = "unsequence";
+        tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
       } else {
 
         // check whether the file name needs to be renamed.
-        //        if (!tsFileManagement.isEmpty(true)) {
-        String newFileName =
+        newFileName =
             getFileNameForSequenceLoadingFile(
                 tsfileToBeInserted.getName(),
                 insertPos,
                 newTsFileResource.getTimePartition(),
                 sequenceList);
-        if (!newFileName.equals(tsfileToBeInserted.getName())) {
-          logger.info(
-              "Tsfile {} must be renamed to {} for loading into the sequence list.",
-              tsfileToBeInserted.getName(),
-              newFileName);
-          newTsFileResource.setFile(
-              fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
-        }
-        //        }
-        loadTsFileByType(
-            LoadTsFileType.LOAD_SEQUENCE,
-            tsfileToBeInserted,
-            newTsFileResource,
-            newFilePartitionId);
+        renameInfo = "sequence";
+        tsFileType = LoadTsFileType.LOAD_SEQUENCE;
       }
+
+      if (!newFileName.equals(tsfileToBeInserted.getName())) {
+        logger.info(
+            "Tsfile {} must be renamed to {} for loading into the " + renameInfo + " list.",
+            tsfileToBeInserted.getName(),
+            newFileName);
+        newTsFileResource.setFile(
+            fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
+      }
+      loadTsFileByType(tsFileType, tsfileToBeInserted, newTsFileResource, newFilePartitionId);
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
       // update latest time map
@@ -2371,7 +2356,6 @@ public class StorageGroupProcessor {
       TsFileResource newTsFileResource,
       long newFilePartitionId,
       List<TsFileResource> sequenceList) {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
 
     int insertPos = -1;
 
@@ -2379,10 +2363,6 @@ public class StorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
       long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-      //      if (localPartitionId == newFilePartitionId
-      //          && localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
-      //        return POS_ALREADY_EXIST;
-      //      }
 
       if (i == sequenceList.size() - 1 && localFile.endTimeEmpty()
           || newFilePartitionId > localPartitionId) {
@@ -2570,29 +2550,14 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-      //      if (preTime < currentTsFileTime) {
-      //        return tsfileName;
-      //      } else {
-      //        return getNewTsFileName(timePartitionId);
-      //      }
-      //      subsequenceTime = preTime + 2;
       subsequenceTime = (preTime <= currentTsFileTime) ? currentTsFileTime : preTime + 2;
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
       subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
     }
 
-    //    String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
-    //    long subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
-    //    long subsequenceVersion = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
-    //    if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
-    //      return tsfileName;
-    //    }
-
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
-    //    return TsFileResource.getNewTsFileName(
-    //        preTime + ((subsequenceTime - preTime) >> 1), version, 0, 0);
     return TsFileResource.getNewTsFileName(
         (currentTsFileTime >= preTime && currentTsFileTime <= subsequenceTime)
             ? currentTsFileTime
