@@ -304,7 +304,7 @@ public class MLogTxtWriter implements AutoCloseable {
                 "%s,%s,%s,%s,%s,%s,%s",
                 MetadataOperationType.CREATE_TEMPLATE,
                 plan.getName(),
-                false,
+                0,
                 measurement,
                 plan.getDataTypes().get(i).get(j).serialize(),
                 plan.getEncodings().get(i).get(j).serialize(),
