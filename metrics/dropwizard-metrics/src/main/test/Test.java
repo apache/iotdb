@@ -19,61 +19,158 @@
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
-import java.util.Random;
-/**
- * @Author stormbroken
- * Create by 2021/07/13
- * @Version 1.0
- **/
+
+import java.util.*;
 
 public class Test {
-    MetricManager metricManager = MetricService.getMetricManager();
-    private static final String[] TAGS = {"tag1", "tag2", "tag3", "tag4", "tag5", "tag6", "tag7", "tag8", "tag9", "tag10"};
+    private Integer metricNumberTotal;
+    private Integer metricNameNumberLength;
+    private Integer tagTotalNumber;
+    private Integer tagSingleNumber;
+    private Integer searchNumber;
+    private String[] TAGS;
+    private static Random random = new Random(43);
+    private static MetricManager metricManager = MetricService.getMetricManager();
+    private static Map<String, String[]> name2Tags = new HashMap<>();
 
-    private long createMeterInorder(Integer meterNumber, String[] tags){
-        long startMemory = Runtime.getRuntime().freeMemory();
-        long start = System.currentTimeMillis();
-        for(int i = 0; i < meterNumber; i ++){
-            metricManager.getOrCreateCounter("counter" + i, tags);
+    /**
+     *
+     * @param metricNumber
+     * @param tagTotalNumber
+     * @param tagSingleNumber
+     * @param searchNumber
+     */
+    Test(Integer metricNumber, Integer tagTotalNumber, Integer tagSingleNumber
+            , Integer searchNumber){
+        this.metricNumberTotal = metricNumber;
+        this.metricNameNumberLength = String.valueOf(metricNumberTotal).length();
+        this.tagTotalNumber = tagTotalNumber;
+        this.tagSingleNumber = tagSingleNumber;
+        this.searchNumber = searchNumber;
+        TAGS = new String[tagTotalNumber];
+        for(int i = 0; i < tagTotalNumber; i++){
+            TAGS[i] = initTag(i);
         }
-        long stopMemory = Runtime.getRuntime().freeMemory();
-        System.out.println((startMemory - stopMemory));
+    }
+
+    /**
+     * generate tags for metric
+     * @param number
+     * @return
+     */
+    private String initTag(Integer number){
+        StringBuilder stringBuilder = new StringBuilder(String.valueOf(number));
+        while(stringBuilder.length() < 3){
+            stringBuilder.insert(0, '0');
+        }
+        stringBuilder.insert(0, "Tag");
+        return stringBuilder.toString();
+    }
+
+    /**
+     * generate name for metric
+     * @param number
+     * @return
+     */
+    private String generateName(Integer number){
+        StringBuilder stringBuilder = new StringBuilder(String.valueOf(number));
+        Integer length = String.valueOf(metricNumberTotal).length();
+        while(stringBuilder.length() < metricNameNumberLength){
+            stringBuilder.insert(0, '0');
+        }
+        stringBuilder.insert(0, "counter");
+        return stringBuilder.toString();
+    }
+
+    /**
+     * generate tags of a metric
+     * @return
+     */
+    private String[] generateTags(){
+        List<Integer> targets = new ArrayList<>();
+        while(targets.size() < tagSingleNumber){
+            Integer target = generateRandom(tagTotalNumber);
+            if(!targets.contains(target)){
+                targets.add(target);
+            }
+        }
+        String[] tags = new String[tagSingleNumber];
+        for(int i = 0; i < tagSingleNumber; i++){
+            tags[i] = TAGS[targets.get(i)];
+        }
+        return tags;
+    }
+
+    /**
+     * generate next int
+     * @param max
+     * @return
+     */
+    private Integer generateRandom(Integer max){
+        return random.nextInt(max);
+    }
+
+    /**
+     * create metric in order
+     * @return
+     */
+    public long createMetricInorder(){
+        long total = 0;
+        for(int i = 0; i < metricNumberTotal; i++){
+            String name = generateName(i);
+            String[] tags = generateTags();
+            long start = System.currentTimeMillis();
+            metricManager.getOrCreateCounter(name, tags);
+            long stop = System.currentTimeMillis();
+            total += (stop - start);
+            name2Tags.put(name, tags);
+        }
+        return total;
+    }
+
+    /**
+     * search metric in order
+     * @return
+     */
+    public long searchMetricInorder(){
+        long total = 0;
+        for(int i = 0; i < searchNumber; i++){
+            total += searchOne(i);
+        }
+        return total;
+    }
+
+    /**
+     * search metric in random way
+     * @return
+     */
+    public long searchMetricDisorder(){
+        long total = 0;
+        for(int i = 0; i < searchNumber; i++){
+            total += searchOne(generateRandom(metricNumberTotal - 1));
+        }
+        return total;
+    }
+
+    private long searchOne(Integer target) {
+        String name = generateName(target % metricNumberTotal);
+        String[] tags = name2Tags.get(name);
+        long start = System.currentTimeMillis();
+        metricManager.getOrCreateCounter(name, tags);
         long stop = System.currentTimeMillis();
-        System.out.println(stop - start);
         return stop - start;
     }
 
-    private long createMeterDisorder(Integer meterNumber, String[] tags){
-        long startMemory = Runtime.getRuntime().totalMemory();
-        Random rand = new Random();
-        long start = System.currentTimeMillis();
-        for(int i = 0; i < meterNumber; i ++){
-            int randint = rand.nextInt(meterNumber);
-            metricManager.getOrCreateCounter("counter" + randint, tags);
-        }
-        long stopMemory = Runtime.getRuntime().freeMemory();
-        System.out.println((startMemory - stopMemory));
-        long stop = System.currentTimeMillis();
-        System.out.println(stop - start);
-        return stop - start;
+    @Override
+    public String toString() {
+        return metricNumberTotal +
+                "," + tagTotalNumber +
+                "," + tagSingleNumber +
+                "," + searchNumber;
     }
 
-    public static void main(String[] args) throws InterruptedException {
-        System.setProperty("METRIC_CONF", "path of yml");
-        Test test = new Test();
-        Integer number = 1000000;
-        Integer tagNumber = 10;
-        String[] tags = new String[tagNumber];
-        for(int i = 0; i < tags.length; i ++){
-            tags[i] = TAGS[i];
-        }
-        long create = test.createMeterInorder(number, tags);
-        long find = test.createMeterDisorder(number, tags);
-
-        StringBuilder stringBuilder = new StringBuilder();
-        for(String tag: tags){
-            stringBuilder.append(tag + "|");
-        }
-        System.out.println("In number=" + number + " and tags=" + stringBuilder.toString() + ", create uses " + create + " ms, find uses "+ find + " ms.");
+    public void stop(){
+        name2Tags.clear();
+        metricManager.stop();
     }
 }
