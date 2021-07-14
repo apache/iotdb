@@ -59,7 +59,7 @@ import java.util.concurrent.TimeUnit;
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
  */
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class W_DropwizardMetricManager implements MetricManager {
+public class DropwizardMetricManager implements MetricManager {
 
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricManager.class);
 
@@ -439,7 +439,7 @@ public class W_DropwizardMetricManager implements MetricManager {
   @Override
   public void setReporter(MetricReporter metricReporter) {
     this.metricReporter = metricReporter;
-    ((DropwizardMetricReporter)metricReporter).setDropwizardMetricManager(this);
+    ((DropwizardMetricReporter) metricReporter).setDropwizardMetricManager(this);
   }
 
   @Override
