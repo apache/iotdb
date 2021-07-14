@@ -1186,6 +1186,10 @@ public class SessionPool {
     return fetchSize;
   }
 
+  public ZoneId getZoneId() {
+    return zoneId;
+  }
+
   public long getTimeout() {
     return timeout;
   }
@@ -1237,6 +1241,11 @@ public class SessionPool {
 
     public Builder fetchSize(int fetchSize) {
       this.fetchSize = fetchSize;
+      return this;
+    }
+
+    public Builder zoneId(ZoneId zoneId) {
+      this.zoneId = zoneId;
       return this;
     }
 
