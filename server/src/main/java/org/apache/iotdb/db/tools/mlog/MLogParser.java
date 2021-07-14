@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.tools.mlog;
 
-import org.apache.iotdb.db.metadata.MLogTxtWriter;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -200,6 +201,7 @@ public class MLogParser {
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
             break;
           case CREATE_TEMPLATE:
+            mLogTxtWriter.serializeTemplate((CreateTemplatePlan) plan);
             break;
           case SET_DEVICE_TEMPLATE:
             break;
