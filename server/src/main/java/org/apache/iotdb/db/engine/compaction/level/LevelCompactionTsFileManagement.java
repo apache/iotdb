@@ -533,6 +533,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           } finally {
             writeUnlock();
           }
+          for (TsFileResource tsFileResource : sourceTsFileResources) {
+            logger.error(
+                "{} recover storage group delete source file {}",
+                storageGroupName,
+                tsFileResource.getTsFile().getName());
+          }
           deleteLevelFilesInDisk(sourceTsFileResources);
           renameLevelFilesMods(modifications, sourceTsFileResources, targetResource);
         }
@@ -879,6 +885,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         if (targetFilePath != null) {
           File targetFile = new File(targetFilePath);
           if (targetFile.exists()) {
+            logger.error(
+                "{} restore delete target file {} ", storageGroupName, targetFile.getName());
             targetFile.delete();
           }
         }
