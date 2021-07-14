@@ -27,6 +27,9 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,6 +46,8 @@ public class DeviceTimeIndex implements ITimeIndex {
 
   protected static final Map<String, String> cachedDevicePool =
       CachedStringPool.getInstance().getCachedPool();
+
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
   /** start times array. */
   protected long[] startTimes;
@@ -296,5 +301,14 @@ public class DeviceTimeIndex implements ITimeIndex {
       return Long.MIN_VALUE;
     }
     return endTimes[deviceToIndex.get(deviceId)];
+  }
+
+  @Override
+  public boolean checkDeviceIdExist(String deviceId) {
+    if (!deviceToIndex.containsKey(deviceId)) {
+      return false;
+    } else {
+      return true;
+    }
   }
 }

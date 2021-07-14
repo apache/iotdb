@@ -630,7 +630,7 @@ public class TsFileResource {
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!getDevices().contains(deviceId)) {
+    if (!timeIndex.checkDeviceIdExist(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);

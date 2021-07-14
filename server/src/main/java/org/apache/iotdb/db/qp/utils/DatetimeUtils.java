@@ -33,6 +33,7 @@ import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
+import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
 public class DatetimeUtils {
@@ -583,6 +584,9 @@ public class DatetimeUtils {
           res *= 30 * 86_400_000L;
         } else {
           Calendar calendar = Calendar.getInstance();
+          TimeZone tz = TimeZone.getTimeZone("GMT+8");
+          //          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+          calendar.setTimeZone(tz);
           calendar.setTimeInMillis(currentTime);
           calendar.add(Calendar.MONTH, (int) (value));
           res = calendar.getTimeInMillis() - currentTime;

@@ -147,4 +147,12 @@ public interface ITimeIndex {
    * @return end time
    */
   long getEndTime(String deviceId);
+
+  /**
+   * check whether deviceId exists in device set
+   *
+   * @param deviceId device name
+   * @return true if the deviceId exists in device set, otherwise false.
+   */
+  boolean checkDeviceIdExist(String deviceId);
 }
