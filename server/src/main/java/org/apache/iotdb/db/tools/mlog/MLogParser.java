@@ -212,7 +212,8 @@ public class MLogParser {
             mLogTxtWriter.setUsingTemplate((SetUsingDeviceTemplatePlan) plan);
             break;
           case AUTO_CREATE_DEVICE_MNODE:
-            mLogTxtWriter.autoCreateDeviceNode(((AutoCreateDeviceMNodePlan) plan).getPath().getFullPath());
+            mLogTxtWriter.autoCreateDeviceNode(
+                ((AutoCreateDeviceMNodePlan) plan).getPath().getFullPath());
             break;
           default:
             logger.warn("unknown plan {}", plan);

@@ -1,16 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
- * agreements. See the NOTICE file distributed with this work for additional information regarding
- * copyright ownership. The ASF licenses this file to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License. You may obtain a
- * copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.metadata.logfile;
 
@@ -290,13 +294,21 @@ public class MLogTxtWriter implements AutoCloseable {
           measurement = plan.getSchemaNames().get(i);
         } else {
           // for aligned timeseries
-          measurement = plan.getSchemaNames().get(i) + TsFileConstant.PATH_SEPARATOR
-              + plan.getMeasurements().get(i).get(j);
+          measurement =
+              plan.getSchemaNames().get(i)
+                  + TsFileConstant.PATH_SEPARATOR
+                  + plan.getMeasurements().get(i).get(j);
         }
-        buf.append(String.format("%s,%s,%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TEMPLATE,
-            plan.getName(), false, measurement, plan.getDataTypes().get(i).get(j).serialize(),
-            plan.getEncodings().get(i).get(j).serialize(),
-            plan.getCompressors().get(i).serialize()));
+        buf.append(
+            String.format(
+                "%s,%s,%s,%s,%s,%s,%s",
+                MetadataOperationType.CREATE_TEMPLATE,
+                plan.getName(),
+                false,
+                measurement,
+                plan.getDataTypes().get(i).get(j).serialize(),
+                plan.getEncodings().get(i).get(j).serialize(),
+                plan.getCompressors().get(i).serialize()));
         buf.append(LINE_SEPARATOR);
         lineNumber.incrementAndGet();
       }
@@ -306,8 +318,7 @@ public class MLogTxtWriter implements AutoCloseable {
   }
 
   public void autoCreateDeviceNode(String Device) throws IOException {
-    String outputStr =
-        MetadataOperationType.AUTO_CREATE_DEVICE + "," + Device + LINE_SEPARATOR;
+    String outputStr = MetadataOperationType.AUTO_CREATE_DEVICE + "," + Device + LINE_SEPARATOR;
     ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
     channel.write(buff);
     lineNumber.incrementAndGet();
