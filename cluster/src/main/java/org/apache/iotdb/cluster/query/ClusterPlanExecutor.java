@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -639,12 +640,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
   }
 
-  @Override
   /**
    * the deleteStorageGroupPlan.getPaths() are all storage group paths, it have been processed in
    * the {@link org.apache.iotdb.cluster.utils.ClusterUtils#setVersionForSpecialPlan(PhysicalPlan,
    * long)}
    */
+  @Override
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
     AUDIT_LOGGER.info("delete storage group {}", deleteStorageGroupPlan.getPaths());
@@ -654,5 +655,23 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throw new QueryProcessException(e);
     }
     return true;
+  }
+
+  @Override
+  protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
+      throws QueryProcessException {
+    AUDIT_LOGGER.info("delete timeseries {}", deleteTimeSeriesPlan.getPaths());
+    List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
+    for (PartialPath path : deletePathList) {
+      try {
+        IoTDB.metaManager.checkAndUpdateStorageGroupVersion(path);
+      } catch (MetadataException e) {
+        logger.warn(
+            "some error occurred when check the storage group version, plan={}",
+            deleteTimeSeriesPlan,
+            e);
+      }
+    }
+    return super.deleteTimeSeries(deleteTimeSeriesPlan);
   }
 }
