@@ -43,10 +43,9 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
   public static TVListAllocator getInstance() {
     return InstanceHolder.INSTANCE;
   }
-
+  
   private static class InstanceHolder {
     private static final TVListAllocator INSTANCE = new TVListAllocator();
-
     private InstanceHolder() {};
   }
 

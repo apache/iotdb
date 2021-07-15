@@ -45,10 +45,9 @@ public class UpgradeSevice implements IService {
   public static UpgradeSevice getINSTANCE() {
     return InstanceHolder.INSTANCE;
   }
-
+  
   private static class InstanceHolder {
     private static final UpgradeSevice INSTANCE = new UpgradeSevice();
-
     private InstanceHolder() {};
   }
 
