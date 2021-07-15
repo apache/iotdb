@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -34,5 +36,10 @@ public class CompactionThreadPool extends ThreadPoolExecutor {
         TimeUnit.MILLISECONDS,
         new LinkedBlockingQueue<>(),
         threadFactory);
+  }
+
+  @Override
+  protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+    return (RunnableFuture<T>) new CompactionFuture(callable);
   }
 }
