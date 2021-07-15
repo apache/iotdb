@@ -784,13 +784,13 @@ public class MTreeTest {
     try {
       // mtree doesn't support nested timeseries which means MeasurementMNode is leaf of the tree.
       root.createTimeseries(
-              new PartialPath("root.sg1.a.b"),
-              TSDataType.INT32,
-              TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap(),
-              null);
-    }catch (PathAlreadyExistException e){
+          new PartialPath("root.sg1.a.b"),
+          TSDataType.INT32,
+          TSEncoding.RLE,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap(),
+          null);
+    } catch (PathAlreadyExistException e) {
       assertEquals("Path [root.sg1.a.b] already exist", e.getMessage());
     }
 

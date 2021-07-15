@@ -235,8 +235,9 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        if(cur.isUseTemplate()&&upperTemplate.hasSchema(childName)){
-          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(childName).getFullPath());
+        if (cur.isUseTemplate() && upperTemplate.hasSchema(childName)) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(childName).getFullPath());
         }
         cur.addChild(childName, new MNode(cur, childName));
       }
@@ -265,17 +266,16 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-
-      if(cur.hasChild(leafName)){
+      if (cur.hasChild(leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
-      if(alias!=null&&cur.hasChild(alias)){
+      if (alias != null && cur.hasChild(alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
       MeasurementMNode measurementMNode =
-              new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
+          new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       cur.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
       if (alias != null) {
@@ -339,7 +339,7 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if(cur.hasChild(leafName)){
+      if (cur.hasChild(leafName)) {
         throw new PathAlreadyExistException(devicePath.getFullPath() + "." + leafName);
       }
 
@@ -358,7 +358,6 @@ public class MTree implements Serializable {
                   compressor),
               null);
       cur.addChild(leafName, measurementMNode);
-
     }
   }
 
@@ -432,8 +431,9 @@ public class MTree implements Serializable {
     Template upperTemplate = cur.getDeviceTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
-        if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
-          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
         if (i == sgLevel) {
           cur.addChild(
@@ -465,18 +465,19 @@ public class MTree implements Serializable {
     }
     Template upperTemplate = cur.getDeviceTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      if(!cur.hasChild(nodeNames[i])){
+      if (!cur.hasChild(nodeNames[i])) {
         return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
       }
       cur = cur.getChild(nodeNames[i]);
       upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
-      if(cur instanceof MeasurementMNode){
-        if(i == nodeNames.length - 1){
+      if (cur instanceof MeasurementMNode) {
+        if (i == nodeNames.length - 1) {
           return true;
         }
-        if(((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema){
-          return i == nodeNames.length - 2&&((MeasurementMNode) cur).getSchema().isCompatible(nodeNames[i+1]);
-        }else {
+        if (((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+          return i == nodeNames.length - 2
+              && ((MeasurementMNode) cur).getSchema().isCompatible(nodeNames[i + 1]);
+        } else {
           return false;
         }
       }
@@ -502,8 +503,9 @@ public class MTree implements Serializable {
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
-        if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
-          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          throw new PathAlreadyExistException(
+              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
         cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
@@ -522,8 +524,9 @@ public class MTree implements Serializable {
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     } else {
-      if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
-        throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+      if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+        throw new PathAlreadyExistException(
+            cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
       }
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(
@@ -741,9 +744,10 @@ public class MTree implements Serializable {
         upperTemplate = cur.getDeviceTemplate();
       }
       if (cur instanceof MeasurementMNode) {
-        if(i==nodes.length-1||((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema){
+        if (i == nodes.length - 1
+            || ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
           return cur;
-        }else {
+        } else {
           throw new PathNotExistException(path.getFullPath(), true);
         }
       }
@@ -1029,18 +1033,18 @@ public class MTree implements Serializable {
   /** Traverse the MTree to get the count of timeseries. */
   private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
       throws PathNotExistException {
-    if(node instanceof MeasurementMNode){
-      if(idx<nodes.length){
-        if(((MeasurementMNode) node).getSchema().isCompatible(nodes[idx])){
+    if (node instanceof MeasurementMNode) {
+      if (idx < nodes.length) {
+        if (((MeasurementMNode) node).getSchema().isCompatible(nodes[idx])) {
           return 1;
-        }else {
+        } else {
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
             return 0;
           }
         }
-      }else {
+      } else {
         return ((MeasurementMNode) node).getMeasurementCount();
       }
     }
@@ -1270,9 +1274,9 @@ public class MTree implements Serializable {
       QueryContext queryContext,
       Template upperTemplate)
       throws MetadataException {
-    if (node instanceof MeasurementMNode){
-      if((nodes.length <= idx
-            || ((MeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
+    if (node instanceof MeasurementMNode) {
+      if ((nodes.length <= idx
+          || ((MeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
           if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {

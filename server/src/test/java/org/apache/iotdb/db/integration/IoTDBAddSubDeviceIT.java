@@ -32,10 +32,10 @@ import java.sql.Types;
 
 import static org.junit.Assert.fail;
 
-
-/** Test if measurement is also a sub device.
- * This test will be ignored since nested measurement has been removed from v0.13
- * */
+/**
+ * Test if measurement is also a sub device. This test will be ignored since nested measurement has
+ * been removed from v0.13
+ */
 @Ignore // nested measurement has been forbidden
 public class IoTDBAddSubDeviceIT {
 

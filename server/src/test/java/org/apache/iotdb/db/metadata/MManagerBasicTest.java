@@ -1090,54 +1090,54 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTemplateAndNodePathCompatibility() throws MetadataException{
+  public void testTemplateAndNodePathCompatibility() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     CreateTemplatePlan plan = getCreateTemplatePlan();
     manager.createDeviceTemplate(plan);
 
     // set device template
     SetDeviceTemplatePlan setDeviceTemplatePlan =
-            new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
-            new CreateTimeSeriesPlan(
-                    new PartialPath("root.sg1.d1.s11"),
-                    TSDataType.INT32,
-                    TSEncoding.PLAIN,
-                    CompressionType.GZIP,
-                    null,
-                    null,
-                    null,
-                    null);
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s11"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
 
     manager.createTimeseries(createTimeSeriesPlan);
 
     try {
       manager.setDeviceTemplate(setDeviceTemplatePlan);
       fail();
-    }catch (PathAlreadyExistException e){
-      assertEquals("Path [root.sg1.d1.s11] already exist",e.getMessage());
+    } catch (PathAlreadyExistException e) {
+      assertEquals("Path [root.sg1.d1.s11] already exist", e.getMessage());
     }
 
     manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
 
     CreateTimeSeriesPlan createTimeSeriesPlan2 =
-            new CreateTimeSeriesPlan(
-                    new PartialPath("root.sg1.d1.vector.s1"),
-                    TSDataType.INT32,
-                    TSEncoding.PLAIN,
-                    CompressionType.GZIP,
-                    null,
-                    null,
-                    null,
-                    null);
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.vector.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
     manager.createTimeseries(createTimeSeriesPlan2);
 
     try {
       manager.setDeviceTemplate(setDeviceTemplatePlan);
       fail();
-    }catch (PathAlreadyExistException e){
-      assertEquals("Path [root.sg1.d1.vector] already exist",e.getMessage());
+    } catch (PathAlreadyExistException e) {
+      assertEquals("Path [root.sg1.d1.vector] already exist", e.getMessage());
     }
   }
 
@@ -1554,7 +1554,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3,manager.getAllTimeseriesCount(mNode.getPartialPath()));
+      assertEquals(3, manager.getAllTimeseriesCount(mNode.getPartialPath()));
       assertEquals(1, mNode.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);

@@ -120,7 +120,7 @@ public class Template {
         || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
   }
 
-  public boolean hasSchema(String measurementId){
+  public boolean hasSchema(String measurementId) {
     return schemaMap.containsKey(measurementId);
   }
 

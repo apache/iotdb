@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +103,8 @@ public class MeasurementMNode extends MNode {
   public MNode getChild(String name) {
     logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
     throw new RuntimeException(
-            String.format("current node %s is a MeasurementMNode, can not get child %s", super.name, name));
+        String.format(
+            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
   }
 
   @Override
@@ -111,7 +112,7 @@ public class MeasurementMNode extends MNode {
     return 1;
   }
 
-  public int getMeasurementCount(){
+  public int getMeasurementCount() {
     return schema.getMeasurementCount();
   }
 
@@ -125,7 +126,7 @@ public class MeasurementMNode extends MNode {
     return Collections.emptyMap();
   }
 
-  public void setChildren(Map<String, MNode> children){
+  public void setChildren(Map<String, MNode> children) {
     // Do nothing
   }
 

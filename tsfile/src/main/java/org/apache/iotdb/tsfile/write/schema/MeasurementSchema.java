@@ -394,7 +394,7 @@ public class MeasurementSchema
 
   @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
-    return this.measurementId.equals(measurementId)?0:-1;
+    return this.measurementId.equals(measurementId) ? 0 : -1;
   }
 
   @Override

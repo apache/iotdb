@@ -70,9 +70,9 @@ public class IoTDBCreateTimeseriesIT {
     try {
       for (String timeSeries : timeSeriesArray) {
         statement.execute(
-                String.format(
-                        "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                        timeSeries));
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
       }
 
       // ensure that current timeseries in cache is right.
@@ -83,10 +83,9 @@ public class IoTDBCreateTimeseriesIT {
 
       // ensure timeseries in cache is right after recovering.
       createTimeSeries1Tool(timeSeriesArray);
-    }catch (IoTDBSQLException e){
-      Assert.assertEquals("300: Path [root.sg1.aa.bb] already exist",e.getMessage());
+    } catch (IoTDBSQLException e) {
+      Assert.assertEquals("300: Path [root.sg1.aa.bb] already exist", e.getMessage());
     }
-
   }
 
   private void createTimeSeries1Tool(String[] timeSeriesArray) throws SQLException {
