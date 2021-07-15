@@ -69,6 +69,9 @@ public class IoTDBMetadataFetchIT {
                 + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
           };
 
+      for (String sql : insertSqls) {
+        statement.execute(sql);
+      }
     } catch (Exception e) {
       logger.error("insertSQL() failed", e);
       fail(e.getMessage());
@@ -596,12 +599,10 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
             + "\t\t\t\t\t},\n"
             + "\t\t\t\t\t\"status\":{\n"
-            + "\t\t\t\t\t\t\"s1\":{\n"
             + "\t\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
             + "\t\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
             + "\t\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
-            + "\t\t\t\t\t\t}\n"
             + "\t\t\t\t\t}\n"
             + "\t\t\t\t}\n"
             + "\t\t\t}\n"

@@ -62,6 +62,7 @@ public class IoTDBCreateTimeseriesIT {
   }
 
   /** Test creating a time series that is a prefix path of an existing time series */
+  @Ignore // nested measurement has been forbidden
   @Test
   public void testCreateTimeseries1() throws Exception {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
