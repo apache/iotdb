@@ -46,7 +46,7 @@ If the receiver receives the data of root.sg2.d0.s0 of the sender 1 first, the r
 #### Sync Receiver
 The parameter configuration of the sync receiver is located in the configuration file `iotdb-engine.properties` of IoTDB, and its directory is `$IOTDB_HOME/conf/iotdb-engine.properties`. In this configuration file, there are four parameters related to the sync receiver. The configuration instructions are as follows:
 
-|parameter: is_sync_enable||
+|parameter|is_sync_enable||
 |--- |--- |
 |Description |Sync function switch, which is configured as true to indicate that the receiver is allowed to receive the data from the sender and load it. When set to false, it means that the receiver is not allowed to receive the data from any sender. |
 |Type|Boolean|
