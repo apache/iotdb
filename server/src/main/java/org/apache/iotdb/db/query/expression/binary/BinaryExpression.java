@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,14 +38,9 @@ public abstract class BinaryExpression implements Expression {
     this.rightExpression = rightExpression;
   }
 
-  /**
-   * The result data type of all arithmetic operations will be DOUBLE.
-   *
-   * <p>TODO: This is just a simple implementation and should be optimized later.
-   */
   @Override
-  public final TSDataType dataType() {
-    return TSDataType.DOUBLE;
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return true;
   }
 
   @Override
@@ -106,6 +100,14 @@ public abstract class BinaryExpression implements Expression {
   public void collectPaths(Set<PartialPath> pathSet) {
     leftExpression.collectPaths(pathSet);
     rightExpression.collectPaths(pathSet);
+  }
+
+  public Expression getLeftExpression() {
+    return leftExpression;
+  }
+
+  public Expression getRightExpression() {
+    return rightExpression;
   }
 
   @Override

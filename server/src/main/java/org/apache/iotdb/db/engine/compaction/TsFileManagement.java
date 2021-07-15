@@ -135,11 +135,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  protected void readLock() {
+  public void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  protected void readUnLock() {
+  public void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -241,8 +241,8 @@ public abstract class TsFileManagement {
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-    long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
+    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, ttlLowerBound);
 
     IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
     try {

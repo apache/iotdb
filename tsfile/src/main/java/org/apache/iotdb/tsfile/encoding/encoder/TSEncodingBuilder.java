@@ -68,6 +68,8 @@ public abstract class TSEncodingBuilder {
         return new Regular();
       case GORILLA:
         return new GorillaV2();
+      case DICTIONARY:
+        return new Dictionary();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -294,6 +296,22 @@ public abstract class TSEncodingBuilder {
     @Override
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing
+    }
+  }
+
+  public static class Dictionary extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      if (type == TSDataType.TEXT) {
+        return new DictionaryEncoder();
+      }
+      throw new UnSupportedDataTypeException("DICTIONARY doesn't support data type: " + type);
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
     }
   }
 }

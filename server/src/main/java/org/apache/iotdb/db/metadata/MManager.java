@@ -55,9 +55,11 @@ import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
@@ -67,7 +69,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
-import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -132,8 +133,6 @@ public class MManager {
   private static final String PREVIOUS_CONDITION =
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
-  private static final int UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD = 5000;
-
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
@@ -154,10 +153,6 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  // data type -> number
-  private Map<TSDataType, Integer> schemaDataTypeNumMap = new ConcurrentHashMap<>();
-  // reported total series number
-  private long reportedDataTypeTotalNum;
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -256,7 +251,6 @@ public class MManager {
       logger.error(
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
-    reportedDataTypeTotalNum = 0L;
     initialized = true;
   }
 
@@ -299,6 +293,7 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
+
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -313,6 +308,7 @@ public class MManager {
             "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
+
     return idx;
   }
 
@@ -320,7 +316,6 @@ public class MManager {
   public void clear() {
     try {
       templateMap.clear();
-      Template.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
@@ -334,8 +329,6 @@ public class MManager {
         tagLogFile.close();
         tagLogFile = null;
       }
-      this.schemaDataTypeNumMap.clear();
-      this.reportedDataTypeTotalNum = 0L;
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -407,6 +400,14 @@ public class MManager {
     }
   }
 
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+    logWriter.createContinuousQuery(plan);
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+    logWriter.dropContinuousQuery(plan);
+  }
+
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
   }
@@ -468,7 +469,6 @@ public class MManager {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
       }
-      updateSchemaDataTypeNumMap(type, 1);
 
       // write log
       if (!isRecovering) {
@@ -516,7 +516,7 @@ public class MManager {
   }
 
   public void createAlignedTimeSeries(
-      PartialPath devicePath,
+      PartialPath prefixPath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
@@ -524,7 +524,7 @@ public class MManager {
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            devicePath, measurements, dataTypes, encodings, compressor, null));
+            prefixPath, measurements, dataTypes, encodings, compressor, null));
   }
 
   /**
@@ -539,30 +539,26 @@ public class MManager {
               + "please increase MAX_HEAP_SIZE in iotdb-env.sh/bat and restart");
     }
     try {
-      PartialPath devicePath = plan.getDevicePath();
+      PartialPath prefixPath = plan.getPrefixPath();
       List<String> measurements = plan.getMeasurements();
-      int alignedSize = measurements.size();
       List<TSDataType> dataTypes = plan.getDataTypes();
       List<TSEncoding> encodings = plan.getEncodings();
 
-      for (int i = 0; i < alignedSize; i++) {
+      for (int i = 0; i < measurements.size(); i++) {
         SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i), encodings.get(i));
       }
 
-      ensureStorageGroup(devicePath);
+      ensureStorageGroup(prefixPath);
 
       // create time series in MTree
       mtree.createAlignedTimeseries(
-          devicePath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+          prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
       if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
         logger.warn("Current series number {} is too large...", totalSeriesNumber);
         allowToCreateNewSeries = false;
-      }
-      for (TSDataType type : dataTypes) {
-        updateSchemaDataTypeNumMap(type, 1);
       }
       // write log
       if (!isRecovering) {
@@ -691,18 +687,11 @@ public class MManager {
     int timeseriesNum = 0;
     if (schema instanceof MeasurementSchema) {
       removeFromTagInvertedIndex(pair.right);
-      updateSchemaDataTypeNumMap(schema.getType(), -1);
       timeseriesNum = 1;
     } else if (schema instanceof VectorMeasurementSchema) {
-      for (TSDataType dataType : schema.getValueTSDataTypeList()) {
-        updateSchemaDataTypeNumMap(dataType, -1);
-        timeseriesNum++;
-      }
+      timeseriesNum += schema.getValueTSDataTypeList().size();
     }
     PartialPath storageGroupPath = pair.left;
-
-    // update statistics in schemaDataTypeNumMap
-    updateSchemaDataTypeNumMap(pair.right.getSchema().getType(), -1);
 
     // drop trigger with no exceptions
     TriggerEngine.drop(pair.right);
@@ -758,8 +747,6 @@ public class MManager {
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
-          // update statistics in schemaDataTypeNumMap
-          updateSchemaDataTypeNumMap(leafMNode.getSchema().getType(), -1);
         }
 
         // drop triggers with no exceptions
@@ -776,31 +763,6 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
-    }
-  }
-
-  /**
-   * update statistics in schemaDataTypeNumMap
-   *
-   * @param type data type
-   * @param num 1 for creating timeseries and -1 for deleting timeseries
-   */
-  private synchronized void updateSchemaDataTypeNumMap(TSDataType type, int num) {
-    // add an array of the series type
-    schemaDataTypeNumMap.put(type, schemaDataTypeNumMap.getOrDefault(type, 0) + num);
-    // add an array of time
-    schemaDataTypeNumMap.put(
-        TSDataType.INT64, schemaDataTypeNumMap.getOrDefault(TSDataType.INT64, 0) + num);
-
-    // total current DataType Total Num (twice of number of time series)
-    // used in primitive array manager
-    long currentDataTypeTotalNum = totalSeriesNumber.get() * 2;
-
-    if (num > 0
-        && currentDataTypeTotalNum - reportedDataTypeTotalNum
-            >= UPDATE_SCHEMA_MAP_IN_ARRAYPOOL_THRESHOLD) {
-      PrimitiveArrayManager.updateSchemaDataTypeNum(schemaDataTypeNumMap, currentDataTypeTotalNum);
-      reportedDataTypeTotalNum = currentDataTypeTotalNum;
     }
   }
 
@@ -842,10 +804,13 @@ public class MManager {
 
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
-    MNode deviceNode = getNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
-      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
+      try {
+        mNodes[i] = (MeasurementMNode) getNodeByPath(deviceId.concatNode(measurements[i]));
+      } catch (PathNotExistException ignored) {
+        logger.warn("{} does not exist in {}", measurements[i], deviceId);
+      }
       if (mNodes[i] == null && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
         throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
       }
@@ -1140,13 +1105,18 @@ public class MManager {
    * get MeasurementSchema or VectorMeasurementSchema which contains the measurement
    *
    * @param device device path
-   * @param measurement measurement name, could start with "$#$"
+   * @param measurement measurement name, could be vector name
    * @return MeasurementSchema or VectorMeasurementSchema
    */
   public IMeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
     MNode deviceMNode = getDeviceNode(device);
     MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    if (measurementMNode == null) {
+      // Just for the initial adaptation of the template functionality and merge functionality
+      // The getSeriesSchema interface needs to be cleaned up later
+      return getSeriesSchema(device.concatNode(measurement));
+    }
     return measurementMNode.getSchema();
   }
 
@@ -1194,16 +1164,15 @@ public class MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      return toVectorPath(partialPath, node.getName());
+      return toVectorPath(partialPath);
     }
   }
 
   /** Convert the PartialPath to VectorPartialPath. */
-  protected VectorPartialPath toVectorPath(PartialPath partialPath, String name)
-      throws MetadataException {
+  protected VectorPartialPath toVectorPath(PartialPath partialPath) throws MetadataException {
     List<PartialPath> subSensorsPathList = new ArrayList<>();
     subSensorsPathList.add(partialPath);
-    return new VectorPartialPath(partialPath.getDevice() + "." + name, subSensorsPathList);
+    return new VectorPartialPath(partialPath.getDevice(), subSensorsPathList);
   }
 
   /**
@@ -1212,10 +1181,9 @@ public class MManager {
    *
    * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
    *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
-   * @return Pair<List < PartialPath>, List<Integer>>. Size of partial path list could NOT equal to
-   *     the input list size. For example, the VectorMeasurementSchema (s1,s2) would be returned
-   *     once; Size of integer list must equal to the input list size. It indicates the index of
-   *     elements of original list in the result list
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     VectorMeasurementSchema (s1,s2) would be returned once; Size of integer list must equal to
+   *     the input list size. It indicates the index of elements of original list in the result list
    */
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
@@ -1243,9 +1211,7 @@ public class MManager {
       } else {
         List<PartialPath> subSensorsPathList = new ArrayList<>();
         subSensorsPathList.add(path);
-        nodeToPartialPath.put(
-            node,
-            new VectorPartialPath(path.getDevice() + "." + node.getName(), subSensorsPathList));
+        nodeToPartialPath.put(node, new VectorPartialPath(node.getFullPath(), subSensorsPathList));
       }
       nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
     } else {
@@ -1346,6 +1312,9 @@ public class MManager {
    * <p>(we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * @param path path
+   * @param allowCreateSg The stand-alone version can create an sg at will, but the cluster version
+   *     needs to make the Meta group aware of the creation of an SG, so an exception needs to be
+   *     thrown here
    */
   public Pair<MNode, Template> getDeviceNodeWithAutoCreate(
       PartialPath path, boolean autoCreateSchema, boolean allowCreateSg, int sgLevel)
@@ -2148,7 +2117,13 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    PartialPath deviceId = plan.getDeviceId();
+    PartialPath prefixPath = plan.getPrefixPath();
+    PartialPath deviceId = prefixPath;
+    String vectorId = null;
+    if (plan.isAligned()) {
+      deviceId = prefixPath.getDevicePath();
+      vectorId = prefixPath.getMeasurement();
+    }
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -2158,49 +2133,51 @@ public class MManager {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
+    // check insert non-aligned InsertPlan for aligned timeseries
+    if (deviceMNode.left instanceof MeasurementMNode
+        && ((MeasurementMNode) deviceMNode.left).getSchema() instanceof VectorMeasurementSchema
+        && !plan.isAligned()) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is an aligned timeseries, please set InsertPlan.isAligned() = true",
+              prefixPath));
+    }
+    // check insert aligned InsertPlan for non-aligned timeseries
+    else if (plan.isAligned()
+        && deviceMNode.left.getChild(vectorId) != null
+        && !(deviceMNode.left.getChild(vectorId) instanceof MeasurementMNode)) {
+      throw new MetadataException(
+          String.format(
+              "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
+              prefixPath));
+    }
+
     // 2. get schema of each measurement
     // if do not have measurement
     MeasurementMNode measurementMNode;
-    int loc = 0;
-
     for (int i = 0; i < measurementList.length; i++) {
       try {
         String measurement = measurementList[i];
-        boolean isVector = false;
-        String firstMeasurementOfVector = null;
-        if (measurement.contains("(") && measurement.contains(",")) {
-          isVector = true;
-          firstMeasurementOfVector = measurement.replace("(", "").replace(")", "").split(",")[0];
-        }
-
-        MNode child = getMNode(deviceMNode.left, isVector ? firstMeasurementOfVector : measurement);
+        MNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
         if (child instanceof MeasurementMNode) {
           measurementMNode = (MeasurementMNode) child;
         } else if (child instanceof StorageGroupMNode) {
           throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
-        } else if ((measurementMNode = findTemplate(deviceMNode, measurement)) != null) {
+        } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
           // empty
         } else {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           } else {
             if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-              List<String> measurements =
-                  Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
-              if (measurements.size() == 1) {
+              if (!plan.isAligned()) {
                 internalCreateTimeseries(
-                    deviceId.concatNode(measurement), plan.getDataTypes()[loc]);
+                    prefixPath.concatNode(measurement), plan.getDataTypes()[i]);
                 measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(measurement);
               } else {
-                int curLoc = loc;
-                List<TSDataType> dataTypes = new ArrayList<>();
-                for (int j = 0; j < measurements.size(); j++) {
-                  dataTypes.add(plan.getDataTypes()[curLoc]);
-                  curLoc++;
-                }
-                internalAlignedCreateTimeseries(deviceId, measurements, dataTypes);
-                measurementMNode =
-                    (MeasurementMNode) deviceMNode.left.getChild(measurements.get(0));
+                internalAlignedCreateTimeseries(
+                    prefixPath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                measurementMNode = (MeasurementMNode) deviceMNode.left.getChild(vectorId);
               }
             } else {
               throw new MetadataException(
@@ -2212,73 +2189,70 @@ public class MManager {
         }
 
         // check type is match
-        boolean mismatch = false;
         TSDataType insertDataType;
-        DataTypeMismatchException mismatchException = null;
         if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-          if (measurementList[i].contains("(") && measurementList[i].contains(",")) {
-            for (int j = 0; j < measurementList[i].split(",").length; j++) {
-              TSDataType dataTypeInNode =
-                  measurementMNode.getSchema().getValueTSDataTypeList().get(j);
-              insertDataType = plan.getDataTypes()[loc];
-              if (insertDataType == null) {
-                insertDataType = dataTypeInNode;
-              }
-              if (dataTypeInNode != insertDataType) {
-                mismatch = true;
-                logger.warn(
-                    "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
-                    measurementMNode.getSchema().getValueMeasurementIdList().get(j),
-                    measurementList[i],
-                    insertDataType,
-                    dataTypeInNode);
-                mismatchException =
-                    new DataTypeMismatchException(
-                        measurementList[i], insertDataType, dataTypeInNode);
+          if (plan.isAligned()) {
+            TSDataType dataTypeInNode =
+                measurementMNode.getSchema().getValueTSDataTypeList().get(i);
+            insertDataType = plan.getDataTypes()[i];
+            if (insertDataType == null) {
+              insertDataType = dataTypeInNode;
+            }
+            if (dataTypeInNode != insertDataType) {
+              logger.warn(
+                  "DataType mismatch, Insert measurement {} in {} type {}, metadata tree type {}",
+                  measurementMNode.getSchema().getValueMeasurementIdList().get(i),
+                  measurementList[i],
+                  insertDataType,
+                  dataTypeInNode);
+              DataTypeMismatchException mismatchException =
+                  new DataTypeMismatchException(measurementList[i], insertDataType, dataTypeInNode);
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementAlignedInsertion(mismatchException);
+                for (int j = 0; j < i; j++) {
+                  // all the measurementMNodes should be null
+                  measurementMNodes[j] = null;
+                }
                 break;
               }
-              loc++;
             }
+            measurementMNodes[i] = measurementMNode;
           } else {
             if (plan instanceof InsertRowPlan) {
               if (!((InsertRowPlan) plan).isNeedInferType()) {
                 // only when InsertRowPlan's values is object[], we should check type
-                insertDataType = getTypeInLoc(plan, loc);
+                insertDataType = getTypeInLoc(plan, i);
               } else {
                 insertDataType = measurementMNode.getSchema().getType();
               }
             } else {
-              insertDataType = getTypeInLoc(plan, loc);
+              insertDataType = getTypeInLoc(plan, i);
             }
-            mismatch = measurementMNode.getSchema().getType() != insertDataType;
-            if (mismatch) {
+            if (measurementMNode.getSchema().getType() != insertDataType) {
               logger.warn(
                   "DataType mismatch, Insert measurement {} type {}, metadata tree type {}",
                   measurementList[i],
                   insertDataType,
                   measurementMNode.getSchema().getType());
-              mismatchException =
+              DataTypeMismatchException mismatchException =
                   new DataTypeMismatchException(
                       measurementList[i], insertDataType, measurementMNode.getSchema().getType());
+              if (!config.isEnablePartialInsert()) {
+                throw mismatchException;
+              } else {
+                // mark failed measurement
+                plan.markFailedMeasurementInsertion(i, mismatchException);
+                continue;
+              }
             }
-            loc++;
+            measurementMNodes[i] = measurementMNode;
+            // set measurementName instead of alias
+            measurementList[i] = measurementMNode.getName();
           }
         }
-
-        if (mismatch) {
-          if (!config.isEnablePartialInsert()) {
-            throw mismatchException;
-          } else {
-            // mark failed measurement
-            plan.markFailedMeasurementInsertion(i, mismatchException);
-            continue;
-          }
-        }
-
-        measurementMNodes[i] = measurementMNode;
-
-        // set measurementName instead of alias
-        measurementList[i] = measurementMNode.getName();
       } catch (MetadataException e) {
         logger.warn(
             "meet error when check {}.{}, message: {}",
@@ -2318,15 +2292,14 @@ public class MManager {
     return deviceMNode.getChild(measurementName);
   }
 
-  private MeasurementMNode findTemplate(Pair<MNode, Template> deviceMNode, String measurement)
+  private MeasurementMNode findTemplate(
+      Pair<MNode, Template> deviceMNode, String measurement, String vectorId)
       throws MetadataException {
     if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> curTemplateMap = deviceMNode.right.getSchemaMap();
-      List<String> measurements =
-          Arrays.asList(measurement.replace("(", "").replace(")", "").split(","));
 
-      String firstMeasurement = measurements.get(0);
-      IMeasurementSchema schema = curTemplateMap.get(firstMeasurement);
+      String schemaName = vectorId != null ? vectorId : measurement;
+      IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.left.isUseTemplate()) {
         deviceMNode.left.setUseTemplate(true);
         try {
@@ -2338,13 +2311,9 @@ public class MManager {
 
       if (schema != null) {
         if (schema instanceof MeasurementSchema) {
-          return new MeasurementMNode(deviceMNode.left, firstMeasurement, schema, null);
+          return new MeasurementMNode(deviceMNode.left, measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(
-              deviceMNode.left,
-              deviceMNode.right.getMeasurementNodeName(schema.getValueMeasurementIdList().get(0)),
-              schema,
-              null);
+          return new MeasurementMNode(deviceMNode.left, vectorId, schema, null);
         }
       }
       return null;
@@ -2365,14 +2334,14 @@ public class MManager {
 
   /** create aligned timeseries ignoring PathAlreadyExistException */
   private void internalAlignedCreateTimeseries(
-      PartialPath devicePath, List<String> measurements, List<TSDataType> dataTypes)
+      PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
     List<TSEncoding> encodings = new ArrayList<>();
     for (TSDataType dataType : dataTypes) {
       encodings.add(getDefaultEncoding(dataType));
     }
     createAlignedTimeSeries(
-        devicePath,
+        prefixPath,
         measurements,
         dataTypes,
         encodings,

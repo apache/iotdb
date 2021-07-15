@@ -312,13 +312,11 @@ public class MTree implements Serializable {
     }
     MNode cur = root;
     boolean hasSetStorageGroup = false;
-    StorageGroupMNode storageGroupMNode = null;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
-    for (int i = 1; i < deviceNodeNames.length; i++) {
+    for (int i = 1; i < deviceNodeNames.length - 1; i++) {
       String nodeName = deviceNodeNames[i];
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
-        storageGroupMNode = (StorageGroupMNode) cur;
       }
       if (!cur.hasChild(nodeName)) {
         if (!hasSetStorageGroup) {
@@ -328,12 +326,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
-    int alignedTimeseriesIndex = 0;
-    if (storageGroupMNode != null) {
-      alignedTimeseriesIndex = storageGroupMNode.getAlignedTimeseriesIndex();
-      storageGroupMNode.addAlignedTimeseriesIndex();
-    }
-    String leafName = IoTDBConstant.ALIGN_TIMESERIES_PREFIX + alignedTimeseriesIndex;
+    String leafName = deviceNodeNames[deviceNodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
@@ -358,11 +351,12 @@ public class MTree implements Serializable {
                   compressor),
               null);
       cur.addChild(leafName, measurementMNode);
+
       for (String measurement : measurements) {
         if (child != null) {
-          cur.replaceChild(measurementMNode.getName(), measurementMNode);
+          measurementMNode.replaceChild(measurement, new MNode(measurementMNode, measurement));
         } else {
-          cur.addChild(measurement, measurementMNode);
+          measurementMNode.addChild(measurement, new MNode(measurementMNode, measurement));
         }
       }
     }
@@ -469,7 +463,10 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
       cur = cur.getChild(childName);
-      if (cur == null) {
+      if (cur instanceof MeasurementMNode
+          && ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+        return i == nodeNames.length - 1 || cur.getChildren().containsKey(nodeNames[i + 1]);
+      } else if (cur == null) {
         return false;
       }
     }
@@ -696,6 +693,9 @@ public class MTree implements Serializable {
     }
     MNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
+      if (cur == null) {
+        break;
+      }
       cur = cur.getChild(nodes[i]);
       if (cur instanceof StorageGroupMNode) {
         return (StorageGroupMNode) cur;
@@ -722,17 +722,16 @@ public class MTree implements Serializable {
         upperTemplate = cur.getDeviceTemplate();
       }
       MNode next = cur.getChild(nodes[i]);
+      if (cur instanceof MeasurementMNode
+          && ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+        return cur;
+      }
       if (next == null) {
         if (upperTemplate == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
 
         String realName = nodes[i];
-        if (path instanceof VectorPartialPath) {
-          VectorPartialPath vectorPartialPath = (VectorPartialPath) path;
-          realName = vectorPartialPath.getSubSensorsPathList().get(0).getMeasurement();
-        }
-
         IMeasurementSchema schema = upperTemplate.getSchemaMap().get(realName);
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1018,6 +1017,10 @@ public class MTree implements Serializable {
       } else {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
+          if (node.isUseTemplate()
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
+            return 1;
+          }
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
@@ -1028,6 +1031,9 @@ public class MTree implements Serializable {
       }
     } else {
       int sum = node instanceof MeasurementMNode ? 1 : 0;
+      if (node.isUseTemplate()) {
+        sum += node.getUpperTemplate().getSchemaMap().size();
+      }
       for (MNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
@@ -1085,22 +1091,22 @@ public class MTree implements Serializable {
   /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    int cnt = 0;
+    boolean curIsDevice = node.isUseTemplate();
+    int cnt = curIsDevice ? 1 : 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
-        if (next instanceof MeasurementMNode && idx >= nodes.length) {
+        if (next instanceof MeasurementMNode && idx >= nodes.length && !curIsDevice) {
           cnt++;
         } else {
           cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
         }
       }
     } else {
-      boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
+        if (child instanceof MeasurementMNode && !curIsDevice && idx >= nodes.length) {
           cnt++;
-          deviceAdded = true;
+          curIsDevice = true;
         }
         cnt += getDevicesCount(child, nodes, idx + 1);
       }
@@ -1227,7 +1233,9 @@ public class MTree implements Serializable {
       QueryContext queryContext,
       Template upperTemplate)
       throws MetadataException {
-    if (node instanceof MeasurementMNode && nodes.length <= idx) {
+    if (node instanceof MeasurementMNode
+        && (nodes.length <= idx
+            || ((MeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
       if (hasLimit) {
         curOffset.set(curOffset.get() + 1);
         if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
@@ -1239,14 +1247,13 @@ public class MTree implements Serializable {
         addMeasurementSchema(
             node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
       } else if (measurementSchema instanceof VectorMeasurementSchema) {
-        String lastWord = nodes[nodes.length - 1];
         addVectorMeasurementSchema(
             node,
             timeseriesSchemaList,
             needLast,
             queryContext,
             measurementSchema,
-            nodes.length == idx ? lastWord : "*");
+            idx < nodes.length ? nodes[idx] : "*");
       }
       if (hasLimit) {
         count.set(count.get() + 1);
@@ -1260,12 +1267,7 @@ public class MTree implements Serializable {
 
     // we should use template when all child is measurement or this node has no child
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = null;
-      if (nodeReg.contains("(") && nodeReg.contains(",")) {
-        next = node.getChildOfAlignedTimeseries(nodeReg);
-      } else {
-        next = node.getChild(nodeReg);
-      }
+      MNode next = node.getChild(nodeReg);
       if (next != null) {
         findPath(
             next,
@@ -1278,26 +1280,10 @@ public class MTree implements Serializable {
             upperTemplate);
       }
     } else {
-      for (MNode child : node.getDistinctMNodes()) {
-        boolean continueSearch = false;
-        if (child instanceof MeasurementMNode
-            && ((MeasurementMNode) child).getSchema() instanceof VectorMeasurementSchema) {
-          List<String> measurementsList =
-              ((MeasurementMNode) child).getSchema().getValueMeasurementIdList();
-          for (String measurement : measurementsList) {
-            if (Pattern.matches(nodeReg.replace("*", ".*"), measurement)) {
-              continueSearch = true;
-            }
-          }
-        } else {
-          if (Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-            continueSearch = true;
-          }
-        }
-        if (!continueSearch) {
+      for (MNode child : node.getChildren().values()) {
+        if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-
         findPath(
             child,
             nodes,
@@ -1308,7 +1294,7 @@ public class MTree implements Serializable {
             queryContext,
             upperTemplate);
         if (hasLimit && count.get().intValue() == limit.get().intValue()) {
-          break;
+          return;
         }
       }
     }
@@ -1328,14 +1314,19 @@ public class MTree implements Serializable {
                   schema,
                   nodeReg);
             } else if (schema instanceof VectorMeasurementSchema) {
-              String firstNode = schema.getValueMeasurementIdList().get(0);
-              addVectorMeasurementSchema(
-                  new MeasurementMNode(node, firstNode, schema, null),
-                  timeseriesSchemaList,
-                  needLast,
-                  queryContext,
-                  schema,
-                  nodeReg);
+              VectorMeasurementSchema vectorMeasurementSchema = (VectorMeasurementSchema) schema;
+              if (Pattern.matches(
+                  nodeReg.replace("*", ".*"), vectorMeasurementSchema.getMeasurementId())) {
+                String firstNode = schema.getValueMeasurementIdList().get(0);
+                addVectorMeasurementSchemaForTemplate(
+                    new MeasurementMNode(node, firstNode, schema, null),
+                    timeseriesSchemaList,
+                    needLast,
+                    queryContext,
+                    schema,
+                    MetaUtils.getNodeRegByIdx(idx + 1, nodes),
+                    vectorMeasurementSchema.getMeasurementId());
+              }
             }
           }
         }
@@ -1376,20 +1367,42 @@ public class MTree implements Serializable {
       String reg)
       throws StorageGroupNotSetException, IllegalPathException {
     List<String> measurements = schema.getValueMeasurementIdList();
-    int measurementSize = measurements.size();
-    Set<String> measurementsInReg = new HashSet<>();
-    if (reg.contains("(") && reg.contains(",")) {
-      measurementsInReg.addAll(MetaUtils.getMeasurementsInPartialPath(reg));
+    for (int i = 0; i < measurements.size(); i++) {
+      if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
+        continue;
+      }
+      PartialPath devicePath = node.getPartialPath();
+      String[] tsRow = new String[7];
+      tsRow[0] = null;
+      tsRow[1] = getStorageGroupPath(devicePath).getFullPath();
+      tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
+      tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
+      tsRow[4] = schema.getCompressor().toString();
+      tsRow[5] = "-1";
+      tsRow[6] =
+          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+      Pair<PartialPath, String[]> temp =
+          new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
+      timeseriesSchemaList.add(temp);
     }
-    for (int i = 0; i < measurementSize; i++) {
-      if (measurementsInReg.size() != 0 && !measurementsInReg.contains(measurements.get(i))) {
+  }
+
+  private void addVectorMeasurementSchemaForTemplate(
+      MNode node,
+      List<Pair<PartialPath, String[]>> timeseriesSchemaList,
+      boolean needLast,
+      QueryContext queryContext,
+      IMeasurementSchema schema,
+      String reg,
+      String vectorId)
+      throws StorageGroupNotSetException, IllegalPathException {
+    List<String> measurements = schema.getValueMeasurementIdList();
+    for (int i = 0; i < measurements.size(); i++) {
+      if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
         continue;
       }
-      if (measurementsInReg.size() == 0
-          && !Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
-        continue;
-      }
-      PartialPath devicePath = node.getPartialPath().getDevicePath();
+      PartialPath devicePath =
+          new PartialPath(node.getPartialPath().getDevicePath().getFullPath(), vectorId);
       String[] tsRow = new String[7];
       tsRow[0] = null;
       tsRow[1] = getStorageGroupPath(devicePath).getFullPath();

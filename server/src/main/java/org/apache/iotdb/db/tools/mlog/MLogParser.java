@@ -25,7 +25,9 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -201,6 +203,12 @@ public class MLogParser {
             break;
           case MNODE:
             mLogTxtWriter.serializeMNode((MNodePlan) plan);
+            break;
+          case CREATE_CONTINUOUS_QUERY:
+            mLogTxtWriter.createContinuousQuery((CreateContinuousQueryPlan) plan);
+            break;
+          case DROP_CONTINUOUS_QUERY:
+            mLogTxtWriter.dropContinuousQuery((DropContinuousQueryPlan) plan);
             break;
           default:
             logger.warn("unknown plan {}", plan);

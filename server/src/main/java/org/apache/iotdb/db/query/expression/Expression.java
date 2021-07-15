@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.db.query.expression;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 import java.util.Set;
@@ -37,9 +35,6 @@ public interface Expression {
   default boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
-
-  // TODO: implement this method
-  TSDataType dataType() throws MetadataException;
 
   void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions);
 

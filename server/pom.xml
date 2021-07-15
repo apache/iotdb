@@ -34,19 +34,6 @@
         <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
         <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
     </properties>
-    <repositories>
-        <!--   repository for moquette    -->
-        <repository>
-            <id>bintray</id>
-            <url>https://jcenter.bintray.com</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -123,9 +110,9 @@
             <artifactId>commons-cli</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.moquette</groupId>
+            <groupId>de.fraunhofer.iosb.io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
-            <version>0.13</version>
+            <version>0.14.3</version>
             <exclusions>
                 <exclusion>
                     <groupId>log4j</groupId>
@@ -191,7 +178,7 @@
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>8.5.15</version>
+            <version>8.5.46</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -201,7 +188,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-buffer</artifactId>
-            <version>4.1.27.Final</version>
+            <version>${netty.version}</version>
         </dependency>
         <dependency>
             <groupId>org.fusesource.mqtt-client</groupId>
@@ -212,6 +199,11 @@
             <artifactId>httpclient</artifactId>
             <version>4.3.5</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>2.9.1</version>
         </dependency>
     </dependencies>
     <build>
@@ -237,6 +229,7 @@
                         <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                     </execution>
                 </executions>

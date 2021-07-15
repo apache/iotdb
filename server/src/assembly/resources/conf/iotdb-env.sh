@@ -137,7 +137,7 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
-#GC log path has to be defined here because it needs to access CASSANDRA_HOME
+#GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
     MAJOR_VERSION=${version_arr[1]}
@@ -183,6 +183,7 @@ MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
+#If you want to connect JMX Service by network in local machine, such as nodeTool.sh will try to connect 127.0.0.1:31999, please set JMX_LOCAL to false.
 JMX_LOCAL="true"
 
 JMX_PORT="31999"

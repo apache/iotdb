@@ -32,7 +32,7 @@ class TSDataType(Enum):
 @unique
 class TSEncoding(Enum):
     PLAIN = 0
-    PLAIN_DICTIONARY = 1
+    DICTIONARY = 1
     RLE = 2
     DIFF = 3
     TS_2DIFF = 4
@@ -40,7 +40,6 @@ class TSEncoding(Enum):
     GORILLA_V1 = 6
     REGULAR = 7
     GORILLA = 8
-
 
 @unique
 class Compressor(Enum):

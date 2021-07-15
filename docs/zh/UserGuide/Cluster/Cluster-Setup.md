@@ -19,12 +19,10 @@
 
 -->
 
-__集群模式目前是测试版！请谨慎在生产环境中使用。__
-
 # 集群设置
 安装环境请参考[快速上手/安装环境章节](../QuickStart/QuickStart.md)
 ## 集群环境搭建
-您可以搭建伪分布式模式或是分布式模式的集群，伪分布式模式和分布式模式的主要区别是配置文件中`seed_nodes`的不同，配置项含义请参考[配置项](#配置项)。
+您可以多节点部署或单机部署分布式集群，两者的主要区别是后者需要处理端口和文件目录的冲突，配置项含义请参考[配置项](#配置项)。
 启动其中一个节点的服务，需要执行如下命令：
 
 ```bash
@@ -47,6 +45,32 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 
 * `is_sync_enable` 不再生效，并被视为 `false`.
 
+## 集群扩展
+在集群运行过程中，用户可以向集群中加入新的节点或者删除集群中已有节点。目前仅支持逐节点集群扩展操作，多节点的集群扩展可以转化为一系列单节点集群扩展操作来实现。集群只有在上一次集群扩展操作完成后才会接收新的集群扩展操作。
+
+### 增加节点
+在要加入集群的新节点上启动以下脚本进行增加节点操作：
+```bash
+# Unix/OS X
+> nohup sbin/add-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
+
+# Windows
+> sbin\add-node.bat [printgc] [<conf_path>] 
+```
+`printgc`表示在启动的时候，会开启GC日志。
+`<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
+
+### 删除节点
+在任一集群中的节点上启动以下脚本进行删除节点操作：
+```bash
+# Unix/OS X
+> sbin/remove-node.sh <internal_ip> <internal_meta_port>
+
+# Windows
+> sbin\remove-node.bat <internal_ip> <internal_meta_port>
+```
+`internal_ip`表示待删除节点的IP地址
+`internal_meta_port`表示待删除节点的meta服务端口
 
 ## 配置项
 
@@ -136,6 +160,15 @@ iotdb-engines.properties配置文件中的部分内容会不再生效：
 |描述|集群副本数|
 |类型|Int32|
 |默认值|3|
+|改后生效方式|重启服务生效，集群建立后不可更改|
+
+* multi\_raft\_factor
+
+|名字|multi\_raft\_factor|
+|:---:|:---|
+|描述|每个数据组启动的raft组实例数量，默认每个数据组启动一个raft组|
+|类型|Int32|
+|默认值|1|
 |改后生效方式|重启服务生效，集群建立后不可更改|
 
 * cluster\_name

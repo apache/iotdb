@@ -20,7 +20,9 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
@@ -130,7 +132,7 @@ public class MLogTxtWriter implements AutoCloseable {
         String.format(
             "%s,%s,%s,%s,%s,%s",
             MetadataOperationType.CREATE_TIMESERIES,
-            plan.getDevicePath().getFullPath(),
+            plan.getPrefixPath().getFullPath(),
             plan.getMeasurements(),
             plan.getDataTypes().stream().map(TSDataType::serialize),
             plan.getEncodings().stream().map(TSEncoding::serialize),
@@ -156,6 +158,29 @@ public class MLogTxtWriter implements AutoCloseable {
     String outputStr = MetadataOperationType.DELETE_TIMESERIES + "," + path + LINE_SEPARATOR;
     ByteBuffer buff = ByteBuffer.wrap(outputStr.getBytes());
     channel.write(buff);
+  }
+
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+    String buf =
+        String.format(
+                "%s,%s,%s,%s",
+                MetadataOperationType.CREATE_CONTINUOUS_QUERY,
+                plan.getContinuousQueryName(),
+                plan.getQuerySql(),
+                plan.getTargetPath().getFullPath())
+            + LINE_SEPARATOR;
+    channel.write(ByteBuffer.wrap(buf.getBytes()));
+    lineNumber.incrementAndGet();
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+
+    String buf =
+        String.format(
+                "%s,%s", MetadataOperationType.DROP_CONTINUOUS_QUERY, plan.getContinuousQueryName())
+            + LINE_SEPARATOR;
+    channel.write(ByteBuffer.wrap(buf.getBytes()));
+    lineNumber.incrementAndGet();
   }
 
   public void setStorageGroup(String storageGroup) throws IOException {

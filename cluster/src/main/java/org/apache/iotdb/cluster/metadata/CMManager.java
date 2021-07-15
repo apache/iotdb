@@ -30,12 +30,10 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -50,11 +48,11 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
@@ -82,7 +80,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -276,7 +273,7 @@ public class CMManager extends MManager {
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
-      return toVectorPath(partialPath, node.getName());
+      return toVectorPath(partialPath);
     }
   }
 
@@ -440,10 +437,10 @@ public class CMManager extends MManager {
       throws MetadataException, IOException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
-        getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
+        getMNodesLocally(plan.getPrefixPath(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
       plan.setMeasurementMNodes(measurementMNodes);
-      return new MNode(null, plan.getDeviceId().getDevice());
+      return new MNode(null, plan.getPrefixPath().getDevice());
     }
     // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
     // another config in ClusterConfig to do this
@@ -562,28 +559,18 @@ public class CMManager extends MManager {
     // for CreateTimeSeriesPlan, use getPath() to get timeseries to get related storage group,
     // for CreateMultiTimeSeriesPlan, use getPaths() to get all timeseries to get related storage
     // groups.
-    if (plan instanceof InsertRowPlan
-        || plan instanceof InsertRowsOfOneDevicePlan
-        || plan instanceof InsertTabletPlan) {
+    if (plan instanceof BatchPlan) {
+      storageGroups.addAll(getStorageGroups(getValidStorageGroups(plan)));
+    } else if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
       storageGroups.addAll(
-          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getDeviceId())));
-    } else if (plan instanceof InsertRowsPlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              ((InsertRowsPlan) plan)
-                  .getInsertRowPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
-                      .collect(Collectors.toList())));
-    } else if (plan instanceof InsertMultiTabletPlan) {
-      storageGroups.addAll(
-          getStorageGroups(
-              ((InsertMultiTabletPlan) plan)
-                  .getInsertTabletPlanList().stream()
-                      .map(InsertPlan::getDeviceId)
-                      .collect(Collectors.toList())));
+          getStorageGroups(Collections.singletonList(((InsertPlan) plan).getPrefixPath())));
     } else if (plan instanceof CreateTimeSeriesPlan) {
       storageGroups.addAll(
           getStorageGroups(Collections.singletonList(((CreateTimeSeriesPlan) plan).getPath())));
+    } else if (plan instanceof CreateAlignedTimeSeriesPlan) {
+      storageGroups.addAll(
+          getStorageGroups(
+              Collections.singletonList(((CreateAlignedTimeSeriesPlan) plan).getPrefixPath())));
     } else if (plan instanceof SetDeviceTemplatePlan) {
       storageGroups.addAll(
           getStorageGroups(
@@ -603,6 +590,17 @@ public class CMManager extends MManager {
     if (plan instanceof InsertPlan && !createTimeseries((InsertPlan) plan)) {
       throw new MetadataException("Failed to create timeseries from InsertPlan automatically.");
     }
+  }
+
+  private List<PartialPath> getValidStorageGroups(PhysicalPlan plan) {
+    List<PartialPath> paths = new ArrayList<>();
+    for (int i = 0; i < plan.getPaths().size(); i++) {
+      // has permission to create sg
+      if (!((BatchPlan) plan).getResults().containsKey(i)) {
+        paths.add(plan.getPaths().get(i));
+      }
+    }
+    return paths;
   }
 
   /** return storage groups paths for given deviceIds or timeseries. */
@@ -684,7 +682,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertTabletPlan.getDeviceId(),
+            insertTabletPlan.getPrefixPath(),
             insertTabletPlan);
       }
     }
@@ -700,7 +698,7 @@ public class CMManager extends MManager {
       if (!success) {
         logger.error(
             "create timeseries for device={} failed, plan={}",
-            insertRowPlan.getDeviceId(),
+            insertRowPlan.getPrefixPath(),
             insertRowPlan);
       }
     }
@@ -724,7 +722,7 @@ public class CMManager extends MManager {
     }
 
     List<String> seriesList = new ArrayList<>();
-    PartialPath deviceId = insertPlan.getDeviceId();
+    PartialPath deviceId = insertPlan.getPrefixPath();
     PartialPath storageGroupName;
     try {
       storageGroupName =
@@ -734,15 +732,11 @@ public class CMManager extends MManager {
       logger.error("Failed to infer storage group from deviceId {}", deviceId);
       return false;
     }
-    boolean hasVector = false;
     for (String measurementId : insertPlan.getMeasurements()) {
-      if (measurementId.contains("(") && measurementId.contains(",")) {
-        hasVector = true;
-      }
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
-    if (hasVector) {
-      return createAlignedTimeseries(seriesList, (InsertTabletPlan) insertPlan);
+    if (insertPlan.isAligned()) {
+      return createAlignedTimeseries(seriesList, insertPlan);
     }
     PartitionGroup partitionGroup =
         metaGroupMember.getPartitionTable().route(storageGroupName.getFullPath(), 0);
@@ -755,23 +749,34 @@ public class CMManager extends MManager {
     return createTimeseries(unregisteredSeriesList, seriesList, insertPlan);
   }
 
-  private boolean createAlignedTimeseries(List<String> seriesList, InsertTabletPlan insertPlan)
+  private boolean createAlignedTimeseries(List<String> seriesList, InsertPlan insertPlan)
       throws IllegalPathException {
     List<String> measurements = new ArrayList<>();
     for (String series : seriesList) {
       measurements.addAll(MetaUtils.getMeasurementsInPartialPath(new PartialPath(series)));
     }
 
-    List<TSDataType> dataTypes = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (TSDataType dataType : insertPlan.getDataTypes()) {
+    List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
+    List<TSEncoding> encodings = new ArrayList<>(measurements.size());
+    for (int index = 0; index < measurements.size(); index++) {
+      TSDataType dataType;
+      if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
+        dataType = insertPlan.getDataTypes()[index];
+      } else {
+        dataType =
+            TypeInferenceUtils.getPredictedDataType(
+                insertPlan instanceof InsertTabletPlan
+                    ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
+                    : ((InsertRowPlan) insertPlan).getValues()[index],
+                true);
+      }
       dataTypes.add(dataType);
       encodings.add(getDefaultEncoding(dataType));
     }
 
     CreateAlignedTimeSeriesPlan plan =
         new CreateAlignedTimeSeriesPlan(
-            insertPlan.getDeviceId(),
+            insertPlan.getPrefixPath(),
             measurements,
             dataTypes,
             encodings,
@@ -938,175 +943,6 @@ public class CMManager extends MManager {
   }
 
   /**
-   * Pull the all timeseries schemas of given prefixPaths from remote nodes. All prefixPaths must
-   * contain a storage group. The pulled schemas will be cache in CMManager.
-   *
-   * @param ignoredGroup do not pull schema from the group to avoid backward dependency. If a user
-   *     send an insert request before registering schemas, then this method may pull schemas from
-   *     the same groups. If this method is called by an applier, it holds the lock of LogManager,
-   *     while the pulling thread may want this lock too, resulting in a deadlock.
-   */
-  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
-      throws MetadataException {
-    logger.debug(
-        "{}: Pulling timeseries schemas of {}, ignored group {}",
-        metaGroupMember.getName(),
-        prefixPaths,
-        ignoredGroup);
-    // split the paths by the data groups that should hold them
-    Map<PartitionGroup, List<String>> partitionGroupPathMap = new HashMap<>();
-    for (PartialPath prefixPath : prefixPaths) {
-      if (SQLConstant.RESERVED_TIME.equalsIgnoreCase(prefixPath.getFullPath())) {
-        continue;
-      }
-      PartitionGroup partitionGroup =
-          ClusterUtils.partitionByPathTimeWithSync(prefixPath, metaGroupMember);
-      if (!partitionGroup.getHeader().equals(ignoredGroup)) {
-        partitionGroupPathMap
-            .computeIfAbsent(partitionGroup, g -> new ArrayList<>())
-            .add(prefixPath.getFullPath());
-      }
-    }
-
-    // pull timeseries schema from every group involved
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: pulling schemas of {} and other {} paths from {} groups",
-          metaGroupMember.getName(),
-          prefixPaths.get(0),
-          prefixPaths.size() - 1,
-          partitionGroupPathMap.size());
-    }
-    for (Entry<PartitionGroup, List<String>> partitionGroupListEntry :
-        partitionGroupPathMap.entrySet()) {
-      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
-      List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths);
-    }
-  }
-
-  /**
-   * Pull timeseries schemas of "prefixPaths" from "partitionGroup". If this node is a member of
-   * "partitionGroup", synchronize with the group leader and collect local schemas. Otherwise pull
-   * schemas from one node in the group. The pulled schemas will be cached in CMManager.
-   */
-  private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
-    if (partitionGroup.contains(metaGroupMember.getThisNode())) {
-      // the node is in the target group, synchronize with leader should be enough
-      try {
-        metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
-            .syncLeader(null);
-      } catch (CheckConsistencyException e) {
-        logger.warn("Failed to check consistency.", e);
-      }
-      return;
-    }
-
-    // pull schemas from a remote node
-    PullSchemaRequest pullSchemaRequest = new PullSchemaRequest();
-    pullSchemaRequest.setHeader(partitionGroup.getHeader());
-    pullSchemaRequest.setPrefixPaths(prefixPaths);
-
-    // decide the node access order with the help of QueryCoordinator
-    List<Node> nodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-    for (Node node : nodes) {
-      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest)) {
-        break;
-      }
-    }
-  }
-
-  /**
-   * send the PullSchemaRequest to "node" and cache the results in CMManager if they are
-   * successfully returned.
-   *
-   * @return true if the pull succeeded, false otherwise
-   */
-  private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: Pulling timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node);
-    }
-
-    List<TimeseriesSchema> schemas = null;
-    try {
-      schemas = pullTimeSeriesSchemas(node, request);
-    } catch (IOException | TException e) {
-      logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node,
-          e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
-          metaGroupMember.getName(),
-          request.getPrefixPaths().get(0),
-          request.getPrefixPaths().size() - 1,
-          node,
-          e);
-    }
-
-    if (schemas != null) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            metaGroupMember.getName(),
-            schemas.size(),
-            request.getPrefixPaths().get(0),
-            request.getPrefixPaths().size() - 1,
-            node,
-            request.getHeader());
-      }
-      for (TimeseriesSchema schema : schemas) {
-        SchemaUtils.cacheTimeseriesSchema(schema);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * send a PullSchemaRequest to a node to pull TimeseriesSchemas, and return the pulled schema or
-   * null if there was a timeout.
-   */
-  private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
-    List<TimeseriesSchema> schemas;
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-      schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
-    } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
-        ByteBuffer buffer = pullSchemaResp.schemaBytes;
-        int size = buffer.getInt();
-        schemas = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-          schemas.add(TimeseriesSchema.deserializeFrom(buffer));
-        }
-      }
-    }
-
-    return schemas;
-  }
-
-  /**
    * Get the data types of "paths". If "aggregation" is not null, every path will use the
    * aggregation. First get types locally and if some paths does not exists, pull them from other
    * nodes.
@@ -1120,7 +956,7 @@ public class CMManager extends MManager {
       return getSeriesTypesByPathsLocally(pathStrs, aggregation);
     } catch (PathNotExistException e) {
       // pull schemas remotely and cache them
-      pullTimeSeriesSchemas(pathStrs, null);
+      metaPuller.pullTimeSeriesSchemas(pathStrs, null);
       return getSeriesTypesByPathsLocally(pathStrs, aggregation);
     }
   }
@@ -1193,8 +1029,7 @@ public class CMManager extends MManager {
   private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(
       List<PartialPath> paths, List<String> aggregations) throws MetadataException {
     // pull schemas remotely and cache them
-    pullTimeSeriesSchemas(paths, null);
-
+    metaPuller.pullTimeSeriesSchemas(paths, null);
     return getSeriesTypesByPathLocally(paths, aggregations);
   }
 
@@ -1238,7 +1073,9 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         try {
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+          metaGroupMember
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
@@ -1312,7 +1149,7 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<PartialPath> getMatchedPaths(
-      Node node, Node header, List<String> pathsToQuery, boolean withAlias)
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1375,7 +1212,9 @@ public class CMManager extends MManager {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         try {
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader(null);
+          metaGroupMember
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
@@ -1438,7 +1277,7 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(Node node, Node header, List<String> pathsToQuery)
+  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -1690,7 +1529,16 @@ public class CMManager extends MManager {
     ExecutorService pool =
         new ThreadPoolExecutor(
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
-    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    List<PartitionGroup> globalGroups = new ArrayList<>();
+    try {
+      PartitionGroup partitionGroup =
+          metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
+      globalGroups.add(partitionGroup);
+    } catch (MetadataException e) {
+      // if the path location is not find, obtain the path location from all groups.
+      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    }
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
     int offset = plan.getOffset();
@@ -1790,8 +1638,8 @@ public class CMManager extends MManager {
   private void getLocalDevices(
       PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowDevicesResult> localResult = super.getDevices(plan);
@@ -1809,8 +1657,8 @@ public class CMManager extends MManager {
       Set<ShowTimeSeriesResult> resultSet,
       QueryContext context)
       throws CheckConsistencyException, MetadataException {
-    Node header = group.getHeader();
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
