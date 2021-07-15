@@ -224,24 +224,31 @@ public class MTree implements Serializable {
     Template upperTemplate = cur.getDeviceTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
-      String nodeName = nodeNames[i];
       if (cur instanceof MeasurementMNode) {
         throw new PathAlreadyExistException(cur.getFullPath());
       }
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
       }
-      if (!cur.hasChild(nodeName)) {
+      String childName = nodeNames[i];
+      if (!cur.hasChild(childName)) {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        cur.addChild(nodeName, new MNode(cur, nodeName));
+        if(cur.isUseTemplate()&&upperTemplate.hasSchema(childName)){
+          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(childName).getFullPath());
+        }
+        cur.addChild(childName, new MNode(cur, childName));
       }
-      cur = cur.getChild(nodeName);
+      cur = cur.getChild(childName);
 
       if (cur.getDeviceTemplate() != null) {
         upperTemplate = cur.getDeviceTemplate();
       }
+    }
+
+    if (cur instanceof MeasurementMNode) {
+      throw new PathAlreadyExistException(cur.getFullPath());
     }
 
     if (upperTemplate != null && !upperTemplate.isCompatible(path)) {
@@ -307,13 +314,13 @@ public class MTree implements Serializable {
     boolean hasSetStorageGroup = false;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
     for (int i = 1; i < deviceNodeNames.length - 1; i++) {
-      String nodeName = deviceNodeNames[i];
       if (cur instanceof MeasurementMNode) {
         throw new PathAlreadyExistException(cur.getFullPath());
       }
       if (cur instanceof StorageGroupMNode) {
         hasSetStorageGroup = true;
       }
+      String nodeName = deviceNodeNames[i];
       if (!cur.hasChild(nodeName)) {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
@@ -322,6 +329,11 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeName);
     }
+
+    if (cur instanceof MeasurementMNode) {
+      throw new PathAlreadyExistException(cur.getFullPath());
+    }
+
     String leafName = deviceNodeNames[deviceNodeNames.length - 1];
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
@@ -417,9 +429,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(deviceId.getFullPath());
     }
     MNode cur = root;
-    Template upperTemplate = null;
+    Template upperTemplate = cur.getDeviceTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
+        if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
+          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        }
         if (i == sgLevel) {
           cur.addChild(
               nodeNames[i],
@@ -429,9 +444,9 @@ public class MTree implements Serializable {
           cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
         }
       }
+      cur = cur.getChild(nodeNames[i]);
       // update upper template
       upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
-      cur = cur.getChild(nodeNames[i]);
     }
 
     return new Pair<>(cur, upperTemplate);
@@ -448,14 +463,22 @@ public class MTree implements Serializable {
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
+    Template upperTemplate = cur.getDeviceTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      String childName = nodeNames[i];
-      cur = cur.getChild(childName);
-      if (cur instanceof MeasurementMNode
-          && ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
-        return i == nodeNames.length - 1 || ((MeasurementMNode) cur).getSchema().isCompatible(nodeNames[i+1]);
-      } else if (cur == null) {
-        return false;
+      if(!cur.hasChild(nodeNames[i])){
+        return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
+      }
+      cur = cur.getChild(nodeNames[i]);
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      if(cur instanceof MeasurementMNode){
+        if(i == nodeNames.length - 1){
+          return true;
+        }
+        if(((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema){
+          return i == nodeNames.length - 2&&((MeasurementMNode) cur).getSchema().isCompatible(nodeNames[i+1]);
+        }else {
+          return false;
+        }
       }
     }
     return true;
@@ -469,21 +492,26 @@ public class MTree implements Serializable {
   void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     checkStorageGroup(path.getFullPath());
-    MNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
+    MNode cur = root;
+    Template upperTemplate = cur.getDeviceTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
+        if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
+          throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+        }
         cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
       i++;
     }
     if (cur.hasChild(nodeNames[i])) {
@@ -494,6 +522,9 @@ public class MTree implements Serializable {
         throw new StorageGroupAlreadySetException(path.getFullPath(), true);
       }
     } else {
+      if(cur.isUseTemplate()&&upperTemplate.hasSchema(nodeNames[i])){
+        throw new PathAlreadyExistException(cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+      }
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(
               cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
@@ -1021,7 +1052,7 @@ public class MTree implements Serializable {
         }
         return sum;
       } else {
-        MNode child = node.getChild(nodes[idx]);//todo Case nodeName in vector
+        MNode child = node.getChild(nodes[idx]);
         if (child == null) {
           if (node.isUseTemplate()
               && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
