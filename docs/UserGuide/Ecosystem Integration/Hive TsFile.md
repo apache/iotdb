@@ -26,9 +26,9 @@ Hive-TsFile-Connector implements the support of Hive for external data sources o
 
 With this connector, you can
 
-* Load a single TsFile, from either the local file system or hdfs, into hive
-* Load all files in a specific directory, from either the local file system or hdfs, into hive
-* Query the tsfile through HQL.
+* Loading a single TsFile into Hive, whether the file is stored on the local file system or in HDFS.
+* Loading all files in a particular diretory into Hive, whether the files are stored on the local file system or in HDFS.
+* Querying the tsfile through HQL.
 * As of now, the write operation is not supported in hive-connector. So, insert operation in HQL is not allowed while operating tsfile through hive.
 
 ### System Requirements
@@ -51,7 +51,7 @@ With this connector, you can
 | TEXT      	   | STRING          |
 
 
-### Add Dependency For Hive
+### Add a Denpendent jar Package for Hive
 
 To use hive-connector in hive, we should add the hive-connector jar into hive.
 
