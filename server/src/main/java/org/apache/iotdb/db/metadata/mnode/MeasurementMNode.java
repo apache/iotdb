@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,14 +101,18 @@ public class MeasurementMNode extends MNode {
 
   @Override
   public MNode getChild(String name) {
-    logger.warn("current node {} is a LeafMNode, can not get child {}", super.name, name);
+    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
     throw new RuntimeException(
-            String.format("current node %s is a LeafMNode, can not get child %s", super.name, name));
+            String.format("current node %s is a MeasurementMNode, can not get child %s", super.name, name));
   }
 
   @Override
   public int getMeasurementMNodeCount() {
     return 1;
+  }
+
+  public int getMeasurementCount(){
+    return schema.getMeasurementCount();
   }
 
   @Override
