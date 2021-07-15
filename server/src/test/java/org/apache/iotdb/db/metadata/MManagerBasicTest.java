@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -1085,6 +1086,58 @@ public class MManagerBasicTest {
       assertEquals(
           "Path [root.sg1.d1.vector.s1 ( which is incompatible with template )] already exist",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTemplateAndNodePathCompatibility() throws MetadataException{
+    MManager manager = IoTDB.metaManager;
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+            new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+            new CreateTimeSeriesPlan(
+                    new PartialPath("root.sg1.d1.s11"),
+                    TSDataType.INT32,
+                    TSEncoding.PLAIN,
+                    CompressionType.GZIP,
+                    null,
+                    null,
+                    null,
+                    null);
+
+    manager.createTimeseries(createTimeSeriesPlan);
+
+    try {
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      fail();
+    }catch (PathAlreadyExistException e){
+      assertEquals("Path [root.sg1.d1.s11] already exist",e.getMessage());
+    }
+
+    manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
+
+    CreateTimeSeriesPlan createTimeSeriesPlan2 =
+            new CreateTimeSeriesPlan(
+                    new PartialPath("root.sg1.d1.vector.s1"),
+                    TSDataType.INT32,
+                    TSEncoding.PLAIN,
+                    CompressionType.GZIP,
+                    null,
+                    null,
+                    null,
+                    null);
+    manager.createTimeseries(createTimeSeriesPlan2);
+
+    try {
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      fail();
+    }catch (PathAlreadyExistException e){
+      assertEquals("Path [root.sg1.d1.vector] already exist",e.getMessage());
     }
   }
 
