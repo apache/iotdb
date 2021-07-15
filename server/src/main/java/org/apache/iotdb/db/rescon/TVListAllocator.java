@@ -41,7 +41,7 @@ public class TVListAllocator implements TVListAllocatorMBean, IService {
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
   private static final TVListAllocator INSTANCE = new TVListAllocator();
-
+//
   public static TVListAllocator getInstance() {
     return INSTANCE;
   }
