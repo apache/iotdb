@@ -58,8 +58,6 @@ public interface PrometheusSender extends Closeable {
    */
   boolean isConnected();
 
-  /**
-   * DisConnect
-   */
+  /** DisConnect */
   void disConnect();
 }

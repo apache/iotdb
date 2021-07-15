@@ -34,33 +34,33 @@ public class Test {
   private static Map<String, String[]> name2Tags = new HashMap<>();
 
   /**
-   *
    * @param metricNumber
    * @param tagTotalNumber
    * @param tagSingleNumber
    * @param searchNumber
    */
-  Test(Integer metricNumber, Integer tagTotalNumber, Integer tagSingleNumber
-          , Integer searchNumber){
+  Test(
+      Integer metricNumber, Integer tagTotalNumber, Integer tagSingleNumber, Integer searchNumber) {
     this.metricNumberTotal = metricNumber;
     this.metricNameNumberLength = String.valueOf(metricNumberTotal).length();
     this.tagTotalNumber = tagTotalNumber;
     this.tagSingleNumber = tagSingleNumber;
     this.searchNumber = searchNumber;
     TAGS = new String[tagTotalNumber];
-    for(int i = 0; i < tagTotalNumber; i++){
+    for (int i = 0; i < tagTotalNumber; i++) {
       TAGS[i] = initTag(i);
     }
   }
 
   /**
    * generate tags for metric
+   *
    * @param number
    * @return
    */
-  private String initTag(Integer number){
+  private String initTag(Integer number) {
     StringBuilder stringBuilder = new StringBuilder(String.valueOf(number));
-    while(stringBuilder.length() < 3){
+    while (stringBuilder.length() < 3) {
       stringBuilder.insert(0, '0');
     }
     stringBuilder.insert(0, "Tag");
@@ -69,13 +69,14 @@ public class Test {
 
   /**
    * generate name for metric
+   *
    * @param number
    * @return
    */
-  private String generateName(Integer number){
+  private String generateName(Integer number) {
     StringBuilder stringBuilder = new StringBuilder(String.valueOf(number));
     Integer length = String.valueOf(metricNumberTotal).length();
-    while(stringBuilder.length() < metricNameNumberLength){
+    while (stringBuilder.length() < metricNameNumberLength) {
       stringBuilder.insert(0, '0');
     }
     stringBuilder.insert(0, "counter");
@@ -84,18 +85,19 @@ public class Test {
 
   /**
    * generate tags of a metric
+   *
    * @return
    */
-  private String[] generateTags(){
+  private String[] generateTags() {
     List<Integer> targets = new ArrayList<>();
-    while(targets.size() < tagSingleNumber){
+    while (targets.size() < tagSingleNumber) {
       Integer target = generateRandom(tagTotalNumber);
-      if(!targets.contains(target)){
+      if (!targets.contains(target)) {
         targets.add(target);
       }
     }
     String[] tags = new String[tagSingleNumber];
-    for(int i = 0; i < tagSingleNumber; i++){
+    for (int i = 0; i < tagSingleNumber; i++) {
       tags[i] = TAGS[targets.get(i)];
     }
     return tags;
@@ -103,20 +105,22 @@ public class Test {
 
   /**
    * generate next int
+   *
    * @param max
    * @return
    */
-  private Integer generateRandom(Integer max){
+  private Integer generateRandom(Integer max) {
     return random.nextInt(max);
   }
 
   /**
    * create metric in order
+   *
    * @return
    */
-  public long createMetricInorder(){
+  public long createMetricInorder() {
     long total = 0;
-    for(int i = 0; i < metricNumberTotal; i++){
+    for (int i = 0; i < metricNumberTotal; i++) {
       String name = generateName(i);
       String[] tags = generateTags();
       long start = System.currentTimeMillis();
@@ -130,11 +134,12 @@ public class Test {
 
   /**
    * search metric in order
+   *
    * @return
    */
-  public long searchMetricInorder(){
+  public long searchMetricInorder() {
     long total = 0;
-    for(int i = 0; i < searchNumber; i++){
+    for (int i = 0; i < searchNumber; i++) {
       total += searchOne(i);
     }
     return total;
@@ -142,11 +147,12 @@ public class Test {
 
   /**
    * search metric in random way
+   *
    * @return
    */
-  public long searchMetricDisorder(){
+  public long searchMetricDisorder() {
     long total = 0;
-    for(int i = 0; i < searchNumber; i++){
+    for (int i = 0; i < searchNumber; i++) {
       total += searchOne(generateRandom(metricNumberTotal - 1));
     }
     return total;
@@ -163,13 +169,10 @@ public class Test {
 
   @Override
   public String toString() {
-    return metricNumberTotal +
-            "," + tagTotalNumber +
-            "," + tagSingleNumber +
-            "," + searchNumber;
+    return metricNumberTotal + "," + tagTotalNumber + "," + tagSingleNumber + "," + searchNumber;
   }
 
-  public void stop(){
+  public void stop() {
     name2Tags.clear();
     metricManager.stop();
   }

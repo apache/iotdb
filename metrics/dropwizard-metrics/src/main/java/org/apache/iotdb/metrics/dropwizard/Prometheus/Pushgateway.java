@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -129,8 +130,7 @@ public class Pushgateway implements PrometheusSender {
     }
     if (100 > connection.getResponseCode() || connection.getResponseCode() > 399) {
       System.out.println(connection.getResponseCode());
-      BufferedReader br = new BufferedReader(
-              new InputStreamReader(connection.getErrorStream()));
+      BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
       String responseBody = br.lines().collect(Collectors.joining());
       System.out.println(responseBody);
     }
@@ -141,9 +141,7 @@ public class Pushgateway implements PrometheusSender {
     return connection != null;
   }
 
-  /**
-   * DisConnect
-   */
+  /** DisConnect */
   @Override
   public void disConnect() {
     connection.disconnect();
