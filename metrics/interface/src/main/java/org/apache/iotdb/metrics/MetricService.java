@@ -97,10 +97,6 @@ public class MetricService {
 
     // do some init work
     metricManager.init();
-
-    if (isEnable()) {
-      metricReporter.start();
-    }
   }
 
   /** Stop metric service. If disable, do nothing. */

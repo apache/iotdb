@@ -27,8 +27,8 @@ metricReporterList:
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter
-metricManagerType: MicrometerMetricManager
-metricReporterType: MicrometerMetricReporter
+metricManagerType: DropwizardMetricManager
+metricReporterType: DropwizardMetricReporter
 
 pushPeriodInSecond: 5
 
@@ -40,7 +40,8 @@ pushPeriodInSecond: 5
 #                                                      #
 ########################################################
 prometheusReporterConfig:
-  prometheusExporterPort: 9090
+  prometheusExporterUrl: http://localhost
+  prometheusExporterPort: 9091
 
 ########################################################
 #                                                      #

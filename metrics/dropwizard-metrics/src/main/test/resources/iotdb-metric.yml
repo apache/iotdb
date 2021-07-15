@@ -40,7 +40,8 @@ pushPeriodInSecond: 5
 #                                                      #
 ########################################################
 prometheusReporterConfig:
-  prometheusExporterPort: 9092
+  prometheusExporterUrl: http://localhost
+  prometheusExporterPort: 9091
 
 ########################################################
 #                                                      #

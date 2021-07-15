@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import com.codahale.metrics.MetricFilter;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
@@ -28,6 +27,7 @@ import org.apache.iotdb.metrics.dropwizard.Prometheus.PrometheusReporter;
 import org.apache.iotdb.metrics.dropwizard.Prometheus.Pushgateway;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.jmx.JmxReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +40,9 @@ public class DropwizardMetricReporter implements MetricReporter {
 
   public void setDropwizardMetricManager(MetricManager dropwizardMetricManager) {
     this.dropwizardMetricManager = dropwizardMetricManager;
+    String url = metricConfig.getPrometheusReporterConfig().getPrometheusExporterUrl();
+    String port = metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort();
+    this.pushgateway = new Pushgateway(url + ":" + port, "Dropwizard");
   }
 
   private MetricManager dropwizardMetricManager;
@@ -47,7 +50,7 @@ public class DropwizardMetricReporter implements MetricReporter {
 
   private JmxReporter jmxReporter;
   private PrometheusReporter prometheusReporter;
-  private Pushgateway pushgateway = new Pushgateway("localhost", "9092");
+  private Pushgateway pushgateway;
 
   @Override
   public boolean start() {
@@ -88,19 +91,20 @@ public class DropwizardMetricReporter implements MetricReporter {
   }
 
   private void startPrometheusReporter() {
-    prometheusReporter = PrometheusReporter.forRegistry(
-            ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
-            .prefixedWith("web1.example.com")
+    prometheusReporter =
+        PrometheusReporter.forRegistry(
+                ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
+            .prefixedWith("test:")
             .filter(MetricFilter.ALL)
             .build(pushgateway);
-    prometheusReporter.start(1, TimeUnit.MINUTES);
+    prometheusReporter.start(1, TimeUnit.SECONDS);
   }
 
   private void startJmxReporter() {
     jmxReporter =
-            JmxReporter.forRegistry(
-                    ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
-                    .build();
+        JmxReporter.forRegistry(
+                ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
+            .build();
   }
 
   @Override
@@ -148,7 +152,7 @@ public class DropwizardMetricReporter implements MetricReporter {
   }
 
   private void stopPrometheusReporter(PrometheusReporter prometheusReporter) {
-    if (prometheusReporter!= null) {
+    if (prometheusReporter != null) {
       prometheusReporter.stop();
     }
   }

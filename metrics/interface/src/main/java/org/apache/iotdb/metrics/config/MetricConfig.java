@@ -98,8 +98,17 @@ public class MetricConfig {
 
   /** the following is prometheus related config. */
   public static class PrometheusReporterConfig {
+    private String prometheusExporterUrl = "http://localhost";
     /** the http server's port for prometheus exporter to get metric data. */
-    private String prometheusExporterPort = "8090";
+    private String prometheusExporterPort = "9091";
+
+    public String getPrometheusExporterUrl() {
+      return prometheusExporterUrl;
+    }
+
+    public void setPrometheusExporterUrl(String prometheusExporterUrl) {
+      this.prometheusExporterUrl = prometheusExporterUrl;
+    }
 
     public String getPrometheusExporterPort() {
       return prometheusExporterPort;
