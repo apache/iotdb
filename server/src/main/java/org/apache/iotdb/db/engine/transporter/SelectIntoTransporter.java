@@ -23,11 +23,27 @@ import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import java.io.IOException;
 import java.util.List;
 
 public class SelectIntoTransporter {
 
-  public SelectIntoTransporter(QueryDataSet queryDataSet, List<PartialPath> intoPaths) {}
+  private final QueryDataSet queryDataSet;
+  private final List<PartialPath> intoPaths;
+  private final int fetchSize;
 
-  public void execute() throws IoTDBException {}
+  public SelectIntoTransporter(
+      QueryDataSet queryDataSet, List<PartialPath> intoPaths, int fetchSize) {
+    this.queryDataSet = queryDataSet;
+    this.intoPaths = intoPaths;
+    this.fetchSize = fetchSize;
+  }
+
+  public void transport() throws IoTDBException, IOException {
+    while (queryDataSet.hasNext()) {
+      transportTablets();
+    }
+  }
+
+  private void transportTablets() {}
 }

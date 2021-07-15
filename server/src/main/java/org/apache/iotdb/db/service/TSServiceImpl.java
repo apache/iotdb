@@ -1054,8 +1054,10 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
       new SelectIntoTransporter(
-              createQueryDataSet(queryId, queryPlan, fetchSize), selectIntoPlan.getIntoPaths())
-          .execute();
+              createQueryDataSet(queryId, queryPlan, fetchSize),
+              selectIntoPlan.getIntoPaths(),
+              fetchSize)
+          .transport();
       return RpcUtils.getTSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS))
           .setQueryId(queryId);
     } catch (Exception e) {
