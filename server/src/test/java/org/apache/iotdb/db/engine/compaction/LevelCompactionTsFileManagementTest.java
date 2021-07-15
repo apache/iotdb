@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -35,6 +38,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -224,5 +228,23 @@ public class LevelCompactionTsFileManagementTest extends LevelCompactionTest {
       tsFileResourceIterator2.next();
     }
     assertEquals(9, count);
+  }
+
+  @Test
+  public void testPool() {
+    ExecutorService pool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+            ThreadName.COMPACTION_SERVICE.getName());
+    while (true) {
+      for (int i = 0; i < 100; i++) {
+        pool.submit(() -> {});
+      }
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
   }
 }

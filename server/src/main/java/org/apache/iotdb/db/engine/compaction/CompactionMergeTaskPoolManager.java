@@ -73,7 +73,8 @@ public class CompactionMergeTaskPoolManager implements IService {
               ThreadName.COMPACTION_SERVICE.getName());
       this.scheduledPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
-              Integer.MAX_VALUE, ThreadName.COMPACTION_SERVICE.getName());
+              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+              ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
