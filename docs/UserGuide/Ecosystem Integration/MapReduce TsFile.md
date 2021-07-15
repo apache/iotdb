@@ -23,12 +23,12 @@
 
 ### About Hadoop-TsFile-Connector
 
-TsFile-Hadoop-Connector implements the support of Hadoop for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Hadoop.
+TsFile-Hadoop-Connector implements the support of Hadoop for external data sources of Tsfile type. This enables users to read, write and query TsFile by using Hadoop's map reduce and other operations.
 
 With this connector, you can
-* load a single TsFile, from either the local file system or hdfs, into Hadoop
-* load all files in a specific directory, from either the local file system or hdfs, into hadoop
-* write data from Hadoop into TsFile
+* Loading a single TsFile into Hadoop, whether the file is stored on the local file system or in HDFS
+* Loading all files in a particular directory into Hadoop, whether the files are stored on the local file system or in HDFS
+* Saving the result as TsFile format after Hadoop processing
 
 ### System Requirements
 
@@ -51,7 +51,11 @@ With this connector, you can
 
 ### TSFInputFormat Explanation
 
-TSFInputFormat extract data from tsfile and format them into records of `MapWritable`.
+TSFInputFormat inherits the FileInputFormat class that from the Hadoop,and rewriting the method of slicing. 
+
+The current slicing method is based on whether the offset of the midpoint of each ChunkGroup belongs between the startOffset and endOffset silced by Hadoop, and determine whether to put the ChunkGroup into this slice or not. 
+
+The TSFInputFormat returns TsFile data to users by using multiple MapWritable records.
 
 Suppose that we want to extract data of the device named `d1` which has three sensors named `s1`, `s2`, `s3`.
 
