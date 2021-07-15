@@ -43,7 +43,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
@@ -54,8 +56,9 @@ public class CompactionMergeTaskPoolManager implements IService {
       LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
+  private AtomicInteger threadCnt = new AtomicInteger();
   private ScheduledExecutorService scheduledPool;
-  private ExecutorService pool;
+  private ThreadPoolExecutor pool;
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -69,9 +72,9 @@ public class CompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
+          new CompactionThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
+              r -> new Thread(r, "CompactionThread-" + threadCnt.getAndIncrement()));
       this.scheduledPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               Integer.MAX_VALUE, ThreadName.COMPACTION_SERVICE.getName());
