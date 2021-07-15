@@ -269,8 +269,7 @@ public class CompactionCheckerUtils {
    * @param chunkPagePointsNum Target chunk and page size
    * @param mergedFile The merged File to be checked
    */
-  public static void checkChunkAndPage(
-      List<List<Long>> chunkPagePointsNum, TsFileResource mergedFile) throws IOException {
+  public static void checkChunkAndPage(TsFileResource mergedFile) throws IOException {
     List<List<Long>> mergedChunkPagePointsNum = new ArrayList<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
@@ -306,13 +305,16 @@ public class CompactionCheckerUtils {
               PageHeader pageHeader =
                   reader.readPageHeader(
                       header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              pageHeader.getNumOfValues();
-              pagePointsNum.add(pageHeader.getNumOfValues());
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
                   new PageReader(
                       pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
+              if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
+                pagePointsNum.add(pageHeader.getNumOfValues());
+              } else {
+                pagePointsNum.add((long) batchData.length());
+              }
               BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
               while (batchDataIterator.hasNextTimeValuePair()) {
                 batchDataIterator.nextTimeValuePair();

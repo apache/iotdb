@@ -136,7 +136,8 @@ public class InnerSeqCompactionTest {
         true);
     SizeTiredCompactionTask.renameLevelFilesMods(toMergeResources, targetTsFileResource);
     CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResource);
-    //    CompactionCheckerUtils.checkChunkAndPage(,targetTsFileResource);
+    List<List<Long>> chunkPagePointsNumMerged = new ArrayList<>();
+    CompactionCheckerUtils.checkChunkAndPage(targetTsFileResource);
 
     // merge 3 files
 
