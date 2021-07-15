@@ -27,8 +27,8 @@ Spark-TsFile-Connector implements the support of Spark for external data sources
 
 With this connector, you can
 
-* load a single TsFile, from either the local file system or hdfs, into Spark
-* load all files in a specific directory, from either the local file system or hdfs, into Spark
+* loading a single TsFile, from either the local file system or hdfs, into Spark
+* Loading all files from a specific directory in user's local file system or HDFS into spark
 * write data from Spark into TsFile
 
 ### System Requirements
@@ -53,8 +53,7 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
-
+* See https://github.com/apache/iotdb/tree/master/tsfile for the details that how to get the TsFiles information.
 
 #### Distributed Mode
 
@@ -68,7 +67,7 @@ Note:
 
 * \<spark-shell-path\> is the real path of your spark-shell.
 * Multiple jar packages are separated by commas without any spaces.
-* See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
+* See https://github.com/apache/iotdb/tree/master/tsfile for the details that how to get the TsFiles information.
 
 ### Data Type Correspondence
 
@@ -94,7 +93,14 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 
 The existing data in the TsFile are:
 
-<img width="519" alt="ST 1" src="https://user-images.githubusercontent.com/69114052/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
+* d1:root.ln.wf01.wt01
+ * d2:root.ln.wf02.wt02
+
+time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True
+3|True	|2|2.2|4|"bbb"|2|False
+5|False|3	|2.1|6	|"ccc"|4|True
 
 The corresponding SparkSQL table is:
 
@@ -239,9 +245,16 @@ The way to display TsFile is related to TsFile Schema. Take the following TsFile
 
 The existing data in the file are:
 
-<img width="817" alt="ST 2" src="https://user-images.githubusercontent.com/69114052/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
+* delta_object1: root.ln.wf01.wt01
+ * delta_object2: root.ln.wf02.wt02
+ * delta_object3: :root.sgcc.wf03.wt01
 
-A set of time-series data
+time|delta_object1.status|time|delta_object1.temperature |time	| delta_object2.hardware	|time|delta_object2.status |time|delta_object3.status|time|delta_object3.temperature 
+---- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
+1|True	|1|2.2|2|"aaa"|1|True|2|True|3|3.3
+3|True	|2|2.2|4|"bbb"|2|False|3|True|6|6.6
+5|False|3	|2.1|6	|"ccc"|4|True|4|True|8|8.8
+7|True|4|2.0|8|"ddd"|5|False|6|True|9|9.9
 
 There are two ways to show a set of time-series data:
 
