@@ -50,6 +50,8 @@ public class SelectIntoOperator extends Operator {
 
   public void check() throws LogicalOperatorException {
     queryOperator.check();
+
+    // TODO: check query plan type
   }
 
   public void setQueryOperator(QueryOperator queryOperator) {
