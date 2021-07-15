@@ -1,6 +1,22 @@
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -23,19 +39,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class CompactionCheckerUtils {
 
@@ -128,6 +131,7 @@ public class CompactionCheckerUtils {
               List<TimeValuePair> timeValuePairs =
                   mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
               timeValuePairs.addAll(currTimeValuePairs);
+              currTimeValuePairs.clear();
             }
             measurementID = header.getMeasurementID();
             Decoder defaultTimeDecoder =
@@ -143,14 +147,18 @@ public class CompactionCheckerUtils {
                   reader.readPageHeader(
                       header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
               PartialPath path = new PartialPath(device, measurementID);
-              long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
-              count += pageHeader.getNumOfValues();
-              fullPathPointNum.put(path.getFullPath(), count);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
                   new PageReader(
                       pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
               BatchData batchData = reader1.getAllSatisfiedPageData();
+              long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
+              if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
+                count += pageHeader.getNumOfValues();
+              } else {
+                count += batchData.length();
+              }
+              fullPathPointNum.put(path.getFullPath(), count);
               BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
               while (batchDataIterator.hasNextTimeValuePair()) {
                 currTimeValuePairs.add(batchDataIterator.nextTimeValuePair());
@@ -176,6 +184,25 @@ public class CompactionCheckerUtils {
             mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
         timeValuePairs.addAll(currTimeValuePairs);
       }
+    }
+    Collection<Modification> modifications =
+        ModificationFile.getNormalMods(mergedFile).getModifications();
+    for (Modification modification : modifications) {
+      Deletion deletion = (Deletion) modification;
+      long deletedCount = 0L;
+      Iterator<TimeValuePair> timeValuePairIterator =
+          mergedData.get(deletion.getPath().getFullPath()).iterator();
+      while (timeValuePairIterator.hasNext()) {
+        TimeValuePair timeValuePair = timeValuePairIterator.next();
+        if (timeValuePair.getTimestamp() >= deletion.getStartTime()
+            && timeValuePair.getTimestamp() <= deletion.getEndTime()) {
+          timeValuePairIterator.remove();
+          deletedCount++;
+        }
+      }
+      long count = fullPathPointNum.get(deletion.getPath().getFullPath());
+      count = count - deletedCount;
+      fullPathPointNum.put(deletion.getPath().getFullPath(), count);
     }
     compareSensorAndData(sourceData, mergedData);
     for (Entry<String, List<TimeValuePair>> sourceDataEntry : sourceData.entrySet()) {
