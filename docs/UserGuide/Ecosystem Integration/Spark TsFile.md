@@ -93,7 +93,7 @@ The way to display TsFile is dependent on the schema. Take the following TsFile 
 
 The existing data in the TsFile are:
 
-* d1:root.ln.wf01.wt01
+ * d1:root.ln.wf01.wt01
  * d2:root.ln.wf02.wt02
 
 time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
