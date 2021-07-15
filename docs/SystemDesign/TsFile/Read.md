@@ -63,7 +63,7 @@ ValueLt|value filter|value on this column < some value|ValueLt("string") means v
 ValueLtEq|value filter|value on this column <= some value|ValueLtEq(-100) means value on this column shold be less than or equal to -100
 ValueNotEq|value filter|value on this column != some value|ValueNotEq(true) means value on this column should not be true
 
-A filter can consist of one or two sub-filters.。If a Filter is composed of a single Filter, it is also termed as UnaryFilter.If it contains two filters, it is termed as BinaryFilter. In this case, the two filters are connected with a logical relation, AND or OR, where the formar is termed as AndFilter, and the latter is OrFilter. Obviously, both AndFilter and OrFilter are BinaryFilter.
+A filter can consist of one or two sub-filters.If a Filter is composed of a single Filter, it is also termed as UnaryFilter.If it contains two filters, it is termed as BinaryFilter. In this case, the two filters are connected with a logical relation, AND or OR, where the formar is termed as AndFilter, and the latter is OrFilter. Obviously, both AndFilter and OrFilter are BinaryFilter.
 
 We give some examples of AndFilter and OrFilter, where "&&" indicates relation AND and "||" indicates relation OR.
 
