@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.sql;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -45,7 +38,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 
 public abstract class Cases {
 
@@ -448,12 +440,15 @@ public abstract class Cases {
   @Test
   public void clusterUDTFQueryTest() throws SQLException {
     // Prepare data.
-    writeStatement.execute("CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
-    for(int i = 10; i < 20; i++) {
-      writeStatement.execute(String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    writeStatement.execute(
+        "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+    for (int i = 10; i < 20; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
     }
-    for(int i = 0; i < 10; i++) {
-      writeStatement.execute(String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
     }
 
     ResultSet resultSet = null;
@@ -465,7 +460,7 @@ public abstract class Cases {
 
       int i = 0;
       while (resultSet.next()) {
-        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1),0.00001);
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1), 0.00001);
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
@@ -476,7 +471,7 @@ public abstract class Cases {
       resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
       int i = 5;
       while (resultSet.next()) {
-        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1),0.00001);
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1), 0.00001);
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
