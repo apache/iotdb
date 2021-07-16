@@ -36,6 +36,5 @@
         <module>interface</module>
         <module>micrometer-metrics</module>
         <module>dropwizard-metrics</module>
-        <module>opentelemetry-metrics</module>
     </modules>
 </project>
