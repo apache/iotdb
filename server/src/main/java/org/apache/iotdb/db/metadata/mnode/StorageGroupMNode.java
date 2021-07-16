@@ -33,7 +33,7 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }

@@ -60,7 +60,7 @@ public class MeasurementMNode extends MNode {
 
   /** @param alias alias of measurementName */
   public MeasurementMNode(
-      MNode parent,
+      IMNode parent,
       String measurementName,
       String alias,
       TSDataType dataType,
@@ -73,7 +73,7 @@ public class MeasurementMNode extends MNode {
   }
 
   public MeasurementMNode(
-      MNode parent, String measurementName, IMeasurementSchema schema, String alias) {
+      IMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
@@ -85,7 +85,7 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void addChild(String name, MNode child) {
+  public void addChild(String name, IMNode child) {
     // Do nothing
   }
 
@@ -117,16 +117,16 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public boolean addAlias(String alias, MNode child) {
+  public boolean addAlias(String alias, IMNode child) {
     return false;
   }
 
   @Override
-  public Map<String, MNode> getChildren() {
+  public Map<String, IMNode> getChildren() {
     return Collections.emptyMap();
   }
 
-  public void setChildren(Map<String, MNode> children) {
+  public void setChildren(Map<String, IMNode> children) {
     // Do nothing
   }
 

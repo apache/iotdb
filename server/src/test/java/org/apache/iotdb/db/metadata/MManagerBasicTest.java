@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -861,7 +861,7 @@ public class MManagerBasicTest {
 
     manager.setDeviceTemplate(setDeviceTemplatePlan);
 
-    MNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
+    IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node.setUseTemplate(true);
 
     MeasurementSchema s11 =
@@ -1553,9 +1553,9 @@ public class MManagerBasicTest {
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(mNode.getPartialPath()));
-      assertEquals(1, mNode.getMeasurementMNodeCount());
+      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(3, manager.getAllTimeseriesCount(IMNode.getPartialPath()));
+      assertEquals(1, IMNode.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1640,8 +1640,8 @@ public class MManagerBasicTest {
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, mNode.getMeasurementMNodeCount());
+      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(1, IMNode.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 

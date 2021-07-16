@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class MNode implements Serializable {
+public class MNode implements IMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
   private static Map<String, String> cachedPathPool =
@@ -50,7 +49,7 @@ public class MNode implements Serializable {
   /** Name of the MNode */
   protected String name;
 
-  protected MNode parent;
+  protected IMNode parent;
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
@@ -62,7 +61,7 @@ public class MNode implements Serializable {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile Map<String, MNode> children = null;
+  protected transient volatile Map<String, IMNode> children = null;
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -70,7 +69,7 @@ public class MNode implements Serializable {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, MNode> aliasChildren = null;
+  private transient volatile Map<String, IMNode> aliasChildren = null;
 
   // device template
   protected Template deviceTemplate = null;
@@ -78,12 +77,13 @@ public class MNode implements Serializable {
   private volatile boolean useTemplate = false;
 
   /** Constructor of MNode. */
-  public MNode(MNode parent, String name) {
+  public MNode(IMNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }
 
   /** check whether the MNode has a child with the name */
+  @Override
   public boolean hasChild(String name) {
     return (children != null && children.containsKey(name))
         || (aliasChildren != null && aliasChildren.containsKey(name));
@@ -95,7 +95,8 @@ public class MNode implements Serializable {
    * @param name child's name
    * @param child child's node
    */
-  public void addChild(String name, MNode child) {
+  @Override
+  public void addChild(String name, IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -108,7 +109,7 @@ public class MNode implements Serializable {
         }
       }
     }
-    child.parent = this;
+    child.setParent(this);
     children.putIfAbsent(name, child);
   }
 
@@ -123,7 +124,7 @@ public class MNode implements Serializable {
    * @param child child's node
    * @return return the MNode already added
    */
-  MNode addChild(MNode child) {
+  public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -137,12 +138,13 @@ public class MNode implements Serializable {
       }
     }
 
-    child.parent = this;
+    child.setParent(this);
     children.putIfAbsent(child.getName(), child);
     return child;
   }
 
   /** delete a child */
+  @Override
   public void deleteChild(String name) {
     if (children != null) {
       children.remove(name);
@@ -150,23 +152,27 @@ public class MNode implements Serializable {
   }
 
   /** delete the alias of a child */
+  @Override
   public void deleteAliasChild(String alias) {
     if (aliasChildren != null) {
       aliasChildren.remove(alias);
     }
   }
 
+  @Override
   public Template getDeviceTemplate() {
     return deviceTemplate;
   }
 
+  @Override
   public void setDeviceTemplate(Template deviceTemplate) {
     this.deviceTemplate = deviceTemplate;
   }
 
   /** get the child with the name */
-  public MNode getChild(String name) {
-    MNode child = null;
+  @Override
+  public IMNode getChild(String name) {
+    IMNode child = null;
     if (children != null) {
       child = children.get(name);
     }
@@ -176,12 +182,13 @@ public class MNode implements Serializable {
     return aliasChildren == null ? null : aliasChildren.get(name);
   }
 
-  public MNode getChildOfAlignedTimeseries(String name) throws MetadataException {
-    MNode node = null;
+  @Override
+  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    IMNode node = null;
     // for aligned timeseries
     List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
     for (String measurement : measurementList) {
-      MNode nodeOfMeasurement = getChild(measurement);
+      IMNode nodeOfMeasurement = getChild(measurement);
       if (node == null) {
         node = nodeOfMeasurement;
       } else {
@@ -195,6 +202,7 @@ public class MNode implements Serializable {
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */
+  @Override
   public int getMeasurementMNodeCount() {
     if (children == null) {
       return 1;
@@ -203,14 +211,15 @@ public class MNode implements Serializable {
     if (this instanceof MeasurementMNode) {
       measurementMNodeCount += 1; // current node itself may be MeasurementMNode
     }
-    for (MNode child : children.values()) {
+    for (IMNode child : children.values()) {
       measurementMNodeCount += child.getMeasurementMNodeCount();
     }
     return measurementMNodeCount;
   }
 
   /** add an alias */
-  public boolean addAlias(String alias, MNode child) {
+  @Override
+  public boolean addAlias(String alias, IMNode child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
       synchronized (this) {
@@ -224,6 +233,7 @@ public class MNode implements Serializable {
   }
 
   /** get full path */
+  @Override
   public String getFullPath() {
     if (fullPath == null) {
       fullPath = concatFullPath();
@@ -242,9 +252,10 @@ public class MNode implements Serializable {
    *
    * @return partial path
    */
+  @Override
   public PartialPath getPartialPath() {
     List<String> detachedPath = new ArrayList<>();
-    MNode temp = this;
+    IMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
       temp = temp.getParent();
@@ -255,10 +266,10 @@ public class MNode implements Serializable {
 
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(name);
-    MNode curr = this;
+    IMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
-      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
+      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
     }
     return builder.toString();
   }
@@ -268,44 +279,52 @@ public class MNode implements Serializable {
     return this.getName();
   }
 
-  public MNode getParent() {
+  @Override
+  public IMNode getParent() {
     return parent;
   }
 
-  public void setParent(MNode parent) {
+  @Override
+  public void setParent(IMNode parent) {
     this.parent = parent;
   }
 
-  public Map<String, MNode> getChildren() {
+  @Override
+  public Map<String, IMNode> getChildren() {
     if (children == null) {
       return Collections.emptyMap();
     }
     return children;
   }
 
-  public Map<String, MNode> getAliasChildren() {
+  @Override
+  public Map<String, IMNode> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
     }
     return aliasChildren;
   }
 
-  public void setChildren(Map<String, MNode> children) {
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
     this.children = children;
   }
 
-  private void setAliasChildren(Map<String, MNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
     this.aliasChildren = aliasChildren;
   }
 
+  @Override
   public String getName() {
     return name;
   }
 
+  @Override
   public void setName(String name) {
     this.name = name;
   }
 
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 
@@ -316,7 +335,7 @@ public class MNode implements Serializable {
     if (children == null) {
       return;
     }
-    for (Entry<String, MNode> entry : children.entrySet()) {
+    for (Entry<String, IMNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(logWriter);
     }
   }
@@ -327,19 +346,20 @@ public class MNode implements Serializable {
    * @param measurement measurement name
    * @param newChildNode new child node
    */
-  public void replaceChild(String measurement, MNode newChildNode) {
-    MNode oldChildNode = this.getChild(measurement);
+  @Override
+  public void replaceChild(String measurement, IMNode newChildNode) {
+    IMNode oldChildNode = this.getChild(measurement);
     if (oldChildNode == null) {
       return;
     }
 
     // newChildNode builds parent-child relationship
-    Map<String, MNode> grandChildren = oldChildNode.getChildren();
+    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
         (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
 
-    Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
+    Map<String, IMNode> grandAliasChildren = oldChildNode.getAliasChildren();
     newChildNode.setAliasChildren(grandAliasChildren);
     grandAliasChildren.forEach(
         (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
@@ -350,6 +370,7 @@ public class MNode implements Serializable {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
+  @Override
   public void setFullPath(String fullPath) {
     this.fullPath = fullPath;
   }
@@ -359,13 +380,14 @@ public class MNode implements Serializable {
    *
    * @return upper template
    */
+  @Override
   public Template getUpperTemplate() {
-    MNode cur = this;
+    IMNode cur = this;
     while (cur != null) {
       if (cur.getDeviceTemplate() != null) {
-        return cur.deviceTemplate;
+        return cur.getDeviceTemplate();
       }
-      cur = cur.parent;
+      cur = cur.getParent();
     }
 
     return null;
@@ -396,10 +418,12 @@ public class MNode implements Serializable {
     }
   }
 
+  @Override
   public boolean isUseTemplate() {
     return useTemplate;
   }
 
+  @Override
   public void setUseTemplate(boolean useTemplate) {
     this.useTemplate = useTemplate;
   }

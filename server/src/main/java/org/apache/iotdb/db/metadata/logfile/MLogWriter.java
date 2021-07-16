@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -185,7 +185,7 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void serializeMNode(MNode node) throws IOException {
+  public void serializeMNode(IMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();

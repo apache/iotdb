@@ -73,7 +73,7 @@ public class MNodeTest {
   public void testAddChild() {
     MNode rootNode = new MNode(null, "root");
 
-    MNode speedNode =
+    IMNode speedNode =
         rootNode
             .addChild(new MNode(null, "sg1"))
             .addChild(new MNode(null, "a"))
@@ -84,7 +84,7 @@ public class MNodeTest {
             .addChild(new MNode(null, "speed"));
     assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
 
-    MNode temperatureNode =
+    IMNode temperatureNode =
         rootNode
             .getChild("sg1")
             .addChild(new MNode(null, "aa"))

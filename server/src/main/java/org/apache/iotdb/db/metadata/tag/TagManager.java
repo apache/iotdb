@@ -9,7 +9,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -124,7 +124,7 @@ public class TagManager {
       try {
         list =
             StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
+                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
         try {
           allMatchedNodes =
               allMatchedNodes.stream()
@@ -132,7 +132,7 @@ public class TagManager {
                       Comparator.comparingLong(
                               (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
                           .reversed()
-                          .thenComparing(MNode::getFullPath))
+                          .thenComparing(IMNode::getFullPath))
                   .collect(toList());
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
@@ -144,7 +144,7 @@ public class TagManager {
       // otherwise, we just sort them by the alphabetical order
       allMatchedNodes =
           allMatchedNodes.stream()
-              .sorted(Comparator.comparing(MNode::getFullPath))
+              .sorted(Comparator.comparing(IMNode::getFullPath))
               .collect(toList());
     }
 

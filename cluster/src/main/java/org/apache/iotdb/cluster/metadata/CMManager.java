@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -248,8 +249,8 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
-    Map<MNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<MNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<IMNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
       MeasurementMNode node = getMeasurementMNode(path);
@@ -433,7 +434,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
+  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
@@ -508,7 +509,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public Pair<MNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
+  public Pair<IMNode, Template> getDeviceNodeWithAutoCreate(PartialPath path)
       throws MetadataException, IOException {
     return getDeviceNodeWithAutoCreate(
         path,
@@ -1458,8 +1459,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getMNode(MNode deviceMNode, String measurementName) {
-    MNode child = deviceMNode.getChild(measurementName);
+  public IMNode getMNode(IMNode deviceMNode, String measurementName) {
+    IMNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }

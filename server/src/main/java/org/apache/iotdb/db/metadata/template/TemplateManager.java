@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -67,7 +67,7 @@ public class TemplateManager {
     return template;
   }
 
-  public void setDeviceTemplate(Template template, Pair<MNode, Template> node)
+  public void setDeviceTemplate(Template template, Pair<IMNode, Template> node)
       throws MetadataException {
 
     if (node.left.getDeviceTemplate() != null) {
@@ -119,12 +119,12 @@ public class TemplateManager {
     return upperMap.isEmpty();
   }
 
-  public void checkIsTemplateAndMNodeCompatible(Template template, MNode mNode)
+  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode IMNode)
       throws PathAlreadyExistException {
     for (String schemaName : template.getSchemaMap().keySet()) {
-      if (mNode.hasChild(schemaName)) {
+      if (IMNode.hasChild(schemaName)) {
         throw new PathAlreadyExistException(
-            mNode.getPartialPath().concatNode(schemaName).getFullPath());
+            IMNode.getPartialPath().concatNode(schemaName).getFullPath());
       }
     }
   }

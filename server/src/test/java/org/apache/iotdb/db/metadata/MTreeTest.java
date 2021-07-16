@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -794,7 +794,7 @@ public class MTreeTest {
       assertEquals("Path [root.sg1.a.b] already exist", e.getMessage());
     }
 
-    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    IMNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertFalse(node instanceof MeasurementMNode);
   }
 }
