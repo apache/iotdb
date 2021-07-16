@@ -755,7 +755,6 @@ public class CMManager extends MManager {
       return false;
     }
 
-    boolean hasVector = false;
     for (String measurementId : insertPlan.getMeasurements()) {
       seriesList.add(deviceId.getFullPath() + TsFileConstant.PATH_SEPARATOR + measurementId);
     }
@@ -1899,7 +1898,7 @@ public class CMManager extends MManager {
    * @throws MajorVersionNotEqualException sync meta leader failed and the
    * @throws StorageGroupNotSetException some error occurred.
    */
-  private boolean checkSgNodeAndPlanMajorVersion(PartialPath path)
+  public boolean checkSgNodeAndPlanMajorVersion(PartialPath path)
       throws MetadataException, StorageGroupNotSetException {
     StorageGroupMNode node = null;
     try {

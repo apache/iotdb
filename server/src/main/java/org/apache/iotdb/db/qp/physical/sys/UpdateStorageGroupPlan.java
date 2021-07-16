@@ -62,6 +62,8 @@ public class UpdateStorageGroupPlan extends PhysicalPlan {
     stream.write((byte) PhysicalPlanType.UPDATE_STORAGE_GROUP.ordinal());
     putString(stream, path.getFullPath());
     stream.writeLong(index);
+    stream.writeLong(path.getMajorVersion());
+    stream.writeLong(path.getMinorVersion());
   }
 
   @Override
@@ -83,7 +85,7 @@ public class UpdateStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public String toString() {
-    return "UpdateStorageGroupPlan{" + " path=" + path + ", majorVersion=" + "}";
+    return "UpdateStorageGroupPlan{" + " path=" + path + "}";
   }
 
   @Override
@@ -97,7 +99,9 @@ public class UpdateStorageGroupPlan extends PhysicalPlan {
 
     UpdateStorageGroupPlan that = (UpdateStorageGroupPlan) o;
 
-    return Objects.equals(path, that.path);
+    return Objects.equals(path, that.path)
+        && (path.getMajorVersion() == that.path.getMajorVersion())
+        && (path.getMinorVersion() == that.path.getMinorVersion());
   }
 
   @Override

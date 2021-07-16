@@ -74,8 +74,8 @@ public class SingleNodeIT extends Cases {
     session = new Session("127.0.0.1", rpcPort);
     session.open();
 
-    antherSession = new Session("127.0.0.1", rpcPort);
-    antherSession.open();
+    anotherSession = new Session("127.0.0.1", rpcPort);
+    anotherSession.open();
   }
 
   @After

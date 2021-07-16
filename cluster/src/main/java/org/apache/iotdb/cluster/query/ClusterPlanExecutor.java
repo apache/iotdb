@@ -48,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
@@ -664,7 +665,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<PartialPath> deletePathList = deleteTimeSeriesPlan.getPaths();
     for (PartialPath path : deletePathList) {
       try {
-        IoTDB.metaManager.checkAndUpdateStorageGroupVersion(path);
+        ((CMManager) (IoTDB.metaManager)).checkSgNodeAndPlanMajorVersion(path);
       } catch (MetadataException e) {
         logger.warn(
             "some error occurred when check the storage group version, plan={}",
@@ -673,5 +674,19 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     }
     return super.deleteTimeSeries(deleteTimeSeriesPlan);
+  }
+
+  @Override
+  protected boolean alterTimeSeries(AlterTimeSeriesPlan alterTimeSeriesPlan)
+      throws QueryProcessException {
+    PartialPath path = alterTimeSeriesPlan.getPath();
+    try {
+      if (((CMManager) (IoTDB.metaManager)).checkSgNodeAndPlanMajorVersion(path)) {
+        return super.alterTimeSeries(alterTimeSeriesPlan);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+    return false;
   }
 }

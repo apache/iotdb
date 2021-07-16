@@ -61,7 +61,7 @@ public abstract class Cases {
   protected Statement[] readStatements;
   protected Connection[] readConnections;
   protected Session session;
-  protected Session antherSession;
+  protected Session anotherSession;
   private final Planner processor = new Planner();
 
   /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
@@ -77,7 +77,7 @@ public abstract class Cases {
       connection.close();
     }
     session.close();
-    antherSession.close();
+    anotherSession.close();
   }
 
   // if we seperate the test into multiply test() methods, then the docker container have to be
@@ -589,7 +589,7 @@ public abstract class Cases {
     for (int sg = 0; sg < sgNum; sg++) {
       String sql = String.format(sqlFormat, sg);
       try {
-        antherSession.executeNonQueryStatement(sql);
+        anotherSession.executeNonQueryStatement(sql);
         Thread.sleep(10);
       } catch (StatementExecutionException | IoTDBConnectionException | InterruptedException e) {
         Assert.fail(e.getMessage());
