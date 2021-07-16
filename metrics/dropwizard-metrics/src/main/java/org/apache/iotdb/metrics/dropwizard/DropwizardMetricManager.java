@@ -60,10 +60,10 @@ import java.util.concurrent.TimeUnit;
  */
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class DropwizardMetricManager implements MetricManager {
-
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricManager.class);
 
   Map<MetricName, IMetric> currentMeters;
+  /** whether is able to monitor */
   boolean isEnable;
 
   com.codahale.metrics.MetricRegistry metricRegistry;
@@ -267,6 +267,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
+    metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
 
@@ -276,6 +277,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
+    metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
 
@@ -285,6 +287,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
+    metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
 
@@ -294,6 +297,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
+    metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
 
@@ -303,6 +307,7 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
+    metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
 

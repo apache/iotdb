@@ -33,11 +33,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
-public class Pushgateway implements PrometheusSender {
+public class PushGateway implements PrometheusSender {
 
   private static final int SECONDS_PER_MILLISECOND = 1000;
 
-  private static final Logger LOG = LoggerFactory.getLogger(Pushgateway.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PushGateway.class);
 
   private final String url;
   private final String job;
@@ -46,11 +46,11 @@ public class Pushgateway implements PrometheusSender {
   private PrometheusTextWriter writer;
   private DropwizardMetricsExporter exporter;
 
-  public Pushgateway(String url) {
+  public PushGateway(String url) {
     this(url, "prometheus");
   }
 
-  public Pushgateway(String url, String job) {
+  public PushGateway(String url, String job) {
     this.url = url;
     this.job = job;
   }

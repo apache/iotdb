@@ -107,10 +107,10 @@ public class PrometheusReporter extends ScheduledReporter {
      *
      * <p>Present for binary compatibility
      *
-     * @param prometheus a {@link Pushgateway}
+     * @param prometheus a {@link PushGateway}
      * @return a {@link PrometheusReporter}
      */
-    public PrometheusReporter build(Pushgateway prometheus) {
+    public PrometheusReporter build(PushGateway prometheus) {
       return build((PrometheusSender) prometheus);
     }
 
