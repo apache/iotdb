@@ -45,10 +45,11 @@ public class UpgradeSevice implements IService {
   public static UpgradeSevice getINSTANCE() {
     return InstanceHolder.INSTANCE;
   }
-  
+
   public static class InstanceHolder {
     private static final UpgradeSevice INSTANCE = new UpgradeSevice();
-    private InstanceHolder () {}
+
+    private InstanceHolder() {}
   }
 
   @Override
