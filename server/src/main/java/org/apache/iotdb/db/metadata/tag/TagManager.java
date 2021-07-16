@@ -6,8 +6,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -15,9 +13,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,13 +67,6 @@ public class TagManager {
                 .add(measurementMNode);
     }
 
-    public void removeIndex(String tagKey, String tagValue, MeasurementMNode measurementMNode){
-        tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
-        if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
-            tagIndex.get(tagKey).remove(tagValue);
-        }
-    }
-
     public void addIndex(Map<String,String> tagsMap, MeasurementMNode measurementMNode){
         if(tagsMap!=null&&measurementMNode!=null){
             for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
@@ -86,8 +75,14 @@ public class TagManager {
         }
     }
 
-    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-    public List<MeasurementMNode> showTimeseriesWithIndex(
+    public void removeIndex(String tagKey, String tagValue, MeasurementMNode measurementMNode){
+        tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
+        if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
+            tagIndex.get(tagKey).remove(tagValue);
+        }
+    }
+
+    public List<MeasurementMNode> getMatchedTimeseriesInIndex(
             ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
         if (!tagIndex.containsKey(plan.getKey())) {
             throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
@@ -315,12 +310,7 @@ public class TagManager {
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
         // update tag inverted map
-        tagsMap.forEach(
-                (key, value) ->
-                        tagIndex
-                                .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                                .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-                                .add(leafMNode));
+        addIndex(tagsMap,leafMNode);
     }
 
     /**
@@ -460,10 +450,7 @@ public class TagManager {
                                     tagIndex.containsKey(key)));
                 }
             }
-            tagIndex
-                    .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>())
-                    .add(leafMNode);
+            addIndex(key,currentValue,leafMNode);
         }
     }
 
@@ -522,10 +509,7 @@ public class TagManager {
                                     tagIndex.containsKey(oldKey)));
                 }
             }
-            tagIndex
-                    .computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>())
-                    .add(leafMNode);
+            addIndex(newKey,value,leafMNode);
         } else if (pair.right.containsKey(oldKey)) {
             // check attribute map
             pair.right.put(newKey, pair.right.remove(oldKey));
@@ -538,16 +522,12 @@ public class TagManager {
         }
     }
 
-    public long writeLog(Map<String, String> tags, Map<String, String> attributes)
+    public long writeTagFile(Map<String, String> tags, Map<String, String> attributes)
             throws MetadataException, IOException {
         return tagLogFile.write(tags, attributes);
     }
 
-    public Map<String, String> readTag(long tagOffset) throws IOException{
-        return tagLogFile.readTag(config.getTagAttributeTotalSize(), tagOffset);
-    }
-
-    public Pair<Map<String, String>,Map<String, String>> readRecord(long tagFileOffset) throws IOException{
+    public Pair<Map<String, String>,Map<String, String>> readTagFile(long tagFileOffset) throws IOException{
         return tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
     }
 

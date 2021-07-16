@@ -22,9 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -96,7 +94,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -111,7 +108,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -123,43 +119,40 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 @SuppressWarnings("java:S1135") // ignore todos
 public class MManager {
 
-  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
-
-
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
+
+  public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
   /** A thread will check whether the MTree is modified lately each such interval. Unit: second */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
 
-  private final int mtreeSnapshotInterval;
-  private final long mtreeSnapshotThresholdTime;
-  // the log file seriesPath
-  private String logFilePath;
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
-  private MTree mtree;
-  private MLogWriter logWriter;
-  private boolean isRecovering;
-  // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, Pair<MNode, Template>> mNodeCache;
+  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  /** threshold total size of MTree */
+  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
+  private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  private TagManager tagManager=TagManager.getInstance();
+  private boolean isRecovering;
+  private boolean initialized;
+  private boolean allowToCreateNewSeries = true;
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
-  private boolean initialized;
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private File logFile;
+  private String mtreeSnapshotPath;
+  private String mtreeSnapshotTmpPath;
+  private final int mtreeSnapshotInterval;
+  private final long mtreeSnapshotThresholdTime;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
   private ScheduledExecutorService timedForceMLogThread;
 
-  /** threshold total size of MTree */
-  private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
+  // the log file seriesPath
+  private String logFilePath;
+  private File logFile;
+  private MLogWriter logWriter;
 
-  private boolean allowToCreateNewSeries = true;
-
-  private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
-
+  private MTree mtree;
+  // device -> DeviceMNode
+  private RandomDeleteCache<PartialPath, Pair<MNode, Template>> mNodeCache;
+  private TagManager tagManager=TagManager.getInstance();
   private TemplateManager templateManager=TemplateManager.getInstance();
 
   private static class MManagerHolder {
@@ -458,7 +451,7 @@ public class MManager {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagManager.writeLog(plan.getTags(),plan.getAttributes());
+          offset = tagManager.writeTagFile(plan.getTags(),plan.getAttributes());
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
@@ -882,7 +875,7 @@ public class MManager {
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
 
-    List<MeasurementMNode> allMatchedNodes = tagManager.showTimeseriesWithIndex(plan,context);
+    List<MeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan,context);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     String[] prefixNodes = plan.getPath().getNodes();
@@ -900,7 +893,7 @@ public class MManager {
         }
         try {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-              tagManager.readRecord(leaf.getOffset());
+              tagManager.readTagFile(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
           res.add(
               new ShowTimeSeriesResult(
@@ -968,7 +961,7 @@ public class MManager {
         Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
             new Pair<>(Collections.emptyMap(), Collections.emptyMap());
         if (tagFileOffset >= 0) {
-          tagAndAttributePair = tagManager.readRecord(tagFileOffset);
+          tagAndAttributePair = tagManager.readTagFile(tagFileOffset);
         }
         res.add(
             new ShowTimeSeriesResult(
@@ -1384,7 +1377,7 @@ public class MManager {
     }
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeLog(tagsMap, attributesMap);
+      long offset = tagManager.writeTagFile(tagsMap, attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
@@ -1431,7 +1424,7 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeLog(Collections.emptyMap(), attributesMap);
+      long offset = tagManager.writeTagFile(Collections.emptyMap(), attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       return;
@@ -1455,7 +1448,7 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeLog(tagsMap, Collections.emptyMap());
+      long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
