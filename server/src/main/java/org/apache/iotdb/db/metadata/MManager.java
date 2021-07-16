@@ -287,19 +287,19 @@ public class MManager {
     if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
       if (logger.isDebugEnabled()) {
         logger.debug(
-                "MTree snapshot need not be created. Time from last modification: {} ms.",
-                System.currentTimeMillis() - logFile.lastModified());
+            "MTree snapshot need not be created. Time from last modification: {} ms.",
+            System.currentTimeMillis() - logFile.lastModified());
       }
     } else if (logWriter.getLogNum() < mtreeSnapshotInterval) {
       if (logger.isDebugEnabled()) {
         logger.debug(
-                "MTree snapshot need not be created. New mlog line number: {}.", logWriter.getLogNum());
+            "MTree snapshot need not be created. New mlog line number: {}.", logWriter.getLogNum());
       }
     } else {
       logger.info(
-              "New mlog line number: {}, time from last modification: {} ms",
-              logWriter.getLogNum(),
-              System.currentTimeMillis() - logFile.lastModified());
+          "New mlog line number: {}, time from last modification: {} ms",
+          logWriter.getLogNum(),
+          System.currentTimeMillis() - logFile.lastModified());
       createMTreeSnapshot();
     }
   }
@@ -888,6 +888,16 @@ public class MManager {
     return mtree.getNodesCountInGivenLevel(prefixPath, level);
   }
 
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
+      throws MetadataException {
+    // show timeseries with index
+    if (plan.getKey() != null && plan.getValue() != null) {
+      return showTimeseriesWithIndex(plan, context);
+    } else {
+      return showTimeseriesWithoutIndex(plan, context);
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
@@ -946,16 +956,6 @@ public class MManager {
       }
     }
     return true;
-  }
-
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
-      throws MetadataException {
-    // show timeseries with index
-    if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithIndex(plan, context);
-    } else {
-      return showTimeseriesWithoutIndex(plan, context);
-    }
   }
 
   /**
