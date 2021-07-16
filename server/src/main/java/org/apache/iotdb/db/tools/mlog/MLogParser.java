@@ -178,7 +178,9 @@ public class MLogParser {
             break;
           case UPDATE_STORAGE_GROUP:
             mLogTxtWriter.updateStorageGroup(
-                ((UpdateStorageGroupPlan) plan).getPath().getFullPath());
+                ((UpdateStorageGroupPlan) plan).getPath().getFullPath(),
+                ((UpdateStorageGroupPlan) plan).getPath().getMajorVersion(),
+                ((UpdateStorageGroupPlan) plan).getPath().getMinorVersion());
             break;
           case DELETE_STORAGE_GROUP:
             for (PartialPath partialPath : plan.getPaths()) {
