@@ -17,10 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.newcross;
+package org.apache.iotdb.db.engine.compaction.newcross.fragment.task;
 
-import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
-
-public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
-  public abstract boolean selectAndSubmit();
-}
+public class FragmentFileClearTask {}
