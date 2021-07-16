@@ -43,6 +43,7 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -168,8 +169,7 @@ public class MManager {
 
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
-  // template name -> template
-  private Map<String, Template> templateMap = new ConcurrentHashMap<>();
+  private TemplateManager templateManager=TemplateManager.getInstance();
 
   private static class MManagerHolder {
 
@@ -315,12 +315,11 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
-      templateMap.clear();
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
-      this.templateMap.clear();
+      this.templateManager.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
@@ -2360,12 +2359,7 @@ public class MManager {
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
-      Template template = new Template(plan);
-      if (templateMap.putIfAbsent(plan.getName(), template) != null) {
-        // already have template
-        throw new MetadataException("Duplicated template name: " + plan.getName());
-      }
-
+      templateManager.createDeviceTemplate(plan);
       // write wal
       if (!isRecovering) {
         logWriter.createDeviceTemplate(plan);
@@ -2377,37 +2371,13 @@ public class MManager {
 
   public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
     try {
-      Template template = templateMap.get(plan.getTemplateName());
-
-      if (template == null) {
-        throw new UndefinedTemplateException(plan.getTemplateName());
-      }
+      Template template = templateManager.getTemplate(plan.getTemplateName());
 
       // get mnode and update template should be atomic
       synchronized (this) {
         Pair<MNode, Template> node =
             getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
-
-        if (node.left.getDeviceTemplate() != null) {
-          if (node.left.getDeviceTemplate().equals(template)) {
-            throw new DuplicatedTemplateException(template.getName());
-          } else {
-            throw new MetadataException("Specified node already has template");
-          }
-        }
-
-        if (!isTemplateCompatible(node.right, template)) {
-          throw new MetadataException("Incompatible template");
-        }
-
-        for (String schemaName : template.getSchemaMap().keySet()) {
-          if (node.left.hasChild(schemaName)) {
-            throw new PathAlreadyExistException(
-                node.left.getPartialPath().concatNode(schemaName).getFullPath());
-          }
-        }
-
-        node.left.setDeviceTemplate(template);
+        templateManager.setDeviceTemplate(template,node);
       }
 
       // write wal
@@ -2420,35 +2390,7 @@ public class MManager {
   }
 
   public boolean isTemplateCompatible(Template upper, Template current) {
-    if (upper == null) {
-      return true;
-    }
-
-    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-    // for identical vector schema, we should just compare once
-    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
-
-    for (String name : currentMap.keySet()) {
-      IMeasurementSchema upperSchema = upperMap.remove(name);
-      if (upperSchema != null) {
-        IMeasurementSchema currentSchema = currentMap.get(name);
-        // use "==" to compare actual address space
-        if (upperSchema == sameSchema.get(currentSchema)) {
-          continue;
-        }
-
-        if (!upperSchema.equals(currentSchema)) {
-          return false;
-        }
-
-        sameSchema.put(currentSchema, upperSchema);
-      }
-    }
-
-    // current template must contains all measurements of upper template
-    return upperMap.isEmpty();
+   return templateManager.isTemplateCompatible(upper,current);
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
