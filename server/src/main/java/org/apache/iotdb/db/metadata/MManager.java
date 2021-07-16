@@ -129,6 +129,7 @@ public class MManager {
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /** threshold total size of MTree */
   private static final long MTREE_SIZE_THRESHOLD = config.getAllocateMemoryForSchema();
+
   private static final int ESTIMATED_SERIES_SIZE = config.getEstimatedSeriesSize();
 
   private boolean isRecovering;
@@ -152,8 +153,8 @@ public class MManager {
   private MTree mtree;
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, Pair<MNode, Template>> mNodeCache;
-  private TagManager tagManager=TagManager.getInstance();
-  private TemplateManager templateManager=TemplateManager.getInstance();
+  private TagManager tagManager = TagManager.getInstance();
+  private TemplateManager templateManager = TemplateManager.getInstance();
 
   private static class MManagerHolder {
 
@@ -435,7 +436,7 @@ public class MManager {
           if (entry.getKey() == null || entry.getValue() == null) {
             continue;
           }
-          tagManager.addIndex(entry.getKey(),entry.getValue(),leafMNode);
+          tagManager.addIndex(entry.getKey(), entry.getValue(), leafMNode);
         }
       }
 
@@ -451,7 +452,7 @@ public class MManager {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagManager.writeTagFile(plan.getTags(),plan.getAttributes());
+          offset = tagManager.writeTagFile(plan.getTags(), plan.getAttributes());
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
@@ -875,7 +876,7 @@ public class MManager {
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
 
-    List<MeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan,context);
+    List<MeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan, context);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     String[] prefixNodes = plan.getPath().getNodes();
@@ -1370,7 +1371,7 @@ public class MManager {
     }
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // upsert alias
-    upsertAlias(alias,fullPath,leafMNode);
+    upsertAlias(alias, fullPath, leafMNode);
 
     if (tagsMap == null && attributesMap == null) {
       return;
@@ -1381,18 +1382,15 @@ public class MManager {
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
-      tagManager.addIndex(tagsMap,leafMNode);
+      tagManager.addIndex(tagsMap, leafMNode);
       return;
     }
 
-    tagManager.updateTagsAndAttributes(tagsMap,attributesMap,leafMNode);
+    tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
   }
 
-  private void upsertAlias
-          (String alias,
-           PartialPath fullPath,
-           MeasurementMNode leafMNode)
-          throws MetadataException, IOException{
+  private void upsertAlias(String alias, PartialPath fullPath, MeasurementMNode leafMNode)
+      throws MetadataException, IOException {
     // upsert alias
     if (alias != null && !alias.equals(leafMNode.getAlias())) {
       if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
@@ -1430,7 +1428,7 @@ public class MManager {
       return;
     }
 
-    tagManager.addAttributes(attributesMap,fullPath,leafMNode);
+    tagManager.addAttributes(attributesMap, fullPath, leafMNode);
   }
 
   /**
@@ -1452,11 +1450,11 @@ public class MManager {
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
-      tagManager.addIndex(tagsMap,leafMNode);
+      tagManager.addIndex(tagsMap, leafMNode);
       return;
     }
 
-    tagManager.addTags(tagsMap,fullPath,leafMNode);
+    tagManager.addTags(tagsMap, fullPath, leafMNode);
   }
 
   /**
@@ -1477,7 +1475,7 @@ public class MManager {
     if (leafMNode.getOffset() < 0) {
       return;
     }
-    tagManager.dropTagsOrAttributes(keySet,fullPath,leafMNode);
+    tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
   }
 
   /**
@@ -1500,7 +1498,7 @@ public class MManager {
     }
 
     // tags, attributes
-    tagManager.setTagsOrAttributesValue(alterMap,fullPath,leafMNode);
+    tagManager.setTagsOrAttributesValue(alterMap, fullPath, leafMNode);
   }
 
   /**
@@ -1524,7 +1522,7 @@ public class MManager {
           true);
     }
     // tags, attributes
-    tagManager.renameTagOrAttributeKey(oldKey,newKey,fullPath,leafMNode);
+    tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
   }
 
   /** Check whether the given path contains a storage group */
@@ -1990,7 +1988,7 @@ public class MManager {
       synchronized (this) {
         Pair<MNode, Template> node =
             getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
-        templateManager.setDeviceTemplate(template,node);
+        templateManager.setDeviceTemplate(template, node);
       }
 
       // write wal
@@ -2003,7 +2001,7 @@ public class MManager {
   }
 
   public boolean isTemplateCompatible(Template upper, Template current) {
-   return templateManager.isTemplateCompatible(upper,current);
+    return templateManager.isTemplateCompatible(upper, current);
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {

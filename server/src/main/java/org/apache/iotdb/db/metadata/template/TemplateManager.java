@@ -33,103 +33,103 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class TemplateManager {
 
-    // template name -> template
-    private Map<String, Template> templateMap = new ConcurrentHashMap<>();
+  // template name -> template
+  private Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
-    private static class TemplateManagerHolder {
+  private static class TemplateManagerHolder {
 
-        private TemplateManagerHolder() {
-            // allowed to do nothing
-        }
-
-        private static final TemplateManager INSTANCE = new TemplateManager();
+    private TemplateManagerHolder() {
+      // allowed to do nothing
     }
 
-    public static TemplateManager getInstance() {
-        return TemplateManagerHolder.INSTANCE;
+    private static final TemplateManager INSTANCE = new TemplateManager();
+  }
+
+  public static TemplateManager getInstance() {
+    return TemplateManagerHolder.INSTANCE;
+  }
+
+  private TemplateManager() {}
+
+  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
+    Template template = new Template(plan);
+    if (templateMap.putIfAbsent(plan.getName(), template) != null) {
+      // already have template
+      throw new MetadataException("Duplicated template name: " + plan.getName());
+    }
+  }
+
+  public Template getTemplate(String templateName) throws UndefinedTemplateException {
+    Template template = templateMap.get(templateName);
+    if (template == null) {
+      throw new UndefinedTemplateException(templateName);
+    }
+    return template;
+  }
+
+  public void setDeviceTemplate(Template template, Pair<MNode, Template> node)
+      throws MetadataException {
+
+    if (node.left.getDeviceTemplate() != null) {
+      if (node.left.getDeviceTemplate().equals(template)) {
+        throw new DuplicatedTemplateException(template.getName());
+      } else {
+        throw new MetadataException("Specified node already has template");
+      }
     }
 
-    private TemplateManager(){}
-
-    public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
-        Template template = new Template(plan);
-        if (templateMap.putIfAbsent(plan.getName(), template) != null) {
-            // already have template
-            throw new MetadataException("Duplicated template name: " + plan.getName());
-        }
+    if (!isTemplateCompatible(node.right, template)) {
+      throw new MetadataException("Incompatible template");
     }
 
-    public Template getTemplate(String templateName) throws  UndefinedTemplateException{
-        Template template = templateMap.get(templateName);
-        if (template == null) {
-            throw new UndefinedTemplateException(templateName);
-        }
-        return template;
+    checkIsTemplateAndMNodeCompatible(template, node.left);
+
+    node.left.setDeviceTemplate(template);
+  }
+
+  public boolean isTemplateCompatible(Template upper, Template current) {
+    if (upper == null) {
+      return true;
     }
 
-    public void setDeviceTemplate(Template template, Pair<MNode, Template> node) throws MetadataException {
+    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
+    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
 
-        if (node.left.getDeviceTemplate() != null) {
-            if (node.left.getDeviceTemplate().equals(template)) {
-                throw new DuplicatedTemplateException(template.getName());
-            } else {
-                throw new MetadataException("Specified node already has template");
-            }
+    // for identical vector schema, we should just compare once
+    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
+
+    for (String name : currentMap.keySet()) {
+      IMeasurementSchema upperSchema = upperMap.remove(name);
+      if (upperSchema != null) {
+        IMeasurementSchema currentSchema = currentMap.get(name);
+        // use "==" to compare actual address space
+        if (upperSchema == sameSchema.get(currentSchema)) {
+          continue;
         }
 
-        if (!isTemplateCompatible(node.right, template)) {
-            throw new MetadataException("Incompatible template");
+        if (!upperSchema.equals(currentSchema)) {
+          return false;
         }
 
-        checkIsTemplateAndMNodeCompatible(template,node.left);
-
-        node.left.setDeviceTemplate(template);
-
+        sameSchema.put(currentSchema, upperSchema);
+      }
     }
 
-    public boolean isTemplateCompatible(Template upper, Template current) {
-        if (upper == null) {
-            return true;
-        }
+    // current template must contains all measurements of upper template
+    return upperMap.isEmpty();
+  }
 
-        Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-        Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-        // for identical vector schema, we should just compare once
-        Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
-
-        for (String name : currentMap.keySet()) {
-            IMeasurementSchema upperSchema = upperMap.remove(name);
-            if (upperSchema != null) {
-                IMeasurementSchema currentSchema = currentMap.get(name);
-                // use "==" to compare actual address space
-                if (upperSchema == sameSchema.get(currentSchema)) {
-                    continue;
-                }
-
-                if (!upperSchema.equals(currentSchema)) {
-                    return false;
-                }
-
-                sameSchema.put(currentSchema, upperSchema);
-            }
-        }
-
-        // current template must contains all measurements of upper template
-        return upperMap.isEmpty();
+  public void checkIsTemplateAndMNodeCompatible(Template template, MNode mNode)
+      throws PathAlreadyExistException {
+    for (String schemaName : template.getSchemaMap().keySet()) {
+      if (mNode.hasChild(schemaName)) {
+        throw new PathAlreadyExistException(
+            mNode.getPartialPath().concatNode(schemaName).getFullPath());
+      }
     }
+  }
 
-    public void checkIsTemplateAndMNodeCompatible(Template template, MNode mNode) throws PathAlreadyExistException{
-        for (String schemaName : template.getSchemaMap().keySet()) {
-            if (mNode.hasChild(schemaName)) {
-                throw new PathAlreadyExistException(
-                        mNode.getPartialPath().concatNode(schemaName).getFullPath());
-            }
-        }
-    }
-
-    public void clear() {
-        templateMap.clear();
-    }
-
+  public void clear() {
+    templateMap.clear();
+  }
 }
