@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sql;
 
+import junit.framework.TestCase;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -38,6 +40,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static junit.framework.TestCase.assertEquals;
 
 public abstract class Cases {
 
@@ -434,6 +438,44 @@ public abstract class Cases {
       writeStatement.execute(sql);
     } catch (SQLException e) {
       Assert.assertNull(e);
+    }
+  }
+
+  @Test
+  public void clusterUDTFQueryTest() throws SQLException {
+    // Prepare data.
+    writeStatement.execute("CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+    for(int i = 10; i < 20; i++) {
+      writeStatement.execute(String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+    for(int i = 0; i < 10; i++) {
+      writeStatement.execute(String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+
+    ResultSet resultSet = null;
+
+    // Try to execute udf query on each node.
+    // Without value filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d");
+
+      int i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1),0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
+
+    // With value filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
+      int i = 5;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1),0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
     }
   }
 }
