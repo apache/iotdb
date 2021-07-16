@@ -29,19 +29,18 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -107,8 +106,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -127,12 +124,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARA
 public class MManager {
 
   public static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
-  private static final String TAG_FORMAT = "tag key is %s, tag value is %s, tlog offset is %d";
-  private static final String DEBUG_MSG = "%s : TimeSeries %s is removed from tag inverted index, ";
-  private static final String DEBUG_MSG_1 =
-      "%s: TimeSeries %s's tag info has been removed from tag inverted index ";
-  private static final String PREVIOUS_CONDITION =
-      "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
+
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
 
@@ -147,12 +139,11 @@ public class MManager {
   private String mtreeSnapshotTmpPath;
   private MTree mtree;
   private MLogWriter logWriter;
-  private TagLogFile tagLogFile;
   private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, Pair<MNode, Template>> mNodeCache;
-  // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
+
+  private TagManager tagManager=TagManager.getInstance();
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
   private boolean initialized;
@@ -239,7 +230,7 @@ public class MManager {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
-      tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+      tagManager.init();
 
       isRecovering = true;
       int lineNumber = initFromLog(logFile);
@@ -317,17 +308,13 @@ public class MManager {
     try {
       this.mtree = new MTree();
       this.mNodeCache.clear();
-      this.tagIndex.clear();
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
       if (logWriter != null) {
         logWriter.close();
         logWriter = null;
       }
-      if (tagLogFile != null) {
-        tagLogFile.close();
-        tagLogFile = null;
-      }
+      tagManager.clear();
       initialized = false;
       if (config.isEnableMTreeSnapshot() && timedCreateMTreeSnapshotThread != null) {
         timedCreateMTreeSnapshotThread.shutdownNow();
@@ -455,10 +442,7 @@ public class MManager {
           if (entry.getKey() == null || entry.getValue() == null) {
             continue;
           }
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
+          tagManager.addIndex(entry.getKey(),entry.getValue(),leafMNode);
         }
       }
 
@@ -474,7 +458,7 @@ public class MManager {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
+          offset = tagManager.writeLog(plan.getTags(),plan.getAttributes());
         }
         plan.setTagOffset(offset);
         logWriter.createTimeseries(plan);
@@ -634,43 +618,7 @@ public class MManager {
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
-    if (node.getOffset() < 0) {
-      return;
-    }
-    Map<String, String> tagMap =
-        tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
-    if (tagMap != null) {
-      for (Entry<String, String> entry : tagMap.entrySet()) {
-        if (tagIndex.containsKey(entry.getKey())
-            && tagIndex.get(entry.getKey()).containsKey(entry.getValue())) {
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                String.format(
-                    String.format(DEBUG_MSG, "Delete" + TAG_FORMAT, node.getFullPath()),
-                    entry.getKey(),
-                    entry.getValue(),
-                    node.getOffset()));
-          }
-          tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
-          if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
-            tagIndex.get(entry.getKey()).remove(entry.getValue());
-            if (tagIndex.get(entry.getKey()).isEmpty()) {
-              tagIndex.remove(entry.getKey());
-            }
-          }
-        } else {
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                String.format(
-                    String.format(DEBUG_MSG_1, "Delete" + PREVIOUS_CONDITION, node.getFullPath()),
-                    entry.getKey(),
-                    entry.getValue(),
-                    node.getOffset(),
-                    tagIndex.containsKey(entry.getKey())));
-          }
-        }
-      }
-    }
+    tagManager.removeFromTagInvertedIndex(node);
   }
 
   /**
@@ -933,67 +881,8 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private List<ShowTimeSeriesResult> showTimeseriesWithIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
-    if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
-    }
-    Map<String, Set<MeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
-    if (value2Node.isEmpty()) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
-    }
 
-    List<MeasurementMNode> allMatchedNodes = new ArrayList<>();
-    if (plan.isContains()) {
-      for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (tagValue.contains(plan.getValue())) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
-      }
-    } else {
-      for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
-        if (entry.getKey() == null || entry.getValue() == null) {
-          continue;
-        }
-        String tagValue = entry.getKey();
-        if (plan.getValue().equals(tagValue)) {
-          allMatchedNodes.addAll(entry.getValue());
-        }
-      }
-    }
-
-    // if ordered by heat, we sort all the timeseries by the descending order of the last insert
-    // timestamp
-    if (plan.isOrderByHeat()) {
-      List<StorageGroupProcessor> list;
-      try {
-        list =
-            StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
-        try {
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(MNode::getFullPath))
-                  .collect(toList());
-        } finally {
-          StorageEngine.getInstance().mergeUnLock(list);
-        }
-      } catch (StorageEngineException e) {
-        throw new MetadataException(e);
-      }
-    } else {
-      // otherwise, we just sort them by the alphabetical order
-      allMatchedNodes =
-          allMatchedNodes.stream()
-              .sorted(Comparator.comparing(MNode::getFullPath))
-              .collect(toList());
-    }
+    List<MeasurementMNode> allMatchedNodes = tagManager.showTimeseriesWithIndex(plan,context);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
     String[] prefixNodes = plan.getPath().getNodes();
@@ -1011,7 +900,7 @@ public class MManager {
         }
         try {
           Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
+              tagManager.readRecord(leaf.getOffset());
           IMeasurementSchema measurementSchema = leaf.getSchema();
           res.add(
               new ShowTimeSeriesResult(
@@ -1079,7 +968,7 @@ public class MManager {
         Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
             new Pair<>(Collections.emptyMap(), Collections.emptyMap());
         if (tagFileOffset >= 0) {
-          tagAndAttributePair = tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
+          tagAndAttributePair = tagManager.readRecord(tagFileOffset);
         }
         res.add(
             new ShowTimeSeriesResult(
@@ -1488,6 +1377,30 @@ public class MManager {
     }
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // upsert alias
+    upsertAlias(alias,fullPath,leafMNode);
+
+    if (tagsMap == null && attributesMap == null) {
+      return;
+    }
+    // no tag or attribute, we need to add a new record in log
+    if (leafMNode.getOffset() < 0) {
+      long offset = tagManager.writeLog(tagsMap, attributesMap);
+      logWriter.changeOffset(fullPath, offset);
+      leafMNode.setOffset(offset);
+      // update inverted Index map
+      tagManager.addIndex(tagsMap,leafMNode);
+      return;
+    }
+
+    tagManager.updateTagsAndAttributes(tagsMap,attributesMap,leafMNode);
+  }
+
+  private void upsertAlias
+          (String alias,
+           PartialPath fullPath,
+           MeasurementMNode leafMNode)
+          throws MetadataException, IOException{
+    // upsert alias
     if (alias != null && !alias.equals(leafMNode.getAlias())) {
       if (!leafMNode.getParent().addAlias(alias, leafMNode)) {
         throw new MetadataException("The alias already exists.");
@@ -1501,85 +1414,6 @@ public class MManager {
       // persist to WAL
       logWriter.changeAlias(fullPath, alias);
     }
-
-    if (tagsMap == null && attributesMap == null) {
-      return;
-    }
-    // no tag or attribute, we need to add a new record in log
-    if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(tagsMap, attributesMap);
-      logWriter.changeOffset(fullPath, offset);
-      leafMNode.setOffset(offset);
-      // update inverted Index map
-      if (tagsMap != null) {
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
-        }
-      }
-      return;
-    }
-
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    if (tagsMap != null) {
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-        String beforeValue = pair.left.get(key);
-        pair.left.put(key, value);
-        // if the key has existed and the value is not equal to the new one
-        // we should remove before key-value from inverted index map
-        if (beforeValue != null && !beforeValue.equals(value)) {
-
-          if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  String.format(
-                      String.format(DEBUG_MSG, "Upsert" + TAG_FORMAT, leafMNode.getFullPath()),
-                      key,
-                      beforeValue,
-                      leafMNode.getOffset()));
-            }
-
-            tagIndex.get(key).get(beforeValue).remove(leafMNode);
-            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-              tagIndex.get(key).remove(beforeValue);
-            }
-          } else {
-            if (logger.isDebugEnabled()) {
-              logger.debug(
-                  String.format(
-                      String.format(
-                          DEBUG_MSG_1, "Upsert" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                      key,
-                      beforeValue,
-                      leafMNode.getOffset(),
-                      tagIndex.containsKey(key)));
-            }
-          }
-        }
-
-        // if the key doesn't exist or the value is not equal to the new one
-        // we should add a new key-value to inverted index map
-        if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex
-              .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-              .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-              .add(leafMNode);
-        }
-      }
-    }
-
-    if (attributesMap != null) {
-      pair.right.putAll(attributesMap);
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
   }
 
   /**
@@ -1597,27 +1431,13 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
+      long offset = tagManager.writeLog(Collections.emptyMap(), attributesMap);
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       return;
     }
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    for (Entry<String, String> entry : attributesMap.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      if (pair.right.containsKey(key)) {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
-      }
-      pair.right.put(key, value);
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+    tagManager.addAttributes(attributesMap,fullPath,leafMNode);
   }
 
   /**
@@ -1635,42 +1455,15 @@ public class MManager {
     MeasurementMNode leafMNode = (MeasurementMNode) mNode;
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
+      long offset = tagManager.writeLog(tagsMap, Collections.emptyMap());
       logWriter.changeOffset(fullPath, offset);
       leafMNode.setOffset(offset);
       // update inverted Index map
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        tagIndex
-            .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(entry.getValue(), v -> new CopyOnWriteArraySet<>())
-            .add(leafMNode);
-      }
+      tagManager.addIndex(tagsMap,leafMNode);
       return;
     }
 
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    for (Entry<String, String> entry : tagsMap.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      if (pair.left.containsKey(key)) {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
-      }
-      pair.left.put(key, value);
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-
-    // update tag inverted map
-    tagsMap.forEach(
-        (key, value) ->
-            tagIndex
-                .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(value, v -> new CopyOnWriteArraySet<>())
-                .add(leafMNode));
+    tagManager.addTags(tagsMap,fullPath,leafMNode);
   }
 
   /**
@@ -1691,66 +1484,7 @@ public class MManager {
     if (leafMNode.getOffset() < 0) {
       return;
     }
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    Map<String, String> deleteTag = new HashMap<>();
-    for (String key : keySet) {
-      // check tag map
-      // check attribute map
-      String removeVal = pair.left.remove(key);
-      if (removeVal != null) {
-        deleteTag.put(key, removeVal);
-      } else {
-        removeVal = pair.right.remove(key);
-        if (removeVal == null) {
-          logger.warn("TimeSeries [{}] does not have tag/attribute [{}]", fullPath, key);
-        }
-      }
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-
-    Map<String, Set<MeasurementMNode>> tagVal2LeafMNodeSet;
-    Set<MeasurementMNode> MMNodes;
-    for (Entry<String, String> entry : deleteTag.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      // change the tag inverted index map
-      tagVal2LeafMNodeSet = tagIndex.get(key);
-      if (tagVal2LeafMNodeSet != null) {
-        MMNodes = tagVal2LeafMNodeSet.get(value);
-        if (MMNodes != null) {
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                String.format(
-                    String.format(DEBUG_MSG, "Drop" + TAG_FORMAT, leafMNode.getFullPath()),
-                    entry.getKey(),
-                    entry.getValue(),
-                    leafMNode.getOffset()));
-          }
-
-          MMNodes.remove(leafMNode);
-          if (MMNodes.isEmpty()) {
-            tagVal2LeafMNodeSet.remove(value);
-            if (tagVal2LeafMNodeSet.isEmpty()) {
-              tagIndex.remove(key);
-            }
-          }
-        }
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG_1, "Drop" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key,
-                  value,
-                  leafMNode.getOffset(),
-                  tagIndex.containsKey(key)));
-        }
-      }
-    }
+    tagManager.dropTagsOrAttributes(keySet,fullPath,leafMNode);
   }
 
   /**
@@ -1773,65 +1507,7 @@ public class MManager {
     }
 
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-    Map<String, String> oldTagValue = new HashMap<>();
-    Map<String, String> newTagValue = new HashMap<>();
-
-    for (Entry<String, String> entry : alterMap.entrySet()) {
-      String key = entry.getKey();
-      String value = entry.getValue();
-      // check tag map
-      if (pair.left.containsKey(key)) {
-        oldTagValue.put(key, pair.left.get(key));
-        newTagValue.put(key, value);
-        pair.left.put(key, value);
-      } else if (pair.right.containsKey(key)) {
-        // check attribute map
-        pair.right.put(key, value);
-      } else {
-        throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key),
-            true);
-      }
-    }
-
-    // persist the change to disk
-    tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-
-    for (Entry<String, String> entry : oldTagValue.entrySet()) {
-      String key = entry.getKey();
-      String beforeValue = entry.getValue();
-      String currentValue = newTagValue.get(key);
-      // change the tag inverted index map
-      if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
-
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG, "Set" + TAG_FORMAT, leafMNode.getFullPath()),
-                  entry.getKey(),
-                  beforeValue,
-                  leafMNode.getOffset()));
-        }
-
-        tagIndex.get(key).get(beforeValue).remove(leafMNode);
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG_1, "Set" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  key,
-                  beforeValue,
-                  leafMNode.getOffset(),
-                  tagIndex.containsKey(key)));
-        }
-      }
-      tagIndex
-          .computeIfAbsent(key, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(currentValue, k -> new CopyOnWriteArraySet<>())
-          .add(leafMNode);
-    }
+    tagManager.setTagsOrAttributesValue(alterMap,fullPath,leafMNode);
   }
 
   /**
@@ -1855,63 +1531,7 @@ public class MManager {
           true);
     }
     // tags, attributes
-    Pair<Map<String, String>, Map<String, String>> pair =
-        tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-
-    // current name has existed
-    if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
-      throw new MetadataException(
-          String.format(
-              "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey),
-          true);
-    }
-
-    // check tag map
-    if (pair.left.containsKey(oldKey)) {
-      String value = pair.left.remove(oldKey);
-      pair.left.put(newKey, value);
-      // persist the change to disk
-      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-      // change the tag inverted index map
-      if (tagIndex.containsKey(oldKey) && tagIndex.get(oldKey).containsKey(value)) {
-
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(DEBUG_MSG, "Rename" + TAG_FORMAT, leafMNode.getFullPath()),
-                  oldKey,
-                  value,
-                  leafMNode.getOffset()));
-        }
-
-        tagIndex.get(oldKey).get(value).remove(leafMNode);
-
-      } else {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              String.format(
-                  String.format(
-                      DEBUG_MSG_1, "Rename" + PREVIOUS_CONDITION, leafMNode.getFullPath()),
-                  oldKey,
-                  value,
-                  leafMNode.getOffset(),
-                  tagIndex.containsKey(oldKey)));
-        }
-      }
-      tagIndex
-          .computeIfAbsent(newKey, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(value, k -> new CopyOnWriteArraySet<>())
-          .add(leafMNode);
-    } else if (pair.right.containsKey(oldKey)) {
-      // check attribute map
-      pair.right.put(newKey, pair.right.remove(oldKey));
-      // persist the change to disk
-      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
-    } else {
-      throw new MetadataException(
-          String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey),
-          true);
-    }
+    tagManager.renameTagOrAttributeKey(oldKey,newKey,fullPath,leafMNode);
   }
 
   /** Check whether the given path contains a storage group */

@@ -114,7 +114,7 @@ public class MTree implements Serializable {
     this.root = root;
   }
 
-  static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
+  public static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
     TimeValuePair last = node.getCachedLast();
     if (last != null) {
       return node.getCachedLast().getTimestamp();
