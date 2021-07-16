@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
@@ -67,6 +68,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -106,12 +108,73 @@ public class MTree implements Serializable {
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
   private MNode root;
 
+  private String mtreeSnapshotPath;
+  private String mtreeSnapshotTmpPath;
+
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   private MTree(MNode root) {
     this.root = root;
+  }
+
+  public void init() throws IOException {
+    mtreeSnapshotPath =
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            + File.separator
+            + MetadataConstant.MTREE_SNAPSHOT;
+    mtreeSnapshotTmpPath =
+        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
+            + File.separator
+            + MetadataConstant.MTREE_SNAPSHOT_TMP;
+
+    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+    if (tmpFile.exists()) {
+      logger.warn("Creating MTree snapshot not successful before crashing...");
+      Files.delete(tmpFile.toPath());
+    }
+
+    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    long time = System.currentTimeMillis();
+    if (mtreeSnapshot.exists()) {
+      this.root = deserializeFrom(mtreeSnapshot).root;
+      logger.debug(
+          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+    }
+  }
+
+  public void clear() {
+    root = new MNode(null, IoTDBConstant.PATH_ROOT);
+  }
+
+  public void createSnapshot() throws IOException {
+    long time = System.currentTimeMillis();
+    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
+    try {
+      serializeTo(mtreeSnapshotTmpPath);
+      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
+      }
+      if (tmpFile.renameTo(snapshotFile)) {
+        logger.info(
+            "Finish creating MTree snapshot to {}, spend {} ms.",
+            mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
+        try {
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
+        } catch (IOException e1) {
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
+        }
+      }
+      throw e;
+    }
   }
 
   public static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
@@ -1774,7 +1837,7 @@ public class MTree implements Serializable {
 
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return deserializeFromReader(mLogReader);
+      return new MTree(deserializeFromReader(mLogReader));
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();
@@ -1787,7 +1850,7 @@ public class MTree implements Serializable {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static MTree deserializeFromReader(MLogReader mLogReader) {
+  private static MNode deserializeFromReader(MLogReader mLogReader) {
     Deque<MNode> nodeStack = new ArrayDeque<>();
     MNode node = null;
     while (mLogReader.hasNext()) {
@@ -1831,7 +1894,7 @@ public class MTree implements Serializable {
       }
     }
 
-    return new MTree(node);
+    return node;
   }
 
   @Override

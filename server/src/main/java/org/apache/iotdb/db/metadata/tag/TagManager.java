@@ -35,7 +35,7 @@ public class TagManager {
       "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b";
 
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
-  protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode

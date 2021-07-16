@@ -88,7 +88,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,8 +137,6 @@ public class MManager {
 
   private AtomicLong totalSeriesNumber = new AtomicLong();
 
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
@@ -178,8 +175,6 @@ public class MManager {
       }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
-    mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
-    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
 
     // do not write log when recover
     isRecovering = true;
@@ -224,9 +219,12 @@ public class MManager {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
-      tagManager.init();
-
       isRecovering = true;
+
+      tagManager.init();
+      mtree = new MTree();
+      mtree.init();
+
       int lineNumber = initFromLog(logFile);
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
@@ -242,23 +240,7 @@ public class MManager {
   /** @return line number of the logFile */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-    if (tmpFile.exists()) {
-      logger.warn("Creating MTree snapshot not successful before crashing...");
-      Files.delete(tmpFile.toPath());
-    }
-
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     long time = System.currentTimeMillis();
-    if (!mtreeSnapshot.exists()) {
-      mtree = new MTree();
-    } else {
-      mtree = MTree.deserializeFrom(mtreeSnapshot);
-      logger.debug(
-          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-    }
-
-    time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
@@ -300,7 +282,7 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
-      this.mtree = new MTree();
+      this.mtree.clear();
       this.mNodeCache.clear();
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -1695,31 +1677,11 @@ public class MManager {
   }
 
   public void createMTreeSnapshot() {
-    long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
     try {
-      mtree.serializeTo(mtreeSnapshotTmpPath);
-      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-      if (snapshotFile.exists()) {
-        Files.delete(snapshotFile.toPath());
-      }
-      if (tmpFile.renameTo(snapshotFile)) {
-        logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
-      }
+      mtree.createSnapshot();
       logWriter.clear();
     } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
-        } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
-        }
-      }
+      logger.warn("Failed to create MTree snapshot", e);
     }
   }
 
