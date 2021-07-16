@@ -279,6 +279,40 @@ public class MManager {
     return idx;
   }
 
+  private void checkMTreeModified() {
+    if (logWriter == null || logFile == null) {
+      // the logWriter is not initialized now, we skip the check once.
+      return;
+    }
+    if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+                "MTree snapshot need not be created. Time from last modification: {} ms.",
+                System.currentTimeMillis() - logFile.lastModified());
+      }
+    } else if (logWriter.getLogNum() < mtreeSnapshotInterval) {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+                "MTree snapshot need not be created. New mlog line number: {}.", logWriter.getLogNum());
+      }
+    } else {
+      logger.info(
+              "New mlog line number: {}, time from last modification: {} ms",
+              logWriter.getLogNum(),
+              System.currentTimeMillis() - logFile.lastModified());
+      createMTreeSnapshot();
+    }
+  }
+
+  public void createMTreeSnapshot() {
+    try {
+      mtree.createSnapshot();
+      logWriter.clear();
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot", e);
+    }
+  }
+
   /** function for clearing MTree */
   public void clear() {
     try {
@@ -1646,45 +1680,6 @@ public class MManager {
     return null;
   }
 
-  @TestOnly
-  public void flushAllMlogForTest() throws IOException {
-    logWriter.close();
-  }
-
-  private void checkMTreeModified() {
-    if (logWriter == null || logFile == null) {
-      // the logWriter is not initialized now, we skip the check once.
-      return;
-    }
-    if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "MTree snapshot need not be created. Time from last modification: {} ms.",
-            System.currentTimeMillis() - logFile.lastModified());
-      }
-    } else if (logWriter.getLogNum() < mtreeSnapshotInterval) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "MTree snapshot need not be created. New mlog line number: {}.", logWriter.getLogNum());
-      }
-    } else {
-      logger.info(
-          "New mlog line number: {}, time from last modification: {} ms",
-          logWriter.getLogNum(),
-          System.currentTimeMillis() - logFile.lastModified());
-      createMTreeSnapshot();
-    }
-  }
-
-  public void createMTreeSnapshot() {
-    try {
-      mtree.createSnapshot();
-      logWriter.clear();
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot", e);
-    }
-  }
-
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
@@ -1976,5 +1971,10 @@ public class MManager {
 
   public long getTotalSeriesNumber() {
     return totalSeriesNumber.get();
+  }
+
+  @TestOnly
+  public void flushAllMlogForTest() throws IOException {
+    logWriter.close();
   }
 }
