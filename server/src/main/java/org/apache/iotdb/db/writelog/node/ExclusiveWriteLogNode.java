@@ -59,12 +59,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBufferWorking;
-  private ByteBuffer logBufferIdle;
-  private ByteBuffer logBufferFlushing;
+  private volatile ByteBuffer logBufferWorking;
+  private volatile ByteBuffer logBufferIdle;
+  private volatile ByteBuffer logBufferFlushing;
 
   // used for the convenience of deletion
-  private ByteBuffer[] bufferArray;
+  private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
   private ReentrantLock lock = new ReentrantLock();
@@ -77,7 +77,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private int bufferedLogNum = 0;
 
-  private boolean deleted;
+  private boolean deleted = false;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -105,7 +105,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (deleted) {
       throw new IOException("WAL node deleted");
     }
+    long start = System.currentTimeMillis();
     lock.lock();
+    long elapse = System.currentTimeMillis() - start;
+    if (elapse > 5000) {
+      logger.warn("[wal] ExclusiveWriteLogNode lock got cost: {}ms", elapse);
+    }
     try {
       putLog(plan);
       if (bufferedLogNum >= config.getFlushWalThreshold()) {
@@ -151,7 +156,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
-      logger.error("Cannot close log node {} because:", identifier, e);
+      logger.warn("Cannot close log node {} because:", identifier, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for current buffer being flushed interrupted");
@@ -232,28 +237,33 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         FileUtils.forceDelete(logFile);
         logger.info("Log node {} cleaned old file", identifier);
       } catch (IOException e) {
-        logger.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
+        logger.warn("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
       }
     }
   }
 
   private void forceWal() {
+    logger.warn("[wal] {} forceWal try to start", this.hashCode());
     lock.lock();
+    logger.warn("[wal] {} forceWal start", this.hashCode());
     try {
       try {
         if (currentFileWriter != null) {
           currentFileWriter.force();
         }
       } catch (IOException e) {
-        logger.error("Log node {} force failed.", identifier, e);
+        logger.warn("Log node {} force failed.", identifier, e);
       }
     } finally {
       lock.unlock();
+      logger.warn("[wal] {} forceWal end", this.hashCode());
     }
   }
 
   private void sync() {
+    logger.warn("[wal] {} sync try to start", this.hashCode());
     lock.lock();
+    logger.warn("[wal] {} sync start", this.hashCode());
     try {
       if (bufferedLogNum == 0) {
         return;
@@ -272,18 +282,26 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logger.warn("can not found file {}", identifier, e);
     } finally {
       lock.unlock();
+      logger.warn("[wal] {} sync end", this.hashCode());
     }
   }
 
   private void flushBuffer(ILogWriter writer) {
+    logger.warn("[wal] {} flushBuffer start", this.hashCode());
+    long start = System.currentTimeMillis();
     try {
       writer.write(logBufferFlushing);
     } catch (ClosedChannelException e) {
       // ignore
     } catch (IOException e) {
-      logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
+      logger.warn("Log node {} sync failed, change system mode to read-only", identifier, e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return;
+    } finally {
+      long elapse = System.currentTimeMillis() - start;
+      if (elapse > 5000) {
+        logger.warn("[wal] flushBuffer cost: {}ms", elapse);
+      }
     }
     logBufferFlushing.clear();
 
@@ -292,40 +310,62 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
+    logger.warn("[wal] {} flushBuffer end", this.hashCode());
   }
 
   private void switchBufferWorkingToFlushing() throws InterruptedException {
+    logger.warn("[wal] {} switchBufferWorkingToFlushing start", this.hashCode());
+    long start = System.currentTimeMillis();
     synchronized (switchBufferCondition) {
       while (logBufferFlushing != null && !deleted) {
-        switchBufferCondition.wait();
+        switchBufferCondition.wait(100);
       }
       logBufferFlushing = logBufferWorking;
       logBufferWorking = null;
       switchBufferCondition.notifyAll();
     }
+    long elapse = System.currentTimeMillis() - start;
+    if (elapse > 5000) {
+      logger.warn("[wal] switch Working -> Flushing cost: {}ms", elapse);
+    }
+    logger.warn("[wal] {} switchBufferWorkingToFlushing end", this.hashCode());
   }
 
   private void switchBufferIdleToWorking() throws InterruptedException {
+    logger.warn("[wal] {} switchBufferIdleToWorking start", this.hashCode());
+    long start = System.currentTimeMillis();
     synchronized (switchBufferCondition) {
       while (logBufferIdle == null && !deleted) {
-        switchBufferCondition.wait();
+        switchBufferCondition.wait(100);
       }
       logBufferWorking = logBufferIdle;
       logBufferIdle = null;
       switchBufferCondition.notifyAll();
     }
+    long elapse = System.currentTimeMillis() - start;
+    if (elapse > 5000) {
+      logger.warn("[wal] switch Idle -> Working cost: {}ms", elapse);
+    }
+    logger.warn("[wal] {} switchBufferIdleToWorking end", this.hashCode());
   }
 
   private void switchBufferFlushingToIdle() throws InterruptedException {
+    logger.warn("[wal] {} switchBufferFlushingToIdle start", this.hashCode());
+    long start = System.currentTimeMillis();
     synchronized (switchBufferCondition) {
       while (logBufferIdle != null && !deleted) {
-        switchBufferCondition.wait();
+        switchBufferCondition.wait(100);
       }
       logBufferIdle = logBufferFlushing;
       logBufferIdle.clear();
       logBufferFlushing = null;
       switchBufferCondition.notifyAll();
     }
+    long elapse = System.currentTimeMillis() - start;
+    if (elapse > 5000) {
+      logger.warn("[wal] switch Flushing -> Idle cost: {}ms", elapse);
+    }
+    logger.warn("[wal] {} switchBufferFlushingToIdle end", this.hashCode());
   }
 
   private ILogWriter getCurrentFileWriter() throws FileNotFoundException {

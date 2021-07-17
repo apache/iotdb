@@ -535,9 +535,9 @@ public class MetaGroupMember extends RaftMember {
 
   private void generateNodeReport() {
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         NodeReport report = genNodeReport();
-        logger.info(report.toString());
+        logger.debug(report.toString());
       }
     } catch (Exception e) {
       logger.error("{} exception occurred when generating node report", name, e);
