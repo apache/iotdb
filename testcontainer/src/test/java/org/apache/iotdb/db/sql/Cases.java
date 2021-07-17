@@ -334,7 +334,7 @@ public abstract class Cases {
     writeStatement.execute(createTimeSeries1);
     writeStatement.execute(createTimeSeries2);
 
-    Thread.sleep(200);
+    Thread.sleep(3000);
 
     // try to read data on each node. select .*
     for (Statement readStatement : readStatements) {
