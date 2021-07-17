@@ -334,8 +334,6 @@ public abstract class Cases {
     writeStatement.execute(createTimeSeries1);
     writeStatement.execute(createTimeSeries2);
 
-    Thread.sleep(3000);
-
     // try to read data on each node. select .*
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
@@ -385,17 +383,8 @@ public abstract class Cases {
 
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag1=v3"
     for (Statement readStatement : readStatements) {
-      ResultSet resultSet = null;
-      int retry = 3;
-      while (retry > 0) {
-        try {
-          resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
-          break;
-        } catch (Exception e) {
-          retry--;
-          Thread.sleep(3000);
-        }
-      }
+      ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
