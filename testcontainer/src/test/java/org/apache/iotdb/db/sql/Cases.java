@@ -544,7 +544,7 @@ public abstract class Cases {
     }
   }
 
-  public void createTimeSeriesTask() {
+  private void createTimeSeriesTask() {
     int sgNum = 10;
     int deviceNum = 10;
     int measurementsNum = 100;
@@ -570,7 +570,7 @@ public abstract class Cases {
     }
   }
 
-  public void createSgTask() {
+  private void createSgTask() {
     int sgNum = 10;
     String sqlFormat = "set storage group to root.sg_%d";
     for (int sg = 0; sg < sgNum; sg++) {
@@ -583,7 +583,7 @@ public abstract class Cases {
     }
   }
 
-  public void deleteSgTask() {
+  private void deleteSgTask() {
     int sgNum = 10;
     String sqlFormat = "delete storage group root.sg_%d";
     for (int sg = 0; sg < sgNum; sg++) {

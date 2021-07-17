@@ -651,6 +651,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws QueryProcessException {
     AUDIT_LOGGER.info("delete storage group {}", deleteStorageGroupPlan.getPaths());
     try {
+      for (PartialPath path : deleteStorageGroupPlan.getPaths()) {
+        StorageEngine.getInstance().deleteStorageGroup(path);
+      }
       IoTDB.metaManager.deleteStorageGroups(deleteStorageGroupPlan.getPaths());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

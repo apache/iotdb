@@ -751,7 +751,7 @@ public class CMManager extends MManager {
     try {
       sgNodeVersion = getSgNodeMajorVersion(storageGroupName);
     } catch (MetadataException e) {
-      logger.error("failed get the major version", e);
+      logger.error("Failed to get the major version", e);
       return false;
     }
 
