@@ -679,6 +679,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL Language',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
@@ -693,7 +694,8 @@ var config = {
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','Time zone']
 						]
 					},
 					{
@@ -702,7 +704,8 @@ var config = {
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
 							// The trigger module has not been implemented yet,
 							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger']
+							// ['Advanced-Features/Triggers','Trigger'],
+							['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 						]
 					},
 					{
@@ -1468,6 +1471,7 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL 语言',
+						sidebarDepth: 1,
 						children: [
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
@@ -1482,16 +1486,18 @@ var config = {
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Time-zone','时区']
 						]
 					},
 					{
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              // The trigger module has not been implemented yet,
-              // so the website should not show users how to use it to avoid misleading.
-              // ['Advanced-Features/Triggers','触发器']
+						  // The trigger module has not been implemented yet,
+						  // so the website should not show users how to use it to avoid misleading.
+						  // ['Advanced-Features/Triggers','触发器'],
+							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 						]
 					},
 					{

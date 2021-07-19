@@ -59,9 +59,32 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 * 初始化Session
 
 ```java
-Session(String host, int rpcPort)
-Session(String host, String rpcPort, String username, String password)
-Session(String host, int rpcPort, String username, String password)
+    // 全部使用默认配置
+    session = new Session.Builder.build();
+
+    // 指定一个可连接节点
+    session = 
+        new Session.Builder()
+            .host(String host)
+            .port(int port)
+            .build();
+
+    // 指定多个可连接节点
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // 其他配置项
+    session = 
+        new Session.Builder()
+            .fetchSize(int fetchSize)
+            .username(String username)
+            .password(String password)
+            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+            .thriftMaxFrameSize(int thriftMaxFrameSize)
+            .enableCacheLeader(boolean enableCacheLeader)
+            .build();
 ```
 
 * 开启Session

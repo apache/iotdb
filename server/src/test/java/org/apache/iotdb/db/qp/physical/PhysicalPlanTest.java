@@ -38,14 +38,18 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
@@ -1230,5 +1234,229 @@ public class PhysicalPlanTest {
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
     Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
+  }
+
+  @Test
+  public void testCreateCQ1() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s) END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals(
+        "root.${1}.${2}.${3}.${4}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s)",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ2() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ3() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 RESAMPLE EVERY 20s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(20000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ4() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 RESAMPLE EVERY 20s FOR 10s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(20000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ5() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(20000, plan.getForInterval());
+    Assert.assertEquals("root.${1}.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 20s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ6() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${a4}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("CQ: x of ${x} should be an integer.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ7() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${4}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ8() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO root.${1}_cq.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+
+    CreateContinuousQueryPlan plan =
+        (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+    Assert.assertEquals(10000, plan.getEveryInterval());
+    Assert.assertEquals(10000, plan.getForInterval());
+    Assert.assertEquals(
+        "root.${1}_cq.${2}.${3}.temperature_max", plan.getTargetPath().getFullPath());
+    Assert.assertEquals(
+        "select max_value(temperature) from root.ln.*.*.* group by ([now() - 10s, now()), 10s), level = 3",
+        plan.getQuerySql());
+  }
+
+  @Test
+  public void testCreateCQ9() throws QueryProcessException {
+    String sql =
+        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO ${1}.${0}.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (ParseCancellationException e) {
+      assertTrue(e.getMessage().contains("mismatched input '.' expecting FROM"));
+    }
+  }
+
+  @Test
+  public void testCreateCQ10() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ11() throws QueryProcessException {
+
+    String sql =
+        "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature), avg(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("CQ: CQ currently does not support multiple result columns.", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testCreateCQ12() throws QueryProcessException {
+    long minEveryInterval =
+        IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
+    long everyInterval = minEveryInterval / 2;
+    String sql =
+        String.format(
+            "CREATE CQ cq1 RESAMPLE EVERY %dms FOR 20s BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END",
+            everyInterval);
+    try {
+      CreateContinuousQueryPlan plan =
+          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals(
+          "CQ: every interval should not be lower than the minimum value you configured.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDropCQ() throws QueryProcessException {
+    String sql = "DROP CONTINUOUS QUERY cq1";
+
+    DropContinuousQueryPlan plan = (DropContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals("cq1", plan.getContinuousQueryName());
+  }
+
+  @Test
+  public void testShowCQs() throws QueryProcessException {
+    String sql = "SHOW CONTINUOUS QUERIES";
+
+    ShowContinuousQueriesPlan plan =
+        (ShowContinuousQueriesPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+  }
+
+  @Test
+  public void testShowFunction() throws QueryProcessException {
+    String sql = "SHOW FUNCTIONS";
+
+    ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 }

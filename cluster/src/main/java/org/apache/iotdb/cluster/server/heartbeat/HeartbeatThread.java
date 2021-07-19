@@ -84,7 +84,9 @@ public class HeartbeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartbeats();
-            Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+            synchronized (localMember.getHeartBeatWaitObject()) {
+              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartBeatIntervalMs());
+            }
             hasHadLeader = true;
             break;
           case FOLLOWER:
@@ -101,7 +103,9 @@ public class HeartbeatThread implements Runnable {
                   "{}: Heartbeat from leader {} is still valid",
                   memberName,
                   localMember.getLeader());
-              Thread.sleep(RaftServer.getConnectionTimeoutInMS());
+              synchronized (localMember.getHeartBeatWaitObject()) {
+                localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
+              }
             }
             hasHadLeader = true;
             break;
@@ -132,7 +136,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   /** Send each node (except the local node) in the group of the member a heartbeat. */
-  private void sendHeartbeats() {
+  protected void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
       request.setLeader(localMember.getThisNode());
@@ -147,7 +151,11 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
+      logger.debug(
+          "{}: Send heartbeat to {} followers, commit log index = {}",
+          memberName,
+          nodes.size() - 1,
+          request.getCommitLogIndex());
     }
     synchronized (nodes) {
       // avoid concurrent modification
@@ -268,6 +276,10 @@ public class HeartbeatThread implements Runnable {
   @SuppressWarnings({"java:S2274"})
   // enable timeout
   void startElection() {
+    if (localMember.isSkipElection()) {
+      logger.info("{}: Skip election because this node has stopped.", memberName);
+      return;
+    }
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());
@@ -290,12 +302,8 @@ public class HeartbeatThread implements Runnable {
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
-      if (!electionRequest.isSetLastLogIndex()) {
-        // these field are overridden in DataGroupMember, they will be set to the term and index
-        // of the MetaGroupMember that manages the DataGroupMember so we cannot overwrite them
-        electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
-        electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
-      }
+      electionRequest.setLastLogTerm(localMember.getLogManager().getLastLogTerm());
+      electionRequest.setLastLogIndex(localMember.getLogManager().getLastLogIndex());
 
       requestVote(
           localMember.getAllNodes(),

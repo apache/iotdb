@@ -188,7 +188,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastLocally(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
-      DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+      DataGroupMember localDataMember =
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {

@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -195,64 +194,70 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     }
 
     @Override
-    public void install(FileSnapshot snapshot, int slot) throws SnapshotInstallationException {
+    public void install(FileSnapshot snapshot, int slot, boolean isDataMigration)
+        throws SnapshotInstallationException {
       try {
         logger.info("Starting to install a snapshot {} into slot[{}]", snapshot, slot);
         installFileSnapshotSchema(snapshot);
         logger.info("Schemas in snapshot are registered");
-
-        SlotStatus status = slotManager.getStatus(slot);
-        if (status == SlotStatus.PULLING) {
-          // as the schemas are set, writes can proceed
-          slotManager.setToPullingWritable(slot);
-          logger.debug("{}: slot {} is now pulling writable", name, slot);
+        if (isDataMigration) {
+          SlotStatus status = slotManager.getStatus(slot);
+          if (status == SlotStatus.PULLING) {
+            // as the schemas are set, writes can proceed
+            slotManager.setToPullingWritable(slot);
+            logger.debug("{}: slot {} is now pulling writable", name, slot);
+          }
         }
-
-        installFileSnapshotFiles(snapshot, slot);
+        installFileSnapshotFiles(snapshot, slot, isDataMigration);
       } catch (PullFileException e) {
         throw new SnapshotInstallationException(e);
       }
     }
 
     @Override
-    public void install(Map<Integer, FileSnapshot> snapshotMap)
+    public void install(Map<Integer, FileSnapshot> snapshotMap, boolean isDataMigration)
         throws SnapshotInstallationException {
       logger.info("Starting to install snapshots {}", snapshotMap);
-      installSnapshot(snapshotMap);
+      installSnapshot(snapshotMap, isDataMigration);
     }
 
-    private void installSnapshot(Map<Integer, FileSnapshot> snapshotMap)
+    private void installSnapshot(Map<Integer, FileSnapshot> snapshotMap, boolean isDataMigration)
         throws SnapshotInstallationException {
-      // ensure StorageGroups are synchronized
-      try {
-        dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(true);
-      } catch (CheckConsistencyException e) {
-        throw new SnapshotInstallationException(e);
-      }
-
-      for (FileSnapshot value : snapshotMap.values()) {
-        installFileSnapshotSchema(value);
-      }
-
+      // In data migration, meta group member other than new node does not need to synchronize the
+      // leader, because data migration must be carried out after meta group applied add/remove node
+      // log.
+      dataGroupMember
+          .getMetaGroupMember()
+          .syncLocalApply(
+              dataGroupMember.getMetaGroupMember().getPartitionTable().getLastMetaLogIndex() - 1,
+              false);
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
-        SlotStatus status = slotManager.getStatus(slot);
-        if (status == SlotStatus.PULLING) {
-          // as schemas are set, writes can proceed
-          slotManager.setToPullingWritable(slot);
-          logger.debug("{}: slot {} is now pulling writable", name, slot);
+        FileSnapshot snapshot = integerSnapshotEntry.getValue();
+        installFileSnapshotSchema(snapshot);
+        if (isDataMigration) {
+          SlotStatus status = slotManager.getStatus(slot);
+          if (status == SlotStatus.PULLING) {
+            // as schemas are set, writes can proceed
+            slotManager.setToPullingWritable(slot, false);
+            logger.debug("{}: slot {} is now pulling writable", name, slot);
+          }
         }
+      }
+      if (isDataMigration) {
+        slotManager.save();
       }
 
       for (Entry<Integer, FileSnapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
         Integer slot = integerSnapshotEntry.getKey();
         FileSnapshot snapshot = integerSnapshotEntry.getValue();
         try {
-          installFileSnapshotFiles(snapshot, slot);
+          installFileSnapshotFiles(snapshot, slot, isDataMigration);
         } catch (PullFileException e) {
           throw new SnapshotInstallationException(e);
         }
       }
+      slotManager.save();
     }
 
     private void installFileSnapshotSchema(FileSnapshot snapshot) {
@@ -263,7 +268,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       }
     }
 
-    private void installFileSnapshotFiles(FileSnapshot snapshot, int slot)
+    private void installFileSnapshotFiles(FileSnapshot snapshot, int slot, boolean isDataMigration)
         throws PullFileException {
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
       // pull file
@@ -274,18 +279,28 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         logger.info(
             "Pulling {}/{} files, current: {}", i + 1, remoteTsFileResources.size(), resource);
         try {
-          if (!isFileAlreadyPulled(resource)) {
+          if (isDataMigration) {
+            // This means that the minimum plan index and maximum plan index of some files are the
+            // same,
+            // so the logic of judging index coincidence needs to remove the case of equal
+            resource.setMinPlanIndex(dataGroupMember.getLogManager().getLastLogIndex());
+            resource.setMaxPlanIndex(dataGroupMember.getLogManager().getLastLogIndex());
             loadRemoteFile(resource);
           } else {
-            // notify the snapshot provider to remove the hardlink
-            removeRemoteHardLink(resource);
+            if (!isFileAlreadyPulled(resource)) {
+              loadRemoteFile(resource);
+            } else {
+              // notify the snapshot provider to remove the hardlink
+              removeRemoteHardLink(resource);
+            }
           }
         } catch (IllegalPathException e) {
           throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
         }
       }
+
       // all files are loaded, the slot can be queried without accessing the previous holder
-      slotManager.setToNull(slot);
+      slotManager.setToNull(slot, !isDataMigration);
       logger.info("{}: slot {} is ready", name, slot);
     }
 
@@ -393,8 +408,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       // you can see FilePathUtils.splitTsFilePath() method for details.
       PartialPath storageGroupName =
           new PartialPath(FilePathUtils.getLogicalStorageGroupName(resource));
-      File remoteModFile =
-          new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       try {
         StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
         if (resource.isPlanRangeUnique()) {
@@ -407,22 +420,6 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       } catch (StorageEngineException | LoadFileException e) {
         logger.error("{}: Cannot load remote file {} into storage group", name, resource, e);
         return;
-      }
-      if (remoteModFile.exists()) {
-        // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
-        // dir, so we can add a suffix to find the old modification file.
-        File localModFile =
-            new File(resource.getTsFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
-        try {
-          Files.deleteIfExists(localModFile.toPath());
-        } catch (IOException e) {
-          logger.warn("Cannot delete localModFile {}", localModFile, e);
-        }
-        if (!remoteModFile.renameTo(localModFile)) {
-          logger.warn("Cannot rename remoteModFile {}", remoteModFile);
-        }
-        // ModFile will be updated during the next call to `getModFile`
-        resource.setModFile(null);
       }
       resource.setRemote(false);
     }
@@ -604,7 +601,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   public void truncateBefore(long minIndex) {
     dataFiles.removeIf(
         res -> {
-          boolean toBeTruncated = res.getMaxPlanIndex() <= minIndex;
+          boolean toBeTruncated = res.getMaxPlanIndex() < minIndex;
           if (toBeTruncated) {
             // also remove the hardlink
             res.remove();

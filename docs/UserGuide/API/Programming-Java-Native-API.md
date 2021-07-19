@@ -56,11 +56,32 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Initialize a Session
 
 ```java
-Session(String host, int rpcPort)
+    // use default configuration 
+    session = new Session.Builder.build();
 
-Session(String host, String rpcPort, String username, String password)
+    // initialize with a single node
+    session = 
+        new Session.Builder()
+            .host(String host)
+            .port(int port)
+            .build();
 
-Session(String host, int rpcPort, String username, String password)
+    // initialize with multiple nodes
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // other configurations
+    session = 
+        new Session.Builder()
+            .fetchSize(int fetchSize)
+            .username(String username)
+            .password(String password)
+            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+            .thriftMaxFrameSize(int thriftMaxFrameSize)
+            .enableCacheLeader(boolean enableCacheLeader)
+            .build();
 ```
 
 * Open a Session

@@ -290,7 +290,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static void importCsvFromFile(
       String ip, String port, String username, String password, String filename, String timeZone) {
     try {
-      session = new Session(ip, Integer.parseInt(port), username, password);
+      session = new Session(ip, Integer.parseInt(port), username, password, false);
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();

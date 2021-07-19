@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -64,6 +65,15 @@ public class Planner {
     return new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
   }
 
+  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator, int fetchSize)
+      throws QueryProcessException {
+    // optimize the logical operator (no need to check since the operator has been checked
+    // beforehand)
+    operator = (QueryOperator) logicalOptimize(operator, fetchSize);
+    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator, fetchSize);
+  }
+
+  /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(
       TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException, QueryProcessException {

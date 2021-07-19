@@ -233,7 +233,7 @@
           date: '2018/11/18'
         }, 
         {
-          avatar: 'https://avatars1.githubusercontent.com/u/19167280?s=400&u=b7fa4acd5b6161283946c2ecb5e4837b6f137a1b&v=4',
+          avatar: '/img/contributor-avatar/zss.jpg',
           name: 'Zesong Sun',
           role: 'Committer',
           id: 'sunzesong',
@@ -296,7 +296,7 @@
           date: '2018/11/18'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/cw.jpg',
           name: 'Chao Wang',
           role: 'PMC, Committer',
           id: 'chaow',
@@ -332,9 +332,9 @@
         },
         {
           avatar:'/img/contributor-avatar/user.svg',
-          name: 'Yurong Su',
+          name: 'Steve Yurong Su',
           role: 'Committer',
-          id: 'Steve Yurong Su',
+          id: 'SteveYurongSu',
           date: '2021/05/12'
         },
         ]

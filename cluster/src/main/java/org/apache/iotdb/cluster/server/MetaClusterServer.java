@@ -215,13 +215,18 @@ public class MetaClusterServer extends RaftServer
 
   @Override
   public void requestCommitIndex(
-      Node header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
     asyncService.requestCommitIndex(header, resultHandler);
   }
 
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
     asyncService.checkAlive(resultHandler);
+  }
+
+  @Override
+  public void collectMigrationStatus(AsyncMethodCallback<ByteBuffer> resultHandler) {
+    asyncService.collectMigrationStatus(resultHandler);
   }
 
   @Override
@@ -251,13 +256,13 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void exile(AsyncMethodCallback<Void> resultHandler) {
-    asyncService.exile(resultHandler);
+  public void exile(ByteBuffer removeNodeLog, AsyncMethodCallback<Void> resultHandler) {
+    asyncService.exile(removeNodeLog, resultHandler);
   }
 
   @Override
   public void matchTerm(
-      long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
     asyncService.matchTerm(index, term, header, resultHandler);
   }
 
@@ -277,8 +282,8 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public void exile() {
-    syncService.exile();
+  public void exile(ByteBuffer removeNodeLog) {
+    syncService.exile(removeNodeLog);
   }
 
   @Override
@@ -289,6 +294,11 @@ public class MetaClusterServer extends RaftServer
   @Override
   public Node checkAlive() {
     return syncService.checkAlive();
+  }
+
+  @Override
+  public ByteBuffer collectMigrationStatus() {
+    return syncService.collectMigrationStatus();
   }
 
   @Override
@@ -322,7 +332,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public RequestCommitIndexResponse requestCommitIndex(Node header) throws TException {
+  public RequestCommitIndexResponse requestCommitIndex(RaftNode header) throws TException {
     return syncService.requestCommitIndex(header);
   }
 
@@ -332,7 +342,7 @@ public class MetaClusterServer extends RaftServer
   }
 
   @Override
-  public boolean matchTerm(long index, long term, Node header) {
+  public boolean matchTerm(long index, long term, RaftNode header) {
     return syncService.matchTerm(index, term, header);
   }
 

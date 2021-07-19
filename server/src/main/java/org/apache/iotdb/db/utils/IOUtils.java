@@ -179,4 +179,13 @@ public class IOUtils {
       }
     }
   }
+
+  public static ByteBuffer clone(ByteBuffer original) {
+    ByteBuffer clone = ByteBuffer.allocate(original.capacity());
+    original.rewind();
+    clone.put(original);
+    original.rewind();
+    clone.flip();
+    return clone;
+  }
 }

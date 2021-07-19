@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.sink;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
+import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.sink.mqtt.MQTTConfiguration;
-import org.apache.iotdb.db.sink.mqtt.MQTTEvent;
-import org.apache.iotdb.db.sink.mqtt.MQTTHandler;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 

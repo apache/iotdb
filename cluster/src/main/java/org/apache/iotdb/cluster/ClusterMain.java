@@ -51,6 +51,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
+
 public class ClusterMain {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterMain.class);
@@ -99,8 +101,8 @@ public class ClusterMain {
     }
 
     String mode = args[0];
-
     logger.info("Running mode {}", mode);
+
     if (MODE_START.equals(mode)) {
       try {
         metaServer = new MetaClusterServer();
@@ -121,6 +123,7 @@ public class ClusterMain {
       }
     } else if (MODE_ADD.equals(mode)) {
       try {
+        long startTime = System.currentTimeMillis();
         metaServer = new MetaClusterServer();
         preStartCustomize();
         metaServer.start();
@@ -128,6 +131,11 @@ public class ClusterMain {
         // Currently, we do not register ClusterInfoService as a JMX Bean,
         // so we use startService() rather than start()
         ClusterInfoServer.getInstance().startService();
+
+        logger.info(
+            "Adding this node {} to cluster costs {} ms",
+            metaServer.getMember().getThisNode(),
+            (System.currentTimeMillis() - startTime));
       } catch (TTransportException
           | StartupException
           | QueryProcessException
@@ -221,7 +229,7 @@ public class ClusterMain {
     TProtocolFactory factory =
         config.isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();
-    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort);
+    nodeToRemove.setInternalIp(ip).setMetaPort(metaPort).setClientIp(UNKNOWN_CLIENT_IP);
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
       Node node = ClusterUtils.parseNode(url);
@@ -230,6 +238,7 @@ public class ClusterMain {
       }
       AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
       Long response = null;
+      long startTime = System.currentTimeMillis();
       try {
         logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);
         response = SyncClientAdaptor.removeNode(client, nodeToRemove);
@@ -240,19 +249,25 @@ public class ClusterMain {
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
       if (response != null) {
-        handleNodeRemovalResp(response, nodeToRemove);
+        handleNodeRemovalResp(response, nodeToRemove, startTime);
         return;
       }
     }
   }
 
-  private static void handleNodeRemovalResp(Long response, Node nodeToRemove) {
+  private static void handleNodeRemovalResp(Long response, Node nodeToRemove, long startTime) {
     if (response == Response.RESPONSE_AGREE) {
-      logger.info("Node {} is successfully removed", nodeToRemove);
+      logger.info(
+          "Node {} is successfully removed, cost {}ms",
+          nodeToRemove,
+          (System.currentTimeMillis() - startTime));
     } else if (response == Response.RESPONSE_CLUSTER_TOO_SMALL) {
       logger.error("Cluster size is too small, cannot remove any node");
     } else if (response == Response.RESPONSE_REJECT) {
       logger.error("Node {} is not found in the cluster, please check", nodeToRemove);
+    } else if (response == Response.RESPONSE_DATA_MIGRATION_NOT_FINISH) {
+      logger.warn(
+          "The data migration of the previous membership change operation is not finished. Please try again later");
     } else {
       logger.error("Unexpected response {}", response);
     }

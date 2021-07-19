@@ -889,4 +889,39 @@ public class IoTDBSessionComplexIT {
 
     session.close();
   }
+
+  @Test
+  public void testSessionCluster() throws IoTDBConnectionException, StatementExecutionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    session = new Session(nodeList, "root", "root");
+    session.open();
+
+    session.setStorageGroup("root.sg1");
+
+    createTimeseries();
+    insertByStr();
+
+    insertViaSQL();
+    queryByDevice("root.sg1.d1");
+
+    session.close();
+  }
+
+  @Test
+  public void testErrorSessionCluster() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    // test Format error
+    nodeList.add("127.0.0.16669");
+    nodeList.add("127.0.0.1:6667");
+    session = new Session(nodeList, "root", "root");
+    try {
+      session.open();
+    } catch (Exception e) {
+      Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
+    }
+    session.close();
+  }
 }
