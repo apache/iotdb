@@ -316,8 +316,12 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
-      this.mtree.clear();
-      this.mNodeCache.clear();
+      if(this.mtree!=null){
+        this.mtree.clear();
+      }
+      if(this.mNodeCache!=null){
+        this.mNodeCache.clear();
+      }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
       if (logWriter != null) {
