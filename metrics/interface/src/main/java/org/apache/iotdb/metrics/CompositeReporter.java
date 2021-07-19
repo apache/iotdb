@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics;
 
-public interface CompositeReporter {// CompositeReporter
+public interface CompositeReporter {
 
   /**
    * Start all reporter

@@ -39,7 +39,7 @@ public class DropwizardMetricManagerTest {
     public static void init(){
         System.setProperty("line.separator", "\n");
         // set up path of yml
-        System.setProperty("METRIC_CONF", "resources");
+        System.setProperty("IOTDB_CONF", "resources");
         metricManager = MetricService.getMetricManager();
     }
 
