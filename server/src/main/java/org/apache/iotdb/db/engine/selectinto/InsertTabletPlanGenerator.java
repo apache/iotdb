@@ -168,6 +168,7 @@ public class InsertTabletPlanGenerator {
   }
 
   public InsertTabletPlan getInsertTabletPlan() {
+    insertTabletPlan.setRowCount(rowCount);
     return insertTabletPlan;
   }
 }
