@@ -72,7 +72,7 @@ public class SessionManager {
       return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
     } else {
       // only used for test
-      return TimeZone.getDefault();
+      return TimeZone.getTimeZone("+08:00");
     }
   }
 

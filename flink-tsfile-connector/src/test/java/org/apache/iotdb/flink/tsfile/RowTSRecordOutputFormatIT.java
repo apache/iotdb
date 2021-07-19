@@ -28,7 +28,7 @@ import java.io.File;
 import static org.junit.Assert.assertArrayEquals;
 
 /** ITCases for TSRecordOutputFormat. */
-public class RowTSRecordOutputFormatITCase extends RowTsFileOutputFormatTestBase {
+public class RowTSRecordOutputFormatIT extends RowTsFileOutputFormatTestBase {
 
   @Test
   public void testOutputFormat() throws Exception {
