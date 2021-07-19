@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -392,6 +394,12 @@ public abstract class PhysicalPlan {
         case CLEARCACHE:
           plan = new ClearCachePlan();
           break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -453,7 +461,9 @@ public abstract class PhysicalPlan {
     SHOW_CONTINUOUS_QUERIES,
     MERGE,
     CREATE_SNAPSHOT,
-    CLEARCACHE
+    CLEARCACHE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION
   }
 
   public long getIndex() {

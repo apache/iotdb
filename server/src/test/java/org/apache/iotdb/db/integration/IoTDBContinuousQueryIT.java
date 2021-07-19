@@ -30,7 +30,11 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -57,21 +61,34 @@ public class IoTDBContinuousQueryIT {
         @Override
         public void run() {
 
-          try (Connection connection =
-                  DriverManager.getConnection(
-                      Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-              Statement statement = connection.createStatement()) {
+          try {
+            Connection connection =
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            Statement statement = connection.createStatement();
 
             do {
-
               for (String timeSeries : timeSeriesArray) {
-                try {
-                  statement.execute(
-                      String.format(
-                          "insert into %s(timestamp, temperature) values(now(), %.3f)",
-                          timeSeries, 200 * Math.random()));
-                } catch (SQLException throwables) {
-                  LOGGER.error(throwables.getMessage());
+                boolean isSuccessful = false;
+                while (!isSuccessful) {
+                  try {
+                    statement.execute(
+                        String.format(
+                            "insert into %s(timestamp, temperature) values(now(), %.3f)",
+                            timeSeries, 200 * Math.random()));
+                    isSuccessful = true;
+                  } catch (SQLException throwable) {
+                    LOGGER.error(throwable.getMessage());
+                    throwable.printStackTrace();
+
+                    statement.close();
+                    connection.close();
+
+                    connection =
+                        DriverManager.getConnection(
+                            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+                    statement = connection.createStatement();
+                  }
                 }
               }
             } while (!isInterrupted());

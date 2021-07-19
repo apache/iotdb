@@ -36,7 +36,6 @@ public class UpgradeSevice implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeSevice.class);
 
-  private static final UpgradeSevice INSTANCE = new UpgradeSevice();
   private ExecutorService upgradeThreadPool;
   private AtomicInteger threadCnt = new AtomicInteger();
   private static int cntUpgradeFileNum;
@@ -44,7 +43,13 @@ public class UpgradeSevice implements IService {
   private UpgradeSevice() {}
 
   public static UpgradeSevice getINSTANCE() {
-    return INSTANCE;
+    return InstanceHolder.INSTANCE;
+  }
+
+  public static class InstanceHolder {
+    private static final UpgradeSevice INSTANCE = new UpgradeSevice();
+
+    private InstanceHolder() {}
   }
 
   @Override
