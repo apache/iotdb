@@ -1768,7 +1768,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       } else if (insertMultiValues.size() != 1) {
         throw new SQLParserException("need timestamps when insert multi rows");
       } else {
-        timestamp = parseTimeFormat("now()");
+        timestamp = parseTimeFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
       List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();
