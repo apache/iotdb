@@ -131,11 +131,11 @@ public class AuthorityChecker {
       case LAST:
       case FILL:
       case GROUP_BY_FILL:
+      case SELECT_INTO:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:
       case CREATE_INDEX:
-      case SELECT_INTO:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:

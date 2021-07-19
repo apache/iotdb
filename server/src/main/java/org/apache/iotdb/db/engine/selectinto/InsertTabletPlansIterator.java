@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.transporter;
+package org.apache.iotdb.db.engine.selectinto;
 
-import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -35,7 +33,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class SelectIntoTransporter {
+public class InsertTabletPlansIterator {
 
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
@@ -45,17 +43,15 @@ public class SelectIntoTransporter {
 
   private InsertTabletPlanGenerator[] insertTabletPlanGenerators;
 
-  public SelectIntoTransporter(
-      QueryDataSet queryDataSet, List<PartialPath> intoPaths, int fetchSize) {
+  public InsertTabletPlansIterator(
+      QueryDataSet queryDataSet, List<PartialPath> intoPaths, int fetchSize)
+      throws IllegalPathException {
     this.queryDataSet = queryDataSet;
     this.intoPaths = intoPaths;
     this.fetchSize = fetchSize;
-  }
 
-  public void transport() throws IoTDBException, IOException {
     generateActualIntoPaths();
-    constructTabletGenerators();
-    doTransport();
+    constructInsertTabletPlanGenerators();
   }
 
   private void generateActualIntoPaths() throws IllegalPathException {
@@ -87,32 +83,35 @@ public class SelectIntoTransporter {
     return new PartialPath(sb.toString());
   }
 
-  private void constructTabletGenerators() {
-    Map<String, InsertTabletPlanGenerator> deviceTabletGeneratorMap = new HashMap<>();
+  private void constructInsertTabletPlanGenerators() {
+    Map<String, InsertTabletPlanGenerator> deviceToPlanGeneratorMap = new HashMap<>();
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
       String device = intoPaths.get(i).getDevice();
-      if (!deviceTabletGeneratorMap.containsKey(device)) {
-        deviceTabletGeneratorMap.put(device, new InsertTabletPlanGenerator(device, fetchSize));
+      if (!deviceToPlanGeneratorMap.containsKey(device)) {
+        deviceToPlanGeneratorMap.put(device, new InsertTabletPlanGenerator(device, fetchSize));
       }
-      deviceTabletGeneratorMap.get(device).addMeasurementIdIndex(intoPaths, i);
+      deviceToPlanGeneratorMap.get(device).addMeasurementIdIndex(intoPaths, i);
     }
     insertTabletPlanGenerators =
-        deviceTabletGeneratorMap.values().toArray(new InsertTabletPlanGenerator[0]);
+        deviceToPlanGeneratorMap.values().toArray(new InsertTabletPlanGenerator[0]);
   }
 
-  private void doTransport() throws IOException, IllegalPathException {
-    while (queryDataSet.hasNext()) {
-      List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
-      for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
-        insertTabletPlanGenerator.constructNewTablet();
-      }
-      collectRowRecordIntoInsertTabletPlanGenerators();
-      for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
-        insertTabletPlanList.add(insertTabletPlanGenerator.getInsertTabletPlan());
-      }
-      InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
-      // TODO: execute insertMultiTabletPlan
+  public boolean hasNext() throws IOException {
+    return queryDataSet.hasNext();
+  }
+
+  public List<InsertTabletPlan> next() throws IOException, IllegalPathException {
+    for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
+      insertTabletPlanGenerator.internallyConstructNewPlan();
     }
+
+    collectRowRecordIntoInsertTabletPlanGenerators();
+
+    List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
+    for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
+      insertTabletPlans.add(insertTabletPlanGenerator.getInsertTabletPlan());
+    }
+    return insertTabletPlans;
   }
 
   private void collectRowRecordIntoInsertTabletPlanGenerators() throws IOException {

@@ -64,9 +64,10 @@ public class SelectIntoPlan extends PhysicalPlan {
     throw new UnsupportedOperationException();
   }
 
+  /** mainly for query auth. */
   @Override
   public List<PartialPath> getPaths() {
-    throw new UnsupportedOperationException();
+    return queryPlan.getPaths();
   }
 
   public QueryPlan getQueryPlan() {

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.engine.transporter.SelectIntoTransporter;
+import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -610,7 +610,12 @@ public class TSServiceImpl implements TSIService.Iface {
             req.isEnableRedirectQuery());
       } else if (physicalPlan.isSelectInto()) {
         return executeSelectIntoStatement(
-            statement, req.statementId, physicalPlan, req.fetchSize, req.timeout);
+            statement,
+            req.statementId,
+            physicalPlan,
+            req.fetchSize,
+            req.timeout,
+            req.getSessionId());
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -1032,7 +1037,12 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   private TSExecuteStatementResp executeSelectIntoStatement(
-      String statement, long statementId, PhysicalPlan physicalPlan, int fetchSize, long timeout)
+      String statement,
+      long statementId,
+      PhysicalPlan physicalPlan,
+      int fetchSize,
+      long timeout,
+      long sessionId)
       throws IoTDBException, TException, SQLException, IOException, InterruptedException,
           QueryFilterOptimizationException {
     final long startTime = System.currentTimeMillis();
@@ -1053,13 +1063,21 @@ public class TSServiceImpl implements TSIService.Iface {
     tracingManager.writeQueryInfo(queryId, statement, startTime, queryPlan);
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
-      new SelectIntoTransporter(
+
+      InsertTabletPlansIterator insertTabletPlansIterator =
+          new InsertTabletPlansIterator(
               createQueryDataSet(queryId, queryPlan, fetchSize),
               selectIntoPlan.getIntoPaths(),
-              fetchSize)
-          .transport();
-      return RpcUtils.getTSExecuteStatementResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS))
-          .setQueryId(queryId);
+              fetchSize);
+      while (insertTabletPlansIterator.hasNext()) {
+        TSStatus executionStatus =
+            insertTabletsInternal(insertTabletPlansIterator.next(), sessionId);
+        if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
+        }
+      }
+
+      return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } catch (Exception e) {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
       throw e;
@@ -1071,6 +1089,21 @@ public class TSServiceImpl implements TSIService.Iface {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
     }
+  }
+
+  private TSStatus insertTabletsInternal(List<InsertTabletPlan> insertTabletPlans, long sessionId) {
+    InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
+    for (int i = 0; i < insertTabletPlans.size(); i++) {
+      InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
+      TSStatus status = checkAuthority(insertTabletPlan, sessionId);
+      if (status != null) {
+        // not authorized
+        insertMultiTabletPlan.getResults().put(i, status);
+      }
+    }
+    insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlans);
+
+    return executeNonQueryPlan(insertMultiTabletPlan);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

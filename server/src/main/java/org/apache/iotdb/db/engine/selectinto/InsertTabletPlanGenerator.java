@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.transporter;
+package org.apache.iotdb.db.engine.selectinto;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -48,7 +48,7 @@ public class InsertTabletPlanGenerator {
 
   public InsertTabletPlanGenerator(String intoDevice, int fetchSize) {
     this.intoDevice = intoDevice;
-    // column index of insertTabletPlan -> column index of queryDataSet (intoPaths)
+    // column index of insertTabletPlan -> column index of queryDataSet (column index of intoPaths)
     intoMeasurementIndexes = new ArrayList<>();
     intoMeasurementIds = new ArrayList<>();
 
@@ -60,7 +60,7 @@ public class InsertTabletPlanGenerator {
     intoMeasurementIds.add(intoPaths.get(intoMeasurementIndex).getMeasurement());
   }
 
-  public void constructNewTablet() throws IllegalPathException {
+  public void internallyConstructNewPlan() throws IllegalPathException {
     insertTabletPlan = new InsertTabletPlan(new PartialPath(intoDevice), intoMeasurementIds);
     insertTabletPlan.setAligned(false);
 
