@@ -265,7 +265,7 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
    > 格式: 13,path,[new alias]
 
 ## 标签文件
-* org.apache.iotdb.db.metadata.tag.TagLogFile
+* org.apache.iotdb.db.metadata.logfile.TagLogFile
 
 
 所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/mlog.bin。

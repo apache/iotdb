@@ -268,7 +268,7 @@ sql examples and the corresponding mlog record:
                                                                                                                 
                                                                                                               
 ## TLog
-* org.apache.iotdb.db.metadata.tag.TagLogFile
+* org.apache.iotdb.db.metadata.logfile.TagLogFile
 
 All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.bin.
 
