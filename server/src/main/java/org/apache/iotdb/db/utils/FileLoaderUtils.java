@@ -113,6 +113,7 @@ public class FileLoaderUtils {
 
     // common path
     ITimeSeriesMetadata timeSeriesMetadata;
+    // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
@@ -130,7 +131,7 @@ public class FileLoaderUtils {
         timeSeriesMetadata.setChunkMetadataLoader(
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
-    } else {
+    } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       timeSeriesMetadata = resource.getTimeSeriesMetadata();
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -156,6 +157,14 @@ public class FileLoaderUtils {
     return timeSeriesMetadata;
   }
 
+  /**
+   * Load VectorTimeSeriesMetadata for Vector
+   *
+   * @param resource corresponding TsFileResource
+   * @param seriesPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
+   *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
+   * @param subSensorList subSensorList of the seriesPath
+   */
   private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
       TsFileResource resource,
       PartialPath seriesPath,
@@ -165,10 +174,14 @@ public class FileLoaderUtils {
       Set<String> allSensors)
       throws IOException {
     VectorTimeSeriesMetadata vectorTimeSeriesMetadata = null;
+    // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
       if (!resource.getTsFile().exists()) {
         return null;
       }
+      // load all the TimeseriesMetadata of vector, the first one is for time column and the
+      // remaining is for sub sensors
+      // the order of timeSeriesMetadata list is same as subSensorList's order
       List<TimeseriesMetadata> timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(
@@ -181,6 +194,8 @@ public class FileLoaderUtils {
                       .collect(Collectors.toList()),
                   allSensors,
                   context.isDebug());
+
+      // assemble VectorTimeSeriesMetadata
       if (timeSeriesMetadata != null && !timeSeriesMetadata.isEmpty()) {
         timeSeriesMetadata
             .get(0)
@@ -197,7 +212,7 @@ public class FileLoaderUtils {
                 timeSeriesMetadata.get(0),
                 timeSeriesMetadata.subList(1, timeSeriesMetadata.size()));
       }
-    } else {
+    } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
       vectorTimeSeriesMetadata = (VectorTimeSeriesMetadata) resource.getTimeSeriesMetadata();
       if (vectorTimeSeriesMetadata != null) {
         vectorTimeSeriesMetadata.setChunkMetadataLoader(

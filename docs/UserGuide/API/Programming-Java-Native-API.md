@@ -56,11 +56,32 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Initialize a Session
 
 ```java
-Session(String host, int rpcPort)
+    // use default configuration 
+    session = new Session.Builder.build();
 
-Session(String host, String rpcPort, String username, String password)
+    // initialize with a single node
+    session = 
+        new Session.Builder()
+            .host(String host)
+            .port(int port)
+            .build();
 
-Session(String host, int rpcPort, String username, String password)
+    // initialize with multiple nodes
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // other configurations
+    session = 
+        new Session.Builder()
+            .fetchSize(int fetchSize)
+            .username(String username)
+            .password(String password)
+            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+            .thriftMaxFrameSize(int thriftMaxFrameSize)
+            .enableCacheLeader(boolean enableCacheLeader)
+            .build();
 ```
 
 * Open a Session
@@ -103,7 +124,7 @@ void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
 
 * Create aligned timeseries
 ```
-void createAlignedTimeseries(String devicePath, List<String> measurements,
+void createAlignedTimeseries(String prefixPath, List<String> measurements,
       List<TSDataType> dataTypes, List<TSEncoding> encodings,
       CompressionType compressor, List<String> measurementAliasList);
 ```
@@ -127,7 +148,7 @@ void deleteData(List<String> paths, long time)
 * Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
 
 ```java
-void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
 ```
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
@@ -269,7 +290,7 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/VectorSessionExample.java`
+For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
 
@@ -382,8 +403,9 @@ Open a session and specifies whether the Leader cache is enabled. Note that this
 *     a list and add to encodings if it is a vector measurement, put all encodings of the
 *     vector into a list and add to encodings
 * compressors: List of compressors                            
-void createDeviceTemplate(
-      String name,
+void createSchemaTemplate(
+      String templateName,
+      List<String> schemaName,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
@@ -394,7 +416,7 @@ Create a device template, the param description at above
 
 ``` 
 
-void setDeviceTemplate(String templateName, String prefixPath)
+void setSchemaTemplate(String templateName, String prefixPath)
 
 ```
 
@@ -402,7 +424,7 @@ Set the device template named 'templateName' at path 'prefixPath'. You should fi
 
 ```
 
-void createDeviceTemplate
+void createSchemaTemplate
 
 ```
 

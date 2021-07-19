@@ -148,6 +148,8 @@ At the same time, changes to a role are immediately reflected to all users who o
 |DROP_TRIGGER|drop triggers; path independent|
 |START_TRIGGER|start triggers; path independent|
 |STOP_TRIGGER|stop triggers; path independent|
+|CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
+|DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
 
 ### Username Restrictions
 

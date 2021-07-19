@@ -175,6 +175,10 @@ public class SQLConstant {
   public static final int TOK_SHOW_TRIGGERS = 104;
   public static final int TOK_LOCK_INFO = 105;
 
+  public static final int TOK_CONTINUOUS_QUERY_CREATE = 106;
+  public static final int TOK_CONTINUOUS_QUERY_DROP = 107;
+  public static final int TOK_SHOW_CONTINUOUS_QUERIES = 108;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -239,6 +243,10 @@ public class SQLConstant {
     tokenNames.put(TOK_TRIGGER_START, "TOK_TRIGGER_START");
     tokenNames.put(TOK_TRIGGER_STOP, "TOK_TRIGGER_STOP");
     tokenNames.put(TOK_SHOW_TRIGGERS, "TOK_SHOW_TRIGGERS");
+
+    tokenNames.put(TOK_CONTINUOUS_QUERY_CREATE, "TOK_CONTINUOUS_QUERY_CREATE");
+    tokenNames.put(TOK_CONTINUOUS_QUERY_DROP, "TOK_CONTINUOUS_QUERY_DROP");
+    tokenNames.put(TOK_SHOW_CONTINUOUS_QUERIES, "TOK_SHOW_CONTINUOUS_QUERIES");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {
