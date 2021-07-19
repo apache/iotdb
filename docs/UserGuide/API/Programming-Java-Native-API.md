@@ -59,11 +59,22 @@ Here we show the commonly used interfaces and their parameters in the Native API
     // use default configuration 
     session = new Session.Builder.build();
 
-    // configure all fields
+    // initialize with a single node
     session = 
         new Session.Builder()
             .host(String host)
             .port(int port)
+            .build();
+
+    // initialize with multiple nodes
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // other configurations
+    session = 
+        new Session.Builder()
             .fetchSize(int fetchSize)
             .username(String username)
             .password(String password)

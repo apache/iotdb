@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
@@ -1448,5 +1449,14 @@ public class PhysicalPlanTest {
     ShowContinuousQueriesPlan plan =
         (ShowContinuousQueriesPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
+  }
+
+  @Test
+  public void testShowFunction() throws QueryProcessException {
+    String sql = "SHOW FUNCTIONS";
+
+    ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 }

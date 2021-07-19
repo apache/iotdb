@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.logfile.TagLogFile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -1112,6 +1113,11 @@ public class MManager {
       throws MetadataException {
     MNode deviceMNode = getDeviceNode(device);
     MeasurementMNode measurementMNode = (MeasurementMNode) deviceMNode.getChild(measurement);
+    if (measurementMNode == null) {
+      // Just for the initial adaptation of the template functionality and merge functionality
+      // The getSeriesSchema interface needs to be cleaned up later
+      return getSeriesSchema(device.concatNode(measurement));
+    }
     return measurementMNode.getSchema();
   }
 
