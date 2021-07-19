@@ -1127,7 +1127,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private PartialPath parseIntoPath(IntoPathContext intoPathContext) {
-    int levelLimitOfSourcePrefixPath = queryOp.getSpecialClauseComponent().getLevel();
+    int levelLimitOfSourcePrefixPath =
+        queryOp.getSpecialClauseComponent() != null
+            ? queryOp.getSpecialClauseComponent().getLevel()
+            : -1;
     if (levelLimitOfSourcePrefixPath == -1) {
       levelLimitOfSourcePrefixPath =
           queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
