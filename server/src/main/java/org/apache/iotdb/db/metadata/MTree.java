@@ -35,7 +35,7 @@ import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -113,10 +113,10 @@ public class MTree implements Serializable {
   private String mtreeSnapshotTmpPath;
 
   MTree() {
-    this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
+    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
-  private MTree(MNode root) {
+  private MTree(InternalMNode root) {
     this.root = root;
   }
 
@@ -146,7 +146,7 @@ public class MTree implements Serializable {
   }
 
   public void clear() {
-    root = new MNode(null, IoTDBConstant.PATH_ROOT);
+    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   public void createSnapshot() throws IOException {
@@ -303,7 +303,7 @@ public class MTree implements Serializable {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(childName).getFullPath());
         }
-        cur.addChild(childName, new MNode(cur, childName));
+        cur.addChild(childName, new InternalMNode(cur, childName));
       }
       cur = cur.getChild(childName);
 
@@ -389,7 +389,7 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        cur.addChild(nodeName, new MNode(cur, nodeName));
+        cur.addChild(nodeName, new InternalMNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
     }
@@ -505,7 +505,7 @@ public class MTree implements Serializable {
               new StorageGroupMNode(
                   cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
+          cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
         }
       }
       cur = cur.getChild(nodeNames[i]);
@@ -571,7 +571,7 @@ public class MTree implements Serializable {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -1851,9 +1851,9 @@ public class MTree implements Serializable {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static MNode deserializeFromReader(MLogReader mLogReader) {
+  private static InternalMNode deserializeFromReader(MLogReader mLogReader) {
     Deque<IMNode> nodeStack = new ArrayDeque<>();
-    MNode node = null;
+    IMNode node = null;
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -1869,7 +1869,7 @@ public class MTree implements Serializable {
           node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
           childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
         } else if (plan instanceof MNodePlan) {
-          node = new MNode(null, ((MNodePlan) plan).getName());
+          node = new InternalMNode(null, ((MNodePlan) plan).getName());
           childrenSize = ((MNodePlan) plan).getChildSize();
         }
 
@@ -1894,8 +1894,12 @@ public class MTree implements Serializable {
             "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
+    if(!IoTDBConstant.PATH_ROOT.equals(node.getName())){
+      logger.error("Snapshot file corrupted!");
+//      throw new MetadataException("Snapshot file corrupted!");
+    }
 
-    return node;
+    return (InternalMNode) node;
   }
 
   @Override

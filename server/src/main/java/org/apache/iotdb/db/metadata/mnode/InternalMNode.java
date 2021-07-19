@@ -40,19 +40,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class MNode implements IMNode {
+public class InternalMNode extends MNode implements IMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
-  private static Map<String, String> cachedPathPool =
-      CachedStringPool.getInstance().getCachedPool();
-
-  /** Name of the MNode */
-  protected String name;
-
-  protected IMNode parent;
-
-  /** from root to this node, only be set when used once for InternalMNode */
-  protected String fullPath;
 
   /**
    * use in Measurement Node so it's protected suppress warnings reason: volatile for double
@@ -77,9 +67,8 @@ public class MNode implements IMNode {
   private volatile boolean useTemplate = false;
 
   /** Constructor of MNode. */
-  public MNode(IMNode parent, String name) {
-    this.parent = parent;
-    this.name = name;
+  public InternalMNode(IMNode parent, String name) {
+    super(parent,name);
   }
 
   /** check whether the MNode has a child with the name */
@@ -205,12 +194,9 @@ public class MNode implements IMNode {
   @Override
   public int getMeasurementMNodeCount() {
     if (children == null) {
-      return 1;
+      return 0;
     }
     int measurementMNodeCount = 0;
-    if (this instanceof MeasurementMNode) {
-      measurementMNodeCount += 1; // current node itself may be MeasurementMNode
-    }
     for (IMNode child : children.values()) {
       measurementMNodeCount += child.getMeasurementMNodeCount();
     }
@@ -230,63 +216,6 @@ public class MNode implements IMNode {
     }
 
     return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
-  }
-
-  /** get full path */
-  @Override
-  public String getFullPath() {
-    if (fullPath == null) {
-      fullPath = concatFullPath();
-      String cachedFullPath = cachedPathPool.get(fullPath);
-      if (cachedFullPath == null) {
-        cachedPathPool.put(fullPath, fullPath);
-      } else {
-        fullPath = cachedFullPath;
-      }
-    }
-    return fullPath;
-  }
-
-  /**
-   * get partial path of this node
-   *
-   * @return partial path
-   */
-  @Override
-  public PartialPath getPartialPath() {
-    List<String> detachedPath = new ArrayList<>();
-    IMNode temp = this;
-    detachedPath.add(temp.getName());
-    while (temp.getParent() != null) {
-      temp = temp.getParent();
-      detachedPath.add(0, temp.getName());
-    }
-    return new PartialPath(detachedPath.toArray(new String[0]));
-  }
-
-  String concatFullPath() {
-    StringBuilder builder = new StringBuilder(name);
-    IMNode curr = this;
-    while (curr.getParent() != null) {
-      curr = curr.getParent();
-      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
-    }
-    return builder.toString();
-  }
-
-  @Override
-  public String toString() {
-    return this.getName();
-  }
-
-  @Override
-  public IMNode getParent() {
-    return parent;
-  }
-
-  @Override
-  public void setParent(IMNode parent) {
-    this.parent = parent;
   }
 
   @Override
@@ -312,16 +241,6 @@ public class MNode implements IMNode {
 
   public void setAliasChildren(Map<String, IMNode> aliasChildren) {
     this.aliasChildren = aliasChildren;
-  }
-
-  @Override
-  public String getName() {
-    return name;
-  }
-
-  @Override
-  public void setName(String name) {
-    this.name = name;
   }
 
   @Override
@@ -370,11 +289,6 @@ public class MNode implements IMNode {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
-  @Override
-  public void setFullPath(String fullPath) {
-    this.fullPath = fullPath;
-  }
-
   /**
    * get upper template of this node, remember we get nearest template alone this node to root
    *
@@ -391,31 +305,6 @@ public class MNode implements IMNode {
     }
 
     return null;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    MNode mNode = (MNode) o;
-    if (fullPath == null) {
-      return Objects.equals(getFullPath(), mNode.getFullPath());
-    } else {
-      return Objects.equals(fullPath, mNode.fullPath);
-    }
-  }
-
-  @Override
-  public int hashCode() {
-    if (fullPath == null) {
-      return Objects.hash(getFullPath());
-    } else {
-      return Objects.hash(fullPath);
-    }
   }
 
   @Override

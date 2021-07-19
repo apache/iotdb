@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,54 +82,12 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public boolean hasChild(String name) {
-    return false;
-  }
-
-  @Override
-  public void addChild(String name, IMNode child) {
-    // Do nothing
-  }
-
-  @Override
-  public void deleteChild(String name) {
-    // Do nothing
-  }
-
-  @Override
-  public void deleteAliasChild(String alias) {
-    // Do nothing
-  }
-
-  @Override
-  public MNode getChild(String name) {
-    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
-    throw new RuntimeException(
-        String.format(
-            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
-  }
-
-  @Override
   public int getMeasurementMNodeCount() {
     return 1;
   }
 
   public int getMeasurementCount() {
     return schema.getMeasurementCount();
-  }
-
-  @Override
-  public boolean addAlias(String alias, IMNode child) {
-    return false;
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren() {
-    return Collections.emptyMap();
-  }
-
-  public void setChildren(Map<String, IMNode> children) {
-    // Do nothing
   }
 
   public IMeasurementSchema getSchema() {
@@ -146,7 +106,7 @@ public class MeasurementMNode extends MNode {
    * @param latestFlushedTime latest flushed time
    */
   public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+          TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
       return;
     }
@@ -156,10 +116,10 @@ public class MeasurementMNode extends MNode {
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+                new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
+            || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
             && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
@@ -205,8 +165,6 @@ public class MeasurementMNode extends MNode {
 
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
     logWriter.serializeMeasurementMNode(this);
   }
 
@@ -228,12 +186,12 @@ public class MeasurementMNode extends MNode {
       }
     }
     IMeasurementSchema schema =
-        new MeasurementSchema(
-            name,
-            Byte.parseByte(nodeInfo[3]),
-            Byte.parseByte(nodeInfo[4]),
-            Byte.parseByte(nodeInfo[5]),
-            props);
+            new MeasurementSchema(
+                    name,
+                    Byte.parseByte(nodeInfo[3]),
+                    Byte.parseByte(nodeInfo[4]),
+                    Byte.parseByte(nodeInfo[5]),
+                    props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
     return node;
@@ -242,7 +200,7 @@ public class MeasurementMNode extends MNode {
   /** deserialize MeasuremetMNode from MeasurementNodePlan */
   public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
     MeasurementMNode node =
-        new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
+            new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
 
     return node;
@@ -262,4 +220,97 @@ public class MeasurementMNode extends MNode {
       return schema.getValueTSDataTypeList().get(index);
     }
   }
+
+  @Override
+  public boolean hasChild(String name) {
+    return false;
+  }
+
+  @Override
+  public void addChild(String name, IMNode child) {
+    // Do nothing
+  }
+
+  @Override
+  public IMNode addChild(IMNode child) {
+    return null;
+  }
+
+  @Override
+  public void deleteChild(String name) {
+    // Do nothing
+  }
+
+  @Override
+  public void deleteAliasChild(String alias) {
+    // Do nothing
+  }
+
+  @Override
+  public Template getDeviceTemplate() {
+    return null;
+  }
+
+  @Override
+  public void setDeviceTemplate(Template deviceTemplate) {
+
+  }
+
+  @Override
+  public IMNode getChild(String name) {
+    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
+    throw new RuntimeException(
+        String.format(
+            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
+  }
+
+  @Override
+  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    return null;
+  }
+
+  @Override
+  public boolean addAlias(String alias, IMNode child) {
+    return false;
+  }
+
+  @Override
+  public Map<String, IMNode> getChildren() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Map<String, IMNode> getAliasChildren() {
+    return null;
+  }
+
+  public void setChildren(Map<String, IMNode> children) {
+    // Do nothing
+  }
+
+  @Override
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
+
+  }
+
+  @Override
+  public void replaceChild(String measurement, IMNode newChildNode) {
+
+  }
+
+  @Override
+  public Template getUpperTemplate() {
+    return null;
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+
+  }
+
 }
