@@ -247,14 +247,6 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public Template getDeviceTemplate() {
-    return null;
-  }
-
-  @Override
-  public void setDeviceTemplate(Template deviceTemplate) {}
-
-  @Override
   public IMNode getChild(String name) {
     logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
     throw new RuntimeException(
@@ -301,6 +293,14 @@ public class MeasurementMNode extends MNode {
   public boolean isUseTemplate() {
     return false;
   }
+
+  @Override
+  public Template getDeviceTemplate() {
+    return null;
+  }
+
+  @Override
+  public void setDeviceTemplate(Template deviceTemplate) {}
 
   @Override
   public void setUseTemplate(boolean useTemplate) {}

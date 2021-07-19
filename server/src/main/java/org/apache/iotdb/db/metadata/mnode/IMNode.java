@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
+/** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
   boolean hasChild(String name);
 
