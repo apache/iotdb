@@ -855,7 +855,7 @@ public class MTree implements Serializable {
    * @apiNote :for cluster
    */
   private void findStorageGroup(
-          IMNode node, String[] nodes, int idx, String parent, List<String> storageGroupNames) {
+      IMNode node, String[] nodes, int idx, String parent, List<String> storageGroupNames) {
     if (node instanceof StorageGroupMNode) {
       storageGroupNames.add(node.getFullPath());
       return;
@@ -1556,7 +1556,7 @@ public class MTree implements Serializable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodePathInNextLevel(
-          IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
     if (node == null) {
       return;
     }
@@ -1627,7 +1627,7 @@ public class MTree implements Serializable {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodeInNextLevel(
-          IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
     if (node == null) {
       return;
     }
@@ -1894,9 +1894,9 @@ public class MTree implements Serializable {
             "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
       }
     }
-    if(!IoTDBConstant.PATH_ROOT.equals(node.getName())){
+    if (!IoTDBConstant.PATH_ROOT.equals(node.getName())) {
       logger.error("Snapshot file corrupted!");
-//      throw new MetadataException("Snapshot file corrupted!");
+      //      throw new MetadataException("Snapshot file corrupted!");
     }
 
     return (InternalMNode) node;

@@ -106,7 +106,7 @@ public class MeasurementMNode extends MNode {
    * @param latestFlushedTime latest flushed time
    */
   public synchronized void updateCachedLast(
-          TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
       return;
     }
@@ -116,10 +116,10 @@ public class MeasurementMNode extends MNode {
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         cachedLastValuePair =
-                new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-            || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
+        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
             && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
@@ -186,12 +186,12 @@ public class MeasurementMNode extends MNode {
       }
     }
     IMeasurementSchema schema =
-            new MeasurementSchema(
-                    name,
-                    Byte.parseByte(nodeInfo[3]),
-                    Byte.parseByte(nodeInfo[4]),
-                    Byte.parseByte(nodeInfo[5]),
-                    props);
+        new MeasurementSchema(
+            name,
+            Byte.parseByte(nodeInfo[3]),
+            Byte.parseByte(nodeInfo[4]),
+            Byte.parseByte(nodeInfo[5]),
+            props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
     return node;
@@ -200,7 +200,7 @@ public class MeasurementMNode extends MNode {
   /** deserialize MeasuremetMNode from MeasurementNodePlan */
   public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
     MeasurementMNode node =
-            new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
+        new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
 
     return node;
@@ -252,9 +252,7 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void setDeviceTemplate(Template deviceTemplate) {
-
-  }
+  public void setDeviceTemplate(Template deviceTemplate) {}
 
   @Override
   public IMNode getChild(String name) {
@@ -289,14 +287,10 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
-
-  }
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {}
 
   @Override
-  public void replaceChild(String measurement, IMNode newChildNode) {
-
-  }
+  public void replaceChild(String measurement, IMNode newChildNode) {}
 
   @Override
   public Template getUpperTemplate() {
@@ -309,8 +303,5 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-
-  }
-
+  public void setUseTemplate(boolean useTemplate) {}
 }

@@ -1561,7 +1561,7 @@ public class MManager {
   }
 
   public void collectTimeseriesSchema(
-          IMNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
+      IMNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
     Deque<IMNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
@@ -1586,7 +1586,7 @@ public class MManager {
   }
 
   public void collectMeasurementSchema(
-          IMNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
+      IMNode startingNode, Collection<IMeasurementSchema> measurementSchemas) {
     Deque<IMNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
@@ -1860,7 +1860,7 @@ public class MManager {
   }
 
   private MeasurementMNode findTemplate(
-          Pair<IMNode, Template> deviceMNode, String measurement, String vectorId)
+      Pair<IMNode, Template> deviceMNode, String measurement, String vectorId)
       throws MetadataException {
     if (deviceMNode.right != null) {
       Map<String, IMeasurementSchema> curTemplateMap = deviceMNode.right.getSchemaMap();

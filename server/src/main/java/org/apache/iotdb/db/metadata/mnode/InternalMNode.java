@@ -18,22 +18,18 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -68,7 +64,7 @@ public class InternalMNode extends MNode implements IMNode {
 
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
-    super(parent,name);
+    super(parent, name);
   }
 
   /** check whether the MNode has a child with the name */

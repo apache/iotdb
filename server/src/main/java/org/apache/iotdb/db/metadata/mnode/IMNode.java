@@ -10,57 +10,57 @@ import java.io.Serializable;
 import java.util.Map;
 
 public interface IMNode extends Serializable {
-    boolean hasChild(String name);
+  boolean hasChild(String name);
 
-    void addChild(String name, IMNode child);
+  void addChild(String name, IMNode child);
 
-    IMNode addChild(IMNode child);
+  IMNode addChild(IMNode child);
 
-    void deleteChild(String name);
+  void deleteChild(String name);
 
-    void deleteAliasChild(String alias);
+  void deleteAliasChild(String alias);
 
-    Template getDeviceTemplate();
+  Template getDeviceTemplate();
 
-    void setDeviceTemplate(Template deviceTemplate);
+  void setDeviceTemplate(Template deviceTemplate);
 
-    IMNode getChild(String name);
+  IMNode getChild(String name);
 
-    IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
+  IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
 
-    int getMeasurementMNodeCount();
+  int getMeasurementMNodeCount();
 
-    boolean addAlias(String alias, IMNode child);
+  boolean addAlias(String alias, IMNode child);
 
-    String getFullPath();
+  String getFullPath();
 
-    PartialPath getPartialPath();
+  PartialPath getPartialPath();
 
-    IMNode getParent();
+  IMNode getParent();
 
-    void setParent(IMNode parent);
+  void setParent(IMNode parent);
 
-    Map<String, IMNode> getChildren();
+  Map<String, IMNode> getChildren();
 
-    Map<String, IMNode> getAliasChildren();
+  Map<String, IMNode> getAliasChildren();
 
-    void setChildren(Map<String, IMNode> children);
+  void setChildren(Map<String, IMNode> children);
 
-    void setAliasChildren(Map<String, IMNode> aliasChildren);
+  void setAliasChildren(Map<String, IMNode> aliasChildren);
 
-    String getName();
+  String getName();
 
-    void setName(String name);
+  void setName(String name);
 
-    void serializeTo(MLogWriter logWriter) throws IOException;
+  void serializeTo(MLogWriter logWriter) throws IOException;
 
-    void replaceChild(String measurement, IMNode newChildNode);
+  void replaceChild(String measurement, IMNode newChildNode);
 
-    void setFullPath(String fullPath);
+  void setFullPath(String fullPath);
 
-    Template getUpperTemplate();
+  Template getUpperTemplate();
 
-    boolean isUseTemplate();
+  boolean isUseTemplate();
 
-    void setUseTemplate(boolean useTemplate);
+  void setUseTemplate(boolean useTemplate);
 }
