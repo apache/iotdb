@@ -24,19 +24,48 @@ import java.io.OutputStream;
 /** used by Timer and Histogram. */
 public interface HistogramSnapshot {
 
+  /**
+   * Get value by quantile
+   * @param quantile
+   * @return
+   */
   public abstract double getValue(double quantile);
 
+  /**
+   * Get values in snapshot
+   * @return
+   */
   public abstract long[] getValues();
 
+  /**
+   * Get size of value in snapshot
+   * @return
+   */
   public abstract int size();
 
+  /**
+   * Get median of values
+   * @return
+   */
   public double getMedian();
 
-  public abstract long getMax();
+  /**
+   * Get min of values
+   * @return
+   */
+  public abstract long getMin();
 
+  /**
+   * Get mean of values
+   * @return
+   */
   public abstract double getMean();
 
-  public abstract long getMin();
+  /**
+   * Get max of values
+   * @return
+   */
+  public abstract long getMax();
 
   /**
    * Writes the values of the snapshot to the given stream.

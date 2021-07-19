@@ -52,19 +52,13 @@ public class MetricConfigDescriptor {
    * @return the file path
    */
   public String getPropsUrl() {
-    String url = System.getProperty(MetricConstant.METRIC_CONF, null);
+    String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
     if (url == null) {
-      url = System.getProperty(MetricConstant.IOTDB_HOME, null);
-      if (url != null) {
-        url = url + File.separatorChar + "conf" + File.separatorChar + MetricConfig.CONFIG_NAME;
-      } else {
-        logger.warn(
-            "Cannot find IOTDB_HOME or METRIC_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            MetricConfig.CONFIG_NAME);
-        // update all data seriesPath
-        return null;
-      }
+      logger.warn(
+          "Cannot find IOTDB_CONF environment variable when loading "
+              + "config file {}, use default configuration",
+          MetricConfig.CONFIG_NAME);
+      return null;
     } else {
       url += (File.separatorChar + MetricConfig.CONFIG_NAME);
     }

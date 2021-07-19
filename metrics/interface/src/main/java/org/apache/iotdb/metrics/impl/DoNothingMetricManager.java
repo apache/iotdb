@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.type.*;
 
 import java.util.Collections;
@@ -143,7 +142,7 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void enableKnownMetric(KnownMetric metric) {
+  public void enablePredefinedMetric(PredefinedMetric metric) {
     // do nothing
   }
 
@@ -181,17 +180,4 @@ public class DoNothingMetricManager implements MetricManager {
   public boolean stop() {
     return false;
   }
-
-  @Override
-  public boolean startReporter(String reporterName) {
-    return false;
-  }
-
-  @Override
-  public boolean stopReporter(String reporterName) {
-    return false;
-  }
-
-  @Override
-  public void setReporter(MetricReporter metricReporter) {}
 }

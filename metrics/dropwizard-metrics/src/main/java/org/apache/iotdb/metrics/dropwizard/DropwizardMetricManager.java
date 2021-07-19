@@ -19,39 +19,21 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import org.apache.iotdb.metrics.KnownMetric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.jvm.*;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.dropwizard.type.DropwizardCounter;
-import org.apache.iotdb.metrics.dropwizard.type.DropwizardGauge;
-import org.apache.iotdb.metrics.dropwizard.type.DropwizardHistogram;
-import org.apache.iotdb.metrics.dropwizard.type.DropwizardRate;
-import org.apache.iotdb.metrics.dropwizard.type.DropwizardTimer;
+import org.apache.iotdb.metrics.dropwizard.type.*;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.type.Counter;
-import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.jvm.BufferPoolMetricSet;
-import com.codahale.metrics.jvm.CachedThreadStatesGaugeSet;
-import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
-import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
-import com.codahale.metrics.jvm.JvmAttributeGaugeSet;
+import org.apache.iotdb.metrics.type.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -68,12 +50,10 @@ public class DropwizardMetricManager implements MetricManager {
 
   com.codahale.metrics.MetricRegistry metricRegistry;
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  MetricReporter metricReporter;
 
   /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
-    metricReporter = new DropwizardMetricReporter();
     isEnable = metricConfig.getEnableMetric();
     currentMeters = new ConcurrentHashMap<>();
   }
@@ -382,7 +362,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void enableKnownMetric(KnownMetric metric) {
+  public void enablePredefinedMetric(PredefinedMetric metric) {
     if (!isEnable) {
       return;
     }
@@ -416,35 +396,14 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public boolean init() {
-    logger.info("DropWizard init registry");
-    List<String> reporters = metricConfig.getMetricReporterList();
-    for (String report : reporters) {
-      if (!startReporter(report)) {
-        return false;
-      }
-    }
+    // init somethings
     return true;
   }
 
   @Override
   public boolean stop() {
-    return metricReporter.stop();
-  }
-
-  @Override
-  public boolean startReporter(String reporterName) {
-    return metricReporter.start(reporterName);
-  }
-
-  @Override
-  public boolean stopReporter(String reporterName) {
-    return metricReporter.stop(reporterName);
-  }
-
-  @Override
-  public void setReporter(MetricReporter metricReporter) {
-    this.metricReporter = metricReporter;
-    ((DropwizardMetricReporter) metricReporter).setDropwizardMetricManager(this);
+    // clear everything
+    return true;
   }
 
   @Override

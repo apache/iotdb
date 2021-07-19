@@ -19,8 +19,45 @@
 
 package org.apache.iotdb.metrics;
 
-public enum KnownMetric {
-  JVM,
-  SYSTEM,
-  THREAD,
+public interface CompositeReporter {// CompositeReporter
+
+  /**
+   * Start all reporter
+   * @return
+   */
+  boolean start();
+
+  /**
+   * Start reporter by name
+   * name values in jmx, prometheus, iotdb, internal
+   * @param reporter
+   * @return
+   */
+  boolean start(String reporter);
+
+  /**
+   * Stop all reporter
+   * @return
+   */
+  boolean stop();
+
+  /**
+   * Stop reporter by name
+   * name values in jmx, prometheus, iotdb, internal
+   * @param reporter
+   * @return
+   */
+  boolean stop(String reporter);
+
+  /**
+   * set manager to reporter
+   * @param metricManager
+   */
+  void setMetricManager(MetricManager metricManager);
+
+  /**
+   * Get name of CompositeReporter
+   * @return
+   */
+  String getName();
 }

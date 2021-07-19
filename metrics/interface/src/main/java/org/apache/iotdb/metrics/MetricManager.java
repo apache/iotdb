@@ -27,57 +27,161 @@ import java.util.concurrent.TimeUnit;
 
 public interface MetricManager {
   /**
-   * The following functions will create or get a exist Metric
-   *
-   * @param metric: the metric name
-   * @param tags: string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
-   *     "user1"
-   * @return Metric Instance
+   * Get Counter
+   * If exists, then return
+   * or create one to return
+   * @param metric
+   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @return
    */
   Counter getOrCreateCounter(String metric, String... tags);
 
+  /**
+   * Get Guage
+   * If exists, then return
+   * or create one to return
+   * @param metric
+   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @return
+   */
   Gauge getOrCreatGauge(String metric, String... tags);
 
+  /**
+   * Get Rate
+   * If exists, then return
+   * or create one to return
+   * @param metric
+   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @return
+   */
   Rate getOrCreatRate(String metric, String... tags);
 
+  /**
+   * Get Histogram
+   * If exists, then return
+   * or create one to return
+   * @param metric
+   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @return
+   */
   Histogram getOrCreateHistogram(String metric, String... tags);
 
+  /**
+   * Get Timer
+   * If exists, then return
+   * or create one to return
+   * @param metric
+   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @return
+   */
   Timer getOrCreateTimer(String metric, String... tags);
 
-  /*
-   * The following functions just update the current record value
-   * @param the delta value will be recorded
-   * @param metric the metric name
+  /**
+   * Update Counter
+   * @param delta
+   * @param metric
    * @param tags
-   *    string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user", "user1"
    */
-
   void count(int delta, String metric, String... tags);
 
+  /**
+   * Update Counter
+   * @param delta
+   * @param metric
+   * @param tags
+   */
   void count(long delta, String metric, String... tags);
 
+  /**
+   * update Gauge
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void gauge(int value, String metric, String... tags);
 
+  /**
+   * update Gauge
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void gauge(long value, String metric, String... tags);
 
+  /**
+   * update Rate
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void rate(int value, String metric, String... tags);
 
+  /**
+   * update Rate
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void rate(long value, String metric, String... tags);
 
+  /**
+   * update Histogram
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void histogram(int value, String metric, String... tags);
 
+  /**
+   * update Histogram
+   * @param value
+   * @param metric
+   * @param tags
+   */
   void histogram(long value, String metric, String... tags);
 
+  /**
+   * update Timer
+   * @param delta
+   * @param timeUnit
+   * @param metric
+   * @param tags
+   */
   void timer(long delta, TimeUnit timeUnit, String metric, String... tags);
 
+  /**
+   * remove counter
+   * @param metric
+   * @param tags
+   */
   void removeCounter(String metric, String... tags);
 
+  /**
+   * remove gauge
+   * @param metric
+   * @param tags
+   */
   void removeGauge(String metric, String... tags);
 
+  /**
+   * remove rate
+   * @param metric
+   * @param tags
+   */
   void removeRate(String metric, String... tags);
 
+  /**
+   * remove histogram
+   * @param metric
+   * @param tags
+   */
   void removeHistogram(String metric, String... tags);
 
+  /**
+   * update timer
+   * @param metric
+   * @param tags
+   */
   void removeTimer(String metric, String... tags);
 
   /**
@@ -87,17 +191,40 @@ public interface MetricManager {
    */
   List<String[]> getAllMetricKeys();
 
-  // key is name + tags, value
+  /**
+   * Get all counters
+   * @return [name, tags...] -> counter
+   */
   Map<String[], Counter> getAllCounters();
 
+  /**
+   * Get all gauges
+   * @return [name, tags...] -> gauge
+   */
   Map<String[], Gauge> getAllGauges();
 
+  /**
+   * Get all rates
+   * @return [name, tags...] -> rate
+   */
   Map<String[], Rate> getAllRates();
 
+  /**
+   * Get all histogram
+   * @return [name, tags...] -> histogram
+   */
   Map<String[], Histogram> getAllHistograms();
 
+  /**
+   * Get all timers
+   * @return [name, tags...] -> timer
+   */
   Map<String[], Timer> getAllTimers();
 
+  /**
+   * whether is enable monitor
+   * @return
+   */
   boolean isEnable();
 
   /**
@@ -105,7 +232,7 @@ public interface MetricManager {
    *
    * @param metric which metric set we want to collect
    */
-  void enableKnownMetric(KnownMetric metric);
+  void enablePredefinedMetric(PredefinedMetric metric);
 
   /**
    * init something.
@@ -121,11 +248,9 @@ public interface MetricManager {
    */
   boolean stop();
 
-  boolean startReporter(String reporterName);
-
-  boolean stopReporter(String reporterName);
-
-  void setReporter(MetricReporter metricReporter);
-
+  /**
+   * Get name of manager
+   * @return
+   */
   String getName();
 }

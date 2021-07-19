@@ -23,12 +23,11 @@ enableMetric: true
 # can be multiple reporter, e.g., jmx,prometheus,iotdb
 metricReporterList:
   - jmx
-  # - prometheus
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter
-metricManagerType: DropwizardMetricManager
-metricReporterType: DropwizardMetricReporter
+metricManagerType: MicrometerMetricManager
+metricReporterType: MicrometerMetricReporter
 
 pushPeriodInSecond: 5
 

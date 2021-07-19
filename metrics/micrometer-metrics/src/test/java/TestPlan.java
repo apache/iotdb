@@ -50,7 +50,7 @@ public class TestPlan {
   }
 
   public static void main(String[] args) {
-    System.setProperty("METRIC_CONF", "path of yml");
+    System.setProperty("IOTDB_CONF", "path of yml");
     for (Integer metric : METRIC_NUMBERS) {
       for (Integer tag : TAG_NUMBERS) {
         test(metric, tag);

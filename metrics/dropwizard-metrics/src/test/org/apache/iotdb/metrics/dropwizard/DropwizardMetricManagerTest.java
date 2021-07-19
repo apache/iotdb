@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import org.apache.iotdb.metrics.KnownMetric;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.type.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -249,18 +249,8 @@ public class DropwizardMetricManagerTest {
     }
 
     @Test
-    public void enableKnownMetric() {
-        metricManager.enableKnownMetric(KnownMetric.JVM);
-    }
-
-    @Test
-    public void startReporter() {
-        assertTrue(metricManager.startReporter("jmx"));
-    }
-
-    @Test
-    public void stopReporter() {
-        assertTrue(metricManager.stopReporter("jmx"));
+    public void enablePredefinedMetric() {
+        metricManager.enablePredefinedMetric(PredefinedMetric.JVM);
     }
 
     @Test

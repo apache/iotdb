@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.metrics.impl;
 
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.CompositeReporter;
+import org.apache.iotdb.metrics.MetricManager;
 
-public class DoNothingMetricReporter implements MetricReporter {
+public class DoNothingCompositeReporter implements CompositeReporter {
   @Override
   public boolean start() {
     return true;
@@ -40,6 +41,16 @@ public class DoNothingMetricReporter implements MetricReporter {
   @Override
   public boolean stop(String reporter) {
     return false;
+  }
+
+  /**
+   * set manager to reporter
+   *
+   * @param metricManager
+   */
+  @Override
+  public void setMetricManager(MetricManager metricManager) {
+
   }
 
   @Override

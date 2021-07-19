@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.KnownMetric;
+import org.apache.iotdb.metrics.PredefinedMetric;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
@@ -55,14 +55,14 @@ public class MicrometerMetricManager implements MetricManager {
   Map<Meter.Id, IMetric> currentMeters;
   boolean isEnable;
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
-  MetricReporter metricReporter;
+  CompositeReporter compositeReporter;
 
   MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
-    metricReporter = new MicrometerMetricReporter();
+    compositeReporter = new MicrometerCompositeReporter();
     currentMeters = new ConcurrentHashMap<>();
     isEnable = metricConfig.getEnableMetric();
   }
@@ -83,17 +83,6 @@ public class MicrometerMetricManager implements MetricManager {
       }
     }
     return true;
-  }
-
-  /**
-   * set reporter to manager
-   *
-   * @see org.apache.iotdb.metrics.MetricService
-   * @param metricReporter
-   */
-  @Override
-  public void setReporter(MetricReporter metricReporter) {
-    this.metricReporter = metricReporter;
   }
 
   @Override
@@ -376,7 +365,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void enableKnownMetric(KnownMetric metric) {
+  public void enablePredefinedMetric(PredefinedMetric metric) {
     if (!isEnable) {
       return;
     }
@@ -465,17 +454,7 @@ public class MicrometerMetricManager implements MetricManager {
    */
   @Override
   public boolean stop() {
-    return metricReporter.stop();
-  }
-
-  @Override
-  public boolean startReporter(String reporterName) {
-    return startMeterRegistry(reporterName);
-  }
-
-  @Override
-  public boolean stopReporter(String reporterName) {
-    return metricReporter.stop(reporterName);
+    return compositeReporter.stop();
   }
 
   private boolean startMeterRegistry(String reporter) {
@@ -533,9 +512,5 @@ public class MicrometerMetricManager implements MetricManager {
   @Override
   public String getName() {
     return "MicrometerMetricManager";
-  }
-
-  public MeterRegistry getMeterRegistry() {
-    return meterRegistry;
   }
 }

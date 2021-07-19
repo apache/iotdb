@@ -40,7 +40,7 @@ public class Test {
 
   public static void main(String[] args) {
     System.setProperty(
-        "METRIC_CONF", "E:\\iotdb\\metrics\\micrometer-metrics\\src\\test\\java\\resources");
+        "IOTDB_CONF", "path of yml");
     Test test = new Test();
     String[] tags = new String[10];
     for (int i = 0; i < tags.length; i++) {

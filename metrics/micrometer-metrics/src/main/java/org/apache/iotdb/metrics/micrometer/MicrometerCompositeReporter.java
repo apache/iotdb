@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.CompositeReporter;
+import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -38,8 +39,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class MicrometerMetricReporter implements MetricReporter {
-  private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricReporter.class);
+public class MicrometerCompositeReporter implements CompositeReporter {
+  private static final Logger logger = LoggerFactory.getLogger(MicrometerCompositeReporter.class);
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private static final String NAME = "MicrometerMetricReporter";
   private Thread runThread;
@@ -160,6 +161,16 @@ public class MicrometerMetricReporter implements MetricReporter {
     for (MeterRegistry meterRegistry : meterRegistrySet) {
       ((JmxMeterRegistry) meterRegistry).stop();
     }
+  }
+
+  /**
+   * set manager to reporter
+   *
+   * @param metricManager
+   */
+  @Override
+  public void setMetricManager(MetricManager metricManager) {
+
   }
 
   @Override

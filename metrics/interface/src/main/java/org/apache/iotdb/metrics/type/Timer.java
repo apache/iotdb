@@ -22,20 +22,42 @@ package org.apache.iotdb.metrics.type;
 import java.util.concurrent.TimeUnit;
 
 public interface Timer extends IMetric {
+
+  /**
+   * update time of timer
+   * @param duration
+   * @param unit
+   */
   void update(long duration, TimeUnit unit);
 
+  /**
+   * update timer by millisecond
+   * @param durationMillis
+   */
   default void updateMillis(long durationMillis) {
-    update(durationMillis, TimeUnit.NANOSECONDS);
+    update(durationMillis, TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * update timer by microseconds
+   * @param durationMicros
+   */
   default void updateMicros(long durationMicros) {
     update(durationMicros, TimeUnit.MICROSECONDS);
   }
 
+  /**
+   * update timer by nanoseconds
+   * @param durationNanos
+   */
   default void updateNanos(long durationNanos) {
     update(durationNanos, TimeUnit.NANOSECONDS);
   }
 
+  /**
+   * take snapshot of timer
+   * @return
+   */
   HistogramSnapshot takeSnapshot();
 
   /**

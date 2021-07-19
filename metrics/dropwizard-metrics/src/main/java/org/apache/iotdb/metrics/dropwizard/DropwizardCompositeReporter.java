@@ -20,7 +20,7 @@
 package org.apache.iotdb.metrics.dropwizard;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricReporter;
+import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.Prometheus.PrometheusReporter;
@@ -35,22 +35,14 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class DropwizardMetricReporter implements MetricReporter {
-  private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricReporter.class);
-
-  public void setDropwizardMetricManager(MetricManager dropwizardMetricManager) {
-    this.dropwizardMetricManager = dropwizardMetricManager;
-    String url = metricConfig.getPrometheusReporterConfig().getPrometheusExporterUrl();
-    String port = metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort();
-    this.pushgateway = new PushGateway(url + ":" + port, "Dropwizard");
-  }
+public class DropwizardCompositeReporter implements CompositeReporter {
+  private static final Logger logger = LoggerFactory.getLogger(DropwizardCompositeReporter.class);
 
   private MetricManager dropwizardMetricManager;
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   private JmxReporter jmxReporter = null;
   private PrometheusReporter prometheusReporter = null;
-  private PushGateway pushgateway = null;
 
   @Override
   public boolean start() {
@@ -89,6 +81,9 @@ public class DropwizardMetricReporter implements MetricReporter {
     if (prometheusReporter != null) {
       return false;
     }
+    String url = metricConfig.getPrometheusReporterConfig().getPrometheusExporterUrl();
+    String port = metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort();
+    PushGateway pushgateway = new PushGateway(url + ":" + port, "Dropwizard");
     try {
       prometheusReporter =
           PrometheusReporter.forRegistry(
@@ -96,7 +91,7 @@ public class DropwizardMetricReporter implements MetricReporter {
               .prefixedWith("test:")
               .filter(MetricFilter.ALL)
               .build(pushgateway);
-      prometheusReporter.start(1, TimeUnit.SECONDS);
+      prometheusReporter.start(metricConfig.getPushPeriodInSecond(), TimeUnit.SECONDS);
     } catch (Exception e) {
       logger.error(e.getMessage());
       return false;
@@ -167,6 +162,16 @@ public class DropwizardMetricReporter implements MetricReporter {
       return true;
     }
     return false;
+  }
+
+  /**
+   * set manager to reporter
+   *
+   * @param metricManager
+   */
+  @Override
+  public void setMetricManager(MetricManager metricManager) {
+    this.dropwizardMetricManager = metricManager;
   }
 
   @Override

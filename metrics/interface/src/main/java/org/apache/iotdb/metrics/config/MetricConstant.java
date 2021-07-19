@@ -23,6 +23,6 @@ public class MetricConstant {
 
   private MetricConstant() {}
 
-  static final String METRIC_CONF = "METRIC_CONF";
-  public static final String IOTDB_HOME = "IOTDB_HOME";
+  // TODO rename IoTDB_CONF
+  static final String IOTDB_CONF = "IOTDB_CONF";
 }

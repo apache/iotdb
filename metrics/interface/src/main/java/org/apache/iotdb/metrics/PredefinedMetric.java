@@ -19,14 +19,8 @@
 
 package org.apache.iotdb.metrics;
 
-public interface MetricReporter {
-  boolean start();
-
-  boolean start(String reporter);
-
-  boolean stop();
-
-  boolean stop(String reporter);
-
-  String getName();
+public enum PredefinedMetric {
+  JVM,
+  SYSTEM,
+  THREAD,
 }
