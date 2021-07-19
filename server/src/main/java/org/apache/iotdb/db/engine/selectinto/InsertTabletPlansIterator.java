@@ -61,7 +61,7 @@ public class InsertTabletPlansIterator {
   }
 
   private PartialPath generateActualIntoPath(int index) throws IllegalPathException {
-    String[] nodes = intoPaths.get(index).getNodes();
+    String[] nodes = new PartialPath(queryDataSet.getPaths().get(index).getFullPath()).getNodes();
 
     int indexOfLeftBracket = nodes[0].indexOf("(");
     if (indexOfLeftBracket != -1) {
@@ -73,7 +73,7 @@ public class InsertTabletPlansIterator {
     }
 
     StringBuffer sb = new StringBuffer();
-    Matcher m = leveledPathNodePattern.matcher(queryDataSet.getPaths().get(index).getFullPath());
+    Matcher m = leveledPathNodePattern.matcher(intoPaths.get(index).getFullPath());
     while (m.find()) {
       String param = m.group();
       String value = nodes[Integer.parseInt(param.substring(2, param.length() - 1).trim())];
