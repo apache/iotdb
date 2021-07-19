@@ -92,16 +92,15 @@ public class SelectIntoTransporter {
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
       String device = intoPaths.get(i).getDevice();
       if (!deviceTabletGeneratorMap.containsKey(device)) {
-        deviceTabletGeneratorMap.put(
-            device, new InsertTabletPlanGenerator(queryDataSet, intoPaths, device));
+        deviceTabletGeneratorMap.put(device, new InsertTabletPlanGenerator(device, fetchSize));
       }
-      deviceTabletGeneratorMap.get(device).addMeasurementIdIndex(i);
+      deviceTabletGeneratorMap.get(device).addMeasurementIdIndex(intoPaths, i);
     }
     insertTabletPlanGenerators =
         deviceTabletGeneratorMap.values().toArray(new InsertTabletPlanGenerator[0]);
   }
 
-  private void doTransport() throws IOException {
+  private void doTransport() throws IOException, IllegalPathException {
     while (queryDataSet.hasNext()) {
       List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
       for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
