@@ -181,24 +181,32 @@ public class TsFileSketchTool {
               String.format("%20s", "") + "|\t\t[" + entry.getValue().right.getStatistics() + "] ");
         }
 
+        MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+        printlnBoth(
+                pw,
+                String.format("%20s", "")
+                        + "|\t[MetadataIndex:" + metadataIndexNode.getNodeType()+"]");
         for (MetadataIndexEntry metadataIndex : tsFileMetaData.getMetadataIndex().getChildren()) {
+          metadataIndexNode = reader.getMetadataIndexNode(1513,1563);
           printlnBoth(
               pw,
-              String.format("%20s", metadataIndex.getOffset())
-                  + "|\t[MetadataIndex] of "
-                  + metadataIndex.getName());
-          // 怎么查出index树？？
-          MetadataIndexNode metadataIndexNode = reader.getMetadataIndexNode(1513,1563);
-          for (MetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()){
-            printlnBoth(pw,
-                    String.format("%20s", metadataIndexEntry.getOffset())
-                            + "|\t\t < "
-                            + metadataIndexEntry.getName()
-                            + ","
-                            + metadataIndexEntry.getOffset()
-                            + " >"
-            );
-          }
+              String.format("%20s", "")
+                      + "|\t\t\t|________<"
+                      + metadataIndex.getName()+","
+                      + metadataIndex.getOffset()
+                      + ">________"
+                      + "[MetadataIndex:" + metadataIndexNode.getNodeType()+"]");
+
+        }
+        // TODO：怎么递归查出子树啊。。只知道前面的offset，长度/后offset不知道啊。。。
+        for (MetadataIndexEntry metadataIndex : metadataIndexNode.getChildren()){
+          printlnBoth(
+                  pw,
+                  String.format("%20s", "")
+                          + "|\t\t\t\t\t|________<"
+                          + metadataIndex.getName()+","
+                          + metadataIndex.getOffset()
+                          + ">");
         }
 
         printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetadata]");
