@@ -285,7 +285,7 @@ public class TsFileIOWriter {
     tsFileMetaData.setMetaOffset(metaOffset);
 
     long footerIndex = out.getPosition();
-    if (logger.isDebugEnabled()) {
+      if (logger.isDebugEnabled()) {
       logger.debug("start to flush the footer,file pos:{}", footerIndex);
     }
 
@@ -318,6 +318,11 @@ public class TsFileIOWriter {
   /**
    * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
    *
+   * @param chunkMetadataListMap
+   *        chunkMetadata that Path.mask == 0
+   * @param vectorToPathsMap
+   *        Map Path to chunkMataList, Key is Path(timeColumn) and Value is it's sub chunkMetadataListMap
+   *
    * @return MetadataIndexEntry list in TsFileMetadata
    */
   private MetadataIndexNode flushMetadataIndex(
@@ -337,6 +342,13 @@ public class TsFileIOWriter {
     return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
   }
 
+  /**
+   * Flush one chunkMetadata
+   *
+   * @param path Path of chunk
+   * @param chunkMetadataList List of chunkMetadata about path(previous param)
+   * @param vectorToPathsMap Key is Path(timeColumn) and Value is it's sub chunkMetadataListMap
+   */
   private void flushOneChunkMetadata(
       Path path,
       List<IChunkMetadata> chunkMetadataList,
