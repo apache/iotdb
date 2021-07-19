@@ -316,10 +316,10 @@ public class MManager {
   /** function for clearing MTree */
   public void clear() {
     try {
-      if(this.mtree!=null){
+      if (this.mtree != null) {
         this.mtree.clear();
       }
-      if(this.mNodeCache!=null){
+      if (this.mNodeCache != null) {
         this.mNodeCache.clear();
       }
       this.totalSeriesNumber.set(0);
