@@ -444,14 +444,14 @@ public abstract class Cases {
     try {
       // Prepare data.
       writeStatement.execute(
-              "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+          "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
       for (int i = 10; i < 20; i++) {
         writeStatement.execute(
-                String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+            String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
       }
       for (int i = 0; i < 10; i++) {
         writeStatement.execute(
-                String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+            String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
       }
 
       ResultSet resultSet = null;
