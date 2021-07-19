@@ -62,7 +62,7 @@ public class AlignedTimeseriesSessionExample {
 //    insertTabletWithAlignedTimeseriesMethod2();
 //    insertNullableTabletWithAlignedTimeseries();
 //
-    selectTest();
+//    selectTest();
 //    selectWithValueFilterTest();
 //    selectWithGroupByTest();
 //    selectWithLastTest();
@@ -253,7 +253,7 @@ public class AlignedTimeseriesSessionExample {
     tablet.setAligned(true);
     long timestamp = 1;
 
-    for (long row = 1; row < 100; row++) {
+    for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
@@ -397,7 +397,7 @@ public class AlignedTimeseriesSessionExample {
     String deviceId = ROOT_SG1_D1;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
-    measurements.add("s3");
+    measurements.add("s2");
     measurements.add("s4");
     measurements.add("s5");
     measurements.add("s6");

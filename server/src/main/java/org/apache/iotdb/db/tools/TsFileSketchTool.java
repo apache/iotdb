@@ -22,11 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -45,9 +41,11 @@ import java.util.TreeMap;
 public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
-    Pair<String, String> fileNames = checkArgs(args);
-    String filename = fileNames.left;
-    String outFile = fileNames.right;
+//    Pair<String, String> fileNames = checkArgs(args);
+//    String filename = fileNames.left;
+    String filename = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626691990335-41-0-0.tsfile";
+//    String outFile = fileNames.right;
+    String outFile = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\temp";
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
@@ -162,18 +160,25 @@ public class TsFileSketchTool {
                 new Pair<>(new Path(device, seriesMetadata.getMeasurementId()), seriesMetadata));
           }
         }
-        for (Map.Entry<String, Pair<Path, TimeseriesMetadata>> entry :
-            timeseriesMetadataMap.entrySet()) {
+        for (Map.Entry<String, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
           printlnBoth(
               pw,
               entry.getKey()
                   + "|\t[ChunkMetadataList] of "
                   + entry.getValue().left
                   + ", tsDataType:"
-                  + entry.getValue().right.getTSDataType());
+                  + entry.getValue().right.getTSDataType()
+          );
+          for(IChunkMetadata chunkMetadata:reader.getChunkMetadataList(entry.getValue().left)){
+            printlnBoth(pw,
+                    String.format("%20s", "") + "|\t\t[ChunkMetadata] "
+                            + chunkMetadata.getMeasurementUid()
+                            + ", offset="
+                            + chunkMetadata.getOffsetOfChunkHeader());
+          }
           printlnBoth(
               pw,
-              String.format("%20s", "") + "|\t[" + entry.getValue().right.getStatistics() + "] ");
+              String.format("%20s", "") + "|\t\t[" + entry.getValue().right.getStatistics() + "] ");
         }
 
         for (MetadataIndexEntry metadataIndex : tsFileMetaData.getMetadataIndex().getChildren()) {
@@ -182,9 +187,26 @@ public class TsFileSketchTool {
               String.format("%20s", metadataIndex.getOffset())
                   + "|\t[MetadataIndex] of "
                   + metadataIndex.getName());
+          // 怎么查出index树？？
+          MetadataIndexNode metadataIndexNode = reader.getMetadataIndexNode(1513,1563);
+          for (MetadataIndexEntry metadataIndexEntry : metadataIndexNode.getChildren()){
+            printlnBoth(pw,
+                    String.format("%20s", metadataIndexEntry.getOffset())
+                            + "|\t\t < "
+                            + metadataIndexEntry.getName()
+                            + ","
+                            + metadataIndexEntry.getOffset()
+                            + " >"
+            );
+          }
         }
 
         printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetadata]");
+        printlnBoth(
+            pw,
+            String.format("%20s", "")
+                + "|\t\t[meta offset] "
+                + tsFileMetaData.getMetaOffset());
         printlnBoth(
             pw,
             String.format("%20s", "")

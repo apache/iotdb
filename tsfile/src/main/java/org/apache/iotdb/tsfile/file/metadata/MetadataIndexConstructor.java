@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
@@ -34,162 +36,160 @@ import java.util.TreeMap;
 
 public class MetadataIndexConstructor {
 
-  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+    private static final Logger logger = LoggerFactory.getLogger(MetadataIndexConstructor.class);
 
-  private MetadataIndexConstructor() {
-    throw new IllegalStateException("Utility class");
-  }
+    private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
-  /**
-   * Construct metadata index tree
-   *
-   * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
-   * @param out tsfile output
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static MetadataIndexNode constructMetadataIndex(
-      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap, TsFileOutput out)
-      throws IOException {
-    // for test
-    config.setMaxDegreeOfIndexNode(3);
+    private static final String PATH_SEPERATOR = ".";
 
-    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
+    private MetadataIndexConstructor() {
+        throw new IllegalStateException("Utility class");
+    }
 
-    // for timeseriesMetadata of each device
-    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
-      if (entry.getValue().isEmpty()) {
-        continue;
-      }
-      Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-      TimeseriesMetadata timeseriesMetadata;
-      MetadataIndexNode currentIndexNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-      int serializedTimeseriesMetadataNum = 0;
-      for (int i = 0; i < entry.getValue().size(); i++) {
-        timeseriesMetadata = entry.getValue().get(i);
-        if (timeseriesMetadata.isTimeColumn()) {
-          // calculate the number of value columns in this vector
-          int numOfValueColumns = 0;
-          for (int j = i + 1; j < entry.getValue().size(); j++) {
-            if (entry.getValue().get(j).isValueColumn()) {
-              numOfValueColumns++;
-            } else {
-              break;
+    /**
+     * Construct metadata index tree
+     *
+     * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
+     * @param out                         tsfile output
+     */
+    @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+    public static MetadataIndexNode constructMetadataIndex(
+            Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap, TsFileOutput out)
+            throws IOException {
+        // for test
+        config.setMaxDegreeOfIndexNode(3);
+
+        Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
+
+        // for timeseriesMetadata of each device
+        for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
+            if (entry.getValue().isEmpty()) {
+                continue;
             }
-          }
+            Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
+            TimeseriesMetadata timeseriesMetadata;
+            MetadataIndexNode currentIndexNode =
+                    new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+            int serializedTimeseriesMetadataNum = 0;
+            String vectorName = ""; // record previous vector name
+            int numOfValueColumns = 0;
+            for (int i = 0; i < entry.getValue().size(); i++) {
+                timeseriesMetadata = entry.getValue().get(i);
+                if(numOfValueColumns>0){
+                    // must be value column，不清楚这里是否需要加一层检验？外层可否保证？
+                    numOfValueColumns--;
+                    timeseriesMetadata.setMeasurementId(vectorName+PATH_SEPERATOR+timeseriesMetadata.getMeasurementId());
+                }else if (timeseriesMetadata.isTimeColumn()) {
+                    vectorName = timeseriesMetadata.getMeasurementId();
+                    for (int j = i + 1; j < entry.getValue().size(); j++) {
+                        if (entry.getValue().get(j).isValueColumn()) {
+                            numOfValueColumns++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                if (serializedTimeseriesMetadataNum == 0
+                        || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
+                    if (currentIndexNode.isFull()) {
+                        addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+                        currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+                    }
 
-          // for each vector, add time column of vector into LEAF_MEASUREMENT node
-          currentIndexNode.addEntry(
-              new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
-          serializedTimeseriesMetadataNum = 0;
+                    logger.debug("Add entry started by {}(offset={})",timeseriesMetadata.getMeasurementId(),out.getPosition());
+                    currentIndexNode.addEntry(
+                            new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
+                    serializedTimeseriesMetadataNum = 0;
+                }
+                logger.debug("Start construct for {}'s timeseries metadata, offset={}",timeseriesMetadata.getMeasurementId(),out.getPosition());
+                timeseriesMetadata.serializeTo(out.wrapAsStream());
+                serializedTimeseriesMetadataNum++;
+            }
+            addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
+            deviceMetadataIndexMap.put(
+                    entry.getKey(),
+                    generateRootNode(
+                            measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+        }
 
-          timeseriesMetadata.serializeTo(out.wrapAsStream());
-          serializedTimeseriesMetadataNum++;
-          for (int j = 0; j < numOfValueColumns; j++) {
-            i++;
-            timeseriesMetadata = entry.getValue().get(i);
-            // value columns of vector should not be added into LEAF_MEASUREMENT node
-            timeseriesMetadata.serializeTo(out.wrapAsStream());
-            serializedTimeseriesMetadataNum++;
-          }
-        } else {
-          // when constructing from leaf node, every "degree number of nodes" are related to an
-          // entry
-          if (serializedTimeseriesMetadataNum == 0
-              || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
+        // if not exceed the max child nodes num, ignore the device index and directly point to the
+        // measurement
+        if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
+            MetadataIndexNode metadataIndexNode =
+                    new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+            for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
+                metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
+                logger.debug("Serialize MetadataIndexNode {}, offset={}",entry.getKey(),out.getPosition());
+                entry.getValue().serializeTo(out.wrapAsStream());
+                logger.debug("Serialize MetadataIndexNode {}, to={}",entry.getKey(),out.getPosition());
+            }
+            metadataIndexNode.setEndOffset(out.getPosition());
+            return metadataIndexNode;
+        }
+
+        // else, build level index for devices
+        Queue<MetadataIndexNode> deviceMetadataIndexQueue = new ArrayDeque<>();
+        MetadataIndexNode currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
+
+        for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
+            // when constructing from internal node, each node is related to an entry
             if (currentIndexNode.isFull()) {
-              addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-              currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+                addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+                currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
             }
-            currentIndexNode.addEntry(
-                new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
-            serializedTimeseriesMetadataNum = 0;
-          }
-          timeseriesMetadata.serializeTo(out.wrapAsStream());
-          serializedTimeseriesMetadataNum++;
+            currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
+            entry.getValue().serializeTo(out.wrapAsStream());
         }
-      }
-      addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-      deviceMetadataIndexMap.put(
-          entry.getKey(),
-          generateRootNode(
-              measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
+        MetadataIndexNode deviceMetadataIndexNode =
+                generateRootNode(deviceMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
+        deviceMetadataIndexNode.setEndOffset(out.getPosition());
+        return deviceMetadataIndexNode;
     }
 
-    // if not exceed the max child nodes num, ignore the device index and directly point to the
-    // measurement
-    if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
-      MetadataIndexNode metadataIndexNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        entry.getValue().serializeTo(out.wrapAsStream());
-      }
-      metadataIndexNode.setEndOffset(out.getPosition());
-      return metadataIndexNode;
-    }
+    /**
+     * Generate root node, using the nodes in the queue as leaf nodes. The final metadata tree has two
+     * levels: measurement leaf nodes will generate to measurement root node; device leaf nodes will
+     * generate to device root node
+     *
+     * @param metadataIndexNodeQueue queue of metadataIndexNode
+     * @param out                    tsfile output
+     * @param type                   MetadataIndexNode type
+     */
+    private static MetadataIndexNode generateRootNode(
+            Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)
+            throws IOException {
+        int queueSize = metadataIndexNodeQueue.size();
+        MetadataIndexNode metadataIndexNode;
+        MetadataIndexNode currentIndexNode = new MetadataIndexNode(type);
+        while (queueSize != 1) {
+            for (int i = 0; i < queueSize; i++) {
+                metadataIndexNode = metadataIndexNodeQueue.poll();
+                // when constructing from internal node, each node is related to an entry
+                if (currentIndexNode.isFull()) {
+                    addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
+                    currentIndexNode = new MetadataIndexNode(type);
+                }
+                currentIndexNode.addEntry(
+                        new MetadataIndexEntry(metadataIndexNode.peek().getName(), out.getPosition()));
 
-    // else, build level index for devices
-    Queue<MetadataIndexNode> deviceMetadaIndexQueue = new ArrayDeque<>();
-    MetadataIndexNode currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-
-    for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-      // when constructing from internal node, each node is related to an entry
-      if (currentIndexNode.isFull()) {
-        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadaIndexQueue, out);
-        currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      }
-      currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-      entry.getValue().serializeTo(out.wrapAsStream());
-    }
-    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadaIndexQueue, out);
-    MetadataIndexNode deviceMetadataIndexNode =
-        generateRootNode(deviceMetadaIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
-    deviceMetadataIndexNode.setEndOffset(out.getPosition());
-    return deviceMetadataIndexNode;
-  }
-
-  /**
-   * Generate root node, using the nodes in the queue as leaf nodes. The final metadata tree has two
-   * levels: measurement leaf nodes will generate to measurement root node; device leaf nodes will
-   * generate to device root node
-   *
-   * @param metadataIndexNodeQueue queue of metadataIndexNode
-   * @param out tsfile output
-   * @param type MetadataIndexNode type
-   */
-  private static MetadataIndexNode generateRootNode(
-      Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)
-      throws IOException {
-    int queueSize = metadataIndexNodeQueue.size();
-    MetadataIndexNode metadataIndexNode;
-    MetadataIndexNode currentIndexNode = new MetadataIndexNode(type);
-    while (queueSize != 1) {
-      for (int i = 0; i < queueSize; i++) {
-        metadataIndexNode = metadataIndexNodeQueue.poll();
-        // when constructing from internal node, each node is related to an entry
-        if (currentIndexNode.isFull()) {
-          addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-          currentIndexNode = new MetadataIndexNode(type);
+                logger.debug("SerializeTo metadataIndexNode offset=",out.getPosition());
+                metadataIndexNode.serializeTo(out.wrapAsStream());
+            }
+            addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
+            currentIndexNode = new MetadataIndexNode(type);
+            queueSize = metadataIndexNodeQueue.size();
         }
-        currentIndexNode.addEntry(
-            new MetadataIndexEntry(metadataIndexNode.peek().getName(), out.getPosition()));
-        metadataIndexNode.serializeTo(out.wrapAsStream());
-      }
-      addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-      currentIndexNode = new MetadataIndexNode(type);
-      queueSize = metadataIndexNodeQueue.size();
+        return metadataIndexNodeQueue.poll();
     }
-    return metadataIndexNodeQueue.poll();
-  }
 
-  private static void addCurrentIndexNodeToQueue(
-      MetadataIndexNode currentIndexNode,
-      Queue<MetadataIndexNode> metadataIndexNodeQueue,
-      TsFileOutput out)
-      throws IOException {
-    // 这个是干嘛用的？？？
-    currentIndexNode.setEndOffset(out.getPosition());
-    metadataIndexNodeQueue.add(currentIndexNode);
-  }
+    private static void addCurrentIndexNodeToQueue(
+            MetadataIndexNode currentIndexNode,
+            Queue<MetadataIndexNode> metadataIndexNodeQueue,
+            TsFileOutput out)
+            throws IOException {
+        // 这个是干嘛用的？？？
+        currentIndexNode.setEndOffset(out.getPosition());
+        metadataIndexNodeQueue.add(currentIndexNode);
+    }
 }
