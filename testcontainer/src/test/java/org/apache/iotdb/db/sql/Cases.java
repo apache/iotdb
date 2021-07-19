@@ -441,47 +441,43 @@ public abstract class Cases {
 
   @Test
   public void clusterUDTFQueryTest() throws SQLException {
-    try {
-      // Prepare data.
+    // Prepare data.
+    writeStatement.execute(
+        "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+    for (int i = 10; i < 20; i++) {
       writeStatement.execute(
-          "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
-      for (int i = 10; i < 20; i++) {
-        writeStatement.execute(
-            String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
-      }
-      for (int i = 0; i < 10; i++) {
-        writeStatement.execute(
-            String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
-      }
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
 
-      ResultSet resultSet = null;
+    ResultSet resultSet = null;
 
-      // Try to execute udf query on each node.
-      // Without value filter
-      for (Statement readStatement : readStatements) {
-        resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d");
+    // Try to execute udf query on each node.
+    // Without time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d");
 
-        int i = 0;
-        while (resultSet.next()) {
-          Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1), 0.00001);
-        }
-        Assert.assertFalse(resultSet.next());
-        resultSet.close();
+      double i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
       }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
 
-      // With value filter
-      for (Statement readStatement : readStatements) {
-        resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
-        int i = 5;
-        while (resultSet.next()) {
-          Assert.assertEquals(Math.sin(i++), resultSet.getDouble(1), 0.00001);
-        }
-        Assert.assertFalse(resultSet.next());
-        resultSet.close();
+    // With time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
+
+      double i = 5;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
     }
   }
 }
