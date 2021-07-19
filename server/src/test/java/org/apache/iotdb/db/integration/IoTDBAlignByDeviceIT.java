@@ -1094,4 +1094,46 @@ public class IoTDBAlignByDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void selectWithNonExistMeasurementInWhereClause() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "1,root.vehicle.d0,101,1101,null,null,null,",
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select * from root.vehicle.* where s1 == 1101 align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList = checkHeader(resultSetMetaData,
+            "Time,Device,s0,s1,s2,s3,s4",
+            new int[]{Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT, Types.FLOAT,
+                Types.VARCHAR, Types.BOOLEAN});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder.append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
