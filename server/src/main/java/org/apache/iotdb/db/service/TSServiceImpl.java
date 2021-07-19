@@ -554,14 +554,14 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         } else {
           lastOperatorType = physicalPlan.getOperatorType();
-          if (executeList.size() > 0) {
+          if (!executeList.isEmpty()) {
             if (!executeBatchList(executeList, result)) {
               isAllSuccessful = false;
             }
             executeList.clear();
           }
           long t2 = System.currentTimeMillis();
-          TSExecuteStatementResp resp = executeUpdateStatement(physicalPlan, req.getSessionId());
+          TSExecuteStatementResp resp = executeNonQueryStatement(physicalPlan, req.getSessionId());
           Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
           result.add(resp.status);
           if (resp.getStatus().code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -599,26 +599,22 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.getSessionId()), req.fetchSize);
 
-      if (physicalPlan.isQuery()) {
-        return internalExecuteQueryStatement(
-            statement,
-            req.statementId,
-            physicalPlan,
-            req.fetchSize,
-            req.timeout,
-            sessionManager.getUsername(req.getSessionId()),
-            req.isEnableRedirectQuery());
-      } else if (physicalPlan.isSelectInto()) {
-        return executeSelectIntoStatement(
-            statement,
-            req.statementId,
-            physicalPlan,
-            req.fetchSize,
-            req.timeout,
-            req.getSessionId());
-      } else {
-        return executeUpdateStatement(physicalPlan, req.getSessionId());
-      }
+      return physicalPlan.isQuery()
+          ? internalExecuteQueryStatement(
+              statement,
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              req.timeout,
+              req.getSessionId(),
+              req.isEnableRedirectQuery())
+          : executeUpdateStatement(
+              statement,
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              req.timeout,
+              req.getSessionId());
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -647,7 +643,7 @@ public class TSServiceImpl implements TSIService.Iface {
               physicalPlan,
               req.fetchSize,
               req.timeout,
-              sessionManager.getUsername(req.getSessionId()),
+              req.getSessionId(),
               req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -678,7 +674,7 @@ public class TSServiceImpl implements TSIService.Iface {
               physicalPlan,
               req.fetchSize,
               config.getQueryTimeoutThreshold(),
-              sessionManager.getUsername(req.sessionId),
+              req.sessionId,
               req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -709,7 +705,7 @@ public class TSServiceImpl implements TSIService.Iface {
               physicalPlan,
               req.fetchSize,
               config.getQueryTimeoutThreshold(),
-              sessionManager.getUsername(req.sessionId),
+              req.sessionId,
               req.isEnableRedirectQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
@@ -735,7 +731,7 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan plan,
       int fetchSize,
       long timeout,
-      String username,
+      long sessionId,
       boolean enableRedirect)
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
@@ -758,6 +754,7 @@ public class TSServiceImpl implements TSIService.Iface {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
       tracingManager.writeQueryInfo(queryId, statement, startTime, plan);
 
+      String username = sessionManager.getUsername(sessionId);
       plan.setLoginUserName(username);
 
       TSExecuteStatementResp resp = null;
@@ -1045,6 +1042,11 @@ public class TSServiceImpl implements TSIService.Iface {
       long sessionId)
       throws IoTDBException, TException, SQLException, IOException, InterruptedException,
           QueryFilterOptimizationException {
+    TSStatus status = checkAuthority(physicalPlan, sessionId);
+    if (status != null) {
+      return new TSExecuteStatementResp(status);
+    }
+
     final long startTime = System.currentTimeMillis();
 
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
@@ -1072,7 +1074,8 @@ public class TSServiceImpl implements TSIService.Iface {
       while (insertTabletPlansIterator.hasNext()) {
         TSStatus executionStatus =
             insertTabletsInternal(insertTabletPlansIterator.next(), sessionId);
-        if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
         }
       }
@@ -1235,42 +1238,44 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      return executeUpdateStatement(req.getStatement(), req.getSessionId());
+      PhysicalPlan physicalPlan =
+          processor.parseSQLToPhysicalPlan(
+              req.statement, sessionManager.getZoneId(req.sessionId), DEFAULT_FETCH_SIZE);
+      return physicalPlan.isQuery()
+          ? RpcUtils.getTSExecuteStatementResp(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
+          : executeUpdateStatement(
+              req.statement,
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              req.timeout,
+              req.getSessionId());
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing update statement"));
     }
   }
 
-  private TSExecuteStatementResp executeUpdateStatement(PhysicalPlan plan, long sessionId) {
+  private TSExecuteStatementResp executeUpdateStatement(
+      String statement,
+      long statementId,
+      PhysicalPlan plan,
+      int fetchSize,
+      long timeout,
+      long sessionId)
+      throws TException, SQLException, IoTDBException, IOException, InterruptedException,
+          QueryFilterOptimizationException {
+    return plan.isSelectInto()
+        ? executeSelectIntoStatement(statement, statementId, plan, fetchSize, timeout, sessionId)
+        : executeNonQueryStatement(plan, sessionId);
+  }
+
+  private TSExecuteStatementResp executeNonQueryStatement(PhysicalPlan plan, long sessionId) {
     TSStatus status = checkAuthority(plan, sessionId);
-    if (status != null) {
-      return new TSExecuteStatementResp(status);
-    }
-
-    status = executeNonQueryPlan(plan);
-    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
-    long queryId = sessionManager.requestQueryId(false, DEFAULT_FETCH_SIZE, -1);
-    return resp.setQueryId(queryId);
-  }
-
-  private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new QueryProcessException(
-          "Current system mode is read-only, does not support non-query operation");
-    }
-    return executor.processNonQuery(plan);
-  }
-
-  private TSExecuteStatementResp executeUpdateStatement(String statement, long sessionId)
-      throws QueryProcessException {
-    PhysicalPlan physicalPlan =
-        processor.parseSQLToPhysicalPlan(
-            statement, sessionManager.getZoneId(sessionId), DEFAULT_FETCH_SIZE);
-    return physicalPlan.isQuery()
-        ? RpcUtils.getTSExecuteStatementResp(
-            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
-        : executeUpdateStatement(physicalPlan, sessionId);
+    return status != null
+        ? new TSExecuteStatementResp(status)
+        : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
+            .setQueryId(sessionManager.requestQueryId(false, DEFAULT_FETCH_SIZE, -1));
   }
 
   /**
@@ -2068,6 +2073,15 @@ public class TSServiceImpl implements TSIService.Iface {
     return isSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  private boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new QueryProcessException(
+          "Current system mode is read-only, does not support non-query operation");
+    }
+    return executor.processNonQuery(plan);
   }
 
   protected List<TSDataType> getSeriesTypesByPaths(
