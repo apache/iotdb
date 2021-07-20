@@ -178,7 +178,7 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = new DeviceTimeIndex(); // config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndex = new DeviceTimeIndex();
     this.timeIndexType = 1;
   }
 
@@ -348,8 +348,6 @@ public class TsFileResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
       timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-      //      timeIndex =
-      // TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       timeIndex = new DeviceTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
