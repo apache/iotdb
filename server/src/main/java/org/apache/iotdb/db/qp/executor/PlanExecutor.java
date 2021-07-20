@@ -140,6 +140,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -1097,6 +1098,12 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+//        if (!loadNewTsFileCheckMetadata(reader)) {
+//          throw new QueryProcessException("loading tsfile is inconsistent with existing timeseries.");
+//        }
+      } catch (IOException e) {
+        logger.error("can not get timeseries metadata from {}.", file.getAbsoluteFile());
+        throw new QueryProcessException(e.getMessage());
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -1133,6 +1140,24 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
+  }
+
+  private boolean loadNewTsFileCheckMetadata(TsFileSequenceReader tsFileSequenceReader)
+      throws MetadataException, IOException {
+    Map<String, List<TimeseriesMetadata>> metadataSet =
+        tsFileSequenceReader.getAllTimeseriesMetadata();
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
+      String deviceId = entry.getKey();
+      for (TimeseriesMetadata metadata : entry.getValue()) {
+        String fullPath = deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId();
+        TSDataType dataType =
+            IoTDB.metaManager.getSeriesSchema(new PartialPath(fullPath)).getType();
+        if (dataType != metadata.getTSDataType()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

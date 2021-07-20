@@ -2282,8 +2282,7 @@ public class StorageGroupProcessor {
       // loading tsfile by type
       if (insertPos == POS_OVERLAP) {
         newFileName =
-            getFileNameForUnSequenceLoadingFile(
-                tsfileToBeInserted.getName(), newTsFileResource);
+            getFileNameForUnSequenceLoadingFile(tsfileToBeInserted.getName(), newTsFileResource);
         renameInfo = "unsequence";
         tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
       } else {
@@ -2291,10 +2290,7 @@ public class StorageGroupProcessor {
         // check whether the file name needs to be renamed.
         newFileName =
             getFileNameForSequenceLoadingFile(
-                tsfileToBeInserted.getName(),
-                insertPos,
-                newTsFileResource,
-                sequenceList);
+                tsfileToBeInserted.getName(), insertPos, newTsFileResource, sequenceList);
         renameInfo = "sequence";
         tsFileType = LoadTsFileType.LOAD_SEQUENCE;
         newTsFileResource.setSeq(true);
@@ -2538,7 +2534,11 @@ public class StorageGroupProcessor {
    * @return appropriate filename
    */
   private String getFileNameForSequenceLoadingFile(
-      String tsfileName, int insertIndex, TsFileResource newTsFileResource, List<TsFileResource> sequenceList) {
+      String tsfileName,
+      int insertIndex,
+      TsFileResource newTsFileResource,
+      List<TsFileResource> sequenceList)
+      throws LoadFileException {
     long timePartitionId = newTsFileResource.getTimePartition();
     long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     long preTime, subsequenceTime;
@@ -2550,22 +2550,24 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-      subsequenceTime =
-          (preTime <= currentTsFileTime)
-              ? currentTsFileTime
-              : preTime + ((System.currentTimeMillis() - preTime) << 1);
+      subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
       subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
+    }
+
+    long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
+    if (meanTime == subsequenceTime) {
+      throw new LoadFileException("can not load tsfile with the same establish time");
     }
 
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     newTsFileResource.setVersion(version);
     return TsFileResource.getNewTsFileName(
-        (currentTsFileTime >= preTime && currentTsFileTime <= subsequenceTime)
+        (currentTsFileTime > preTime && currentTsFileTime < subsequenceTime)
             ? currentTsFileTime
-            : preTime + ((subsequenceTime - preTime) >> 1),
+            : meanTime,
         version,
         0,
         0);
@@ -2583,7 +2585,8 @@ public class StorageGroupProcessor {
    * @param newTsFileResource the loading tsfile's time partition id
    * @return a appropriate file name for the loading tsfile
    */
-  private String getFileNameForUnSequenceLoadingFile(String tsfileName, TsFileResource newTsFileResource) {
+  private String getFileNameForUnSequenceLoadingFile(
+      String tsfileName, TsFileResource newTsFileResource) {
     long timePartitionId = newTsFileResource.getTimePartition();
     long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
     List<TsFileResource> unsequenceList =
