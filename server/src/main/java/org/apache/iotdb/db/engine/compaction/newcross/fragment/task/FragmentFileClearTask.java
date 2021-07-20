@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,8 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.task;
 
-public abstract class AbstractCompactionSelector {
-  public abstract boolean selectAndSubmit();
-}
+package org.apache.iotdb.db.engine.compaction.newcross.fragment.task;
+
+public class FragmentFileClearTask {}
