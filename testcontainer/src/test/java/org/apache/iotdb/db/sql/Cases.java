@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sql;
 
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -132,6 +133,23 @@ public abstract class Cases {
       double last = Double.parseDouble(resultSet.getString(3));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
+    }
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1457
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
+          "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
+          "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
+        };
+
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+    try {
+      session.executeNonQueryStatement(" delete from root.ln.wf011.*");
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      Assert.assertFalse(e instanceof BatchExecutionException);
     }
 
     // test dictionary encoding
