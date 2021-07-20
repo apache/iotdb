@@ -52,7 +52,7 @@ var config = {
         repo: 'https://github.com/apache/iotdb.git',
 
         // github 地址的链接名
-        repoLabel: 'gitHub',
+        repoLabel: 'GitHub',
 
 		logo: '/img/logo.png',
 
@@ -77,18 +77,18 @@ var config = {
 			algolia: {},
 			nav: [
 				 {
-					text: 'Document',
+					text: 'Documentation',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
-						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-						{ text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/UserGuide/V0.10.x/Get Started/QuickStart' },
+						{ text: 'v0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+						{ text: 'v0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  {
-					text: 'System design',
+					text: 'Design',
 					link: '/SystemDesign/Architecture/Architecture'
 				  },
 				  {
