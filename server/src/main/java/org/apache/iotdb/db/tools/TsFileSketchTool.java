@@ -44,8 +44,11 @@ public class TsFileSketchTool {
     public static void main(String[] args) throws IOException {
 //    Pair<String, String> fileNames = checkArgs(args);
 //    String filename = fileNames.left;
-        String filename = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626743522285-51-0-0.tsfile";
 //    String outFile = fileNames.right;
+        // my result
+//        String filename = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626743522285-51-0-0.tsfile";
+        // origin result
+        String filename = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626747498995-52-0-0.tsfile";
         String outFile = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\temp";
         System.out.println("TsFile path:" + filename);
         System.out.println("Sketch save path:" + outFile);
