@@ -119,6 +119,13 @@ public class TracingManager {
     writer.write(builder.toString());
   }
 
+  public void writeTracingInfo(long queryId, TracingInfo tracingInfo) throws IOException {
+    writeTsFileInfo(queryId, tracingInfo.getSeqFileSet(), tracingInfo.getUnSeqFileSet());
+    writeChunksInfo(queryId, tracingInfo.getTotalChunkNum(), tracingInfo.getTotalChunkPoints());
+    writeOverlappedPageInfo(
+        queryId, tracingInfo.getTotalPageNum(), tracingInfo.getOverlappedPageNum());
+  }
+
   public void writeTsFileInfo(
       long queryId, Set<TsFileResource> seqFileResources, Set<TsFileResource> unSeqFileResources)
       throws IOException {
@@ -129,13 +136,15 @@ public class TracingManager {
             .append(queryId)
             .append(" - Number of sequence files: ")
             .append(seqFileResources.size());
-    for (TsFileResource seqFileResource : seqFileResources) {
-      builder
-          .append("\n" + QUERY_ID)
-          .append(queryId)
-          .append(" - SeqFile_")
-          .append(seqFileResource.getTsFile().getName());
-      printTsFileStatistics(builder, seqFileResource);
+    if (!seqFileResources.isEmpty()) {
+      builder.append("\n" + QUERY_ID).append(queryId).append(" - SeqFiles: ");
+      Iterator<TsFileResource> seqFileIterator = seqFileResources.iterator();
+      while (seqFileIterator.hasNext()) {
+        builder.append(seqFileIterator.next().getTsFile().getName());
+        if (seqFileIterator.hasNext()) {
+          builder.append(", ");
+        }
+      }
     }
 
     builder
@@ -143,49 +152,42 @@ public class TracingManager {
         .append(queryId)
         .append(" - Number of unSequence files: ")
         .append(unSeqFileResources.size());
-    for (TsFileResource unSeqFileResource : unSeqFileResources) {
-      builder
-          .append("\n" + QUERY_ID)
-          .append(queryId)
-          .append(" - UnSeqFile_")
-          .append(unSeqFileResource.getTsFile().getName());
-      printTsFileStatistics(builder, unSeqFileResource);
+    if (!unSeqFileResources.isEmpty()) {
+      builder.append("\n" + QUERY_ID).append(queryId).append(" - UnSeqFiles: ");
+      Iterator<TsFileResource> unSeqFileIterator = unSeqFileResources.iterator();
+      while (unSeqFileIterator.hasNext()) {
+        builder.append(unSeqFileIterator.next().getTsFile().getName());
+        if (unSeqFileIterator.hasNext()) {
+          builder.append(", ");
+        }
+      }
     }
     builder.append("\n");
     writer.write(builder.toString());
   }
 
-  // print startTime and endTime of each device, format e.g.: device1[1, 10000]
-  private void printTsFileStatistics(StringBuilder builder, TsFileResource tsFileResource) {
-    Iterator<String> deviceIter = tsFileResource.getDevices().iterator();
-    while (deviceIter.hasNext()) {
-      String device = deviceIter.next();
-      builder
-          .append(" ")
-          .append(device)
-          .append("[")
-          .append(tsFileResource.getStartTime(device))
-          .append(", ")
-          .append(tsFileResource.getEndTime(device))
-          .append("]");
-      if (deviceIter.hasNext()) {
-        builder.append(",");
-      }
-    }
-  }
-
-  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize)
+  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkPoints)
       throws IOException {
     StringBuilder builder =
         new StringBuilder(QUERY_ID)
             .append(queryId)
-            .append(" - Number of chunks: ")
-            .append(totalChunkNum)
-            .append("\n" + QUERY_ID)
-            .append(queryId)
-            .append(" - Average size of chunks: ")
-            .append(totalChunkSize / totalChunkNum)
+            .append(String.format(" - Number of chunks: %d", totalChunkNum))
+            .append(", Average data points of chunks: ")
+            .append(totalChunkPoints / totalChunkNum)
             .append("\n");
+    writer.write(builder.toString());
+  }
+
+  public void writeOverlappedPageInfo(long queryId, int totalPageNum, int overlappedPageNum)
+      throws IOException {
+    StringBuilder builder =
+        new StringBuilder(QUERY_ID)
+            .append(queryId)
+            .append(" - Rate of overlapped pages: ")
+            .append(String.format("%.1f%%, ", (double) overlappedPageNum / totalPageNum * 100))
+            .append(
+                String.format(
+                    "%d overlapped pages in total %d pages.\n", overlappedPageNum, totalPageNum));
     writer.write(builder.toString());
   }
 

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -40,10 +39,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -58,14 +55,8 @@ public class QueryResourceManager {
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
-  // record the total number and size of chunks for each query id
-  private Map<Long, Integer> chunkNumMap = new ConcurrentHashMap<>();
-  // chunk size represents the number of time-value points in the chunk
-  private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
-  // record the distinct tsfiles for each query id
-  private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
-  private Map<Long, Set<TsFileResource>> unseqFileNumMap = new ConcurrentHashMap<>();
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private Map<Long, TracingInfo> tracingInfoMap = new ConcurrentHashMap<>();
 
   /**
    * Record temporary files used for external sorting.
@@ -131,12 +122,8 @@ public class QueryResourceManager {
     return queryId;
   }
 
-  public Map<Long, Integer> getChunkNumMap() {
-    return chunkNumMap;
-  }
-
-  public Map<Long, Long> getChunkSizeMap() {
-    return chunkSizeMap;
+  public Map<Long, TracingInfo> getTracingInfoMap() {
+    return tracingInfoMap;
   }
 
   /**
@@ -159,13 +146,10 @@ public class QueryResourceManager {
     QueryDataSource queryDataSource =
         StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
-    if (config.isEnablePerformanceTracing()) {
-      seqFileNumMap
-          .computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getSeqResources()));
-      unseqFileNumMap
-          .computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll((queryDataSource.getUnseqResources()));
+    if (CONFIG.isEnablePerformanceTracing()) {
+      tracingInfoMap
+          .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
+          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
     }
     return queryDataSource;
   }
@@ -177,26 +161,14 @@ public class QueryResourceManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
-      if (config.isEnablePerformanceTracing()) {
-        boolean isprinted = false;
-        if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
-          TracingManager.getInstance()
-              .writeTsFileInfo(
-                  queryId, seqFileNumMap.remove(queryId), unseqFileNumMap.remove(queryId));
-          isprinted = true;
-        }
-        if (chunkNumMap.get(queryId) != null && chunkSizeMap.get(queryId) != null) {
-          TracingManager.getInstance()
-              .writeChunksInfo(queryId, chunkNumMap.remove(queryId), chunkSizeMap.remove(queryId));
-        }
-        if (isprinted) {
-          TracingManager.getInstance().writeEndTime(queryId);
-        }
+      if (CONFIG.isEnablePerformanceTracing() && tracingInfoMap.get(queryId) != null) {
+        TracingManager.getInstance().writeTracingInfo(queryId, tracingInfoMap.get(queryId));
+        TracingManager.getInstance().writeEndTime(queryId);
       }
     } catch (IOException e) {
       logger.error(
           "Error while writing performance info to {}, {}",
-          config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG,
+          CONFIG.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG,
           e.getMessage());
     }
 
