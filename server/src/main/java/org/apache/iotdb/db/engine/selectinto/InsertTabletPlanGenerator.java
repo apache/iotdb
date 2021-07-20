@@ -30,8 +30,10 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+/** internallyConstructNewPlan -> collectRowRecord * N -> generateInsertTabletPlan */
 public class InsertTabletPlanGenerator {
 
   private final String intoDevice;
@@ -40,11 +42,13 @@ public class InsertTabletPlanGenerator {
 
   private final int fetchSize;
 
-  private InsertTabletPlan insertTabletPlan;
   private int rowCount;
   private long[] times;
   private Object[] columns;
   private BitMap[] bitMaps;
+  private TSDataType[] dataTypes;
+
+  private int numberOfInitializedColumns;
 
   public InsertTabletPlanGenerator(String intoDevice, int fetchSize) {
     this.intoDevice = intoDevice;
@@ -60,31 +64,23 @@ public class InsertTabletPlanGenerator {
     intoMeasurementIds.add(intoPaths.get(intoMeasurementIndex).getMeasurement());
   }
 
-  public void internallyConstructNewPlan() throws IllegalPathException {
-    insertTabletPlan = new InsertTabletPlan(new PartialPath(intoDevice), intoMeasurementIds);
-    insertTabletPlan.setAligned(false);
-
+  public void internallyConstructNewPlan() {
     rowCount = 0;
-    insertTabletPlan.setRowCount(rowCount);
-
     times = new long[fetchSize];
-    insertTabletPlan.setTimes(times);
-
     columns = new Object[intoMeasurementIds.size()];
-    insertTabletPlan.setColumns(columns);
-
     bitMaps = new BitMap[intoMeasurementIds.size()];
     for (int i = 0; i < bitMaps.length; ++i) {
       bitMaps[i] = new BitMap(fetchSize);
       bitMaps[i].markAll();
     }
-    insertTabletPlan.setBitMaps(bitMaps);
+    dataTypes = new TSDataType[intoMeasurementIds.size()];
   }
 
   public void collectRowRecord(RowRecord rowRecord) {
-    if (rowCount == 0) {
-      setDataTypes(rowRecord);
-      initColumns();
+    if (numberOfInitializedColumns != columns.length) {
+      List<Integer> initializedDataTypeIndexes = trySetDataTypes(rowRecord);
+      tryInitColumns(initializedDataTypeIndexes);
+      numberOfInitializedColumns += initializedDataTypeIndexes.size();
     }
 
     times[rowCount] = rowRecord.getTimestamp();
@@ -129,17 +125,21 @@ public class InsertTabletPlanGenerator {
     ++rowCount;
   }
 
-  private void setDataTypes(RowRecord rowRecord) {
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (Field field : rowRecord.getFields()) {
-      dataTypes.add(field.getDataType());
+  private List<Integer> trySetDataTypes(RowRecord rowRecord) {
+    List<Integer> initializedDataTypeIndexes = new ArrayList<>();
+    List<Field> fields = rowRecord.getFields();
+
+    for (int i = 0; i < dataTypes.length; ++i) {
+      if (dataTypes[i] == null && fields.get(i) != null && fields.get(i).getDataType() != null) {
+        dataTypes[i] = fields.get(i).getDataType();
+        initializedDataTypeIndexes.add(i);
+      }
     }
-    insertTabletPlan.setDataTypes(dataTypes.toArray(new TSDataType[0]));
+    return initializedDataTypeIndexes;
   }
 
-  private void initColumns() {
-    final TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
-    for (int i = 0; i < dataTypes.length; ++i) {
+  private void tryInitColumns(List<Integer> initializedDataTypeIndexes) {
+    for (int i : initializedDataTypeIndexes) {
       switch (dataTypes[i]) {
         case BOOLEAN:
           columns[i] = new boolean[fetchSize];
@@ -167,8 +167,42 @@ public class InsertTabletPlanGenerator {
     }
   }
 
-  public InsertTabletPlan getInsertTabletPlan() {
+  public InsertTabletPlan generateInsertTabletPlan() throws IllegalPathException {
+    List<String> nonEmptyColumnNames = new ArrayList<>();
+
+    int countOfNonEmptyColumns = 0;
+    for (int i = 0; i < columns.length; ++i) {
+      if (columns[i] == null) {
+        continue;
+      }
+
+      nonEmptyColumnNames.add(intoMeasurementIds.get(i));
+      times[countOfNonEmptyColumns] = times[i];
+      columns[countOfNonEmptyColumns] = columns[i];
+      bitMaps[countOfNonEmptyColumns] = bitMaps[i];
+      dataTypes[countOfNonEmptyColumns] = dataTypes[i];
+
+      ++countOfNonEmptyColumns;
+    }
+
+    InsertTabletPlan insertTabletPlan =
+        new InsertTabletPlan(new PartialPath(intoDevice), nonEmptyColumnNames);
+
+    insertTabletPlan.setAligned(false);
     insertTabletPlan.setRowCount(rowCount);
+
+    if (countOfNonEmptyColumns == columns.length) {
+      insertTabletPlan.setTimes(times);
+      insertTabletPlan.setColumns(columns);
+      insertTabletPlan.setBitMaps(bitMaps);
+      insertTabletPlan.setDataTypes(dataTypes);
+    } else {
+      insertTabletPlan.setTimes(Arrays.copyOf(times, countOfNonEmptyColumns));
+      insertTabletPlan.setColumns(Arrays.copyOf(columns, countOfNonEmptyColumns));
+      insertTabletPlan.setBitMaps(Arrays.copyOf(bitMaps, countOfNonEmptyColumns));
+      insertTabletPlan.setDataTypes(Arrays.copyOf(dataTypes, countOfNonEmptyColumns));
+    }
+
     return insertTabletPlan;
   }
 }

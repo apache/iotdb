@@ -109,7 +109,7 @@ public class InsertTabletPlansIterator {
 
     List<InsertTabletPlan> insertTabletPlans = new ArrayList<>();
     for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
-      insertTabletPlans.add(insertTabletPlanGenerator.getInsertTabletPlan());
+      insertTabletPlans.add(insertTabletPlanGenerator.generateInsertTabletPlan());
     }
     return insertTabletPlans;
   }
