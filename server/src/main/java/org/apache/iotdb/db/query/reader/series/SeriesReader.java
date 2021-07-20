@@ -540,10 +540,7 @@ public class SeriesReader {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
     if (CONFIG.isEnablePerformanceTracing()) {
-      QueryResourceManager.getInstance()
-          .getTracingInfoMap()
-          .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
-          .addTotalPageNum(pageReaderList.size());
+      addTotalPageNumInTracing(pageReaderList.size());
     }
     pageReaderList.forEach(
         pageReader -> {
@@ -574,6 +571,13 @@ public class SeriesReader {
                     false));
           }
         });
+  }
+
+  private void addTotalPageNumInTracing(int pageNum) {
+    QueryResourceManager.getInstance()
+        .getTracingInfoMap()
+        .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
+        .addTotalPageNum(pageNum);
   }
 
   /**
