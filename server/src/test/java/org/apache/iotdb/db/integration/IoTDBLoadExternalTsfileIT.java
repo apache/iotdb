@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -457,33 +456,20 @@ public class IoTDBLoadExternalTsfileIT {
               .getProcessor(new PartialPath("root.vehicle"))
               .getUnSequenceFileList()
               .size());
-      if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
-        assertEquals(
-            1,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getUnSequenceFileList()
-                .size());
-        assertEquals(
-            3,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getSequenceFileTreeSet()
-                .size());
-      } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
-        assertEquals(
-            2,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getUnSequenceFileList()
-                .size());
-        assertEquals(
-            2,
-            StorageEngine.getInstance()
-                .getProcessor(new PartialPath("root.test"))
-                .getSequenceFileTreeSet()
-                .size());
-      }
+
+      assertEquals(
+          1,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.test"))
+              .getUnSequenceFileList()
+              .size());
+      assertEquals(
+          3,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.test"))
+              .getSequenceFileTreeSet()
+              .size());
+
       assertNotNull(tmpDir.listFiles());
       assertEquals(
           0,

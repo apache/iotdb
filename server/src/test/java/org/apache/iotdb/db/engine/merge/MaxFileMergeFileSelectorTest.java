@@ -20,12 +20,12 @@
 package org.apache.iotdb.db.engine.merge;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -131,8 +131,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
     timeIndexField.setAccessible(true);
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
-    ITimeIndex newTimeIndex =
-        IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+    ITimeIndex newTimeIndex = new DeviceTimeIndex();
+
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
@@ -183,8 +183,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     Field timeIndexField = TsFileResource.class.getDeclaredField("timeIndex");
     timeIndexField.setAccessible(true);
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
-    ITimeIndex newTimeIndex =
-        IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+    ITimeIndex newTimeIndex = new DeviceTimeIndex();
+
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }

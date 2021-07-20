@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -179,16 +178,16 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
+    this.timeIndex = new DeviceTimeIndex(); // config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = 1;
   }
 
   /** unsealed TsFile */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
+    this.timeIndex = new DeviceTimeIndex();
+    this.timeIndexType = 1;
     this.processor = processor;
   }
 
@@ -349,7 +348,9 @@ public class TsFileResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
       timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+      //      timeIndex =
+      // TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
+      timeIndex = new DeviceTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       if (inputStream.available() > 0) {
