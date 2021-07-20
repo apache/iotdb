@@ -23,12 +23,12 @@ var config = {
         ["meta", {name: "Keywords", content: "TSDB, time series, time series database, IoTDB, IoT database, IoT data management,时序数据库, 时间序列管理, IoTDB, 物联网数据库, 实时数据库, 物联网数据管理, 物联网数据"}],
         ["meta", {name: "baidu-site-verification", content: "wfKETzB3OT"}],
         ["meta", {name: "google-site-verification", content: "mZWAoRY0yj_HAr-s47zHCGHzx5Ju-RVm5wDbPnwQYFo"}],
-		["script", {async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-BZQXZC7MHT"}],
+		["script", {async: true, src: "https://www.googletagmanager.com/gtag/js?id=G-5MM3J6X84E"}],
 		['script', {}, `
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-BZQXZC7MHT');`
+          gtag('config', 'G-5MM3J6X84E');`
 		],
       ],
 
