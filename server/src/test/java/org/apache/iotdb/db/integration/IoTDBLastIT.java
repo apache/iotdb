@@ -18,24 +18,37 @@
  */
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.*;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -533,6 +546,42 @@ public class IoTDBLastIT {
           cnt++;
         }
       }
+    }
+  }
+
+  @Test
+  public void lastWithInvalidUTF8BytesTest()
+      throws SQLException, MetadataException, QueryProcessException, StorageEngineException,
+          IOException, InterruptedException, QueryFilterOptimizationException {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.ln.wf01.wt01.description WITH DATATYPE=TEXT, ENCODING=PLAIN");
+      statement.execute("FLUSH");
+      // As we can't insert invalid utf8 bytes through SQL, using StorageEngine API directly.
+      ByteBuffer bf = ByteBuffer.allocate(1 + 1 + 4);
+      ReadWriteIOUtils.write(TSDataType.TEXT, bf);
+      ReadWriteIOUtils.write(new Binary(new byte[] {(byte) 0xff}), bf);
+      bf.rewind();
+      PlanExecutor planExecutor = new PlanExecutor();
+      planExecutor.insert(
+          new InsertRowPlan(
+              new PartialPath("root.ln.wf01.wt01"), 1L, new String[] {"description"}, bf));
+      Planner planner = new Planner();
+      PhysicalPlan plan =
+          planner.parseSQLToPhysicalPlan(
+              "select last description from root.ln.wf01.wt01", ZoneId.systemDefault(), 1);
+
+      long queryId = QueryResourceManager.getInstance().assignQueryId(true, 1, 1);
+      QueryDataSet ds = planExecutor.processQuery(plan, new QueryContext(queryId));
+      QueryResourceManager.getInstance().endQuery(queryId);
+      Assert.assertTrue(ds.hasNext());
+      RowRecord r = ds.next();
+      Assert.assertEquals(1L, r.getTimestamp());
+      Assert.assertEquals("root.ln.wf01.wt01.description", r.getFields().get(0).getStringValue());
+      Assert.assertArrayEquals(
+          new byte[] {(byte) 0xff}, r.getFields().get(1).getBinaryV().getValues());
     }
   }
 

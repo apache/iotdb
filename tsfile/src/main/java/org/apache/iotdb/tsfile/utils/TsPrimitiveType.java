@@ -118,6 +118,14 @@ public abstract class TsPrimitiveType implements Serializable {
 
   public abstract Object getValue();
 
+  /**
+   * get the string representation of the value.
+   *
+   * <p>If the type is TSDataType.TEXT and the data is not a valid UTF-8 byte array, some unknown
+   * characters (0xfffd) may add to the final result.
+   *
+   * @return the string representation of the value.
+   */
   public abstract String getStringValue();
 
   public abstract TSDataType getDataType();

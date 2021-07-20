@@ -45,17 +45,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
@@ -109,7 +105,12 @@ public class LastQueryExecutor {
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
-        valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
+        TsPrimitiveType v = lastTimeValuePair.getValue();
+        if (v.getDataType() == TSDataType.TEXT) {
+          valueField.setBinaryV(v.getBinary());
+        } else {
+          valueField.setBinaryV(new Binary(v.getStringValue()));
+        }
         resultRecord.addField(valueField);
 
         dataSet.putRecord(resultRecord);
