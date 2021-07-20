@@ -1275,11 +1275,11 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param endOffset
    * @return
    */
-  public MetadataIndexNode getMetadataIndexNode(int startOffset,int endOffset){
+  public MetadataIndexNode getMetadataIndexNode(long startOffset,long endOffset){
     MetadataIndexNode metadataIndexNode = null;
     try {
       metadataIndexNode =
-                MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset-startOffset));
+                MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
     } catch (IOException e) {
       logger.error("Something error happened while reading file metadata of file {}", file);
     }

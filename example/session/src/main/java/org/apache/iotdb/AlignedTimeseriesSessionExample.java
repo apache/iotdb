@@ -44,6 +44,7 @@ public class AlignedTimeseriesSessionExample {
   private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
   private static final String ROOT_SG1_D1_VECTOR4 = "root.sg_1.d1.vector4";
   private static final String ROOT_SG1_D1 = "root.sg_1.d1";
+  private static final String ROOT_SG1_D2 = "root.sg_1.d2";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -57,7 +58,8 @@ public class AlignedTimeseriesSessionExample {
 //    createAlignedTimeseries();
 //    insertAlignedRecord();
 
-    insertRecord();
+    insertRecord(ROOT_SG1_D2);
+    insertRecord(ROOT_SG1_D1);
     insertTabletWithAlignedTimeseriesMethod1();
 //    insertTabletWithAlignedTimeseriesMethod2();
 //    insertNullableTabletWithAlignedTimeseries();
@@ -393,8 +395,7 @@ public class AlignedTimeseriesSessionExample {
 
 
 
-  private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = ROOT_SG1_D1;
+  private static void insertRecord(String deviceId) throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s2");
