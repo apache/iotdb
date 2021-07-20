@@ -438,7 +438,10 @@ public class StorageGroupProcessor {
 
   /** recover from file */
   private void recover() throws StorageGroupProcessorException {
-    logger.info("recover Storage Group  {}", logicalStorageGroupName + "-" + virtualStorageGroupId);
+    logger.info(
+        String.format(
+            "start recovering virtual storage group %s[%s]",
+            logicalStorageGroupName, virtualStorageGroupId));
 
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
@@ -542,6 +545,11 @@ public class StorageGroupProcessor {
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
     }
+
+    logger.info(
+        String.format(
+            "the virtual storage group %s[%s] is recovered successfully",
+            logicalStorageGroupName, virtualStorageGroupId));
   }
 
   private void recoverCompaction() {

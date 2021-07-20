@@ -138,11 +138,9 @@ public class VirtualStorageGroupManager {
       } else {
         // not finished recover, refuse the request
         throw new StorageEngineException(
-            "the virtual sg "
-                + loc
-                + " in sg"
-                + storageGroupMNode.getFullPath()
-                + " may not ready now, please wait and retry later",
+            String.format(
+                "the virtual storage group %s[%d] may not ready now, please wait and retry later",
+                storageGroupMNode.getFullPath(), loc),
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
@@ -172,14 +170,9 @@ public class VirtualStorageGroupManager {
                           storageGroupMNode.getPartialPath(),
                           storageGroupMNode,
                           String.valueOf(cur));
-
-              logger.info(
-                  "Virtual Storage Group Processor {} of {} is recovered successfully",
-                  cur,
-                  storageGroupMNode.getFullPath());
             } catch (StorageGroupProcessorException e) {
               logger.error(
-                  "Failed to recover storage group processor in {} virtual storage group id is {}",
+                  "failed to recover virtual storage group {}[{}]",
                   storageGroupMNode.getFullPath(),
                   cur,
                   e);
