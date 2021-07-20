@@ -1098,9 +1098,10 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
-//        if (!loadNewTsFileCheckMetadata(reader)) {
-//          throw new QueryProcessException("loading tsfile is inconsistent with existing timeseries.");
-//        }
+        if (!loadNewTsFileCheckMetadata(reader)) {
+          throw new QueryProcessException(
+              "loading tsfile metadata is inconsistent with existing timeseries.");
+        }
       } catch (IOException e) {
         logger.error("can not get timeseries metadata from {}.", file.getAbsoluteFile());
         throw new QueryProcessException(e.getMessage());
@@ -1148,12 +1149,18 @@ public class PlanExecutor implements IPlanExecutor {
         tsFileSequenceReader.getAllTimeseriesMetadata();
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
       String deviceId = entry.getKey();
+      PartialPath devicePath = new PartialPath(deviceId);
+      if (!IoTDB.metaManager.isPathExist(devicePath)) {
+        continue;
+      }
       for (TimeseriesMetadata metadata : entry.getValue()) {
-        String fullPath = deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId();
-        TSDataType dataType =
-            IoTDB.metaManager.getSeriesSchema(new PartialPath(fullPath)).getType();
-        if (dataType != metadata.getTSDataType()) {
-          return false;
+        PartialPath fullPath =
+            new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
+        if (IoTDB.metaManager.isPathExist(fullPath)) {
+          TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
+          if (dataType != metadata.getTSDataType()) {
+            return false;
+          }
         }
       }
     }
