@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -218,9 +218,19 @@ PageHeader 结构：
 
 所有的索引节点构成一棵类B+树结构的**索引树（二级索引）**，这棵树由两部分组成：实体索引部分和物理量索引部分。索引节点类型有四种，分别是`INTERNAL_ENTITY`、`LEAF_ENTITY`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应实体索引部分的中间节点和叶子节点，和物理量索引部分的中间节点和叶子节点。 只有物理量索引部分的叶子节点(`LEAF_MEASUREMENT`) 指向 `TimeseriesIndex`。
 
-下面，我们使用四个例子来加以详细说明。
+考虑多元时间序列的引入，每个多元时间序列称为一个vector，有一个`TimeColumn`，例如d1实体下的多元时间序列vector1，有s1、s2两个物理量，即`d1.vector1.(s1,s2)`，我们称vector1为`TimeValue`，在存储的时候需要多存储一个vector1的Chunk。
+
+构建`IndexOfTimeseriesIndex `时，对于多元时间序列的非`TimeValue`的物理量量，使用与`TimeValue`拼接的方式，例如`vector1.s1`视为“物理量”。
+
+> 注：从0.13起，系统支持[多元时间序列](https://iotdb.apache.org/zh/UserGuide/Master/Data-Concept/Data-Model-and-Terminology.html)（Multi-variable timeseries 或 Aligned timeseries），一个实体的一个多元物理量对应一个多元时间序列。这些时间序列称为**多元时间序列**，也叫**对齐时间序列**。多元时间序列需要被同时创建、同时插入值，删除时也必须同时删除，一组多元序列的时间戳列在内存和磁盘中仅需存储一次，而不是每个时间序列存储一次。
+>
+> ![image-20210720151044629](C:\Users\admin\Desktop\image-20210720151044629.png)
+
+下面，我们使用七个例子来加以详细说明。
 
 索引树节点的度（即每个节点的最大子节点个数）可以由用户进行配置，配置项为`max_degree_of_index_node`，其默认值为256。在以下例子中，我们假定 `max_degree_of_index_node = 10`。
+
+其中，例1\~4为一元时间序列的例子，例5\~6为多元时间序列的例子，例7为综合例子。
 
 * 例1：5个实体，每个实体有5个物理量
 
@@ -245,6 +255,24 @@ PageHeader 结构：
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677241-1a753580-d214-11eb-817f-17bcf797251f.png">
 
 在150个实体，每个实体中有150个物理量的情况下，物理量和实体个数均超过了 `max_degree_of_index_node`，形成索引树的物理量层级和实体索引层级。在这两个层级里，每个 IndexNode 均最多由10个 IndexEntry 组成。如前所述，从根节点到实体索引层级的叶子节点，类型分别为`INTERNAL_ENTITY` 和 `LEAF_ENTITY`，而每个实体索引层级的叶子节点都是物理量索引层级的根节点，从这里到物理量索引层级的叶子节点，类型分别为`INTERNAL_MEASUREMENT` 和 `LEAF_MEASUREMENT`。
+
+* 例5：1个实体，20个物理量，2个多元时间序列组，每个多元时间序列组分别有9个物理量
+
+![tsFileVectorIndexCase5](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase5.png?version=1&modificationDate=1626773647793&api=v2)
+
+* 例6：1个实体，30个物理量，2个多元时间序列组，每个多元时间序列组分别有15个物理量
+
+![tsFileVectorIndexCase6](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase6.png?version=1&modificationDate=1626773648284&api=v2)
+
+* 例7：2个实体，每个实体的物理量如下表所示
+
+| d0                                 | d1                                 |
+| ---------------------------------- | ---------------------------------- |
+| 【一元时间序列】s0,s1...,s4        | 【一元时间序列】s0,s1,...s14       |
+| 【多元时间序列】v0.(s5,s6,...,s14) | 【多元时间序列】v0.(s15,s16,..s18) |
+| 【一元时间序列】z15,z16,..,z18     |                                    |
+
+![tsFileVectorIndexCase7](C:\Users\admin\Desktop\tsFileVectorIndexCase7.png)
 
 索引采用树形结构进行设计的目的是在实体数或者物理量数量过大时，可以不用一次读取所有的 `TimeseriesIndex`，只需要根据所读取的物理量定位对应的节点，从而减少 I/O，加快查询速度。有关 TsFile 的读流程将在本章最后一节加以详细说明。
 

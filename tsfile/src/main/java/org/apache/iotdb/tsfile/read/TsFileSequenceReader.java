@@ -259,7 +259,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       if (tsFileMetaData == null) {
 
-        logger.info("Start reading file {} metadata from {}, length {}", file,fileMetadataPos,fileMetadataSize);
+        logger.info(
+            "Start reading file {} metadata from {}, length {}",
+            file,
+            fileMetadataPos,
+            fileMetadataSize);
         tsFileMetaData =
             TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
       }
@@ -1268,18 +1272,16 @@ public class TsFileSequenceReader implements AutoCloseable {
     return res;
   }
 
-  //TODO:测试，文档注释
+  // TODO:测试，文档注释
   /**
-   *
    * @param startOffset
    * @param endOffset
    * @return
    */
-  public MetadataIndexNode getMetadataIndexNode(long startOffset,long endOffset){
+  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset) {
     MetadataIndexNode metadataIndexNode = null;
     try {
-      metadataIndexNode =
-                MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
+      metadataIndexNode = MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
     } catch (IOException e) {
       logger.error("Something error happened while reading file metadata of file {}", file);
     }

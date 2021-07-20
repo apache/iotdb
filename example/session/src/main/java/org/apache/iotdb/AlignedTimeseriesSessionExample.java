@@ -54,22 +54,23 @@ public class AlignedTimeseriesSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-//    createTemplate();
-//    createAlignedTimeseries();
-//    insertAlignedRecord();
+    //    createTemplate();
+    //    createAlignedTimeseries();
+    //    insertAlignedRecord();
 
-    insertRecord(ROOT_SG1_D2);
-    insertRecord(ROOT_SG1_D1);
+    //    insertRecord(ROOT_SG1_D2);
     insertTabletWithAlignedTimeseriesMethod1();
-//    insertTabletWithAlignedTimeseriesMethod2();
-//    insertNullableTabletWithAlignedTimeseries();
-//
-//    selectTest();
-//    selectWithValueFilterTest();
-//    selectWithGroupByTest();
-//    selectWithLastTest();
-//
-//    selectWithAggregationTest();
+    //    insertRecord(ROOT_SG1_D1);
+    session.executeNonQueryStatement("flush");
+    //    insertTabletWithAlignedTimeseriesMethod2();
+    //    insertNullableTabletWithAlignedTimeseries();
+    //
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithGroupByTest();
+    //    selectWithLastTest();
+    //
+    //    selectWithAggregationTest();
 
     // selectWithAlignByDeviceTest();
 
@@ -255,19 +256,15 @@ public class AlignedTimeseriesSessionExample {
     tablet.setAligned(true);
     long timestamp = 1;
 
-    for (long row = 0; row < 100; row++) {
+    for (long row = 0; row < 10; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(0),
-          rowIndex,
-          row*10+1L);
-//          new SecureRandom().nextLong());
+          schemaList.get(0).getValueMeasurementIdList().get(0), rowIndex, row * 10 + 1L);
+      //          new SecureRandom().nextLong());
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(1),
-          rowIndex,
-              (int)(row*10+2));
-//          new SecureRandom().nextInt());
+          schemaList.get(0).getValueMeasurementIdList().get(1), rowIndex, (int) (row * 10 + 2));
+      //          new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -280,8 +277,6 @@ public class AlignedTimeseriesSessionExample {
       session.insertTablet(tablet);
       tablet.reset();
     }
-
-    session.executeNonQueryStatement("flush");
   }
 
   /** Method 2 for insert tablet with aligned timeseries */
@@ -393,9 +388,8 @@ public class AlignedTimeseriesSessionExample {
     }
   }
 
-
-
-  private static void insertRecord(String deviceId) throws IoTDBConnectionException, StatementExecutionException {
+  private static void insertRecord(String deviceId)
+      throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s2");
@@ -409,12 +403,11 @@ public class AlignedTimeseriesSessionExample {
 
     for (long time = 0; time < 100; time++) {
       List<Object> values = new ArrayList<>();
-      values.add(time*10+3L);
-      values.add(time*10+4L);
-      values.add(time*10+5L);
-      values.add(time*10+6L);
+      values.add(time * 10 + 3L);
+      values.add(time * 10 + 4L);
+      values.add(time * 10 + 5L);
+      values.add(time * 10 + 6L);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
   }
-
 }

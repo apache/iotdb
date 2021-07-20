@@ -285,7 +285,7 @@ public class TsFileIOWriter {
     tsFileMetaData.setMetaOffset(metaOffset);
 
     long footerIndex = out.getPosition();
-      if (logger.isDebugEnabled()) {
+    if (logger.isDebugEnabled()) {
       logger.debug("start to flush the footer,file pos:{}", footerIndex);
     }
 
@@ -318,11 +318,9 @@ public class TsFileIOWriter {
   /**
    * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
    *
-   * @param chunkMetadataListMap
-   *        chunkMetadata that Path.mask == 0
-   * @param vectorToPathsMap
-   *        Map Path to chunkMataList, Key is Path(timeColumn) and Value is it's sub chunkMetadataListMap
-   *
+   * @param chunkMetadataListMap chunkMetadata that Path.mask == 0
+   * @param vectorToPathsMap Map Path to chunkMataList, Key is Path(timeColumn) and Value is it's
+   *     sub chunkMetadataListMap
    * @return MetadataIndexEntry list in TsFileMetadata
    */
   private MetadataIndexNode flushMetadataIndex(
@@ -366,7 +364,10 @@ public class TsFileIOWriter {
       if (!chunkMetadata.getDataType().equals(dataType)) {
         continue;
       }
-      logger.debug("Serialize chunkMetadata {} when chunkMetadataListLength={}",chunkMetadata.getMeasurementUid(),chunkMetadataListLength);
+      logger.debug(
+          "Serialize chunkMetadata {} when chunkMetadataListLength={}",
+          chunkMetadata.getMeasurementUid(),
+          chunkMetadataListLength);
       chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
     }
