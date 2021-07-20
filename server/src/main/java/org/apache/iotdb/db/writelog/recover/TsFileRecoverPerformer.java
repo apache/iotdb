@@ -23,7 +23,9 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -191,13 +193,24 @@ public class TsFileRecoverPerformer {
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
       String deviceId = entry.getKey();
       List<ChunkMetadata> chunkMetadataList = entry.getValue();
-      TSDataType dataType = entry.getValue().get(entry.getValue().size() - 1).getDataType();
-      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
-        if (!chunkMetaData.getDataType().equals(dataType)) {
-          continue;
+
+      // measurement -> List<ChunkMetadata>
+      Map<String, List<ChunkMetadata>> measurementToChunkMetadatas = new HashMap<>();
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        List<ChunkMetadata> list = measurementToChunkMetadatas
+            .computeIfAbsent(chunkMetadata.getMeasurementUid(), n -> new ArrayList<>());
+        list.add(chunkMetadata);
+      }
+
+      for (List<ChunkMetadata> metadataList : measurementToChunkMetadatas.values()) {
+        TSDataType dataType = metadataList.get(metadataList.size() - 1).getDataType();
+        for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+          if (!chunkMetaData.getDataType().equals(dataType)) {
+            continue;
+          }
+          tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
+          tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
         }
-        tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
-        tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
       }
     }
     long fileVersion = Long.parseLong(
