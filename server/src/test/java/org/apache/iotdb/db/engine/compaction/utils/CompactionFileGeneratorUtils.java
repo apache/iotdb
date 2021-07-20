@@ -82,7 +82,7 @@ public class CompactionFileGeneratorUtils {
    * @param startTime The startTime to write
    * @param newTsFileResource The tsfile to write
    */
-  public static void generateNewTsFile(
+  public static void writeChunkToTsFile(
       Set<String> fullPaths,
       List<List<Long>> chunkPagePointsNum,
       long startTime,
@@ -120,6 +120,64 @@ public class CompactionFileGeneratorUtils {
           }
           chunkWriter.writeToFileWriter(writer);
         }
+      }
+      writer.endChunkGroup();
+    }
+    newTsFileResource.serialize();
+    writer.endFile();
+    newTsFileResource.close();
+
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxNumberOfPointsInPage(prevMaxNumberOfPointsInPage);
+  }
+
+  /**
+   * Generate a new file. For each time series, insert a point (+1 for each point) into the file
+   * from the start time to the end time, the value is also equal to the time
+   *
+   * @param fullPaths Set(fullPath)
+   * @param chunkPagePointsNum chunk->page->points([startTime, endTime),[startTime, endTime),...)
+   * @param newTsFileResource The tsfile to write
+   */
+  public static void writeChunkToTsFileWithTimeRange(
+      Set<String> fullPaths,
+      List<List<long[][]>> chunkPagePointsNum,
+      TsFileResource newTsFileResource)
+      throws IOException, IllegalPathException {
+    // disable auto page seal and seal page manually
+    int prevMaxNumberOfPointsInPage =
+        TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
+
+    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
+    Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
+    for (String fullPath : fullPaths) {
+      PartialPath partialPath = new PartialPath(fullPath);
+      List<String> sensors =
+          deviceMeasurementMap.computeIfAbsent(partialPath.getDevice(), (s) -> new ArrayList<>());
+      sensors.add(partialPath.getMeasurement());
+    }
+    int currChunksIndex = 0;
+    for (Entry<String, List<String>> deviceMeasurementEntry : deviceMeasurementMap.entrySet()) {
+      String device = deviceMeasurementEntry.getKey();
+      writer.startChunkGroup(device);
+      for (String sensor : deviceMeasurementEntry.getValue()) {
+        List<long[][]> chunks = chunkPagePointsNum.get(currChunksIndex);
+        IChunkWriter chunkWriter =
+            new ChunkWriterImpl(new MeasurementSchema(sensor, TSDataType.INT64), true);
+        for (long[][] pages : chunks) {
+          for (long[] starEndTime : pages) {
+            for (long i = starEndTime[0]; i < starEndTime[1]; i++) {
+              chunkWriter.write(i, i, false);
+              newTsFileResource.updateStartTime(device, i);
+              newTsFileResource.updateEndTime(device, i);
+            }
+          }
+          chunkWriter.sealCurrentPage();
+        }
+        chunkWriter.writeToFileWriter(writer);
+        currChunksIndex++;
       }
       writer.endChunkGroup();
     }
