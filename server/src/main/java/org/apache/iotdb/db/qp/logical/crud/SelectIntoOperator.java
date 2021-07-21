@@ -45,7 +45,12 @@ public class SelectIntoOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new SelectIntoPlan((QueryPlan) queryOperator.generatePhysicalPlan(generator), intoPaths);
+    QueryPlan queryPlan = (QueryPlan) queryOperator.generatePhysicalPlan(generator);
+    if (intoPaths.size() != queryPlan.getPaths().size()) {
+      throw new QueryProcessException(
+          "select into: the number of source paths and the number of target paths should be the same.");
+    }
+    return new SelectIntoPlan(queryPlan, intoPaths);
   }
 
   public void check() throws LogicalOperatorException {
