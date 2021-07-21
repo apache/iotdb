@@ -2350,6 +2350,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
   }
 
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param operator the result operator, setting by clause context
+   * @param ctx context of property statement
+   */
   private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
     if (ctx.SCHEMA() != null) {
       operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));

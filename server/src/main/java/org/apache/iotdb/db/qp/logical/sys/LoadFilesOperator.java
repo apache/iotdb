@@ -27,6 +27,11 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.io.File;
 
+/**
+ * operator for loading tsfile including four property: file, the loading file. autoCreateSchema,
+ * need auto create schema or not. sglevel, the level of sg. metadataCheck, need check for metadata
+ * or not.
+ */
 public class LoadFilesOperator extends Operator {
 
   private File file;
@@ -34,7 +39,8 @@ public class LoadFilesOperator extends Operator {
   private int sgLevel;
   private boolean metadataCheck;
 
-  public LoadFilesOperator(File file, boolean autoCreateSchema, int sgLevel, boolean metadataCheck) {
+  public LoadFilesOperator(
+      File file, boolean autoCreateSchema, int sgLevel, boolean metadataCheck) {
     super(SQLConstant.TOK_LOAD_FILES);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
@@ -70,6 +76,7 @@ public class LoadFilesOperator extends Operator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new OperateFilePlan(file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, metadataCheck);
+    return new OperateFilePlan(
+        file, OperatorType.LOAD_FILES, autoCreateSchema, sgLevel, metadataCheck);
   }
 }
