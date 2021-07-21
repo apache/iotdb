@@ -273,7 +273,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void flushBuffer(ILogWriter writer) {
-    long start = System.nanoTime();
     try {
       writer.write(logBufferFlushing);
     } catch (ClosedChannelException e) {
@@ -290,14 +289,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logBufferFlushing = null;
       switchBufferCondition.notifyAll();
     }
-    long elapse = System.nanoTime() - start;
-    if (elapse > 3000000000L) {
-      logger.error("[wal] {} Flushing -> idle cost: {}ms", this.hashCode(), elapse / 1000000);
-    }
   }
 
   private void switchBufferWorkingToFlushing() throws InterruptedException {
-    long start = System.nanoTime();
     synchronized (switchBufferCondition) {
       while (logBufferFlushing != null && !deleted.get()) {
         switchBufferCondition.wait(100);
@@ -306,10 +300,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logBufferWorking = logBufferIdle;
       logBufferWorking.clear();
       logBufferIdle = null;
-    }
-    long elapse = System.nanoTime() - start;
-    if (elapse > 3000000000L) {
-      logger.error("[wal] {} Working -> Flushing cost: {}ms", this.hashCode(), elapse / 1000000);
     }
   }
 
