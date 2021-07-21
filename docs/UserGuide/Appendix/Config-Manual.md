@@ -86,24 +86,11 @@ The detail of each variables are as follows:
 |Default|31999|
 |Effective|After restart system|
 
-* JMX\_IP
 
-|Name|JMX\_IP|
-|:---:|:---|
-|Description|JMX listening address. Only take effect if JMX\_LOCAL=false. 0.0.0.0 is never allowed|
-|Type|String|
-|Default|127.0.0.1|
-|Effective|After restart system|
-
-## JMX Authorization
-
-We **STRONGLY RECOMMENDED** you CHANGE the PASSWORD for the JMX remote connection.
-
-The user and passwords are in ${IOTDB\_CONF}/conf/jmx.password.
-
-The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## IoTDB System Configuration File
+
+SyStem configuration items are the core configuration for the IoTDB server running. It is mainly used to set the parameters of IoTDB Server file and engine layer, so as to facilitate users to adjust the relevant configuration of the server according to their own needs, in order to achieve better performance. System configuration items can be divided into two major modules: file layer and engine layer configuration. Users can view and modify the contents of both configuratiob items through the iotdb-engine.properties. 
 
 ### File Layer
 
@@ -198,14 +185,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Effective|Trigger|
 
 
-* bloomFilterErrorRate
 
-|Name| bloomFilterErrorRate |
-|:---:|:---|
-|Description| The false positive rate of bloom filter in each TsFile. Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series. If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
-|Type|float, (0, 1)|
-|Default| 0.05 |
-|Effective|After restart system|
 
 
 
