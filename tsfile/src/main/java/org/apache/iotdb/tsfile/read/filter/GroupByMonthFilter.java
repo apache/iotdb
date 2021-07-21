@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.Calendar;
 import java.util.Objects;
+import java.util.TimeZone;
 
 /**
  * GroupByMonthFilter is used to handle natural month slidingStep and interval by generating
@@ -44,9 +45,11 @@ public class GroupByMonthFilter extends GroupByFilter {
       long startTime,
       long endTime,
       boolean isSlidingStepByMonth,
-      boolean isIntervalByMonth) {
+      boolean isIntervalByMonth,
+      TimeZone timeZone) {
     super(interval, slidingStep, startTime, endTime);
     initialStartTime = startTime;
+    calendar.setTimeZone(timeZone);
     calendar.setTimeInMillis(startTime);
     this.isIntervalByMonth = isIntervalByMonth;
     this.isSlidingStepByMonth = isSlidingStepByMonth;
@@ -68,6 +71,7 @@ public class GroupByMonthFilter extends GroupByFilter {
     slidingStepsInMo = filter.slidingStepsInMo;
     initialStartTime = filter.initialStartTime;
     calendar = Calendar.getInstance();
+    calendar.setTimeZone(filter.calendar.getTimeZone());
     calendar.setTimeInMillis(filter.calendar.getTimeInMillis());
   }
 

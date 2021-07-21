@@ -1914,6 +1914,7 @@ public class Session {
     private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+    List<String> nodeUrls = null;
 
     public Builder host(String host) {
       this.host = host;
@@ -1940,6 +1941,11 @@ public class Session {
       return this;
     }
 
+    public Builder zoneId(ZoneId zoneId) {
+      this.zoneId = zoneId;
+      return this;
+    }
+
     public Builder thriftDefaultBufferSize(int thriftDefaultBufferSize) {
       this.thriftDefaultBufferSize = thriftDefaultBufferSize;
       return this;
@@ -1955,7 +1961,30 @@ public class Session {
       return this;
     }
 
+    public Builder nodeUrls(List<String> nodeUrls) {
+      this.nodeUrls = nodeUrls;
+      return this;
+    }
+
     public Session build() {
+      if (nodeUrls != null
+          && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
+        throw new IllegalArgumentException(
+            "You should specify either nodeUrls or (host + rpcPort), but not both");
+      }
+
+      if (nodeUrls != null) {
+        return new Session(
+            nodeUrls,
+            username,
+            password,
+            fetchSize,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            enableCacheLeader);
+      }
+
       return new Session(
           host,
           rpcPort,
