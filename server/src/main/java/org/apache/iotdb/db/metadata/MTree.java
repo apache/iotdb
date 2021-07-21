@@ -1730,11 +1730,11 @@ public class MTree implements Serializable {
       IMNode next = node.getChild(nodeReg);
       if (next != null) {
         if (next instanceof MeasurementMNode) {
-          if(idx >= nodes.length){
+          if (idx >= nodes.length) {
             if (hasLimit) {
               curOffset.set(curOffset.get() + 1);
               if (curOffset.get() < offset.get()
-                      || count.get().intValue() == limit.get().intValue()) {
+                  || count.get().intValue() == limit.get().intValue()) {
                 return;
               }
               count.set(count.get() + 1);
@@ -1760,11 +1760,11 @@ public class MTree implements Serializable {
           continue;
         }
         if (child instanceof MeasurementMNode) {
-          if(!deviceAdded && idx >= nodes.length){
+          if (!deviceAdded && idx >= nodes.length) {
             if (hasLimit) {
               curOffset.set(curOffset.get() + 1);
               if (curOffset.get() < offset.get()
-                      || count.get().intValue() == limit.get().intValue()) {
+                  || count.get().intValue() == limit.get().intValue()) {
                 return;
               }
               count.set(count.get() + 1);
@@ -1772,7 +1772,7 @@ public class MTree implements Serializable {
             res.add(node.getPartialPath());
             deviceAdded = true;
           }
-        }else {
+        } else {
           findDevices(child, nodes, idx + 1, res, hasLimit, upperTemplate);
         }
       }

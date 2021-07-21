@@ -1701,7 +1701,7 @@ public class MManager {
     // 1. get device node
     Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
     if (!(deviceMNode.left instanceof MeasurementMNode)
-            && deviceMNode.left.getDeviceTemplate() != null) {
+        && deviceMNode.left.getDeviceTemplate() != null) {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
