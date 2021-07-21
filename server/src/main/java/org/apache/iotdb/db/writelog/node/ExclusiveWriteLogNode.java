@@ -259,7 +259,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       switchBufferWorkingToFlushing();
       ILogWriter currWriter = getCurrentFileWriter();
-      logger.warn("[wal] {} sync submit a flush thread", this.hashCode());
       FLUSH_BUFFER_THREAD_POOL.submit(() -> flushBuffer(currWriter));
       bufferedLogNum = 0;
       logger.debug("Log node {} ends sync.", identifier);
@@ -274,8 +273,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void flushBuffer(ILogWriter writer) {
-    logger.warn("[wal] {} flushBuffer start", this.hashCode());
-    long start1 = System.currentTimeMillis();
+    long start = System.nanoTime();
     try {
       writer.write(logBufferFlushing);
     } catch (ClosedChannelException e) {
@@ -285,27 +283,21 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return;
     }
-    long elapse1 = System.currentTimeMillis() - start1;
-    if (elapse1 > 3000) {
-      logger.error("[wal] {} flushBuffer cost: {}ms", this.hashCode(), elapse1);
-    }
 
     // switch buffer flushing to idle and notify the sync thread
-    long start2 = System.currentTimeMillis();
     synchronized (switchBufferCondition) {
       logBufferIdle = logBufferFlushing;
       logBufferFlushing = null;
       switchBufferCondition.notifyAll();
     }
-    long elapse2 = System.currentTimeMillis() - start2;
-    if (elapse2 > 3000) {
-      logger.error("[wal] {} switch Flushing -> idle cost: {}ms", this.hashCode(), elapse2);
+    long elapse = System.nanoTime() - start;
+    if (elapse > 3000000000L) {
+      logger.error("[wal] {} Flushing -> idle cost: {}ms", this.hashCode(), elapse / 1000000);
     }
-    logger.warn("[wal] {} flushBuffer end, notify all", this.hashCode());
   }
 
   private void switchBufferWorkingToFlushing() throws InterruptedException {
-    long start = System.currentTimeMillis();
+    long start = System.nanoTime();
     synchronized (switchBufferCondition) {
       while (logBufferFlushing != null && !deleted.get()) {
         switchBufferCondition.wait(100);
@@ -315,9 +307,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       logBufferWorking.clear();
       logBufferIdle = null;
     }
-    long elapse = System.currentTimeMillis() - start;
-    if (elapse > 3000) {
-      logger.error("[wal] {} switch Working -> Flushing cost: {}ms", this.hashCode(), elapse);
+    long elapse = System.nanoTime() - start;
+    if (elapse > 3000000000L) {
+      logger.error("[wal] {} Working -> Flushing cost: {}ms", this.hashCode(), elapse / 1000000);
     }
   }
 
