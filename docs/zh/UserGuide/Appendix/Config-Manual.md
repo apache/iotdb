@@ -577,6 +577,25 @@
 |默认值| 36000000 |
 |改后生效方式|重启服务生效|
 
+* concurrent\_writing\_time\_partition
+
+|名字| concurrent\_writing\_time\_partition |
+|:---:|:---|
+|描述| 决定了一个存储组中可以同时插入多少个时间分区 |
+|类型|Int32|
+|默认值| 1 |
+|改后生效方式|重启服务生效|
+
+* tsfile\_size\_threshold
+
+|名字| tsfile\_size\_threshold |
+|:---:|:---|
+|描述| 当磁盘上的TsFile大小超过这个阈值时，TsFile会关闭并打开一个新的TsFile来接受数据写入。单位为byte，默认值为2G。|
+|类型| Int64 |
+|默认值| 536870912 |
+|改后生效方式|重启服务生效|
+
+
 ## 数据类型自动推断
 
 
