@@ -110,6 +110,7 @@ statement
       cqSelectIntoClause #createContinuousQueryStatement
     | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
     | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
+    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     ;
 
 selectClause
