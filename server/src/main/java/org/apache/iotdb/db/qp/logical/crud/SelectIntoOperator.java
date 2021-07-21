@@ -70,8 +70,4 @@ public class SelectIntoOperator extends Operator {
   public void setIntoPaths(List<PartialPath> intoPaths) {
     this.intoPaths = intoPaths;
   }
-
-  public List<PartialPath> getIntoPaths() {
-    return intoPaths;
-  }
 }
