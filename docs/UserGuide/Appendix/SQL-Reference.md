@@ -21,14 +21,6 @@
 
 # Appendix 2: SQL Reference
 
-In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a SQL-like query language for interacting with IoTDB, the query language can be devided into 4 major parts:
-
-* Schema Statement: statements about schema management are all listed in this section.
-* Data Management Statement: statements about data management (such as: data insertion, data query, etc.) are all listed in this section.
-* Database Management Statement: statements about database management and authentication are all listed in this section.
-* Functions: functions that IoTDB offers are all listed in this section.
-
-All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
 ## Show Version
 
@@ -60,9 +52,7 @@ Note: FullPath can not include `*`
 
 ```
 DELETE STORAGE GROUP <FullPath> [COMMA <FullPath>]*
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.wt01, root.ln.wf01.wt02
-Eg: IoTDB > DELETE STORAGE GROUP root.ln.wf01.*
+Eg: IoTDB > DELETE STORAGE GROUP root.ln
 Eg: IoTDB > DELETE STORAGE GROUP root.*
 ```
 
@@ -132,6 +122,27 @@ DELETE TIMESERIES <PrefixPath> [COMMA <PrefixPath>]*
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
+```
+
+* Create schema Template Statement 
+```
+CREATE schema template <TemplateName> WITH <AttributeClauses>
+attributeClauses
+    : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*)
+    attributeClause
+    ;
+Eg: create schema template temp1(
+        (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
+        (s2 FLOAT with encoding=RLE, compression=SNAPPY)
+       )  
+```
+
+* Set schema Template Statement
+```
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
 ```
 
 * Alter Timeseries Statement
@@ -1132,7 +1143,7 @@ eg. _abc123
 
 ```
 
-## Literals
+## Constants
 
 
 ```
