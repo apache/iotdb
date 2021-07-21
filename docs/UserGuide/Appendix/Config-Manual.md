@@ -227,25 +227,6 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Default| false |
 |Effective|After restart system|
 
-
-* time\_zone
-
-|Name| time\_zone |
-|:---:|:---|
-|Description| The time zone in which the server is located, the default is Beijing time (+8) |
-|Type|Time Zone String|
-|Default| +08:00 |
-|Effective|Trigger|
-
-* base\_dir
-
-|Name| base\_dir |
-|:---:|:---|
-|Description| The IoTDB system folder. It is recommended to use an absolute path. |
-|Type|String|
-|Default| data |
-|Effective|After restart system|
-
 * data\_dirs
 
 |Name| data\_dirs |
@@ -417,24 +398,6 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Type|Int32|
 |Default| 10 |
 |Effective|Trigger|
-
-* fetch\_size
-
-|Name| fetch\_size |
-|:---:|:---|
-|Description| The amount of data read each time in batch (the number of data strips, that is, the number of different timestamps.) |
-|Type|Int32|
-|Default| 10000 |
-|Effective|After restart system|
-
-* merge\_concurrent\_threads
-
-|Name| merge\_concurrent\_threads |
-|:---:|:---|
-|Description| THe max threads which can be used when unsequence data is merged. The larger it is, the more IO and CPU cost. The smaller the value, the more the disk is occupied when the unsequence data is too large, the reading will be slower. |
-|Type|Int32|
-|Default| 0 |
-|Effective|After restart system|
 
 * enable\_stat\_monitor
 
@@ -704,23 +667,70 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Default|FLOAT |
 |Effective|After restart system|
 
-* enable\_partition
+* long\_string\_infer\_type
 
-|Name| enable\_partition |
+|Name| long\_string\_infer\_type |
 |:---:|:---|
-|Description| whether enable data partition. If disabled, all data belongs to partition 0|
-|Type| BOOLEAN |
-|Default|false |
+|Description|Be inferred for long（num > 2 ^ 24）|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|DOUBLE |
 |Effective|After restart system|
 
-* partition\_interval
+* default\_boolean\_encoding
 
-|Name| partition\_interval |
+|Name| default\_boolean\_encoding |
 |:---:|:---|
-|Description| time range for partitioning data inside each storage group, the unit is second|
-|Type| LONG |
-|Default| 604800 |
+|Description| BOOLEAN type encoding format|
+|Type| PLAIN, RLE |
+|Default|RLE |
 |Effective|After restart system|
+
+* default\_int32\_encoding
+
+|Name| default\_int32\_encoding |
+|:---:|:---|
+|Description| INT32 type encoding format|
+|Type| PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
+|Default|RLE |
+|Effective|After restart system|
+
+* default\_int64\_encoding
+
+|Name| default\_int64\_encoding |
+|:---:|:---|
+|Description| INT64 type encoding format|
+|Type| PLAIN, RLE, TS_2DIFF, REGULAR, GORILLA |
+|Default|RLE |
+|Effective|After restart system|
+
+* default\_float\_encoding
+
+|Name| default\_float\_encoding |
+|:---:|:---|
+|Description| Float type encoding format|
+|Type| PLAIN, RLE, TS_2DIFF, GORILLA |
+|Default|GORILLA |
+|Effective|After restart system|
+
+* default\_double\_encoding
+
+|Name| default\_double\_encoding |
+|:---:|:---|
+|Description| Double type encoding format|
+|Type| PLAIN, RLE, TS_2DIFF, GORILLA |
+|Default|GORILLA |
+|Effective|After restart system|
+
+* default\_text\_encoding
+
+|Name| default\_text\_encoding |
+|:---:|:---|
+|Description| Text type encoding format|
+|Type| PLAIN |
+|Default|PLAIN |
+|Effective|After restart system|
+
+
 
 ## Enable GC log
 GC log is off by default.
