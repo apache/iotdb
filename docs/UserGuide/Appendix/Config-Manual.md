@@ -639,12 +639,13 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 
 * default\_ttl
 
-|Name default\_ttl |
+|Name| default\_ttl |
 |:---:|:---|
 |Description| ttl time，ms|
 |Type| long |
 |Default| 36000000 |
 |Effective|After restart system|
+
 
 
 ## Automatic Schema Creation and Type Inference
