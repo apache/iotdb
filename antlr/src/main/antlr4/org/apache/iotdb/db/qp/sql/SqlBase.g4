@@ -37,6 +37,7 @@ statement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
@@ -110,7 +111,6 @@ statement
       cqSelectIntoClause #createContinuousQueryStatement
     | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
     | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
-    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     ;
 
 selectClause
