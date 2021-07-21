@@ -1155,13 +1155,17 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         }
       }
     } else if (intoPathContext.nodeNameWithoutStar() != null) {
-      String[] intoPathNodes = new String[levelLimitOfSourcePrefixPath + 2];
+      List<NodeNameWithoutStarContext> nodeNameWithoutStars = intoPathContext.nodeNameWithoutStar();
+      String[] intoPathNodes =
+          new String[1 + levelLimitOfSourcePrefixPath + nodeNameWithoutStars.size()];
+
       intoPathNodes[0] = "root";
       for (int i = 1; i <= levelLimitOfSourcePrefixPath; ++i) {
         intoPathNodes[i] = "${" + i + "}";
       }
-      intoPathNodes[levelLimitOfSourcePrefixPath + 1] =
-          intoPathContext.nodeNameWithoutStar().getText();
+      for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
+        intoPathNodes[levelLimitOfSourcePrefixPath + i] = nodeNameWithoutStars.get(i - 1).getText();
+      }
 
       intoPath = new PartialPath(intoPathNodes);
     }

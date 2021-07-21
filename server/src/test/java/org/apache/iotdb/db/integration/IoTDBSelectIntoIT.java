@@ -148,4 +148,34 @@ public class IoTDBSelectIntoIT {
       fail(throwable.getMessage());
     }
   }
+
+  @Test
+  public void selectIntoDifferentDevices() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute(
+          "select s1, s2, s3, s4, s5, s6 into s1.${2}, s2.${2}, s3.${2}, s4.${2}, s5.${2}, s6.${2} from root.sg.d1");
+
+      ResultSet resultSet =
+          statement.executeQuery("select s1.d1, s2.d1, s3.d1, s4.d1, s5.d1, s6.d1 from root.sg.d1");
+
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 6, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int j = 0; j < 6 + 1; ++j) {
+          stringBuilder.append(resultSet.getString(j + 1)).append(',');
+        }
+        System.out.println(stringBuilder.toString());
+      }
+
+      assertFalse(resultSet.next());
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
+    }
+  }
 }

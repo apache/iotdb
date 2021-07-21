@@ -130,6 +130,23 @@ public class InsertTabletPlanGenerator {
     List<Field> fields = rowRecord.getFields();
 
     for (int i = 0; i < dataTypes.length; ++i) {
+      // if the data type is already set
+      if (dataTypes[i] != null) {
+        continue;
+      }
+
+      // get the field index of the row record
+      int intoMeasurementIndex = intoMeasurementIndexes.get(i);
+      // if the field is not null
+      if (fields.get(intoMeasurementIndex) != null
+          && fields.get(intoMeasurementIndex).getDataType() != null) {
+        // set the data type to the field type
+        dataTypes[i] = fields.get(intoMeasurementIndex).getDataType();
+        initializedDataTypeIndexes.add(i);
+      }
+    }
+
+    for (int i = 0; i < dataTypes.length; ++i) {
       if (dataTypes[i] == null && fields.get(i) != null && fields.get(i).getDataType() != null) {
         dataTypes[i] = fields.get(i).getDataType();
         initializedDataTypeIndexes.add(i);

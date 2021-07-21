@@ -140,7 +140,7 @@ intoClause
 
 intoPath
     : fullPath
-    | nodeNameWithoutStar
+    | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
     ;
 
 alias
