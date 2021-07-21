@@ -39,6 +39,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class IoTDBSelectIntoIT {
@@ -133,10 +134,16 @@ public class IoTDBSelectIntoIT {
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(1 + 6, columnCount);
 
-      for (int i = 0; i < INSERTION_SQLS.length - 1; ++i) {
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
         resultSet.next();
-        System.out.println(resultSet.toString());
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int j = 0; j < 6 + 1; ++j) {
+          stringBuilder.append(resultSet.getString(j + 1)).append(',');
+        }
+        System.out.println(stringBuilder.toString());
       }
+
+      assertFalse(resultSet.next());
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
