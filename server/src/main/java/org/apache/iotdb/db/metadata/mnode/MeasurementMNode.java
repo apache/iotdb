@@ -286,7 +286,7 @@ public class MeasurementMNode extends MNode {
 
   @Override
   public Template getUpperTemplate() {
-    return null;
+    return parent.getUpperTemplate();
   }
 
   @Override
@@ -296,7 +296,9 @@ public class MeasurementMNode extends MNode {
 
   @Override
   public Template getDeviceTemplate() {
-    return null;
+    logger.warn("current node {} is a MeasurementMNode, can not get Device Template", name);
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
   }
 
   @Override

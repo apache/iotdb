@@ -29,35 +29,38 @@ import java.util.Map;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
+
+  String getName();
+
+  void setName(String name);
+
+  IMNode getParent();
+
+  void setParent(IMNode parent);
+
+  String getFullPath();
+
+  void setFullPath(String fullPath);
+
+  PartialPath getPartialPath();
+
   boolean hasChild(String name);
+
+  IMNode getChild(String name);
 
   void addChild(String name, IMNode child);
 
   IMNode addChild(IMNode child);
 
+  boolean addAlias(String alias, IMNode child);
+
   void deleteChild(String name);
 
   void deleteAliasChild(String alias);
 
-  Template getDeviceTemplate();
-
-  void setDeviceTemplate(Template deviceTemplate);
-
-  IMNode getChild(String name);
+  void replaceChild(String measurement, IMNode newChildNode);
 
   IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
-
-  int getMeasurementMNodeCount();
-
-  boolean addAlias(String alias, IMNode child);
-
-  String getFullPath();
-
-  PartialPath getPartialPath();
-
-  IMNode getParent();
-
-  void setParent(IMNode parent);
 
   Map<String, IMNode> getChildren();
 
@@ -67,19 +70,17 @@ public interface IMNode extends Serializable {
 
   void setAliasChildren(Map<String, IMNode> aliasChildren);
 
-  String getName();
-
-  void setName(String name);
-
-  void serializeTo(MLogWriter logWriter) throws IOException;
-
-  void replaceChild(String measurement, IMNode newChildNode);
-
-  void setFullPath(String fullPath);
-
-  Template getUpperTemplate();
-
   boolean isUseTemplate();
 
   void setUseTemplate(boolean useTemplate);
+
+  Template getUpperTemplate();
+
+  Template getDeviceTemplate();
+
+  void setDeviceTemplate(Template deviceTemplate);
+
+  int getMeasurementMNodeCount();
+
+  void serializeTo(MLogWriter logWriter) throws IOException;
 }

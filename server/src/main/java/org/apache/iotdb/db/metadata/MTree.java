@@ -533,7 +533,6 @@ public class MTree implements Serializable {
         return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
       }
       cur = cur.getChild(nodeNames[i]);
-      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
       if (cur instanceof MeasurementMNode) {
         if (i == nodeNames.length - 1) {
           return true;
@@ -545,6 +544,7 @@ public class MTree implements Serializable {
           return false;
         }
       }
+      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
     }
     return true;
   }
@@ -804,9 +804,6 @@ public class MTree implements Serializable {
     Template upperTemplate = cur.getDeviceTemplate();
 
     for (int i = 1; i < nodes.length; i++) {
-      if (cur.getDeviceTemplate() != null) {
-        upperTemplate = cur.getDeviceTemplate();
-      }
       if (cur instanceof MeasurementMNode) {
         if (i == nodes.length - 1
             || ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
@@ -814,6 +811,9 @@ public class MTree implements Serializable {
         } else {
           throw new PathNotExistException(path.getFullPath(), true);
         }
+      }
+      if (cur.getDeviceTemplate() != null) {
+        upperTemplate = cur.getDeviceTemplate();
       }
       IMNode next = cur.getChild(nodes[i]);
       if (next == null) {
@@ -1729,16 +1729,18 @@ public class MTree implements Serializable {
     if (!nodeReg.contains(PATH_WILDCARD)) {
       IMNode next = node.getChild(nodeReg);
       if (next != null) {
-        if (next instanceof MeasurementMNode && idx >= nodes.length) {
-          if (hasLimit) {
-            curOffset.set(curOffset.get() + 1);
-            if (curOffset.get() < offset.get()
-                || count.get().intValue() == limit.get().intValue()) {
-              return;
+        if (next instanceof MeasurementMNode) {
+          if(idx >= nodes.length){
+            if (hasLimit) {
+              curOffset.set(curOffset.get() + 1);
+              if (curOffset.get() < offset.get()
+                      || count.get().intValue() == limit.get().intValue()) {
+                return;
+              }
+              count.set(count.get() + 1);
             }
-            count.set(count.get() + 1);
+            res.add(node.getPartialPath());
           }
-          res.add(node.getPartialPath());
         } else {
           findDevices(next, nodes, idx + 1, res, hasLimit, upperTemplate);
         }
@@ -1747,7 +1749,7 @@ public class MTree implements Serializable {
       boolean deviceAdded = false;
       List<IMNode> children = new ArrayList<>(node.getChildren().values());
       // template part
-      if (upperTemplate != null && node.isUseTemplate()) {
+      if (node.isUseTemplate() && upperTemplate != null) {
         children.addAll(upperTemplate.getMeasurementMNode());
       }
 
@@ -1757,19 +1759,22 @@ public class MTree implements Serializable {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
-          if (hasLimit) {
-            curOffset.set(curOffset.get() + 1);
-            if (curOffset.get() < offset.get()
-                || count.get().intValue() == limit.get().intValue()) {
-              return;
+        if (child instanceof MeasurementMNode) {
+          if(!deviceAdded && idx >= nodes.length){
+            if (hasLimit) {
+              curOffset.set(curOffset.get() + 1);
+              if (curOffset.get() < offset.get()
+                      || count.get().intValue() == limit.get().intValue()) {
+                return;
+              }
+              count.set(count.get() + 1);
             }
-            count.set(count.get() + 1);
+            res.add(node.getPartialPath());
+            deviceAdded = true;
           }
-          res.add(node.getPartialPath());
-          deviceAdded = true;
+        }else {
+          findDevices(child, nodes, idx + 1, res, hasLimit, upperTemplate);
         }
-        findDevices(child, nodes, idx + 1, res, hasLimit, upperTemplate);
       }
     }
   }
