@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -51,13 +52,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
 
-  private String identifier;
+  private final String identifier;
 
-  private String logDirectory;
+  private final String logDirectory;
 
   private ILogWriter currentFileWriter;
 
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private volatile ByteBuffer logBufferWorking;
   private volatile ByteBuffer logBufferIdle;
@@ -67,7 +68,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
-  private ReentrantLock lock = new ReentrantLock();
+  private final ReentrantLock lock = new ReentrantLock();
   private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
       Executors.newCachedThreadPool(
           new ThreadFactoryBuilder().setNameFormat("Flush-WAL-Thread-%d").setDaemon(true).build());
@@ -77,7 +78,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private int bufferedLogNum = 0;
 
-  private volatile boolean deleted = false;
+  private final AtomicBoolean deleted = new AtomicBoolean(false);
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -102,7 +103,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void write(PhysicalPlan plan) throws IOException {
-    if (deleted) {
+    if (deleted.get()) {
       throw new IOException("WAL node deleted");
     }
     lock.lock();
@@ -138,7 +139,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.lock();
     try {
       synchronized (switchBufferCondition) {
-        while (logBufferFlushing != null && !deleted) {
+        while (logBufferFlushing != null && !deleted.get()) {
           switchBufferCondition.wait();
         }
         switchBufferCondition.notifyAll();
@@ -162,7 +163,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void forceSync() {
-    if (deleted) {
+    if (deleted.get()) {
       return;
     }
     sync();
@@ -208,7 +209,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
-      deleted = true;
+      deleted.set(true);
       return this.bufferArray;
     } finally {
       lock.unlock();
@@ -295,7 +296,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private void switchBufferWorkingToFlushing() throws InterruptedException {
     long start = System.currentTimeMillis();
     synchronized (switchBufferCondition) {
-      while (logBufferFlushing != null && !deleted) {
+      while (logBufferFlushing != null && !deleted.get()) {
         switchBufferCondition.wait(100);
       }
       logBufferFlushing = logBufferWorking;
