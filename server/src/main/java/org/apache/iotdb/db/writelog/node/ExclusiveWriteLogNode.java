@@ -69,7 +69,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private final Object switchBufferCondition = new Object();
   private final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL =
-      Executors.newSingleThreadExecutor(r -> new Thread(r, "Flush-WAL-Thread"));
+      Executors.newSingleThreadExecutor(r -> new Thread(r, "Flush-WAL-Thread-" + this.hashCode()));
 
   private long fileId = 0;
   private long lastFlushedId = 0;
@@ -287,7 +287,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
     long elapse1 = System.currentTimeMillis() - start1;
     if (elapse1 > 3000) {
-      logger.error("[wal] {} switch Working -> Flushing cost: {}ms", this.hashCode(), elapse1);
+      logger.error("[wal] {} flushBuffer cost: {}ms", this.hashCode(), elapse1);
     }
 
     // switch buffer flushing to idle and notify the sync thread
@@ -299,7 +299,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     }
     long elapse2 = System.currentTimeMillis() - start2;
     if (elapse2 > 3000) {
-      logger.error("[wal] {} switch Working -> Flushing cost: {}ms", this.hashCode(), elapse2);
+      logger.error("[wal] {} switch Flushing -> idle cost: {}ms", this.hashCode(), elapse2);
     }
     logger.warn("[wal] {} flushBuffer end, notify all", this.hashCode());
   }
