@@ -179,3 +179,9 @@ public class IoTDBSelectIntoIT {
     }
   }
 }
+
+// usage limit: select columns, into columns, from columns
+// grammar of into clause (wrong cases and right cases)
+// supported query
+// cluster mode test
+// cq uses select-into plan
