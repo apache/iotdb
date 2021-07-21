@@ -22,9 +22,11 @@
 # Appendix 1: Configuration Parameters
 
 
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+To facilitate IoTDB Sever configuration and management, IoTDB Sever provides users with three configuration items, enable users to configure a service when it is started or running.
+The configuration files for all three configuration items are located in the IoTDB installation directory: $IOTDB_HOME/conf folder, where there are two files related to server configuration, respectively: iotdb-env.sh and iotdb-engine.properties. 
+Users can configure related configuration itens for system running by changing one of the configuration items.
 
-In total, we provide users three kinds of configurations module: 
+The configuration file is described as follows: 
 
 * environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
 * system configuration file (`iotdb-engine.properties`). 
