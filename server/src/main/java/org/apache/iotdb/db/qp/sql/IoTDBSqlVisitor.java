@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.sql;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.index.common.IndexUtils;
@@ -169,6 +170,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadConfigurationStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementNameContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementValueContext;
@@ -976,24 +978,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLoadFiles(LoadFilesContext ctx) {
-    if (ctx.autoCreateSchema() != null) {
-      if (ctx.autoCreateSchema().INT() != null) {
-        return new LoadFilesOperator(
+    LoadFilesOperator loadFilesOperator =
+        new LoadFilesOperator(
             new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            Integer.parseInt(ctx.autoCreateSchema().INT().getText()));
-      } else {
-        return new LoadFilesOperator(
-            new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-      }
-    } else {
-      return new LoadFilesOperator(
-          new File(removeStringQuote(ctx.stringLiteral().getText())),
-          true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+            true,
+            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true);
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
     }
+    return loadFilesOperator;
   }
 
   @Override
@@ -2353,6 +2347,24 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
                   + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
                   + "refer to user document for more info.",
               timestampStr));
+    }
+  }
+
+  private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
+    if (ctx.SCHEMA() != null) {
+      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else if (ctx.LEVEL() != null) {
+      operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
+    } else if (ctx.METADATA() != null) {
+      operator.setMetadataCheck(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input SCHEMA | LEVEL | METADATA.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 }

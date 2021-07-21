@@ -90,7 +90,7 @@ statement
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
@@ -683,9 +683,10 @@ property
     : name=ID OPERATOR_EQ value=propertyValue
     ;
 
-autoCreateSchema
-    : booleanClause
-    | booleanClause INT
+loadFilesClause
+    : SCHEMA OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    | LEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
+    | METADATA OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
     ;
 
 triggerEventClause

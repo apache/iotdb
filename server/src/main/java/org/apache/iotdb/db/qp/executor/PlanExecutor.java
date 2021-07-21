@@ -1098,7 +1098,7 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
-        if (!loadNewTsFileCheckMetadata(reader)) {
+        if (plan.getMetadataCheck() && !loadNewTsFileCheckMetadata(reader)) {
           throw new QueryProcessException(
               "loading tsfile metadata is inconsistent with existing timeseries.");
         }
