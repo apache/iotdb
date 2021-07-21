@@ -71,13 +71,10 @@ public class VirtualStorageGroupManager {
 
   public VirtualStorageGroupManager(boolean needRecovering) {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
-    if (needRecovering) {
-      isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
-      for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-        isVsgReady[i] = new AtomicBoolean(false);
-      }
-    } else {
-      isVsgReady = null;
+    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+    boolean recoverReady = !needRecovering;
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      isVsgReady[i] = new AtomicBoolean(recoverReady);
     }
   }
 
@@ -124,7 +121,7 @@ public class VirtualStorageGroupManager {
     StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
       // if finish recover
-      if (isVsgReady == null || isVsgReady[loc].get()) {
+      if (isVsgReady[loc].get()) {
         synchronized (storageGroupMNode) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
@@ -416,6 +413,5 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
-    isVsgReady = null;
   }
 }
