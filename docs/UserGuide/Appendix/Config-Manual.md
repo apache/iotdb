@@ -253,6 +253,15 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
 |Type|String[]|
 |Default| data/data |
+|Effective|Trigger| 
+
+* system\_dirs
+
+|Name| system\_dirs |
+|:---:|:---|
+|Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
+|Type|String|
+|Default| data/system |
 |Effective|Trigger|
 
 * wal\_dir
