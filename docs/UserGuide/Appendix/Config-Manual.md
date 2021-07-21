@@ -251,7 +251,7 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Name| data\_dirs |
 |:---:|:---|
 |Description| The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is related to the operating system. It is recommended to use an absolute path. If the path does not exist, the system will automatically create it.|
-|Type|String[]|
+|Type|String|
 |Default| data/data |
 |Effective|Trigger| 
 
@@ -280,6 +280,15 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Description| Whether to enable the pre-write log. The default value is true(enabled), and false means closed. |
 |Type|Bool|
 |Default| true |
+|Effective|Trigger|
+
+* enable\_discard\_out\_of\_order\_data
+
+|Name| enable\_discard\_out\_of\_order\_data |
+|:---:|:---|
+|Descripti on|Whether or not to delete unordered data.，The default value is false means closed. |
+|Type|Bool|
+|Default| false |
 |Effective|Trigger|
 
 * enable\_mem\_control
@@ -581,6 +590,60 @@ SyStem configuration items are the core configuration for the IoTDB server runni
 |Description| the max bytes in a RPC request/response|
 |Type| long |
 |Default| 67108864 (should >= 8 * 1024 * 1024) |
+|Effective|After restart system|
+
+* mlog\_buffer\_size
+
+|Name| mlog\_buffer\_size |
+|:---:|:---|
+|Description| Buffer size of mlog |
+|Type|Int32|
+|Default| 1048576 |
+|Effective|Trigger|
+
+* wal\_buffer\_size
+
+|Name| wal\_buffer\_size |
+|:---:|:---|
+|Description| Buffer size of the pre-write log |
+|Type|Int32|
+|Default| 16777216 |
+|Effective|Trigger|
+
+* rpc\_max\_concurrent\_client\_num
+
+|Name| rpc\_max\_concurrent\_client\_num |
+|:---:|:---|
+|Description|Maximum number of connections.|
+|Type|Short Int : [0,65535]|
+|Default| 65535 |
+|Effective|After restart system|
+
+* thrift\_init\_buffer\_size
+
+|Name| thrift\_init\_buffer\_size |
+|:---:|:---|
+|Description| The number of bytes|
+|Type| long |
+|Default| 1024 |
+|Effective|After restart system|
+
+* timestamp\_precision
+
+|Name| timestamp\_precision |
+|:---:|:---|
+|Description| Time stamp accuracy, support ms, us, ns |
+|Type|String |
+|Default| ms |
+|Effective|Trigger|
+
+* default\_ttl
+
+|Name default\_ttl |
+|:---:|:---|
+|Description| ttl time，ms|
+|Type| long |
+|Default| 36000000 |
 |Effective|After restart system|
 
 
