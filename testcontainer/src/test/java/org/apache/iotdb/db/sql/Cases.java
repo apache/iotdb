@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -45,6 +46,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import static org.junit.Assert.fail;
 
 public abstract class Cases {
 
@@ -116,7 +119,7 @@ public abstract class Cases {
       if (resultSet.next()) {
         Assert.assertEquals(35.71, resultSet.getDouble(1), 0.01);
       } else {
-        Assert.fail("expect 1 result, but get an empty resultSet.");
+        fail("expect 1 result, but get an empty resultSet.");
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
@@ -140,6 +143,23 @@ public abstract class Cases {
       double last = Double.parseDouble(resultSet.getString(3));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
+    }
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1457
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
+          "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
+          "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
+        };
+
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+    try {
+      session.executeNonQueryStatement(" delete from root.ln.wf011.*");
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      Assert.assertFalse(e instanceof BatchExecutionException);
     }
 
     // test dictionary encoding
@@ -506,6 +526,48 @@ public abstract class Cases {
       writeStatement.execute(sql);
     } catch (SQLException e) {
       Assert.assertNull(e);
+    }
+  }
+
+  @Test
+  public void clusterUDTFQueryTest() throws SQLException {
+    // Prepare data.
+    writeStatement.execute(
+        "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+    for (int i = 10; i < 20; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+
+    ResultSet resultSet = null;
+
+    // Try to execute udf query on each node.
+    // Without time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d");
+
+      double i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
+
+    // With time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
+
+      double i = 5;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
     }
   }
 }
