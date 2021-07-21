@@ -189,13 +189,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  // When the client abnormally exits, we can still know who to disconnect
-  private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
-  private final SessionManager sessionManager = SessionManager.getInstance();
-
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   private static final AtomicInteger queryCount = new AtomicInteger(0);
   private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
+  private final SessionManager sessionManager = SessionManager.getInstance();
   private final TracingManager tracingManager = TracingManager.getInstance();
 
   protected Planner processor;
@@ -259,7 +256,6 @@ public class TSServiceImpl implements TSIService.Iface {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
 
       sessionId = sessionManager.requestSessionId(req.getUsername(), req.getZoneId());
-      currSessionId.set(sessionId);
       AUDIT_LOGGER.info("User {} opens Session-{}", req.getUsername(), sessionId);
       LOGGER.info(
           "{}: Login status: {}. User : {}",
@@ -290,7 +286,7 @@ public class TSServiceImpl implements TSIService.Iface {
     long sessionId = req.getSessionId();
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
-    currSessionId.remove();
+    sessionManager.removeCurrSessionId();
 
     return new TSStatus(
         !SessionTimeoutManager.getInstance().unregister(sessionId)
@@ -314,7 +310,7 @@ public class TSServiceImpl implements TSIService.Iface {
       AUDIT_LOGGER.debug(
           "{}: receive close operation from Session {}",
           IoTDBConstant.GLOBAL_DB_NAME,
-          currSessionId.get());
+          sessionManager.getCurrSessionId());
     }
 
     try {
@@ -737,7 +733,8 @@ public class TSServiceImpl implements TSIService.Iface {
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
     queryCount.incrementAndGet();
-    AUDIT_LOGGER.debug("Session {} execute query: {}", currSessionId.get(), statement);
+    AUDIT_LOGGER.debug(
+        "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
 
     long startTime = System.currentTimeMillis();
     long queryId = -1;
@@ -1053,7 +1050,8 @@ public class TSServiceImpl implements TSIService.Iface {
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
     queryCount.incrementAndGet();
-    AUDIT_LOGGER.debug("Session {} execute select into: {}", currSessionId.get(), statement);
+    AUDIT_LOGGER.debug(
+        "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
 
     Pair<Integer, Integer> fetchSizeDeduplicatedPathNumPair =
         getMemoryParametersFromPhysicalPlan(queryPlan, fetchSize);
@@ -1303,7 +1301,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   protected void handleClientExit() {
-    Long sessionId = currSessionId.get();
+    Long sessionId = sessionManager.getCurrSessionId();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
@@ -1357,7 +1355,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
@@ -1423,7 +1421,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.deviceId,
           req.getTimestamps().get(0));
     }
@@ -1465,7 +1463,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.deviceIds.get(0),
           req.getTimestamps().get(0));
     }
@@ -1571,7 +1569,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.getPrefixPath(),
           req.getTimestamp());
 
@@ -1600,7 +1598,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.getDeviceId(),
           req.getTimestamp());
 
@@ -1777,7 +1775,8 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
-        AUDIT_LOGGER.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+        AUDIT_LOGGER.debug(
+            "Session-{} create timeseries {}", sessionManager.getCurrSessionId(), req.getPath());
       }
 
       CreateTimeSeriesPlan plan =
@@ -1820,7 +1819,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create aligned timeseries {}.{}",
-            currSessionId.get(),
+            sessionManager.getCurrSessionId(),
             req.getPrefixPath(),
             req.getMeasurements());
       }
@@ -1862,7 +1861,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create {} timeseries, the first is {}",
-            currSessionId.get(),
+            sessionManager.getCurrSessionId(),
             req.getPaths().size(),
             req.getPaths().get(0));
       }
@@ -1974,7 +1973,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create device template {}.{}.{}.{}.{}.{}",
-            currSessionId.get(),
+            sessionManager.getCurrSessionId(),
             req.getName(),
             req.getSchemaNames(),
             req.getMeasurements(),
@@ -2032,7 +2031,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} set device template {}.{}",
-          currSessionId.get(),
+          sessionManager.getCurrSessionId(),
           req.getTemplateName(),
           req.getPrefixPath());
     }

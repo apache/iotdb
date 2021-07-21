@@ -17,29 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.storagegroup.timeindex;
+package org.apache.iotdb.db.query.udf.builtin;
 
-public enum TimeIndexLevel {
-  /** file to time index (small memory foot print) */
-  FILE_TIME_INDEX,
+public class UDTFTanh extends UDTFMath {
 
-  /** device to time index (large memory foot print) */
-  DEVICE_TIME_INDEX;
-
-  public ITimeIndex getTimeIndex() {
-    switch (this) {
-      case FILE_TIME_INDEX:
-        return new FileTimeIndex();
-      case DEVICE_TIME_INDEX:
-      default:
-        return new DeviceTimeIndex();
-    }
-  }
-
-  public static TimeIndexLevel valueOf(int ordinal) {
-    if (ordinal < 0 || ordinal >= values().length) {
-      throw new IndexOutOfBoundsException("Invalid ordinal");
-    }
-    return values()[ordinal];
+  @Override
+  protected void setTransformer() {
+    transformer = Math::tanh;
   }
 }

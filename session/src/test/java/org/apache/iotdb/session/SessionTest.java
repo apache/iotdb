@@ -37,7 +37,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -258,13 +260,32 @@ public class SessionTest {
             .thriftDefaultBufferSize(2)
             .thriftMaxFrameSize(3)
             .enableCacheLeader(true)
+            .zoneId(ZoneOffset.UTC)
             .build();
 
-    assertEquals(session.fetchSize, 1);
-    assertEquals(session.username, "abc");
-    assertEquals(session.password, "123456");
-    assertEquals(session.thriftDefaultBufferSize, 2);
-    assertEquals(session.thriftMaxFrameSize, 3);
+    assertEquals(1, session.fetchSize);
+    assertEquals("abc", session.username);
+    assertEquals("123456", session.password);
+    assertEquals(2, session.thriftDefaultBufferSize);
+    assertEquals(3, session.thriftMaxFrameSize);
+    assertEquals(ZoneOffset.UTC, session.zoneId);
     assertTrue(session.enableCacheLeader);
+
+    session = new Session.Builder().nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12")).build();
+    assertEquals(Arrays.asList("aaa.com:12", "bbb.com:12"), session.nodeUrls);
+
+    try {
+      session =
+          new Session.Builder()
+              .nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12"))
+              .port(1234)
+              .build();
+      fail("specifying both nodeUrls and (host + port) is not allowed");
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "You should specify either nodeUrls or (host + rpcPort), but not both", e.getMessage());
+    } catch (Exception e) {
+      fail();
+    }
   }
 }
