@@ -33,7 +33,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -93,14 +92,11 @@ public class IoTDBCreateStorageGroupIT {
     }
     Assert.assertEquals(3, resultList.size());
 
-    List<String> collect =
-        resultList.stream()
-            .sorted(Comparator.comparingInt(e -> e.split("\\.").length))
-            .collect(Collectors.toList());
+    resultList = resultList.stream().sorted().collect(Collectors.toList());
 
-    Assert.assertEquals(storageGroups[0], collect.get(0));
-    Assert.assertEquals(storageGroups[2], collect.get(1));
-    Assert.assertEquals(storageGroups[1], collect.get(2));
+    Assert.assertEquals(storageGroups[0], resultList.get(0));
+    Assert.assertEquals(storageGroups[1], resultList.get(1));
+    Assert.assertEquals(storageGroups[2], resultList.get(2));
   }
 
   /** Test creating a storage group that path is an existence storage group */
