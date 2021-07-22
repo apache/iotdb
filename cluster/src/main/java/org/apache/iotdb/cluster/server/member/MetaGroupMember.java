@@ -507,7 +507,7 @@ public class MetaGroupMember extends RaftMember {
       client.refreshConnection(req);
     } catch (IOException ignored) {
     } catch (TException e) {
-      logger.info("encounter refreshing client timeout, throw broken connection", e);
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
       // the connection may be broken, close it to avoid it being reused
       client.getInputProtocol().getTransport().close();
     } finally {
@@ -529,7 +529,7 @@ public class MetaGroupMember extends RaftMember {
     try {
       client.refreshConnection(new RefreshReuqest(), new GenericHandler<>(receiver, null));
     } catch (TException e) {
-      logger.info("encounter refreshing client timeout, throw broken connection", e);
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
     }
   }
 
