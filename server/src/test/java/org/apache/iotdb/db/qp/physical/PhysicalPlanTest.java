@@ -1008,34 +1008,58 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, metadataCheck=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true", filePath);
+    metadata = String.format("load \"%s\" schema=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, metadataCheck=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" false", filePath);
+    metadata = String.format("load \"%s\" schema=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, metadataCheck=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true 3", filePath);
+    metadata = String.format("load \"%s\" schema=true,level=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, metadataCheck=true, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" schema=true,level=3,metadata=false", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, metadataCheck=false, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" schema=true,level=3,metadata=true", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, metadataCheck=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
   }
@@ -1048,7 +1072,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, metadataCheck=false, operatorType=REMOVE_FILE}",
             filePath),
         plan.toString());
   }
@@ -1062,7 +1086,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, metadataCheck=false, operatorType=MOVE_FILE}",
             filePath, targetDir),
         plan.toString());
   }
