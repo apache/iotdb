@@ -442,32 +442,6 @@ public class StorageEngine implements IService {
     return processor;
   }
 
-  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
-    if (isAllSgReady()) {
-      return;
-    }
-
-    long waitStart = System.currentTimeMillis();
-    long waited = 0L;
-    final long MAX_WAIT = 5000L;
-    while (!isAllSgReady() && waited < MAX_WAIT) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StorageEngineException(e);
-      }
-      waited = System.currentTimeMillis() - waitStart;
-    }
-
-    if (!isAllSgReady()) {
-      // not finished recover, refuse the request
-      throw new StorageEngineException(
-          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
-          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
-    }
-  }
-
   /** This function is just for unit test. */
   public synchronized void reset() {
     for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
