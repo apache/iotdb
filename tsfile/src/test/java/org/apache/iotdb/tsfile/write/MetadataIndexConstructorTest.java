@@ -32,7 +32,6 @@ import org.testcontainers.shaded.org.apache.commons.lang.text.StrBuilder;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.*;
 
 /** test for MetadataIndexConstructor */
@@ -57,110 +56,77 @@ public class MetadataIndexConstructorTest {
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
   }
 
+  /** 5个实体，每个实体有5个物理量（docs.例1） */
   @Test
-  public void randomTest(){
-    int deviceNum = 20;
-    String[] devices = new String[deviceNum];
-    for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d"+i;
-    }
-    int[][] vectorMeasurement = new int[deviceNum][2];
-    String[][] measurements = new String[deviceNum][];
-    for (int i = 0; i < deviceNum; i++) {
-      vectorMeasurement[i][0] = new Random().nextInt(20);
-      vectorMeasurement[i][1] = new Random().nextInt(20);
-      int singleNum =  new Random().nextInt(20);
-      measurements[i] = new String[singleNum];
-      for (int j = 0; j < singleNum; j++) {
-        if(i%2==0){
-          measurements[i][j] = "z"+j;
-        }else{
-          measurements[i][j] = "s"+j;
-        }
-      }
-    }
-    test(devices,vectorMeasurement,measurements);
-  }
-
-  /**
-   * 5个实体，每个实体有5个物理量（docs.例1）
-   */
-  @Test
-  public void singleIndexTest1(){
+  public void singleIndexTest1() {
     int deviceNum = 5;
     int measurementNum = 5;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] measurements = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d"+i;
+      devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
       measurements[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
     test(devices, vectorMeasurement, measurements);
   }
 
-  /**
-   * 1个实体，每个实体有150个物理量（docs.例2）
-   */
+  /** 1个实体，每个实体有150个物理量（docs.例2） */
   @Test
-  public void singleIndexTest2(){
+  public void singleIndexTest2() {
     int deviceNum = 1;
     int measurementNum = 150;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] measurements = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d"+i;
+      devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
       measurements[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
     test(devices, vectorMeasurement, measurements);
   }
 
-  /**
-   * 150个实体，每个实体有1个物理量（docs.例3）
-   */
+  /** 150个实体，每个实体有1个物理量（docs.例3） */
   @Test
-  public void singleIndexTest3(){
+  public void singleIndexTest3() {
     int deviceNum = 150;
     int measurementNum = 1;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] measurements = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d"+i;
+      devices[i] = "d" + generateIndexString(i, deviceNum);
       vectorMeasurement[i] = new int[0];
       measurements[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
     test(devices, vectorMeasurement, measurements);
   }
 
-  /**
-   * 150个实体，每个实体有150个物理量（docs.例4）
-   */
+  /** 150个实体，每个实体有150个物理量（docs.例4） */
   @Test
-  public void singleIndexTest4(){
+  public void singleIndexTest4() {
     int deviceNum = 150;
     int measurementNum = 1;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] measurements = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d"+i;
+      devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
       measurements[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
     test(devices, vectorMeasurement, measurements);
@@ -233,14 +199,14 @@ public class MetadataIndexConstructorTest {
     // 4.2 make sure timeseries in order
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
-              reader.getAllTimeseriesMetadata();
+          reader.getAllTimeseriesMetadata();
       for (int j = 0; j < actualDevices.size(); j++) {
-        for (int i = 0; i < actualMeasurements.size(); i++) {
+        for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
           assert allTimeseriesMetadata
-                  .get(actualDevices.get(j))
-                  .get(i)
-                  .getMeasurementId()
-                  .equals(correctFirstMeasurements.get(j).get(i));
+              .get(actualDevices.get(j))
+              .get(i)
+              .getMeasurementId()
+              .equals(correctFirstMeasurements.get(j).get(i));
         }
       }
     } catch (IOException e) {

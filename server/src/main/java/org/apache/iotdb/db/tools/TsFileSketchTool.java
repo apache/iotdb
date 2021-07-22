@@ -44,6 +44,7 @@ public class TsFileSketchTool {
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
+    filename = "D:\\JavaSpace\\iotdb\\iotdb\\tsfile\\target\\MetadataIndexConstructorTest.tsfile";
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
