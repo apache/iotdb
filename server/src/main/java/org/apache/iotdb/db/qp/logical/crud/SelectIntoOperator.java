@@ -56,7 +56,37 @@ public class SelectIntoOperator extends Operator {
   public void check() throws LogicalOperatorException {
     queryOperator.check();
 
-    // TODO: check query plan type
+    if (queryOperator.isAlignByDevice()) {
+      throw new LogicalOperatorException("select into: align by device clauses are not supported.");
+    }
+
+    // disable align
+    if (!queryOperator.isAlignByTime()) {
+      throw new LogicalOperatorException("select into: disable align clauses are not supported.");
+    }
+
+    if (queryOperator instanceof LastQueryOperator) {
+      throw new LogicalOperatorException("select into: last clauses are not supported.");
+    }
+
+    if (queryOperator instanceof AggregationQueryOperator
+            && (!(queryOperator instanceof GroupByQueryOperator))
+        || !(queryOperator instanceof GroupByFillQueryOperator)) {
+      throw new LogicalOperatorException("select into: aggregation queries are not supported.");
+    }
+
+    if (queryOperator.getSpecialClauseComponent() != null) {
+      SpecialClauseComponent specialClauseComponent = queryOperator.getSpecialClauseComponent();
+      if (specialClauseComponent.hasSlimit()) {
+        throw new LogicalOperatorException("select into: slimit clauses are not supported.");
+      }
+      if (specialClauseComponent.getSeriesOffset() > 0) {
+        throw new LogicalOperatorException("select into: soffset clauses are not supported.");
+      }
+      if (!specialClauseComponent.isAscending()) {
+        throw new LogicalOperatorException("select into: descending clauses are not supported.");
+      }
+    }
   }
 
   public void setQueryOperator(QueryOperator queryOperator) {
