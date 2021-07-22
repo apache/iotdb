@@ -70,8 +70,8 @@ public class SelectIntoOperator extends Operator {
     }
 
     if (queryOperator instanceof AggregationQueryOperator
-            && (!(queryOperator instanceof GroupByQueryOperator))
-        || !(queryOperator instanceof GroupByFillQueryOperator)) {
+        && (!(queryOperator instanceof GroupByQueryOperator)
+            || !(queryOperator instanceof GroupByFillQueryOperator))) {
       throw new LogicalOperatorException("select into: aggregation queries are not supported.");
     }
 
@@ -84,7 +84,8 @@ public class SelectIntoOperator extends Operator {
         throw new LogicalOperatorException("select into: soffset clauses are not supported.");
       }
       if (!specialClauseComponent.isAscending()) {
-        throw new LogicalOperatorException("select into: descending clauses are not supported.");
+        throw new LogicalOperatorException(
+            "select into: order by time desc clauses are not supported.");
       }
     }
   }

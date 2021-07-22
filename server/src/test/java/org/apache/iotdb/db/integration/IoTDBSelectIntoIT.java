@@ -192,7 +192,6 @@ public class IoTDBSelectIntoIT {
 
       assertFalse(resultSet.next());
     } catch (SQLException throwable) {
-      throwable.printStackTrace();
       fail(throwable.getMessage());
     }
   }
@@ -339,6 +338,66 @@ public class IoTDBSelectIntoIT {
       fail();
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("the x of ${x} should be an integer."));
+    }
+  }
+
+  @Test
+  public void testAlignByDevice() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1 into root.${1}.s1 from root.sg.d1 align by device");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("align by device clauses are not supported."));
+    }
+  }
+
+  @Test
+  public void testDisableDevice() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1 into root.${1}.s1 from root.sg.d1 disable align");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("disable align clauses are not supported."));
+    }
+  }
+
+  @Test
+  public void testLastQuery() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select last s1 into root.${1}.s1 from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("last clauses are not supported."));
+    }
+  }
+
+  @Test
+  public void testSlimit() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1, s2 into ${1}.s1, ${2}.s1 from root.sg.d1 slimit 1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("slimit clauses are not supported."));
+    }
+  }
+
+  @Test
+  public void testDescending() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1, s2 into ${1}.s1, ${2}.s1 from root.sg.d1 order by time desc");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(throwable.getMessage().contains("desc clauses are not supported."));
     }
   }
 }
