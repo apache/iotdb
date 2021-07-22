@@ -100,13 +100,13 @@ public class TracingManagerTest {
 
     File tracingFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
-    String str;
-    int cnt = 0;
-    while ((str = bufferedReader.readLine()) != null) {
-      Assert.assertTrue(str.contains(ans[cnt++]));
+    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile))) {
+      String str;
+      int cnt = 0;
+      while ((str = bufferedReader.readLine()) != null) {
+        Assert.assertTrue(str.contains(ans[cnt++]));
+      }
     }
-    bufferedReader.close();
   }
 
   void prepareTsFileResources() {
