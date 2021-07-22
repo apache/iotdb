@@ -295,6 +295,12 @@ public class IoTDBConfig {
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
+  /**
+   * When a memTable's created time is older than current time minus this, the memtable is flushed
+   * to disk. Unit: ms
+   */
+  private long memtableFlushInterval = 24 * 60 * 60 * 1000L;
+
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
@@ -1498,6 +1504,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public long getMemtableFlushInterval() {
+    return memtableFlushInterval;
+  }
+
+  public void setMemtableFlushInterval(long memtableFlushInterval) {
+    this.memtableFlushInterval = memtableFlushInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

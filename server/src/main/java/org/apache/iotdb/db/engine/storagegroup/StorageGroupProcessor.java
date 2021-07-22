@@ -1552,6 +1552,29 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void checkMemTableFlushInterval() {
+    List<TsFileProcessor> tsFileProcessors = new ArrayList<>();
+    tsFileProcessors.addAll(workSequenceTsFileProcessors.values());
+    tsFileProcessors.addAll(workUnsequenceTsFileProcessors.values());
+    long timestampBaseline = System.currentTimeMillis() - config.getMemtableFlushInterval();
+
+    writeLock("checkMemTableFlushInterval");
+    try {
+      for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timestampBaseline) {
+          logger.info(
+              "Exceed flush interval, so flush work memtable of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {

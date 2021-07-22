@@ -101,6 +101,8 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+  private static final long MEMTABLE_FLUSH_CHECK_INTERVAL = config.getMemtableFlushInterval() / 2;
+
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -123,6 +125,7 @@ public class StorageEngine implements IService {
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
   private ScheduledExecutorService ttlCheckThread;
+  private ScheduledExecutorService memtableFlushCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
   // add customized listeners here for flush and close events
@@ -273,6 +276,12 @@ public class StorageEngine implements IService {
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    memtableFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+    memtableFlushCheckThread.scheduleAtFixedRate(
+        this::checkMemTableFlushInterval,
+        MEMTABLE_FLUSH_CHECK_INTERVAL,
+        MEMTABLE_FLUSH_CHECK_INTERVAL,
+        TimeUnit.MILLISECONDS);
   }
 
   private void checkTTL() {
@@ -284,6 +293,16 @@ public class StorageEngine implements IService {
       // ignore
     } catch (Exception e) {
       logger.error("An error occurred when checking TTL", e);
+    }
+  }
+
+  private void checkMemTableFlushInterval() {
+    try {
+      for (VirtualStorageGroupManager processor : processorMap.values()) {
+        processor.checkMemTableFlushInterval();
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when checking memtable flush interval", e);
     }
   }
 
@@ -299,6 +318,17 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
         throw new StorageEngineFailureException(
             "StorageEngine failed to stop because of " + "ttlCheckThread.", e);
+      }
+    }
+    if (memtableFlushCheckThread != null) {
+      memtableFlushCheckThread.shutdownNow();
+      try {
+        memtableFlushCheckThread.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Memtable flush interval check thread still doesn't exit after 60s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException(
+            "StorageEngine failed to stop because of memtableFlushCheckThread.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
@@ -321,6 +351,15 @@ public class StorageEngine implements IService {
         ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+      }
+    }
+    if (memtableFlushCheckThread != null) {
+      memtableFlushCheckThread.shutdownNow();
+      try {
+        memtableFlushCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Memtable flush interval check thread still doesn't exit after 30s");
         Thread.currentThread().interrupt();
       }
     }

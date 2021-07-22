@@ -271,6 +271,16 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
+      long memTableFlushInterval =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "memtable_flush_interval", Long.toString(conf.getMemtableFlushInterval()))
+                  .trim());
+      if (memTableFlushInterval > 0) {
+        conf.setMemtableFlushInterval(memTableFlushInterval);
+      }
+
       conf.setAvgSeriesPointNumberThreshold(
           Integer.parseInt(
               properties.getProperty(
