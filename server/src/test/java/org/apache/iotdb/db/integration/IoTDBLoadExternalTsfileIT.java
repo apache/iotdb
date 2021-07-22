@@ -52,8 +52,8 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBLoadExternalTsfileIT {
 
@@ -742,18 +742,18 @@ public class IoTDBLoadExternalTsfileIT {
       } catch (Exception e) {
         hasError = true;
         assertTrue(
-                e.getMessage()
-                        .contains("loading tsfile metadata is inconsistent with existing timeseries."));
+            e.getMessage()
+                .contains("loading tsfile metadata is inconsistent with existing timeseries."));
       }
       assertTrue(hasError);
 
       statement.execute("load \"" + testTmpDir + "\" metadata=false");
       assertEquals(
-              2,
-              StorageEngine.getInstance()
-                      .getProcessor(new PartialPath("root.test"))
-                      .getSequenceFileTreeSet()
-                      .size());
+          2,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.test"))
+              .getSequenceFileTreeSet()
+              .size());
 
     } catch (Exception e) {
       e.printStackTrace();

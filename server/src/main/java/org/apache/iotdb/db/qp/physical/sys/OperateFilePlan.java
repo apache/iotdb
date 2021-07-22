@@ -41,6 +41,7 @@ public class OperateFilePlan extends PhysicalPlan {
 
   /**
    * used for generate loading tsfile physical plan.
+   *
    * @param file the loading file
    * @param operatorType the operator type
    * @param autoCreateSchema auto create schema if needed
@@ -48,7 +49,11 @@ public class OperateFilePlan extends PhysicalPlan {
    * @param metadataCheck metadata check if needed
    */
   public OperateFilePlan(
-      File file, OperatorType operatorType, boolean autoCreateSchema, int sgLevel, boolean metadataCheck) {
+      File file,
+      OperatorType operatorType,
+      boolean autoCreateSchema,
+      int sgLevel,
+      boolean metadataCheck) {
     super(false, operatorType);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
