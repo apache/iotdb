@@ -252,18 +252,13 @@ public class ClusterUtils {
 
   public static boolean analyseStartUpCheckResult(
       int consistentNum, int inconsistentNum, int totalSeedNum) throws ConfigInconsistentException {
-    if (consistentNum == totalSeedNum) {
-      // break the loop and establish the cluster
-      return true;
-    } else if (inconsistentNum > 0) {
+    if (inconsistentNum > 0) {
       // find config InConsistence, stop building cluster
       throw new ConfigInconsistentException();
-    } else {
-      // The status of some nodes was not obtained, possibly because those node did not start
-      // successfully,
-      // this node can't connect to those nodes, try in next turn
-      return false;
     }
+    // If more than half of the nodes return consistency, it is considered that the current node can
+    // be started
+    return consistentNum > totalSeedNum / 2;
   }
 
   public static TServer createTThreadPoolServer(
