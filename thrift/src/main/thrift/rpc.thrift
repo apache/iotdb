@@ -61,6 +61,8 @@ struct TSExecuteStatementResp {
   // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
   8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
   9: optional map<string, i32> columnNameIndexMap
+  10: optional list<string> sgColumns
+  11: optional list<byte> aliasColumns
 }
 
 enum TSProtocolVersion {
@@ -119,6 +121,8 @@ struct TSExecuteStatementReq {
   5: optional i64 timeout
 
   6: optional bool enableRedirectQuery;
+
+  7: optional bool jdbcQuery;
 }
 
 struct TSExecuteBatchStatementReq{
@@ -289,6 +293,7 @@ struct TSRawDataQueryReq {
   5: required i64 endTime
   6: required i64 statementId
   7: optional bool enableRedirectQuery;
+  8: optional bool jdbcQuery;
 }
 
 struct TSCreateMultiTimeseriesReq {

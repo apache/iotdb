@@ -19,6 +19,21 @@
 
 package org.apache.iotdb.jdbc;
 
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.NClob;
+import java.sql.Ref;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
+import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -30,7 +45,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
-import java.sql.*;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +57,8 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected List<String> columnTypeList;
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
   private boolean isRpcFetchResult = true;
+  private List<String> sgColumns;
+  private BitSet aliasColumnMap;
 
   public AbstractIoTDBJDBCResultSet(
       Statement statement,
@@ -71,6 +88,41 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
+  }
+
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
+      throws SQLException {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout,
+            sgColumns,
+            aliasColumnMap);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
+    this.aliasColumnMap = aliasColumnMap;
   }
 
   public AbstractIoTDBJDBCResultSet(
@@ -417,7 +469,24 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
+    String operationType = "";
+    boolean nonAlign = false;
+    try {
+      if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
+        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
+        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
+        nonAlign = true;
+      }
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
     return new IoTDBResultMetadata(
+        nonAlign,
+        sgColumns,
+        operationType,
         ioTDBRpcDataSet.columnNameList,
         ioTDBRpcDataSet.columnTypeList,
         ioTDBRpcDataSet.ignoreTimeStamp);

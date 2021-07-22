@@ -44,6 +44,7 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -267,6 +268,7 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryDataSet == null) {
+        BitSet aliasColumn = listToBitSet(execResp.getAliasColumns());
         this.resultSet =
             new IoTDBNonAlignJDBCResultSet(
                 this,
@@ -279,7 +281,10 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.nonAlignQueryDataSet,
-                execReq.timeout);
+                execReq.timeout,
+                execResp.operationType,
+                execResp.getSgColumns(),
+                aliasColumn);
       } else {
         this.resultSet =
             new IoTDBJDBCResultSet(
@@ -399,6 +404,7 @@ public class IoTDBStatement implements Statement {
     }
     execReq.setFetchSize(rows);
     execReq.setTimeout(timeoutInMS);
+    execReq.setJdbcQuery(true);
     TSExecuteStatementResp execResp = client.executeQueryStatement(execReq);
     queryId = execResp.getQueryId();
     try {
@@ -411,7 +417,10 @@ public class IoTDBStatement implements Statement {
     // comsumed
     // result timely, the latter will overlap the former byte buffer, thus problem will occur
     deepCopyResp(execResp);
-
+    BitSet aliasColumn = null;
+    if (execResp.getAliasColumns() != null && execResp.getAliasColumns().size() > 0) {
+      aliasColumn = listToBitSet(execResp.getAliasColumns());
+    }
     if (execResp.queryDataSet == null) {
       this.resultSet =
           new IoTDBNonAlignJDBCResultSet(
@@ -425,7 +434,10 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.nonAlignQueryDataSet,
-              execReq.timeout);
+              execReq.timeout,
+              execResp.operationType,
+              execResp.sgColumns,
+              aliasColumn);
     } else {
       this.resultSet =
           new IoTDBJDBCResultSet(
@@ -439,9 +451,22 @@ public class IoTDBStatement implements Statement {
               queryId,
               sessionId,
               execResp.queryDataSet,
-              execReq.timeout);
+              execReq.timeout,
+              execResp.operationType,
+              execResp.columns,
+              execResp.sgColumns,
+              aliasColumn);
     }
     return resultSet;
+  }
+
+  private BitSet listToBitSet(List<Byte> listAlias) {
+    byte[] byteAlias = new byte[listAlias.size()];
+    for (int i = 0; i < listAlias.size(); i++) {
+      byteAlias[i] = listAlias.get(i);
+    }
+    BitSet aliasColumn = BitSet.valueOf(byteAlias);
+    return aliasColumn;
   }
 
   private void deepCopyResp(TSExecuteStatementResp queryRes) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import com.google.common.primitives.Bytes;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -135,6 +136,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -146,6 +148,7 @@ import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -665,7 +668,8 @@ public class TSServiceImpl implements TSIService.Iface {
               req.fetchSize,
               req.timeout,
               sessionIdUsernameMap.get(req.getSessionId()),
-              req.isEnableRedirectQuery())
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : executeUpdateStatement(physicalPlan, req.getSessionId());
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -696,7 +700,8 @@ public class TSServiceImpl implements TSIService.Iface {
               req.fetchSize,
               req.timeout,
               sessionIdUsernameMap.get(req.getSessionId()),
-              req.isEnableRedirectQuery())
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (InterruptedException e) {
@@ -727,7 +732,8 @@ public class TSServiceImpl implements TSIService.Iface {
               req.fetchSize,
               config.getQueryTimeoutThreshold(),
               sessionIdUsernameMap.get(req.getSessionId()),
-              req.isEnableRedirectQuery())
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (InterruptedException e) {
@@ -753,7 +759,8 @@ public class TSServiceImpl implements TSIService.Iface {
       int fetchSize,
       long timeout,
       String username,
-      boolean enableRedirect)
+      boolean enableRedirect,
+      boolean isJdbcQuery)
       throws QueryProcessException, SQLException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           TException, AuthException {
@@ -793,7 +800,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
       if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
-        resp = getQueryColumnHeaders(plan, username);
+        resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
       if (plan instanceof QueryPlan) {
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
@@ -817,7 +824,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan) {
-        resp = getQueryColumnHeaders(plan, username);
+        resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
@@ -948,7 +955,8 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** get ResultSet schema */
-  private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username)
+  private TSExecuteStatementResp getQueryColumnHeaders(
+      PhysicalPlan physicalPlan, String username, Boolean isJdbcQuery)
       throws AuthException, TException, QueryProcessException, MetadataException {
 
     List<String> respColumns = new ArrayList<>();
@@ -980,8 +988,14 @@ public class TSServiceImpl implements TSIService.Iface {
         columnsTypes.add(entry.getValue().getResultDataType().toString());
       }
     } else {
-      getWideQueryHeaders(plan, respColumns, columnsTypes);
+      List<String> respSgColumns = new ArrayList<>();
+      BitSet aliasMap = new BitSet();
+      getWideQueryHeaders(plan, respColumns, columnsTypes, respSgColumns, isJdbcQuery, aliasMap);
       resp.setColumnNameIndexMap(plan.getPathToIndex());
+      resp.setSgColumns(respSgColumns);
+      List<Byte> byteList = new ArrayList<>();
+      byteList.addAll(Bytes.asList(aliasMap.toByteArray()));
+      resp.setAliasColumns(byteList);
     }
     resp.setColumns(respColumns);
     resp.setDataTypeList(columnsTypes);
@@ -990,7 +1004,12 @@ public class TSServiceImpl implements TSIService.Iface {
 
   // wide means not align by device
   private void getWideQueryHeaders(
-      QueryPlan plan, List<String> respColumns, List<String> columnTypes)
+      QueryPlan plan,
+      List<String> respColumns,
+      List<String> columnTypes,
+      List<String> respSgColumns,
+      Boolean isJdbcQuery,
+      BitSet aliasList)
       throws TException, MetadataException {
     List<ResultColumn> resultColumns = plan.getResultColumns();
     List<PartialPath> paths = plan.getPaths();
@@ -999,7 +1018,20 @@ public class TSServiceImpl implements TSIService.Iface {
       case QUERY:
       case FILL:
         for (int i = 0; i < resultColumns.size(); ++i) {
-          respColumns.add(resultColumns.get(i).getResultColumnName());
+          if (isJdbcQuery) {
+            String sgName =
+                IoTDB.metaManager.getStorageGroupPath(plan.getPaths().get(i)).getFullPath();
+            respSgColumns.add(sgName);
+            if (resultColumns.get(i).getAlias() == null) {
+              respColumns.add(
+                  resultColumns.get(i).getResultColumnName().substring(sgName.length() + 1));
+            } else {
+              aliasList.set(i);
+              respColumns.add(resultColumns.get(i).getResultColumnName());
+            }
+          } else {
+            respColumns.add(resultColumns.get(i).getResultColumnName());
+          }
           seriesTypes.add(getSeriesTypeByPath(paths.get(i)));
         }
         break;
@@ -1034,7 +1066,6 @@ public class TSServiceImpl implements TSIService.Iface {
       default:
         throw new TException("unsupported query type: " + plan.getOperatorType());
     }
-
     for (TSDataType seriesType : seriesTypes) {
       columnTypes.add(seriesType.toString());
     }
@@ -1069,7 +1100,6 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
       columnTypes.add(type.toString());
-
       if (!deduplicatedMeasurements.contains(measurement)) {
         deduplicatedMeasurements.add(measurement);
         deduplicatedColumnsType.add(type);

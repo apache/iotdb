@@ -28,13 +28,24 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   private List<String> columnInfoList;
   private List<String> columnTypeList;
   private boolean ignoreTimestamp;
+  private List<String> sgColumns;
+  private String operationType = "";
+  private boolean nonAlign = false;
 
   /** Constructor of IoTDBResultMetadata. */
   public IoTDBResultMetadata(
-      List<String> columnInfoList, List<String> columnTypeList, boolean ignoreTimestamp) {
+      Boolean nonAlign,
+      List<String> sgColumns,
+      String operationType,
+      List<String> columnInfoList,
+      List<String> columnTypeList,
+      boolean ignoreTimestamp) {
+    this.sgColumns = sgColumns;
+    this.operationType = operationType;
     this.columnInfoList = columnInfoList;
     this.columnTypeList = columnTypeList;
     this.ignoreTimestamp = ignoreTimestamp;
+    this.nonAlign = nonAlign;
   }
 
   @Override
@@ -48,8 +59,65 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   }
 
   @Override
-  public String getCatalogName(int arg0) throws SQLException {
-    throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+  public String getCatalogName(int column) throws SQLException {
+    String system_schmea = "_system_schmea";
+    String system = "_system";
+    String system_user = "_system_user";
+    String system_role = "_system_role";
+    String system_auths = "_system_auths";
+    String system_database = "_system_database";
+    String system_null = "";
+    String columnName = columnInfoList.get(column - 1);
+    List<String> listColumns = columnInfoList;
+    if (column < 1 || column > columnInfoList.size()) {
+      throw new SQLException(Constant.METHOD_NOT_SUPPORTED);
+    }
+    if (operationType.equals("SHOW")) {
+      if (listColumns.get(0).equals("count")) {
+        return system_database;
+      } else if (listColumns.get(0).equals("storage group")
+          && listColumns.size() > 1
+          && listColumns.get(1).equals("ttl")) {
+        return "";
+      } else if (listColumns.get(0).trim().equals("version") && listColumns.size() == 1) {
+        return system;
+      } else if (listColumns.get(0).equals("storage group")
+          || listColumns.get(0).equals("devices")
+          || listColumns.get(0).equals("child paths")
+          || listColumns.get(0).equals("child nodes")
+          || listColumns.get(0).equals("timeseries")) {
+        return system_schmea;
+      }
+    } else if (operationType.equals("LIST_USER")) {
+      return system_user;
+    } else if (operationType.equals("LIST_ROLE")) {
+      return system_role;
+    } else if (operationType.equals("LIST_USER_PRIVILEGE")) {
+      return system_auths;
+    } else if (operationType.equals("LIST_ROLE_PRIVILEGE")) {
+      return system_auths;
+    } else if (operationType.equals("LIST_USER_ROLES")) {
+      return system_role;
+    } else if (operationType.equals("LIST_ROLE_USERS")) {
+      return system_user;
+    } else if (operationType.equals("QUERY")) {
+      if ((columnName.toLowerCase().equals("time") && columnInfoList.size() != 2)
+          || columnName.toLowerCase().equals("timeseries")
+          || columnName.toLowerCase().equals("device")) {
+        return system_null;
+      } else if (columnInfoList.size() >= 2
+          && columnInfoList.get(0).toLowerCase().equals("time")
+          && columnInfoList.get(1).toLowerCase().equals("device")) {
+        return system_null;
+      }
+    } else if (!operationType.equals("FILL")) {
+      return system_null;
+    }
+    if (nonAlign) {
+      return sgColumns.get(column - 1);
+    } else {
+      return sgColumns.get(column - 2);
+    }
   }
 
   @Override
@@ -88,7 +156,17 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   @Override
   public String getColumnLabel(int column) throws SQLException {
     checkColumnIndex(column);
-    return columnInfoList.get(column - 1);
+    if (operationType.equals("QUERY") && nonAlign) {
+      if (column % 2 == 1
+          && columnInfoList.get(column - 1).length() >= 4
+          && columnInfoList.get(column - 1).substring(0, 4).equals("Time")) {
+        return "Time";
+      } else {
+        return columnInfoList.get(column - 1);
+      }
+    } else {
+      return columnInfoList.get(column - 1);
+    }
   }
 
   @Override
@@ -224,17 +302,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   @Override
   public String getSchemaName(int column) throws SQLException {
     checkColumnIndex(column);
-    if (column == 1 && !ignoreTimestamp) {
-      return "TIME";
-    }
-    // Temporarily use column names as getSchemaName
-    String columName;
-    if (!ignoreTimestamp) {
-      columName = columnInfoList.get(column - 2);
-    } else {
-      columName = columnInfoList.get(column - 1);
-    }
-    return columName;
+    return getCatalogName(column);
   }
 
   @Override

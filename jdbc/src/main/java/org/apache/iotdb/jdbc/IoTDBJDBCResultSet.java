@@ -26,10 +26,14 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
 public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
+  private String operationType = "";
+  private List<String> columns = null;
+  private List<String> sgColumns = null;
 
   public IoTDBJDBCResultSet(
       Statement statement,
@@ -56,6 +60,42 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sessionId,
         timeout);
     ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+  }
+
+  public IoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      TSQueryDataSet dataset,
+      long timeout,
+      String operationType,
+      List<String> columns,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
+      throws SQLException {
+    super(
+        statement,
+        columnNameList,
+        columnTypeList,
+        columnNameIndex,
+        ignoreTimeStamp,
+        client,
+        sql,
+        queryId,
+        sessionId,
+        timeout,
+        sgColumns,
+        aliasColumnMap);
+    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
+    this.operationType = operationType;
+    this.columns = columns;
+    this.sgColumns = sgColumns;
   }
 
   public IoTDBJDBCResultSet(
@@ -144,5 +184,17 @@ public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   public boolean isIgnoreTimeStamp() {
     return ioTDBRpcDataSet.ignoreTimeStamp;
+  }
+
+  public String getOperationType() {
+    return this.operationType;
+  }
+
+  public List<String> getColumns() {
+    return this.columns;
+  }
+
+  public List<String> getSgColumns() {
+    return sgColumns;
   }
 }
