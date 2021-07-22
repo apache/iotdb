@@ -175,7 +175,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 

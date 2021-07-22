@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 public class SelectIntoPlan extends PhysicalPlan {
@@ -35,7 +36,7 @@ public class SelectIntoPlan extends PhysicalPlan {
   private List<PartialPath> intoPaths;
 
   public SelectIntoPlan() {
-    super(true, OperatorType.SELECT_INTO);
+    super(false, OperatorType.SELECT_INTO);
   }
 
   public SelectIntoPlan(QueryPlan queryPlan, List<PartialPath> intoPaths) {
@@ -50,18 +51,38 @@ public class SelectIntoPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException();
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.writeByte((byte) PhysicalPlanType.SELECT_INTO.ordinal());
+
+    queryPlan.serialize(outputStream);
+
+    outputStream.write(intoPaths.size());
+    for (PartialPath intoPath : intoPaths) {
+      putString(outputStream, intoPath.getFullPath());
+    }
   }
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    throw new UnsupportedOperationException();
+    buffer.put((byte) PhysicalPlanType.SELECT_INTO.ordinal());
+
+    queryPlan.serialize(buffer);
+
+    buffer.putInt(intoPaths.size());
+    for (PartialPath intoPath : intoPaths) {
+      putString(buffer, intoPath.getFullPath());
+    }
   }
 
   @Override
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    throw new UnsupportedOperationException();
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
+    queryPlan = (QueryPlan) Factory.create(buffer);
+
+    int intoPathsSize = buffer.getInt();
+    intoPaths = new ArrayList<>(intoPathsSize);
+    for (int i = 0; i < intoPathsSize; ++i) {
+      intoPaths.add(new PartialPath(readString(buffer)));
+    }
   }
 
   /** mainly for query auth. */
