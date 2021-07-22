@@ -71,8 +71,7 @@ public class SelectIntoOperator extends Operator {
     }
 
     if (queryOperator instanceof AggregationQueryOperator
-        && (!(queryOperator instanceof GroupByQueryOperator)
-            || !(queryOperator instanceof GroupByFillQueryOperator))) {
+        && !(queryOperator instanceof GroupByQueryOperator)) {
       throw new LogicalOperatorException("select into: aggregation queries are not supported.");
     }
 
