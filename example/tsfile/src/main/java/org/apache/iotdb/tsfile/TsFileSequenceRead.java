@@ -47,7 +47,7 @@ public class TsFileSequenceRead {
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename =
-        "/Users/surevil/Documents/private/incubator-iotdb/server/target/1-1-1-0.tsfile";
+        "test.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
