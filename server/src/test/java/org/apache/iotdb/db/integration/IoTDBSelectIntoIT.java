@@ -161,6 +161,7 @@ public class IoTDBSelectIntoIT {
       }
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -191,6 +192,7 @@ public class IoTDBSelectIntoIT {
       }
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -207,6 +209,7 @@ public class IoTDBSelectIntoIT {
 
       assertEquals(1, resultSet.getMetaData().getColumnCount());
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       throwable.printStackTrace();
       fail(throwable.getMessage());
@@ -232,6 +235,7 @@ public class IoTDBSelectIntoIT {
       }
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -303,6 +307,7 @@ public class IoTDBSelectIntoIT {
       ResultSet resultSet = statement.executeQuery("select sg.d1.s1, d1.sg.s1 from root");
       assertEquals(1, resultSet.getMetaData().getColumnCount());
       assertFalse(resultSet.next());
+      resultSet.close();
       fail();
     } catch (SQLException throwable) {
       assertTrue(
