@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -624,6 +626,42 @@ public class StorageGroupProcessorTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
+  }
+
+  @Test
+  public void testCheckMemTableFlushInterval()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException {
+    // create one memtable
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // check memtable's flush interval & flush it
+    long preFLushInterval = IoTDBDescriptor.getInstance().getConfig().getMemtableFlushInterval();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableFlushInterval(500);
+
+    Thread.sleep(500);
+
+    processor.checkMemTableFlushInterval();
+
+    FlushManager flushManager = FlushManager.getInstance();
+    int waitCnt = 0;
+    while (flushManager.getNumberOfPendingTasks() != 0
+        || FlushManager.getInstance().getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || FlushManager.getInstance().getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt > 10) {
+        throw new InterruptedException("wait more than " + waitCnt * 500 + " ms");
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    IoTDBDescriptor.getInstance().getConfig().setMemtableFlushInterval(preFLushInterval);
   }
 
   class DummySGP extends StorageGroupProcessor {
