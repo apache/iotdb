@@ -6,6 +6,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,10 +32,8 @@ import org.testcontainers.shaded.org.apache.commons.lang.text.StrBuilder;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.nio.ByteBuffer;
+import java.util.*;
 
 /** test for MetadataIndexConstructor */
 public class MetadataIndexConstructorTest {
@@ -56,6 +55,115 @@ public class MetadataIndexConstructorTest {
   @After
   public void after() {
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+  }
+
+  @Test
+  public void randomTest(){
+    int deviceNum = 20;
+    String[] devices = new String[deviceNum];
+    for (int i = 0; i < deviceNum; i++) {
+      devices[i] = "d"+i;
+    }
+    int[][] vectorMeasurement = new int[deviceNum][2];
+    String[][] measurements = new String[deviceNum][];
+    for (int i = 0; i < deviceNum; i++) {
+      vectorMeasurement[i][0] = new Random().nextInt(20);
+      vectorMeasurement[i][1] = new Random().nextInt(20);
+      int singleNum =  new Random().nextInt(20);
+      measurements[i] = new String[singleNum];
+      for (int j = 0; j < singleNum; j++) {
+        if(i%2==0){
+          measurements[i][j] = "z"+j;
+        }else{
+          measurements[i][j] = "s"+j;
+        }
+      }
+    }
+    test(devices,vectorMeasurement,measurements);
+  }
+
+  /**
+   * 5个实体，每个实体有5个物理量（docs.例1）
+   */
+  @Test
+  public void singleIndexTest1(){
+    int deviceNum = 5;
+    int measurementNum = 5;
+    String[] devices = new String[deviceNum];
+    int[][] vectorMeasurement = new int[deviceNum][];
+    String[][] measurements = new String[deviceNum][];
+    for (int i = 0; i < deviceNum; i++) {
+      devices[i] = "d"+i;
+      vectorMeasurement[i] = new int[0];
+      measurements[i] = new String[measurementNum];
+      for (int j = 0; j < measurementNum; j++) {
+        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+      }
+    }
+    test(devices, vectorMeasurement, measurements);
+  }
+
+  /**
+   * 1个实体，每个实体有150个物理量（docs.例2）
+   */
+  @Test
+  public void singleIndexTest2(){
+    int deviceNum = 1;
+    int measurementNum = 150;
+    String[] devices = new String[deviceNum];
+    int[][] vectorMeasurement = new int[deviceNum][];
+    String[][] measurements = new String[deviceNum][];
+    for (int i = 0; i < deviceNum; i++) {
+      devices[i] = "d"+i;
+      vectorMeasurement[i] = new int[0];
+      measurements[i] = new String[measurementNum];
+      for (int j = 0; j < measurementNum; j++) {
+        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+      }
+    }
+    test(devices, vectorMeasurement, measurements);
+  }
+
+  /**
+   * 150个实体，每个实体有1个物理量（docs.例3）
+   */
+  @Test
+  public void singleIndexTest3(){
+    int deviceNum = 150;
+    int measurementNum = 1;
+    String[] devices = new String[deviceNum];
+    int[][] vectorMeasurement = new int[deviceNum][];
+    String[][] measurements = new String[deviceNum][];
+    for (int i = 0; i < deviceNum; i++) {
+      devices[i] = "d"+i;
+      vectorMeasurement[i] = new int[0];
+      measurements[i] = new String[measurementNum];
+      for (int j = 0; j < measurementNum; j++) {
+        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+      }
+    }
+    test(devices, vectorMeasurement, measurements);
+  }
+
+  /**
+   * 150个实体，每个实体有150个物理量（docs.例4）
+   */
+  @Test
+  public void singleIndexTest4(){
+    int deviceNum = 150;
+    int measurementNum = 1;
+    String[] devices = new String[deviceNum];
+    int[][] vectorMeasurement = new int[deviceNum][];
+    String[][] measurements = new String[deviceNum][];
+    for (int i = 0; i < deviceNum; i++) {
+      devices[i] = "d"+i;
+      vectorMeasurement[i] = new int[0];
+      measurements[i] = new String[measurementNum];
+      for (int j = 0; j < measurementNum; j++) {
+        measurements[i][j] = measurementPrefix+generateIndexString(j,measurementNum);
+      }
+    }
+    test(devices, vectorMeasurement, measurements);
   }
 
   /** 1个实体，20个物理量，2个多元时间序列组，每个多元时间序列组分别有9个物理量（docs.例5） */
@@ -110,10 +218,10 @@ public class MetadataIndexConstructorTest {
     readMetaDataDFS(actualDevices, actualMeasurements);
     // 3. generate correct result
     List<String> correctDevices = new ArrayList<>(); // contains all device by sequence
-    List<List<String>> correctMeasurements =
-        new ArrayList<>(); // contains all measurements group by device
+    List<List<String>> correctFirstMeasurements =
+        new ArrayList<>(); // contains first measurements of every leaf, group by device
     generateCorrectResult(
-        correctDevices, correctMeasurements, devices, vectorMeasurement, singleMeasurement);
+        correctDevices, correctFirstMeasurements, devices, vectorMeasurement, singleMeasurement);
     // 4. compare correct result with TsFile's metadata
     Arrays.sort(devices);
     // 4.1 make sure device in order
@@ -122,13 +230,29 @@ public class MetadataIndexConstructorTest {
     for (int i = 0; i < actualDevices.size(); i++) {
       assert actualDevices.get(i).equals(correctDevices.get(i));
     }
-    // 4.2 make sure measurement in order
+    // 4.2 make sure timeseries in order
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
+              reader.getAllTimeseriesMetadata();
+      for (int j = 0; j < actualDevices.size(); j++) {
+        for (int i = 0; i < actualMeasurements.size(); i++) {
+          assert allTimeseriesMetadata
+                  .get(actualDevices.get(j))
+                  .get(i)
+                  .getMeasurementId()
+                  .equals(correctFirstMeasurements.get(j).get(i));
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    // 4.3 make sure split leaf correctly
     for (int j = 0; j < actualDevices.size(); j++) {
-      for (int i = 0; i < actualMeasurements.size(); i++) {
+      for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
         assert actualMeasurements
             .get(j)
             .get(i)
-            .equals(correctMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
+            .equals(correctFirstMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
       }
     }
   }
@@ -137,7 +261,7 @@ public class MetadataIndexConstructorTest {
    * read TsFile metadata, load actual message in devices and measurements
    *
    * @param devices load actual devices
-   * @param measurements load actual measurement
+   * @param measurements load actual measurement(first of every leaf)
    */
   private void readMetaDataDFS(List<String> devices, List<List<String>> measurements) {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {

@@ -653,6 +653,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             .computeIfAbsent(deviceId, k -> new ArrayList<>())
             .addAll(timeseriesMetadataList);
       } else {
+        // TODO:这里的deviceId不应该变啊？？
         deviceId = metadataIndex.getName();
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
@@ -1272,11 +1273,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     return res;
   }
 
-  // TODO:测试，文档注释
   /**
-   * @param startOffset
-   * @param endOffset
-   * @return
+   * get metadata index node
+   * @param startOffset   start read offset
+   * @param endOffset     end read offset
+   * @return MetadataIndexNode
    */
   public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset) {
     MetadataIndexNode metadataIndexNode = null;
