@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,15 +27,6 @@
 
 ### 1.1 Variable Storage
 
-- **Big Endian**
-       
-  - For Example, the `int` `0x8` will be stored as `00 00 00 08`, replace by `08 00 00 00`
-- **String with Variable Length**
-  - The format is `int size` plus `String literal`. Size can be zero.
-  - Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
-  - For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
-  - Note that for the file signature "TsFile000001" (`MAGIC STRING` + `Version Number`), the size(12) and encoding(ASCII)
-    is fixed so there is no need to put the size before this string literal.
 - **Data Type Hardcode**
   - 0: BOOLEAN
   - 1: INT32 (`int`)
@@ -43,25 +34,55 @@
   - 3: FLOAT
   - 4: DOUBLE
   - 5: TEXT (`String`)
+  
 - **Encoding Type Hardcode**
-  - 0: PLAIN
-  - 1: DICTIONARY
-  - 2: RLE
-  - 3: DIFF
-  - 4: TS_2DIFF
-  - 5: BITMAP
-  - 6: GORILLA_V1
-  - 7: REGULAR 
-  - 8: GORILLA
-- **Compressing Type Hardcode**
-  - 0: UNCOMPRESSED
-  - 1: SNAPPY
-  - 2: GZIP
-  - 3: LZO
-  - 4: SDT
-  - 5: PAA
-  - 6: PLA
-  - 7: LZ4
+
+  To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports the following encoding methods for different data types:
+
+  - **0: PLAIN**
+
+  	- PLAIN encoding, the default encoding mode, i.e, no encoding, supports multiple data types. It has high compression and decompression efficiency while suffering from low space storage efficiency.
+
+  - **1: DICTIONARY**
+
+  	- DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data.
+
+  - **2: RLE**
+
+  	- Run-length encoding is suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
+
+  	- Run-length encoding can also be used to encode floating-point numbers, while it is necessary to specify reserved decimal digits (MAX_POINT_NUMBER) when creating time series. It is more suitable to store sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
+
+  		> TS_2DIFF and RLE have precision limit for data type of float and double. By default, two decimal places are reserved. GORILLA is recommended.
+
+  - **3: DIFF**
+
+  - **4: TS_2DIFF**
+
+  	- Second-order differential encoding is more suitable for encoding monotonically increasing or decreasing sequence data, and is not recommended for sequence data with large fluctuations.
+
+  - **5: BITMAP**
+
+  - **6: GORILLA_V1**
+
+  	- GORILLA encoding is lossless. It is more suitable for numerical sequence with similar values and is not recommended for sequence data with large fluctuations.
+  	- Currently, there are two versions of GORILLA encoding implementation, it is recommended to use `GORILLA` instead of `GORILLA_V1` (deprecated).
+  	- Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using GORILLA to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
+
+  - **7: REGULAR** 
+
+  - **8: GORILLA**
+
+- **The correspondence between the data type and its supported encodings**
+
+	| Data Type |      Supported Encoding       |
+	| :-------: | :---------------------------: |
+	|  BOOLEAN  |          PLAIN, RLE           |
+	|   INT32   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|   INT64   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|   FLOAT   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|  DOUBLE   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|   TEXT    |       PLAIN, DICTIONARY       |
 
 ### 1.2 TsFile Overview
 
@@ -216,33 +237,71 @@ IndexEntry has members as below:
 
 All IndexNode forms an **index tree (secondary index)** like a B+ tree, which consists of two levels: entity index level and measurement index level. The IndexNodeType has four enums: `INTERNAL_ENTITY`, `LEAF_ENTITY`, `INTERNAL_MEASUREMENT`, `LEAF_MEASUREMENT`, which indicates the internal or leaf node of entity index level and measurement index level respectively. Only the `LEAF_MEASUREMENT` nodes point to `TimeseriesIndex`.
 
-Here are four detailed examples.
+Consider the introduction of multi-variable timeseries, each multi-variable timeseries is called a vector with a `TimeColumn`. For example, the multi-variable timeseries *vector1* belongs to the entity *d* , with two measurements *s1, s2*. i.e. `d1.vector1.(s1,s2)`, we call vector1 as `TimeValue`. In the storage, you need to store an extra Chunk of vector1.
+
+Except for `TimeValue`, measurements of a multi-variable timeseries are concatenated with `TimeValue` when constructing `IndexOfTimeseriesIndex`, e.g. we Indicates `vector1.s1` as a measurement.
+
+> From v0.13, IoTDB supports [Multi-variable Timeseries](https://iotdb.apache.org/UserGuide/Master/Data-Concept/Data-Model-and-Terminology.html). A multi-variable measurements of an entity corresponds to a multi-variable timeseries. These timeseries are called **multi-variable timeseries**, also called **aligned timeseries**.
+>
+> Multi-variable timeseries need to be created, inserted and deleted at the same time. However, when querying, you can query each sub-measurement separately.
+>
+> By using multi-variable timeseries, the timestamp columns of a group of multi-variable timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries.
+>
+> ![img](https://cwiki.apache.org/confluence/download/attachments/184617773/image-20210720151044629.png?version=1&modificationDate=1626773824000&api=v2)
+
+Here are seven detailed examples.
 
 The degree of the index tree (that is, the max number of each node's children) could be configured by users, and is 256 by default. In the examples below, we assume `max_degree_of_index_node = 10`.
 
-* Example 1: 5 entities with 5 measurements each
+Note that the keys are arranged in dictionary order in each type of nodes (LEAF, MEASUREMENT) of the index tree. In the following example, we assumed that the dictionary order **di<dj** if i<j. (Otherwise, in fact, the dictionary order of [d1,d2,... .d10] should be [d1,d10,d2,.... .d9])
+
+Example 1\~4 is an example of a single-variable timeseries.
+
+Example 5\~6 is an example of a multi-variale timeseries.
+
+Example 7 is a comprehensive example.
+
+* **Example 1: 5 entities with 5 measurements each**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
 
 In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root node is `INTERNAL_ENTITY` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
 
-* Example 2: 1 entity with 150 measurements
+* **Example 2: 1 entity with 150 measurements**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254022-a0c0fb00-e32c-11eb-8fd1-462936358288.png">
 
 In the case of 1 entity with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. Other nodes are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type. The root node is `INTERNAL_ENTITY` type.
 
-* Example 3: 150 entities with 1 measurement each
+* **Example 3: 150 entities with 1 measurement each**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122771008-9a64d380-d2d8-11eb-9044-5ac794dd38f7.png">
 
 In the case of 150 entities with 1 measurement each: The number of entities exceeds `max_degree_of_index_node`, so the entity index level and measurement index level of the tree are both formed. In these two levels, each IndexNode is composed of no more than 10 index entries. The nodes that point to `TimeseriesIndex` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of entity index level, which are `LEAF_ENTITY` type. Other nodes and root node of index tree are not leaf nodes of entity level, so they are `INTERNAL_ENTITY` type.
 
-* Example 4: 150 entities with 150 measurements each
+* **Example 4: 150 entities with 150 measurements each**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677241-1a753580-d214-11eb-817f-17bcf797251f.png">
 
 In the case of 150 entities with 150 measurements each: The numbers of entities and measurements both exceed `max_degree_of_index_node`, so the entity index level and measurement index level are both formed. In these two levels, each IndexNode is composed of no more than 10 index entries. As is described before, from the root node to the leaf nodes of entity index level, their types are `INTERNAL_ENTITY` and `LEAF_ENTITY`; each leaf node of entity index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
+
+* **Example 5: 1 entities with 2 vectors, 9 measurements for each vector**
+
+	![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase5.png?version=2&modificationDate=1626952911868&api=v2)
+
+* **Example 6: 1 entities with 2 vectors, 15 measurements for each vector**
+
+	![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase6.png?version=2&modificationDate=1626952911054&api=v2)
+
+* **Example 7: 2 entities, measurements of entities are shown in the following table**
+
+	| entity: d0                                      | entity: d1                                      |
+	| :---------------------------------------------- | :---------------------------------------------- |
+	| 【Single-variable Tmeseries】s0,s1...,s4        | 【Single-variable Tmeseries】s0,s1,...s14       |
+	| 【Multi-variable Timeseries】v0.(s5,s6,...,s14) | 【Multi-variable Timeseries】v0.(s15,s16,..s18) |
+	| 【Single-variable Tmeseries】z15,z16,..,z18     |                                                 |
+
+	![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase7.png?version=2&modificationDate=1626952910746&api=v2)
 
 The IndexTree is designed as tree structure so that not all the `TimeseriesIndex` need to be read when the number of entities or measurements is too large. Only reading specific IndexTree nodes according to requirement and reducing I/O could speed up the query. More reading process of TsFile in details will be described in the last section of this chapter.
 
@@ -774,3 +833,28 @@ Plot results:
 ![3](https://user-images.githubusercontent.com/33376433/123760418-66e70200-d8f3-11eb-8701-437afd73ac4c.png)
 ![4](https://user-images.githubusercontent.com/33376433/123760424-69e1f280-d8f3-11eb-9f45-571496685a6e.png)
 ![5](https://user-images.githubusercontent.com/33376433/123760433-6cdce300-d8f3-11eb-8ecd-da04a475af41.png)
+
+
+
+## Appendix
+
+### 
+
+- **Big Endian**
+	- For Example, the `int` `0x8` will be stored as `00 00 00 08`, replace by `08 00 00 00`
+- **String with Variable Length**
+	- The format is `int size` plus `String literal`. Size can be zero.
+	- Size equals the number of bytes this string will take, and it may not equal to the length of the string. 
+	- For example "sensor_1" will be stored as `00 00 00 08` plus the encoding(ASCII) of "sensor_1".
+	- Note that for the file signature "TsFile000001" (`MAGIC STRING` + `Version Number`), the size(12) and encoding(ASCII)
+		is fixed so there is no need to put the size before this string literal.
+- **Compressing Type Hardcode**
+	- 0: UNCOMPRESSED
+	- 1: SNAPPY
+	- 2: GZIP
+	- 3: LZO
+	- 4: SDT
+	- 5: PAA
+	- 6: PLA
+	- 7: LZ4
+
