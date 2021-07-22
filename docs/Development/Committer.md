@@ -54,12 +54,12 @@ See the [ASF documentation](https://www.apache.org/foundation/policies/conduct.h
 
 See the [ASF documentation](https://www.apache.org/dev/committers.html#committer-responsibilities).
 
-- They help create a product that will outlive the interest of any particular volunteer (including themselves)
+- They help to create a product, not just for a contributor's interest
 - They grow and maintain the health of the Apache community
-- They help out with surrounding work, such as the website & documentation
+- They help with some peripheral works, such as maintaining websites and documentation
 - They help users
-- They can be trusted to decide when code is ready for release, or when to ask someone else to make the judgment
-- They can be trusted to decide when to merge code (if a code contributor) or when to ask someone else to make the judgment
+- They can be trusted to decide when the code is ready to re release,or when others need to make judgments together
+- They can be trusted to decide when to merge the codes( if they are contributors) or when others need to make a judgment together
 
 ### Knows, upholds, and reinforces the IoTDB community’s practices
 
