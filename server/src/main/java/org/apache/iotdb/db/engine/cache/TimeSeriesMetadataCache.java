@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -251,7 +252,9 @@ public class TimeSeriesMetadataCache {
       boolean debug)
       throws IOException {
     // put all sub sensors into allSensors
-    allSensors.addAll(subSensorList);
+    //    allSensors.addAll(subSensorList);
+    subSensorList.forEach(
+        subSensor -> allSensors.add(key.measurement + TsFileConstant.PATH_SEPARATOR + subSensor));
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -356,7 +359,7 @@ public class TimeSeriesMetadataCache {
         if (timeseriesMetadata != null) {
           res.add(timeseriesMetadata);
         } else {
-          res.clear();
+          //          res.clear();
           break;
         }
       }

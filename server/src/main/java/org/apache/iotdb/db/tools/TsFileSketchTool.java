@@ -42,16 +42,9 @@ import java.util.TreeMap;
 public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
-    //    Pair<String, String> fileNames = checkArgs(args);
-    //    String filename = fileNames.left;
-    //    String outFile = fileNames.right;
-    // my result
-    String filename =
-        "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626749051229-60-0-0.tsfile";
-    // origin result
-    //        String filename =
-    // "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1626747823227-53-0-0.tsfile";
-    String outFile = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\temp";
+    Pair<String, String> fileNames = checkArgs(args);
+    String filename = fileNames.left;
+    String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
@@ -191,37 +184,6 @@ public class TsFileSketchTool {
 
         MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
         printIndexTree(pw, metadataIndexNode, reader, 0);
-        //        printlnBoth(
-        //                pw,
-        //                String.format("%20s", "")
-        //                        + "|\t[MetadataIndex:" + metadataIndexNode.getNodeType()+"]");
-        //          for (int i = 0; i < tsFileMetaData.getMetadataIndex().getChildren().size(); i++)
-        // {
-        //
-        //          }
-        //        for (MetadataIndexEntry metadataIndex :
-        // tsFileMetaData.getMetadataIndex().getChildren()) {
-        ////          metadataIndexNode = reader.getMetadataIndexNode(1513,1563);
-        //          printlnBoth(
-        //              pw,
-        //              String.format("%20s", "")
-        //                      + "|\t\t\t|________<"
-        //                      + metadataIndex.getName()+","
-        //                      + metadataIndex.getOffset()
-        //                      + ">________"
-        //                      + "[MetadataIndex:" + metadataIndexNode.getNodeType()+"]");
-        //
-        //        }
-        // TODO：怎么递归查出子树啊。。只知道前面的offset，长度/后offset不知道啊。。。
-        //        for (MetadataIndexEntry metadataIndex : metadataIndexNode.getChildren()){
-        //          printlnBoth(
-        //                  pw,
-        //                  String.format("%20s", "")
-        //                          + "|\t\t\t\t\t|________<"
-        //                          + metadataIndex.getName()+","
-        //                          + metadataIndex.getOffset()
-        //                          + ">");
-        //        }
 
         printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetadata]");
         printlnBoth(
@@ -298,15 +260,12 @@ public class TsFileSketchTool {
       printlnBoth(
           pw,
           String.format("%20s", "")
-              //                            + tableWriter.toString() +
-              // (i==metadataIndexNode.getChildren().size()-1?"└───────[":"├───────[")
               + tableWriter.toString()
               + "└───────["
               + metadataIndexEntry.getName()
               + ","
               + metadataIndexEntry.getOffset()
               + "]");
-      //                          + "[MetadataIndex:" + metadataIndexNode.getNodeType()+"]");
 
       if (!metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
         long endOffset = metadataIndexNode.getEndOffset();
