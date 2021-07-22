@@ -493,7 +493,7 @@ public QueryDataSet query(QueryExpression queryExpression, long partitionStartOf
 您需要安装 TsFile 到本地的 Maven 仓库中。
 
 有关查询语句的更详细示例，请参见
-`/tsfile/example/src/main/java/org/apache/iotdb/tsfile/TsFileRead.java`
+`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileRead.java`
 
 ```java
 package org.apache.iotdb.tsfile;
@@ -517,6 +517,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
  * Run TsFileWrite to generate the test.tsfile first
  */
 public class TsFileRead {
+  private static final String DEVICE1 = "device_1";
+  
   private static void queryAndPrint(ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement)
           throws IOException {
     QueryExpression queryExpression = QueryExpression.create(paths, statement);
@@ -533,19 +535,40 @@ public class TsFileRead {
     String path = "test.tsfile";
 
     // create reader and get the readTsFile interface
-    TsFileSequenceReader reader = new TsFileSequenceReader(path);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
+         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)){
+	 
     // use these paths(all sensors) for all the queries
     ArrayList<Path> paths = new ArrayList<>();
-    paths.add(new Path("device_1.sensor_1"));
-    paths.add(new Path("device_1.sensor_2"));
-    paths.add(new Path("device_1.sensor_3"));
+    paths.add(new Path(DEVICE1, "sensor_1"));
+    paths.add(new Path(DEVICE1, "sensor_2"));
+    paths.add(new Path(DEVICE1, "sensor_3"));
 
-    // no query statement
+    // no filter, should select 1 2 3 4 6 7 8
     queryAndPrint(paths, readTsFile, null);
 
-    //close the reader when you left
-    reader.close();
+   // time filter : 4 <= time <= 10, should select 4 6 7 8
+    IExpression timeFilter =
+       BinaryExpression.and(
+           new GlobalTimeExpression(TimeFilter.gtEq(4L)),
+           new GlobalTimeExpression(TimeFilter.ltEq(10L)));
+    queryAndPrint(paths, readTsFile, timeFilter);
+
+   // value filter : device_1.sensor_2 <= 20, should select 1 2 4 6 7
+    IExpression valueFilter =
+        new SingleSeriesExpression(new Path(DEVICE1, "sensor_2"), ValueFilter.ltEq(20L));
+    queryAndPrint(paths, readTsFile, valueFilter);
+
+   // time filter : 4 <= time <= 10, value filter : device_1.sensor_3 >= 20, should select 4 7 8
+    timeFilter =
+        BinaryExpression.and(
+            new GlobalTimeExpression(TimeFilter.gtEq(4L)),
+            new GlobalTimeExpression(TimeFilter.ltEq(10L)));
+    valueFilter =
+        new SingleSeriesExpression(new Path(DEVICE1, "sensor_3"), ValueFilter.gtEq(20L));
+    IExpression finalFilter = BinaryExpression.and(timeFilter, valueFilter);
+    queryAndPrint(paths, readTsFile, finalFilter);
+    }
   }
 }
 ```

@@ -43,6 +43,7 @@ import java.util.Map;
 
 public class VirtualStorageGroupManager {
 
+  /** logger of this class */
   private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupManager.class);
 
   /** virtual storage group partitioner */
@@ -115,7 +116,9 @@ public class VirtualStorageGroupManager {
       } else {
         // not finished recover, refuse the request
         throw new StorageEngineException(
-            "the sg " + partialPath + " may not ready now, please wait and retry later",
+            "the sg "
+                + storageGroupMNode.getFullPath()
+                + " may not ready now, please wait and retry later",
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
@@ -201,7 +204,7 @@ public class VirtualStorageGroupManager {
             isSeq);
       }
 
-      processor.writeLock();
+      processor.writeLock("VirtualCloseStorageGroupProcessor-204");
       try {
         if (isSeq) {
           // to avoid concurrent modification problem, we need a new array list
@@ -239,13 +242,13 @@ public class VirtualStorageGroupManager {
             processor.getVirtualStorageGroupId() + "-" + processor.getLogicalStorageGroupName(),
             isSeq,
             partitionId);
-        processor.writeLock();
-        // to avoid concurrent modification problem, we need a new array list
-        List<TsFileProcessor> processors =
-            isSeq
-                ? new ArrayList<>(processor.getWorkSequenceTsFileProcessors())
-                : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
+        processor.writeLock("VirtualCloseStorageGroupProcessor-242");
         try {
+          // to avoid concurrent modification problem, we need a new array list
+          List<TsFileProcessor> processors =
+              isSeq
+                  ? new ArrayList<>(processor.getWorkSequenceTsFileProcessors())
+                  : new ArrayList<>(processor.getWorkUnsequenceTsFileProcessors());
           for (TsFileProcessor tsfileProcessor : processors) {
             if (tsfileProcessor.getTimeRangeId() == partitionId) {
               if (isSync) {
@@ -393,6 +396,7 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** release resource of direct wal buffer */
   public void releaseWalDirectByteBufferPool() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {

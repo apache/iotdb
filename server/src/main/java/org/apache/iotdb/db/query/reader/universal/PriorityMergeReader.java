@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
+@SuppressWarnings("ConstantConditions") // heap is ensured by hasNext non-empty
 public class PriorityMergeReader implements IPointReader {
 
   // max time of all added readers in PriorityMergeReader

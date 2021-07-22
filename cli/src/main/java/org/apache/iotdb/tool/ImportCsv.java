@@ -290,7 +290,7 @@ public class ImportCsv extends AbstractCsvTool {
   public static void importCsvFromFile(
       String ip, String port, String username, String password, String filename, String timeZone) {
     try {
-      session = new Session(ip, Integer.parseInt(port), username, password);
+      session = new Session(ip, Integer.parseInt(port), username, password, false);
       session.open(false);
       timeZoneID = timeZone;
       setTimeZone();
@@ -424,21 +424,38 @@ public class ImportCsv extends AbstractCsvTool {
 
   public static String[] splitCsvLine(String path) {
     List<String> nodes = new ArrayList<>();
-    int start = 0;
-    boolean singleQuotes = false;
-    boolean doubleQuotes = false;
-    // split by comma if the comma is followed by an even number of quotes
-    for (int i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == '\"') {
-        doubleQuotes = !doubleQuotes; // toggle state
+    startIndex = 0;
+    for (i = 0; i < path.length(); i++) {
+      if (path.charAt(i) == ',') {
+        nodes.add(path.substring(startIndex, i));
+        startIndex = i + 1;
+      } else if (path.charAt(i) == '"') {
+        nextNode(path, nodes, '"');
       } else if (path.charAt(i) == '\'') {
-        singleQuotes = !singleQuotes;
-      } else if (path.charAt(i) == ',' && (!singleQuotes && !doubleQuotes)) {
-        nodes.add(path.substring(start, i));
-        start = i + 1;
+        nextNode(path, nodes, '\'');
       }
     }
-    nodes.add(path.substring(start));
+    if (path.charAt(path.length() - 1) == ',') {
+      nodes.add("");
+    }
+    if (startIndex <= path.length() - 1) {
+      nodes.add(path.substring(startIndex));
+    }
     return nodes.toArray(new String[0]);
+  }
+
+  public static void nextNode(String path, List<String> nodes, char enclose) {
+    int endIndex = path.indexOf(enclose, i + 1);
+    // if a double quotes with escape character
+    while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
+      endIndex = path.indexOf(enclose, endIndex + 1);
+    }
+    if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == ',')) {
+      nodes.add(path.substring(startIndex + 1, endIndex));
+      i = endIndex + 1;
+      startIndex = endIndex + 2;
+    } else {
+      throw new IllegalArgumentException("Illegal csv line" + path);
+    }
   }
 }

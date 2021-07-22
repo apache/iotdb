@@ -108,9 +108,12 @@ public class IndexLogicalPlanTest {
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
     Assert.assertEquals(
         "Glu",
-        queryOperator.getSelectOperator().getResultColumns().get(0).getExpression().toString());
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
     Assert.assertEquals(
-        "root.Ery.*", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.Ery.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.RTREE_PAA, queryOperator.getIndexType());
     Assert.assertEquals(2, queryOperator.getProps().size());
     Assert.assertEquals(2, (int) queryOperator.getProps().get(TOP_K));
@@ -132,9 +135,12 @@ public class IndexLogicalPlanTest {
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
     Assert.assertEquals(
         "Speed",
-        queryOperator.getSelectOperator().getResultColumns().get(0).getExpression().toString());
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
     Assert.assertEquals(
-        "root.Wind.AZQ02", queryOperator.getFromOperator().getPrefixPaths().get(0).getFullPath());
+        "Speed",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.Wind.AZQ02", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
     Assert.assertEquals(IndexType.ELB_INDEX, queryOperator.getIndexType());
     Assert.assertEquals(2, queryOperator.getProps().size());
     Assert.assertEquals("[1.0, 2.0, 1.0]", queryOperator.getProps().get(THRESHOLD).toString());

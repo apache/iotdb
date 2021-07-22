@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -96,7 +97,7 @@ public class SyncClientAdaptorTest {
   @Before
   public void setUp() {
     nodeStatus = new TNodeStatus();
-    checkStatusResponse = new CheckStatusResponse(true, false, true, false, true);
+    checkStatusResponse = new CheckStatusResponse(true, false, true, false, true, true);
     addNodeResponse = new AddNodeResponse((int) Response.RESPONSE_AGREE);
     aggregateResults =
         Arrays.asList(
@@ -127,7 +128,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void matchTerm(
-              long index, long term, Node header, AsyncMethodCallback<Boolean> resultHandler) {
+              long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
             resultHandler.onComplete(true);
           }
 
@@ -173,7 +174,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getNodeList(
-              Node header,
+              RaftNode header,
               String path,
               int nodeLevel,
               AsyncMethodCallback<List<String>> resultHandler) {
@@ -182,19 +183,21 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getChildNodeInNextLevel(
-              Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+              RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(Arrays.asList("1", "2", "3")));
           }
 
           @Override
           public void getChildNodePathInNextLevel(
-              Node header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+              RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(Arrays.asList("1", "2", "3")));
           }
 
           @Override
           public void getAllMeasurementSchema(
-              Node header, ByteBuffer planBinary, AsyncMethodCallback<ByteBuffer> resultHandler) {
+              RaftNode header,
+              ByteBuffer planBinary,
+              AsyncMethodCallback<ByteBuffer> resultHandler) {
             resultHandler.onComplete(getAllMeasurementSchemaResult);
           }
 
@@ -230,7 +233,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getUnregisteredTimeseries(
-              Node header,
+              RaftNode header,
               List<String> timeseriesList,
               AsyncMethodCallback<List<String>> resultHandler) {
             resultHandler.onComplete(timeseriesList.subList(0, timeseriesList.size() / 2));
@@ -238,7 +241,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllPaths(
-              Node header,
+              RaftNode header,
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -247,7 +250,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getPathCount(
-              Node header,
+              RaftNode header,
               List<String> pathsToQuery,
               int level,
               AsyncMethodCallback<Integer> resultHandler) {
@@ -256,7 +259,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getAllDevices(
-              Node header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
+              RaftNode header, List<String> path, AsyncMethodCallback<Set<String>> resultHandler) {
             resultHandler.onComplete(new HashSet<>(path));
           }
 
@@ -283,7 +286,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void getGroupByResult(
-              Node header,
+              RaftNode header,
               long executorId,
               long startTime,
               long endTime,
@@ -293,7 +296,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void peekNextNotNullValue(
-              Node header,
+              RaftNode header,
               long executorId,
               long startTime,
               long endTime,
@@ -324,7 +327,7 @@ public class SyncClientAdaptorTest {
 
           @Override
           public void onSnapshotApplied(
-              Node header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
+              RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
             resultHandler.onComplete(true);
           }
         };
@@ -336,7 +339,8 @@ public class SyncClientAdaptorTest {
         Response.RESPONSE_AGREE,
         (long) SyncClientAdaptor.removeNode(metaClient, TestUtils.getNode(0)));
     assertTrue(
-        SyncClientAdaptor.matchTerm(metaClient, TestUtils.getNode(0), 1, 1, TestUtils.getNode(0)));
+        SyncClientAdaptor.matchTerm(
+            metaClient, TestUtils.getNode(0), 1, 1, TestUtils.getRaftNode(0, 0)));
     assertEquals(nodeStatus, SyncClientAdaptor.queryNodeStatus(metaClient));
     assertEquals(
         checkStatusResponse, SyncClientAdaptor.checkStatus(metaClient, new StartUpStatus()));
@@ -346,7 +350,7 @@ public class SyncClientAdaptorTest {
     assertEquals(
         StatusUtils.OK,
         SyncClientAdaptor.executeNonQuery(
-            metaClient, new FlushPlan(), TestUtils.getNode(0), TestUtils.getNode(1)));
+            metaClient, new FlushPlan(), TestUtils.getRaftNode(0, 0), TestUtils.getNode(1)));
   }
 
   @Test
@@ -362,17 +366,19 @@ public class SyncClientAdaptorTest {
         (long) SyncClientAdaptor.querySingleSeries(dataClient, new SingleSeriesQueryRequest(), 0));
     assertEquals(
         Arrays.asList("1", "2", "3"),
-        SyncClientAdaptor.getNodeList(dataClient, TestUtils.getNode(0), "root", 0));
+        SyncClientAdaptor.getNodeList(dataClient, TestUtils.getRaftNode(0, 0), "root", 0));
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
-        SyncClientAdaptor.getChildNodeInNextLevel(dataClient, TestUtils.getNode(0), "root"));
+        SyncClientAdaptor.getChildNodeInNextLevel(dataClient, TestUtils.getRaftNode(0, 0), "root"));
     assertEquals(
         new HashSet<>(Arrays.asList("1", "2", "3")),
-        SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getNode(0), "root"));
+        SyncClientAdaptor.getNextChildren(dataClient, TestUtils.getRaftNode(0, 0), "root"));
     assertEquals(
         getAllMeasurementSchemaResult,
         SyncClientAdaptor.getAllMeasurementSchema(
-            dataClient, TestUtils.getNode(0), new ShowTimeSeriesPlan(new PartialPath("root"))));
+            dataClient,
+            TestUtils.getRaftNode(0, 0),
+            new ShowTimeSeriesPlan(new PartialPath("root"))));
     assertEquals(
         measurementSchemas,
         SyncClientAdaptor.pullMeasurementSchema(dataClient, new PullSchemaRequest()));
@@ -383,24 +389,26 @@ public class SyncClientAdaptorTest {
         aggregateResults, SyncClientAdaptor.getAggrResult(dataClient, new GetAggrResultRequest()));
     assertEquals(
         paths.subList(0, paths.size() / 2),
-        SyncClientAdaptor.getUnregisteredMeasurements(dataClient, TestUtils.getNode(0), paths));
+        SyncClientAdaptor.getUnregisteredMeasurements(
+            dataClient, TestUtils.getRaftNode(0, 0), paths));
     assertEquals(
-        paths, SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getNode(0), paths, false).paths);
+        paths,
+        SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false).paths);
     assertEquals(
         paths.size(),
-        (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getNode(0), paths, 0));
+        (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));
     assertEquals(
         new HashSet<>(paths),
-        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getNode(0), paths));
+        SyncClientAdaptor.getAllDevices(dataClient, TestUtils.getRaftNode(0, 0), paths));
     assertEquals(1L, (long) SyncClientAdaptor.getGroupByExecutor(dataClient, new GroupByRequest()));
     assertEquals(fillResult, SyncClientAdaptor.previousFill(dataClient, new PreviousFillRequest()));
     assertEquals(readFileResult, SyncClientAdaptor.readFile(dataClient, "a file", 0, 1000));
     assertEquals(
         aggregateResults,
-        SyncClientAdaptor.getGroupByResult(dataClient, TestUtils.getNode(0), 1, 1, 2));
+        SyncClientAdaptor.getGroupByResult(dataClient, TestUtils.getRaftNode(0, 0), 1, 1, 2));
     assertEquals(
         peekNextNotNullValueResult,
-        SyncClientAdaptor.peekNextNotNullValue(dataClient, TestUtils.getNode(0), 1, 1, 1));
+        SyncClientAdaptor.peekNextNotNullValue(dataClient, TestUtils.getRaftNode(0, 0), 1, 1, 1));
     assertEquals(
         snapshotMap,
         SyncClientAdaptor.pullSnapshot(
@@ -426,9 +434,9 @@ public class SyncClientAdaptorTest {
             Collections.singletonList(TSDataType.INT64.ordinal()),
             new QueryContext(),
             Collections.emptyMap(),
-            TestUtils.getNode(0)));
+            TestUtils.getRaftNode(0, 0)));
     assertTrue(
         SyncClientAdaptor.onSnapshotApplied(
-            dataClient, TestUtils.getNode(0), Arrays.asList(0, 1, 2)));
+            dataClient, TestUtils.getRaftNode(0, 0), Arrays.asList(0, 1, 2)));
   }
 }

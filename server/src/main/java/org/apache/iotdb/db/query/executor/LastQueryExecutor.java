@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -169,7 +170,8 @@ public class LastQueryExecutor {
             new LastPointReader(
                 nonCachedPaths.get(i),
                 nonCachedDataTypes.get(i),
-                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                deviceMeasurementsMap.getOrDefault(
+                    nonCachedPaths.get(i).getDevice(), new HashSet<>()),
                 context,
                 dataSource,
                 Long.MAX_VALUE,

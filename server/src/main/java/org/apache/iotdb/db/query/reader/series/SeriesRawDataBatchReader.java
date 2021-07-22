@@ -191,4 +191,9 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   private boolean isEmpty(BatchData batchData) {
     return batchData == null || !batchData.hasCurrent();
   }
+
+  @TestOnly
+  public SeriesReader getSeriesReader() {
+    return seriesReader;
+  }
 }
