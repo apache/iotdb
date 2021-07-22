@@ -1373,19 +1373,6 @@ public class PhysicalPlanTest {
 
   @Test
   public void testCreateCQ9() throws QueryProcessException {
-    String sql =
-        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO ${1}.${0}.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
-    try {
-      CreateContinuousQueryPlan plan =
-          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
-      fail();
-    } catch (ParseCancellationException e) {
-      assertTrue(e.getMessage().contains("mismatched input '.' expecting FROM"));
-    }
-  }
-
-  @Test
-  public void testCreateCQ10() throws QueryProcessException {
 
     String sql =
         "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
@@ -1402,7 +1389,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testCreateCQ11() throws QueryProcessException {
+  public void testCreateCQ10() throws QueryProcessException {
 
     String sql =
         "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature), avg(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
@@ -1416,7 +1403,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testCreateCQ12() throws QueryProcessException {
+  public void testCreateCQ11() throws QueryProcessException {
     long minEveryInterval =
         IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
     long everyInterval = minEveryInterval / 2;
