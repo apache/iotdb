@@ -38,15 +38,17 @@ public class InsertTabletPlansIterator {
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
   private final QueryDataSet queryDataSet;
+  private final PartialPath fromPath;
   private final List<PartialPath> intoPaths;
   private final int fetchSize;
 
   private InsertTabletPlanGenerator[] insertTabletPlanGenerators;
 
   public InsertTabletPlansIterator(
-      QueryDataSet queryDataSet, List<PartialPath> intoPaths, int fetchSize)
+      QueryDataSet queryDataSet, PartialPath fromPath, List<PartialPath> intoPaths, int fetchSize)
       throws IllegalPathException {
     this.queryDataSet = queryDataSet;
+    this.fromPath = fromPath;
     this.intoPaths = intoPaths;
     this.fetchSize = fetchSize;
 
@@ -61,17 +63,7 @@ public class InsertTabletPlansIterator {
   }
 
   private PartialPath generateActualIntoPath(int index) throws IllegalPathException {
-    String[] nodes = new PartialPath(queryDataSet.getPaths().get(index).getFullPath()).getNodes();
-
-    int indexOfLeftBracket = nodes[0].indexOf("(");
-    if (indexOfLeftBracket != -1) {
-      nodes[0] = nodes[0].substring(indexOfLeftBracket + 1);
-    }
-    int indexOfRightBracket = nodes[nodes.length - 1].indexOf(")");
-    if (indexOfRightBracket != -1) {
-      nodes[nodes.length - 1] = nodes[nodes.length - 1].substring(0, indexOfRightBracket);
-    }
-
+    String[] nodes = fromPath.getNodes();
     StringBuffer sb = new StringBuffer();
     Matcher m = leveledPathNodePattern.matcher(intoPaths.get(index).getFullPath());
     while (m.find()) {

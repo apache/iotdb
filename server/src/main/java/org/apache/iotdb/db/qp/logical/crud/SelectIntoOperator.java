@@ -50,7 +50,8 @@ public class SelectIntoOperator extends Operator {
       throw new QueryProcessException(
           "select into: the number of source paths and the number of target paths should be the same.");
     }
-    return new SelectIntoPlan(queryPlan, intoPaths);
+    return new SelectIntoPlan(
+        queryPlan, queryOperator.getFromComponent().getPrefixPaths().get(0), intoPaths);
   }
 
   public void check() throws LogicalOperatorException {

@@ -1067,6 +1067,7 @@ public class TSServiceImpl implements TSIService.Iface {
       InsertTabletPlansIterator insertTabletPlansIterator =
           new InsertTabletPlansIterator(
               createQueryDataSet(queryId, queryPlan, fetchSize),
+              selectIntoPlan.getFromPath(),
               selectIntoPlan.getIntoPaths(),
               fetchSize);
       while (insertTabletPlansIterator.hasNext()) {

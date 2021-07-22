@@ -405,4 +405,68 @@ public class IoTDBSelectIntoIT {
       assertTrue(throwable.getMessage().contains("desc clauses are not supported."));
     }
   }
+
+  @Test
+  public void selectSameTimeSeries() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1, s1 into s2, s3 from root.sg.d1");
+
+      ResultSet resultSet = statement.executeQuery("select s2, s3 from root.sg.d1");
+
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 2, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        assertTrue(resultSet.next());
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int j = 0; j < 2 + 1; ++j) {
+          assertEquals(resultSet.getString(2), resultSet.getString(3));
+          stringBuilder.append(resultSet.getString(j + 1)).append(',');
+        }
+        System.out.println(stringBuilder.toString());
+      }
+
+      assertFalse(resultSet.next());
+      resultSet.close();
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSelectUDF() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute(
+          "select s1, sin(s1), s1 + s1 into ${2}.s2, ${2}.s3, ${2}.s4 from root.sg.d1");
+
+      ResultSet resultSet = statement.executeQuery("select s2, s3, s4 from root.sg.d1.d1");
+
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 3, columnCount);
+
+      for (int i = 1; i < INSERTION_SQLS.length; ++i) {
+        assertTrue(resultSet.next());
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int j = 0; j < 2 + 1; ++j) {
+          double s2 = Double.parseDouble(resultSet.getString(2));
+          double s3 = Double.parseDouble(resultSet.getString(3));
+          double s4 = Double.parseDouble(resultSet.getString(4));
+          assertEquals(i, s2, 0);
+          assertEquals(Math.sin(i), s3, 0);
+          assertEquals((double) i + (double) i, s4, 0);
+          stringBuilder.append(resultSet.getString(j + 1)).append(',');
+        }
+        System.out.println(stringBuilder.toString());
+      }
+
+      assertFalse(resultSet.next());
+      resultSet.close();
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }

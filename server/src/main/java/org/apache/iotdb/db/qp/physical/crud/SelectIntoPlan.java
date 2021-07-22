@@ -33,15 +33,17 @@ import java.util.List;
 public class SelectIntoPlan extends PhysicalPlan {
 
   private QueryPlan queryPlan;
+  private PartialPath fromPath;
   private List<PartialPath> intoPaths;
 
   public SelectIntoPlan() {
     super(false, OperatorType.SELECT_INTO);
   }
 
-  public SelectIntoPlan(QueryPlan queryPlan, List<PartialPath> intoPaths) {
+  public SelectIntoPlan(QueryPlan queryPlan, PartialPath fromPath, List<PartialPath> intoPaths) {
     super(false, OperatorType.SELECT_INTO);
     this.queryPlan = queryPlan;
+    this.fromPath = fromPath;
     this.intoPaths = intoPaths;
   }
 
@@ -56,6 +58,8 @@ public class SelectIntoPlan extends PhysicalPlan {
 
     queryPlan.serialize(outputStream);
 
+    putString(outputStream, fromPath.getFullPath());
+
     outputStream.write(intoPaths.size());
     for (PartialPath intoPath : intoPaths) {
       putString(outputStream, intoPath.getFullPath());
@@ -68,6 +72,8 @@ public class SelectIntoPlan extends PhysicalPlan {
 
     queryPlan.serialize(buffer);
 
+    putString(buffer, fromPath.getFullPath());
+
     buffer.putInt(intoPaths.size());
     for (PartialPath intoPath : intoPaths) {
       putString(buffer, intoPath.getFullPath());
@@ -77,6 +83,8 @@ public class SelectIntoPlan extends PhysicalPlan {
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     queryPlan = (QueryPlan) Factory.create(buffer);
+
+    fromPath = new PartialPath(readString(buffer));
 
     int intoPathsSize = buffer.getInt();
     intoPaths = new ArrayList<>(intoPathsSize);
@@ -93,6 +101,10 @@ public class SelectIntoPlan extends PhysicalPlan {
 
   public QueryPlan getQueryPlan() {
     return queryPlan;
+  }
+
+  public PartialPath getFromPath() {
+    return fromPath;
   }
 
   public List<PartialPath> getIntoPaths() {
