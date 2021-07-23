@@ -1317,7 +1317,6 @@ public abstract class RaftMember {
   }
 
   public TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header, Client client) {
-    long startTime = System.currentTimeMillis();
     try {
       ExecutNonQueryReq req = new ExecutNonQueryReq();
       req.setPlanBytes(PlanSerializer.getInstance().serialize(plan));
@@ -1337,12 +1336,7 @@ public abstract class RaftMember {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
-        logger.warn(
-            MSG_FORWARD_TIMEOUT + ": {}ms",
-            name,
-            plan,
-            receiver,
-            System.currentTimeMillis() - startTime);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
         logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
         status = StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
