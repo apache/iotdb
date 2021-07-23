@@ -284,18 +284,8 @@ public class MManager {
       // the logWriter is not initialized now, we skip the check once.
       return;
     }
-    if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "MTree snapshot need not be created. Time from last modification: {} ms.",
-            System.currentTimeMillis() - logFile.lastModified());
-      }
-    } else if (logWriter.getLogNum() < mtreeSnapshotInterval) {
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "MTree snapshot need not be created. New mlog line number: {}.", logWriter.getLogNum());
-      }
-    } else {
+    if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
+        || logWriter.getLogNum() >= mtreeSnapshotInterval) {
       logger.info(
           "New mlog line number: {}, time from last modification: {} ms",
           logWriter.getLogNum(),
