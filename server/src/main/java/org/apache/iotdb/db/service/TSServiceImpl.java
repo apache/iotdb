@@ -751,6 +751,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+        TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
           tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
         } else {
@@ -827,7 +828,8 @@ public class TSServiceImpl implements TSIService.Iface {
       resp.setQueryId(queryId);
 
       if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
-        tracingManager.writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
+        TracingManager.getInstance()
+            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
       if (config.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
