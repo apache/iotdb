@@ -1071,9 +1071,10 @@ public class TSServiceImpl implements TSIService.Iface {
         sessionManager.requestQueryId(
             statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
 
-    if (config.isEnablePerformanceTracing()) {
-      tracingManager.writeQueryInfo(queryId, statement, startTime, queryPlan.getPaths().size());
-    }
+    //    if (config.isEnablePerformanceTracing()) {
+    //      tracingManager.writeQueryInfo(queryId, statement, startTime,
+    // queryPlan.getPaths().size());
+    //    }
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
 
