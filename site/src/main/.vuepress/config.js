@@ -712,7 +712,7 @@ var config = {
 							// The trigger module has not been implemented yet,
 							// so the website should not show users how to use it to avoid misleading.
 							// ['Advanced-Features/Triggers','Trigger'],
-              ['Advanced-Features/Select-Into','SELECT..INTO..'],
+              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
               ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 						]
 					},
