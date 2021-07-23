@@ -102,6 +102,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateUserContext;
@@ -1122,6 +1123,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       selectOp.addClusterPath(path, functionCallContext.functionName().getText());
     }
     return selectOp;
+  }
+
+  @Override
+  public Operator visitCreateStorageGroup(CreateStorageGroupContext ctx) {
+    SetStorageGroupOperator setStorageGroupOperator =
+        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupOperator.setPath(path);
+    return setStorageGroupOperator;
   }
 
   public void parseAsClause(List<AsClauseContext> asClauseContexts, SelectOperator selectOp) {
