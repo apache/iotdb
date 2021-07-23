@@ -18,7 +18,17 @@
 
 package org.apache.iotdb.flink;
 
+import org.apache.iotdb.flink.options.IoTDBSinkOptions;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import com.google.common.base.Preconditions;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -27,14 +37,6 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.flink.configuration.Configuration;
-import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.iotdb.flink.options.IoTDBSinkOptions;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The `IoTDBSink` allows flink jobs to write events into IoTDB timeseries. By default send only one
