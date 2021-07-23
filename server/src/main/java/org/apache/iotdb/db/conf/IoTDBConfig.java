@@ -411,6 +411,9 @@ public class IoTDBConfig {
   /** the max executing time of query in ms. Unit: millisecond */
   private int queryTimeoutThreshold = 60000;
 
+  /** the max time to live of a session in ms. Unit: millisecond */
+  private int sessionTimeoutThreshold = 0;
+
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
@@ -1216,6 +1219,14 @@ public class IoTDBConfig {
 
   public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
+  }
+
+  public int getSessionTimeoutThreshold() {
+    return sessionTimeoutThreshold;
+  }
+
+  public void setSessionTimeoutThreshold(int sessionTimeoutThreshold) {
+    this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
   public boolean isReadOnly() {

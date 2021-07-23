@@ -37,15 +37,18 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class SessionUT {
+public class SessionTest {
 
   private Session session;
 
@@ -243,5 +246,46 @@ public class SessionUT {
     session.createSchemaTemplate(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
     session.setSchemaTemplate("template1", "root.sg.1");
+  }
+
+  @Test
+  public void testBuilder() {
+    session =
+        new Session.Builder()
+            .host("localhost")
+            .port(1234)
+            .fetchSize(1)
+            .username("abc")
+            .password("123456")
+            .thriftDefaultBufferSize(2)
+            .thriftMaxFrameSize(3)
+            .enableCacheLeader(true)
+            .zoneId(ZoneOffset.UTC)
+            .build();
+
+    assertEquals(1, session.fetchSize);
+    assertEquals("abc", session.username);
+    assertEquals("123456", session.password);
+    assertEquals(2, session.thriftDefaultBufferSize);
+    assertEquals(3, session.thriftMaxFrameSize);
+    assertEquals(ZoneOffset.UTC, session.zoneId);
+    assertTrue(session.enableCacheLeader);
+
+    session = new Session.Builder().nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12")).build();
+    assertEquals(Arrays.asList("aaa.com:12", "bbb.com:12"), session.nodeUrls);
+
+    try {
+      session =
+          new Session.Builder()
+              .nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12"))
+              .port(1234)
+              .build();
+      fail("specifying both nodeUrls and (host + port) is not allowed");
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "You should specify either nodeUrls or (host + rpcPort), but not both", e.getMessage());
+    } catch (Exception e) {
+      fail();
+    }
   }
 }

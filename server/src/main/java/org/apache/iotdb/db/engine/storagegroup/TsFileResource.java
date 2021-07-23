@@ -90,12 +90,11 @@ public class TsFileResource {
 
   protected TsFileResource next;
 
+  private TsFileProcessor processor;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
-
-  private TsFileProcessor processor;
-
   /** time index */
   protected ITimeIndex timeIndex;
 
@@ -182,10 +181,10 @@ public class TsFileResource {
   }
 
   /** unsealed TsFile */
-  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
@@ -632,10 +631,14 @@ public class TsFileResource {
     return timeIndex.stillLives(timeLowerBound);
   }
 
+  public boolean isDeviceIdExist(String deviceId) {
+    return timeIndex.checkDeviceIdExist(deviceId);
+  }
+
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!getDevices().contains(deviceId)) {
+    if (!timeIndex.checkDeviceIdExist(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);

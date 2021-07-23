@@ -35,7 +35,7 @@
             <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip">源代码</a></td>
             <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip.sha512">SHA512</a></td>
             <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-source-release.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.12.1/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.1/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.1/apache-iotdb-0.12.1-server-bin.zip">单机版</a></td>
@@ -61,7 +61,7 @@
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip">源码</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip.sha512">SHA512</a></td>
             <td><a href="https://downloads.apache.org/iotdb/0.11.4/apache-iotdb-0.11.4-source-release.zip.asc">ASC</a></td>
-            <td><a href="https://raw.githubusercontent.com/apache/iotdb/release/0.11.4/RELEASE_NOTES.md">release notes</a></td>
+            <td><a href="https://raw.githubusercontent.com/apache/iotdb/v0.11.4/RELEASE_NOTES.md">release notes</a></td>
       </tr>
 </table>
 

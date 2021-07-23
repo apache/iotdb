@@ -1017,6 +1017,10 @@ public class MTree implements Serializable {
       } else {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
+          if (node.isUseTemplate()
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
+            return 1;
+          }
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
@@ -1027,6 +1031,9 @@ public class MTree implements Serializable {
       }
     } else {
       int sum = node instanceof MeasurementMNode ? 1 : 0;
+      if (node.isUseTemplate()) {
+        sum += node.getUpperTemplate().getSchemaMap().size();
+      }
       for (MNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
@@ -1084,22 +1091,22 @@ public class MTree implements Serializable {
   /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    int cnt = 0;
+    boolean curIsDevice = node.isUseTemplate();
+    int cnt = curIsDevice ? 1 : 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
-        if (next instanceof MeasurementMNode && idx >= nodes.length) {
+        if (next instanceof MeasurementMNode && idx >= nodes.length && !curIsDevice) {
           cnt++;
         } else {
           cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
         }
       }
     } else {
-      boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
+        if (child instanceof MeasurementMNode && !curIsDevice && idx >= nodes.length) {
           cnt++;
-          deviceAdded = true;
+          curIsDevice = true;
         }
         cnt += getDevicesCount(child, nodes, idx + 1);
       }

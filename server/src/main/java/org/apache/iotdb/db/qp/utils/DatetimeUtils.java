@@ -20,6 +20,8 @@ package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -519,14 +521,23 @@ public class DatetimeUtils {
     return convertDurationStrToLong(-1, duration);
   }
 
+  public static long convertDurationStrToLong(String duration, String timestampPrecision) {
+    return convertDurationStrToLong(-1, duration, timestampPrecision);
+  }
+
+  public static long convertDurationStrToLong(long currentTime, String duration) {
+    return convertDurationStrToLong(
+        currentTime, duration, IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
   /**
    * convert duration string to time value.
    *
    * @param duration represent duration string like: 12d8m9ns, 1y1mo, etc.
    * @return time in milliseconds, microseconds, or nanoseconds depending on the profile
    */
-  public static long convertDurationStrToLong(long currentTime, String duration) {
-    String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+  public static long convertDurationStrToLong(
+      long currentTime, String duration, String timestampPrecision) {
     long total = 0;
     long temp = 0;
     for (int i = 0; i < duration.length(); i++) {
@@ -553,7 +564,9 @@ public class DatetimeUtils {
     return total;
   }
 
-  public static long convertDurationStrToLong(long value, String unit, String timestampPrecision) {
+  @TestOnly
+  public static long convertDurationStrToLongForTest(
+      long value, String unit, String timestampPrecision) {
     return convertDurationStrToLong(-1, value, unit, timestampPrecision);
   }
 
@@ -571,6 +584,7 @@ public class DatetimeUtils {
           res *= 30 * 86_400_000L;
         } else {
           Calendar calendar = Calendar.getInstance();
+          calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
           calendar.setTimeInMillis(currentTime);
           calendar.add(Calendar.MONTH, (int) (value));
           res = calendar.getTimeInMillis() - currentTime;

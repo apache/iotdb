@@ -117,6 +117,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateUserContext;
@@ -1114,6 +1115,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitCreateStorageGroup(CreateStorageGroupContext ctx) {
+    SetStorageGroupOperator setStorageGroupOperator =
+        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupOperator.setPath(path);
+    return setStorageGroupOperator;
+  }
+
+  @Override
   public Operator visitCreateContinuousQueryStatement(CreateContinuousQueryStatementContext ctx) {
     CreateContinuousQueryOperator createContinuousQueryOperator =
         new CreateContinuousQueryOperator(SQLConstant.TOK_CONTINUOUS_QUERY_CREATE);
@@ -1832,19 +1842,20 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       TimeIntervalContext timeInterval, GroupByClauseComponent groupByClauseComponent) {
     long startTime;
     long endTime;
+    long currentTime = DatetimeUtils.currentTime();
     if (timeInterval.timeValue(0).INT() != null) {
       startTime = Long.parseLong(timeInterval.timeValue(0).INT().getText());
     } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression());
+      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
     } else {
-      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText());
+      startTime = parseTimeFormat(timeInterval.timeValue(0).dateFormat().getText(), currentTime);
     }
     if (timeInterval.timeValue(1).INT() != null) {
       endTime = Long.parseLong(timeInterval.timeValue(1).INT().getText());
     } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression());
+      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
     } else {
-      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText());
+      endTime = parseTimeFormat(timeInterval.timeValue(1).dateFormat().getText(), currentTime);
     }
 
     groupByClauseComponent.setStartTime(startTime);
@@ -2071,6 +2082,19 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     return time;
   }
 
+  private Long parseDateExpression(DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseTimeFormat(ctx.getChild(0).getText(), currentTime);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if (ctx.getChild(i).getText().equals("+")) {
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      } else {
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      }
+    }
+    return time;
+  }
+
   /**
    * parse time unit or sliding step in group by query.
    *
@@ -2116,8 +2140,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       long timestamp;
       if (insertMultiValues.get(i).dateFormat() != null) {
         timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
-      } else {
+      } else if (insertMultiValues.get(i).INT() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      } else if (insertMultiValues.size() != 1) {
+        throw new SQLParserException("need timestamps when insert multi rows");
+      } else {
+        timestamp = parseTimeFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
       List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();
@@ -2310,6 +2338,25 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       return DatetimeUtils.currentTime();
+    }
+    try {
+      return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
+    } catch (Exception e) {
+      throw new SQLParserException(
+          String.format(
+              "Input time format %s error. "
+                  + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+                  + "refer to user document for more info.",
+              timestampStr));
+    }
+  }
+
+  public long parseTimeFormat(String timestampStr, long currentTime) throws SQLParserException {
+    if (timestampStr == null || timestampStr.trim().equals("")) {
+      throw new SQLParserException("input timestamp cannot be empty");
+    }
+    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+      return currentTime;
     }
     try {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);

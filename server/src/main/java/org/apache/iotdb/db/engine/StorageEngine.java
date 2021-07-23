@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
@@ -81,6 +81,7 @@ import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -116,12 +117,11 @@ public class StorageEngine implements IService {
    */
   private final String systemDir;
   /** storage group name -> storage group processor */
-  private final ConcurrentHashMap<PartialPath, StorageGroupManager> processorMap =
+  private final ConcurrentHashMap<PartialPath, VirtualStorageGroupManager> processorMap =
       new ConcurrentHashMap<>();
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
-  private ExecutorService recoverAllSgThreadPool;
   private ScheduledExecutorService ttlCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
@@ -235,62 +235,37 @@ public class StorageEngine implements IService {
     recoveryThreadPool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
-    recoverAllSgThreadPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("Begin-Recovery-Pool");
-    recoverAllSgThreadPool.submit(this::recoverAllSgs);
-  }
 
-  private void recoverAllSgs() {
-    /*
-     * recover all storage group processors.
-     */
-    List<Future<Void>> futures = new ArrayList<>();
-    recoverStorageGroupProcessor(futures);
-
-    for (Future<Void> future : futures) {
-      try {
-        future.get();
-      } catch (ExecutionException e) {
-        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
-      }
-    }
-    recoveryThreadPool.shutdown();
-    setAllSgReady(true);
-  }
-
-  /**
-   * recover logic storage group processor
-   *
-   * @param futures recover future task
-   */
-  private void recoverStorageGroupProcessor(List<Future<Void>> futures) {
+    // recover all logic storage group processors
     List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    List<Future<Void>> futures = new LinkedList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
-      futures.add(
-          recoveryThreadPool.submit(
-              () -> {
-                try {
-                  // for recovery in test
-                  StorageGroupManager storageGroupManager =
-                      processorMap.computeIfAbsent(
-                          storageGroup.getPartialPath(), id -> new StorageGroupManager());
+      VirtualStorageGroupManager virtualStorageGroupManager =
+          processorMap.computeIfAbsent(
+              storageGroup.getPartialPath(), id -> new VirtualStorageGroupManager(true));
 
-                  storageGroupManager.recover(storageGroup);
-
-                  logger.info(
-                      "Storage Group Processor {} is recovered successfully",
-                      storageGroup.getFullPath());
-                } catch (Exception e) {
-                  logger.error(
-                      "meet error when recovering storage group: {}",
-                      storageGroup.getFullPath(),
-                      e);
-                }
-                return null;
-              }));
+      // recover all virtual storage groups in one logic storage group
+      virtualStorageGroupManager.asyncRecover(storageGroup, recoveryThreadPool, futures);
     }
+
+    // operations after all virtual storage groups are recovered
+    Thread recoverEndTrigger =
+        new Thread(
+            () -> {
+              for (Future<Void> future : futures) {
+                try {
+                  future.get();
+                } catch (ExecutionException e) {
+                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+                }
+              }
+              recoveryThreadPool.shutdown();
+              setAllSgReady(true);
+            });
+    recoverEndTrigger.start();
   }
 
   @Override
@@ -302,7 +277,7 @@ public class StorageEngine implements IService {
 
   private void checkTTL() {
     try {
-      for (StorageGroupManager processor : processorMap.values()) {
+      for (VirtualStorageGroupManager processor : processorMap.values()) {
         processor.checkTTL();
       }
     } catch (ConcurrentModificationException e) {
@@ -310,16 +285,12 @@ public class StorageEngine implements IService {
     } catch (Exception e) {
       logger.error("An error occurred when checking TTL", e);
     }
-
-    if (isAllSgReady.get() && !recoverAllSgThreadPool.isShutdown()) {
-      recoverAllSgThreadPool.shutdownNow();
-    }
   }
 
   @Override
   public void stop() {
-    for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.stopCompactionSchedulerPool();
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.stopCompactionSchedulerPool();
     }
     syncCloseAllProcessor();
     if (ttlCheckThread != null) {
@@ -334,17 +305,6 @@ public class StorageEngine implements IService {
       }
     }
     recoveryThreadPool.shutdownNow();
-    if (!recoverAllSgThreadPool.isShutdown()) {
-      recoverAllSgThreadPool.shutdownNow();
-      try {
-        recoverAllSgThreadPool.awaitTermination(60, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("recoverAllSgThreadPool thread still doesn't exit after 60s");
-        Thread.currentThread().interrupt();
-        throw new StorageEngineFailureException(
-            "StorageEngine failed to stop because of " + "recoverAllSgThreadPool.", e);
-      }
-    }
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroup);
     }
@@ -354,8 +314,8 @@ public class StorageEngine implements IService {
   @Override
   public void shutdown(long milliseconds) throws ShutdownException {
     try {
-      for (StorageGroupManager storageGroupManager : processorMap.values()) {
-        storageGroupManager.stopCompactionSchedulerPool();
+      for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+        virtualStorageGroupManager.stopCompactionSchedulerPool();
       }
       forceCloseAllProcessor();
     } catch (TsFileProcessorException e) {
@@ -446,28 +406,18 @@ public class StorageEngine implements IService {
   private StorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, StorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-    StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
-    if (storageGroupManager == null) {
-      // if finish recover
-      if (isAllSgReady.get()) {
-        waitAllSgReady(devicePath);
-        synchronized (storageGroupMNode) {
-          storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
-          if (storageGroupManager == null) {
-            storageGroupManager = new StorageGroupManager();
-            processorMap.put(storageGroupMNode.getPartialPath(), storageGroupManager);
-          }
+    VirtualStorageGroupManager virtualStorageGroupManager =
+        processorMap.get(storageGroupMNode.getPartialPath());
+    if (virtualStorageGroupManager == null) {
+      synchronized (this) {
+        virtualStorageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
+        if (virtualStorageGroupManager == null) {
+          virtualStorageGroupManager = new VirtualStorageGroupManager();
+          processorMap.put(storageGroupMNode.getPartialPath(), virtualStorageGroupManager);
         }
-      } else {
-        // not finished recover, refuse the request
-        throw new StorageEngineException(
-            "the sg "
-                + storageGroupMNode.getPartialPath()
-                + " may not ready now, please wait and retry later",
-            TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
-    return storageGroupManager.getProcessor(devicePath, storageGroupMNode);
+    return virtualStorageGroupManager.getProcessor(devicePath, storageGroupMNode);
   }
 
   /**
@@ -498,36 +448,10 @@ public class StorageEngine implements IService {
     return processor;
   }
 
-  private void waitAllSgReady(PartialPath storageGroupPath) throws StorageEngineException {
-    if (isAllSgReady.get()) {
-      return;
-    }
-
-    long waitStart = System.currentTimeMillis();
-    long waited = 0L;
-    final long MAX_WAIT = 5000L;
-    while (!isAllSgReady.get() && waited < MAX_WAIT) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new StorageEngineException(e);
-      }
-      waited = System.currentTimeMillis() - waitStart;
-    }
-
-    if (!isAllSgReady.get()) {
-      // not finished recover, refuse the request
-      throw new StorageEngineException(
-          "the sg " + storageGroupPath + " may not ready now, please wait and retry later",
-          TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
-    }
-  }
-
   /** This function is just for unit test. */
   public synchronized void reset() {
-    for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.reset();
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.reset();
     }
   }
 
@@ -621,12 +545,12 @@ public class StorageEngine implements IService {
   }
 
   private void updateMonitorStatistics(
-      StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
+      VirtualStorageGroupManager virtualStorageGroupManager, InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
     int successPointsNum =
         insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
     // update to storage group statistics
-    storageGroupManager.updateMonitorSeriesValue(successPointsNum);
+    virtualStorageGroupManager.updateMonitorSeriesValue(successPointsNum);
     // update to global statistics
     monitor.updateStatGlobalValue(successPointsNum);
   }
@@ -634,14 +558,14 @@ public class StorageEngine implements IService {
   /** flush command Sync asyncCloseOneProcessor all file node processors. */
   public void syncCloseAllProcessor() {
     logger.info("Start closing all storage group processor");
-    for (StorageGroupManager processor : processorMap.values()) {
+    for (VirtualStorageGroupManager processor : processorMap.values()) {
       processor.syncCloseAllWorkingTsFileProcessors();
     }
   }
 
   public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start force closing all storage group processor");
-    for (StorageGroupManager processor : processorMap.values()) {
+    for (VirtualStorageGroupManager processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
@@ -652,8 +576,8 @@ public class StorageEngine implements IService {
       return;
     }
 
-    StorageGroupManager storageGroupManager = processorMap.get(storageGroupPath);
-    storageGroupManager.closeStorageGroupProcessor(isSeq, isSync);
+    VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
+    virtualStorageGroupManager.closeStorageGroupProcessor(isSeq, isSync);
   }
 
   /**
@@ -670,8 +594,8 @@ public class StorageEngine implements IService {
       throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
     }
 
-    StorageGroupManager storageGroupManager = processorMap.get(storageGroupPath);
-    storageGroupManager.closeStorageGroupProcessor(partitionId, isSeq, isSync);
+    VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroupPath);
+    virtualStorageGroupManager.closeStorageGroupProcessor(partitionId, isSeq, isSync);
   }
 
   public void delete(PartialPath path, long startTime, long endTime, long planIndex)
@@ -732,8 +656,8 @@ public class StorageEngine implements IService {
    */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
-    for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      totalUpgradeFileNum += storageGroupManager.countUpgradeFiles();
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      totalUpgradeFileNum += virtualStorageGroupManager.countUpgradeFiles();
     }
     return totalUpgradeFileNum;
   }
@@ -748,8 +672,8 @@ public class StorageEngine implements IService {
       throw new StorageEngineException(
           "Current system mode is read only, does not support file upgrade");
     }
-    for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.upgradeAll();
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.upgradeAll();
     }
   }
 
@@ -763,8 +687,8 @@ public class StorageEngine implements IService {
       throw new StorageEngineException("Current system mode is read only, does not support merge");
     }
 
-    for (StorageGroupManager storageGroupManager : processorMap.values()) {
-      storageGroupManager.mergeAll(isFullMerge);
+    for (VirtualStorageGroupManager virtualStorageGroupManager : processorMap.values()) {
+      virtualStorageGroupManager.mergeAll(isFullMerge);
     }
   }
 
@@ -816,8 +740,9 @@ public class StorageEngine implements IService {
 
     deleteAllDataFilesInOneStorageGroup(storageGroupPath);
     releaseWalDirectByteBufferPoolInOneStorageGroup(storageGroupPath);
-    StorageGroupManager storageGroupManager = processorMap.remove(storageGroupPath);
-    storageGroupManager.deleteStorageGroup(systemDir + File.pathSeparator + storageGroupPath);
+    VirtualStorageGroupManager virtualStorageGroupManager = processorMap.remove(storageGroupPath);
+    virtualStorageGroupManager.deleteStorageGroup(
+        systemDir + File.pathSeparator + storageGroupPath);
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
@@ -870,7 +795,7 @@ public class StorageEngine implements IService {
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
   public Map<PartialPath, Map<Long, List<TsFileResource>>> getAllClosedStorageGroupTsFile() {
     Map<PartialPath, Map<Long, List<TsFileResource>>> ret = new HashMap<>();
-    for (Entry<PartialPath, StorageGroupManager> entry : processorMap.entrySet()) {
+    for (Entry<PartialPath, VirtualStorageGroupManager> entry : processorMap.entrySet()) {
       entry.getValue().getAllClosedStorageGroupTsFile(entry.getKey(), ret);
     }
     return ret;
@@ -882,8 +807,8 @@ public class StorageEngine implements IService {
 
   public boolean isFileAlreadyExist(
       TsFileResource tsFileResource, PartialPath storageGroup, long partitionNum) {
-    StorageGroupManager storageGroupManager = processorMap.get(storageGroup);
-    if (storageGroupManager == null) {
+    VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroup);
+    if (virtualStorageGroupManager == null) {
       return false;
     }
 
@@ -912,7 +837,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public Map<PartialPath, StorageGroupManager> getProcessorMap() {
+  public Map<PartialPath, VirtualStorageGroupManager> getProcessorMap() {
     return processorMap;
   }
 
@@ -924,7 +849,7 @@ public class StorageEngine implements IService {
    */
   public Map<String, List<Pair<Long, Boolean>>> getWorkingStorageGroupPartitions() {
     Map<String, List<Pair<Long, Boolean>>> res = new ConcurrentHashMap<>();
-    for (Entry<PartialPath, StorageGroupManager> entry : processorMap.entrySet()) {
+    for (Entry<PartialPath, VirtualStorageGroupManager> entry : processorMap.entrySet()) {
       entry.getValue().getWorkingStorageGroupPartitions(entry.getKey().getFullPath(), res);
     }
     return res;

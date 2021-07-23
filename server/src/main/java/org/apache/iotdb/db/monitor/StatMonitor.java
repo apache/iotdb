@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -198,7 +198,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
     globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
-    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    if (successPointsNum != 0) {
+      globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    }
   }
 
   public void updateFailedStatValue() {
@@ -231,13 +233,13 @@ public class StatMonitor implements StatMonitorMBean, IService {
   @Override
   public long getStorageGroupTotalPointsNum(String storageGroupName) {
     try {
-      StorageGroupManager storageGroupManager =
+      VirtualStorageGroupManager virtualStorageGroupManager =
           storageEngine.getProcessorMap().get(new PartialPath(storageGroupName));
-      if (storageGroupManager == null) {
+      if (virtualStorageGroupManager == null) {
         return 0;
       }
 
-      return storageGroupManager.getMonitorSeriesValue();
+      return virtualStorageGroupManager.getMonitorSeriesValue();
     } catch (IllegalPathException e) {
       logger.error(e.getMessage());
       return -1;
