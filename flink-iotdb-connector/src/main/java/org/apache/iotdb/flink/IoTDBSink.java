@@ -76,7 +76,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     initScheduler();
   }
 
-  void initSession() throws Exception {
+  void initSession() {
     pool =
         new SessionPool(
             options.getHost(),
