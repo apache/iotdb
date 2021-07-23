@@ -21,24 +21,30 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import io.netty.util.internal.ConcurrentSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
+  private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
   protected static final Map<String, String> cachedDevicePool =
       CachedStringPool.getInstance().getCachedPool();
 
@@ -114,8 +120,16 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices() {
-    return devices;
+  public Set<String> getDevices(String tsFilePath) {
+    try {
+      TsFileSequenceReader fileReader =
+              FileReaderManager.getInstance().get(tsFilePath, true);
+      return new HashSet<>(fileReader.getAllDevices());
+    } catch (IOException e) {
+      logger.error("Can't read file {} from disk ", tsFilePath, e);
+    }
+    return Collections.emptySet();
+    // return devices;
   }
 
   @Override

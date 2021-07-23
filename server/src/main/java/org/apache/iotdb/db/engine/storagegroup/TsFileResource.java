@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -40,6 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -53,13 +55,7 @@ import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SUFFIX_INDEX;
@@ -178,16 +174,16 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = new DeviceTimeIndex();
-    this.timeIndexType = 1;
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
   /** unsealed TsFile */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = new DeviceTimeIndex();
-    this.timeIndexType = 1;
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
@@ -348,7 +344,7 @@ public class TsFileResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
       timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
-      timeIndex = new DeviceTimeIndex().deserialize(inputStream);
+      timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       if (inputStream.available() > 0) {
@@ -468,7 +464,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices();
+          return timeIndex.getDevices(file.getPath());
   }
 
   public boolean endTimeEmpty() {
