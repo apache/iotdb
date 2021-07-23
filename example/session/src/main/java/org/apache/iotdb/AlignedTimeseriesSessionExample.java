@@ -58,14 +58,14 @@ public class AlignedTimeseriesSessionExample {
     //    createAlignedTimeseries();
     //    insertAlignedRecord();
 
-//    insertRecord(ROOT_SG1_D2);
+    insertRecord(ROOT_SG1_D2);
     insertTabletWithAlignedTimeseriesMethod1();
-//    insertRecord(ROOT_SG1_D1);
+    insertRecord(ROOT_SG1_D1);
     session.executeNonQueryStatement("flush");
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
     //
-//        selectTest();
+    selectTest();
     //    selectWithValueFilterTest();
     //    selectWithGroupByTest();
     //    selectWithLastTest();
@@ -256,7 +256,7 @@ public class AlignedTimeseriesSessionExample {
     tablet.setAligned(true);
     long timestamp = 1;
 
-    for (long row = 0; row < 10; row++) {
+    for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(

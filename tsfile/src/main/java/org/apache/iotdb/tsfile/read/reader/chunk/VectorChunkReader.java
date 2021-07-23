@@ -208,7 +208,7 @@ public class VectorChunkReader implements IChunkReader {
     // doesn't has a complete page body
     // todo: 这里vector的时候会错，我怀疑是compressedPageBodyLength解错了
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
-//      compressedPageBodyLength = chunkBuffer.remaining();
+      //      compressedPageBodyLength = chunkBuffer.remaining();
       throw new IOException(
           "do not has a complete page body. Expected:"
               + compressedPageBodyLength
