@@ -534,7 +534,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             writeUnlock();
           }
           for (TsFileResource tsFileResource : sourceTsFileResources) {
-            logger.error(
+            logger.warn(
                 "{} recover storage group delete source file {}",
                 storageGroupName,
                 tsFileResource.getTsFile().getName());
@@ -679,8 +679,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     Long.MAX_VALUE);
           } else {
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
+            List<TsFileResource> toMergeTsFiles =
+                mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
             // log source file list and target file for recover
-            for (TsFileResource mergeResource : mergeResources.get(i)) {
+            for (TsFileResource mergeResource : toMergeTsFiles) {
               mergeResource.setMerging(true);
               compactionLogger.logFile(SOURCE_NAME, mergeResource.getTsFile());
             }
@@ -688,8 +690,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
-            List<TsFileResource> toMergeTsFiles =
-                mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
             logger.info(
                 "{} [Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName,
