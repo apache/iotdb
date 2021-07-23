@@ -281,7 +281,7 @@ public abstract class TsFileManagement {
       // wait until unseq merge has finished
       while (isUnseqMerging) {
         try {
-          Thread.sleep(200);
+          wait(200);
         } catch (InterruptedException e) {
           logger.error("{} [Compaction] shutdown", storageGroupName, e);
           Thread.currentThread().interrupt();
@@ -419,7 +419,10 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          boolean deletionSuccess = mergedFile.delete();
+          if (!deletionSuccess) {
+            logger.warn("fail to delete {}", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {
