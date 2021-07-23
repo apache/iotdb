@@ -712,7 +712,7 @@ public class IoTDBConfig {
   private String adminPassword = "root";
 
   /** if the startOpenApi is true, we will start OpenApi */
-  private boolean startOpenApi = true;
+  private boolean startOpenApi = false;
 
   /** set the OpenApi reset port. */
   private int OpenApiPort = 18080;
