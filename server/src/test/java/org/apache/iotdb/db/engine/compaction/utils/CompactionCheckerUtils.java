@@ -126,125 +126,130 @@ public class CompactionCheckerUtils {
    * including startTime, endTime (device level)
    *
    * @param sourceData All time series before merging and their corresponding data points
-   * @param mergedFile The merged File to be checked
+   * @param mergedFiles The merged Files to be checked
    */
   public static void checkDataAndResource(
-      Map<String, List<TimeValuePair>> sourceData, TsFileResource mergedFile)
+      Map<String, List<TimeValuePair>> sourceData, List<TsFileResource> mergedFiles)
       throws IOException, IllegalPathException {
     // read from back to front
-    List<TsFileResource> tsFileResources = new ArrayList<>();
-    tsFileResources.add(mergedFile);
-    Map<String, List<TimeValuePair>> mergedData = readFiles(tsFileResources);
+    Map<String, List<TimeValuePair>> mergedData = readFiles(mergedFiles);
     compareSensorAndData(sourceData, mergedData);
 
     // read from front to back
     mergedData = new HashMap<>();
     Map<String, Long> fullPathPointNum = new HashMap<>();
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      // Sequential reading of one ChunkGroup now follows this order:
-      // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
-      // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
-      // marker) ahead and judge accordingly.
-      String device = "";
-      String measurementID = "";
-      List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      byte marker;
-      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
-        switch (marker) {
-          case MetaMarker.CHUNK_HEADER:
-          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-          case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
-          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
-          case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
-            ChunkHeader header = reader.readChunkHeader(marker);
-            // read the next measurement and pack data of last measurement
-            if (currTimeValuePairs.size() > 0) {
-              PartialPath path = new PartialPath(device, measurementID);
-              List<TimeValuePair> timeValuePairs =
-                  mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
-              timeValuePairs.addAll(currTimeValuePairs);
-              currTimeValuePairs.clear();
-            }
-            measurementID = header.getMeasurementID();
-            Decoder defaultTimeDecoder =
-                Decoder.getDecoderByType(
-                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                    TSDataType.INT64);
-            Decoder valueDecoder =
-                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              valueDecoder.reset();
-              PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              PartialPath path = new PartialPath(device, measurementID);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-              PageReader reader1 =
-                  new PageReader(
-                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
-              BatchData batchData = reader1.getAllSatisfiedPageData();
-              long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
-              if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
-                count += pageHeader.getNumOfValues();
-              } else {
-                count += batchData.length();
+    for (TsFileResource mergedFile : mergedFiles) {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
+        // Sequential reading of one ChunkGroup now follows this order:
+        // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
+        // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
+        // (the
+        // marker) ahead and judge accordingly.
+        String device = "";
+        String measurementID = "";
+        List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
+        reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
+        byte marker;
+        while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
+          switch (marker) {
+            case MetaMarker.CHUNK_HEADER:
+            case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+            case (byte) (MetaMarker.CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+            case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
+            case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
+            case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+              ChunkHeader header = reader.readChunkHeader(marker);
+              // read the next measurement and pack data of last measurement
+              if (currTimeValuePairs.size() > 0) {
+                PartialPath path = new PartialPath(device, measurementID);
+                List<TimeValuePair> timeValuePairs =
+                    mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
+                timeValuePairs.addAll(currTimeValuePairs);
+                currTimeValuePairs.clear();
               }
-              fullPathPointNum.put(path.getFullPath(), count);
-              BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
-              while (batchDataIterator.hasNextTimeValuePair()) {
-                currTimeValuePairs.add(batchDataIterator.nextTimeValuePair());
+              measurementID = header.getMeasurementID();
+              Decoder defaultTimeDecoder =
+                  Decoder.getDecoderByType(
+                      TSEncoding.valueOf(
+                          TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                      TSDataType.INT64);
+              Decoder valueDecoder =
+                  Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                valueDecoder.reset();
+                PageHeader pageHeader =
+                    reader.readPageHeader(
+                        header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                PartialPath path = new PartialPath(device, measurementID);
+                ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+                PageReader reader1 =
+                    new PageReader(
+                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                BatchData batchData = reader1.getAllSatisfiedPageData();
+                long count = fullPathPointNum.getOrDefault(path.getFullPath(), 0L);
+                if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
+                  count += pageHeader.getNumOfValues();
+                } else {
+                  count += batchData.length();
+                }
+                fullPathPointNum.put(path.getFullPath(), count);
+                BatchDataIterator batchDataIterator = batchData.getBatchDataIterator();
+                while (batchDataIterator.hasNextTimeValuePair()) {
+                  currTimeValuePairs.add(batchDataIterator.nextTimeValuePair());
+                }
+                dataSize -= pageHeader.getSerializedPageSize();
               }
-              dataSize -= pageHeader.getSerializedPageSize();
-            }
-            break;
-          case MetaMarker.CHUNK_GROUP_HEADER:
-            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            // read the next measurement and pack data of last device
-            if (currTimeValuePairs.size() > 0) {
-              PartialPath path = new PartialPath(device, measurementID);
-              List<TimeValuePair> timeValuePairs =
-                  mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
-              timeValuePairs.addAll(currTimeValuePairs);
-              currTimeValuePairs.clear();
-            }
-            device = chunkGroupHeader.getDeviceID();
-            break;
-          case MetaMarker.OPERATION_INDEX_RANGE:
-            reader.readPlanIndex();
-            break;
-          default:
-            MetaMarker.handleUnexpectedMarker(marker);
+              break;
+            case MetaMarker.CHUNK_GROUP_HEADER:
+              ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+              // read the next measurement and pack data of last device
+              if (currTimeValuePairs.size() > 0) {
+                PartialPath path = new PartialPath(device, measurementID);
+                List<TimeValuePair> timeValuePairs =
+                    mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
+                timeValuePairs.addAll(currTimeValuePairs);
+                currTimeValuePairs.clear();
+              }
+              device = chunkGroupHeader.getDeviceID();
+              break;
+            case MetaMarker.OPERATION_INDEX_RANGE:
+              reader.readPlanIndex();
+              break;
+            default:
+              MetaMarker.handleUnexpectedMarker(marker);
+          }
+        }
+        // pack data of last measurement
+        if (currTimeValuePairs.size() > 0) {
+          PartialPath path = new PartialPath(device, measurementID);
+          List<TimeValuePair> timeValuePairs =
+              mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
+          timeValuePairs.addAll(currTimeValuePairs);
         }
       }
-      // pack data of last measurement
-      if (currTimeValuePairs.size() > 0) {
-        PartialPath path = new PartialPath(device, measurementID);
-        List<TimeValuePair> timeValuePairs =
-            mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
-        timeValuePairs.addAll(currTimeValuePairs);
-      }
-    }
-    Collection<Modification> modifications =
-        ModificationFile.getNormalMods(mergedFile).getModifications();
-    for (Modification modification : modifications) {
-      Deletion deletion = (Deletion) modification;
-      long deletedCount = 0L;
-      Iterator<TimeValuePair> timeValuePairIterator =
-          mergedData.get(deletion.getPath().getFullPath()).iterator();
-      while (timeValuePairIterator.hasNext()) {
-        TimeValuePair timeValuePair = timeValuePairIterator.next();
-        if (timeValuePair.getTimestamp() >= deletion.getStartTime()
-            && timeValuePair.getTimestamp() <= deletion.getEndTime()) {
-          timeValuePairIterator.remove();
-          deletedCount++;
+
+      Collection<Modification> modifications =
+          ModificationFile.getNormalMods(mergedFile).getModifications();
+      for (Modification modification : modifications) {
+        Deletion deletion = (Deletion) modification;
+        if (mergedData.containsKey(deletion.getPath().getFullPath())) {
+          long deletedCount = 0L;
+          Iterator<TimeValuePair> timeValuePairIterator =
+              mergedData.get(deletion.getPath().getFullPath()).iterator();
+          while (timeValuePairIterator.hasNext()) {
+            TimeValuePair timeValuePair = timeValuePairIterator.next();
+            if (timeValuePair.getTimestamp() >= deletion.getStartTime()
+                && timeValuePair.getTimestamp() <= deletion.getEndTime()) {
+              timeValuePairIterator.remove();
+              deletedCount++;
+            }
+          }
+          long count = fullPathPointNum.get(deletion.getPath().getFullPath());
+          count = count - deletedCount;
+          fullPathPointNum.put(deletion.getPath().getFullPath(), count);
         }
       }
-      long count = fullPathPointNum.get(deletion.getPath().getFullPath());
-      count = count - deletedCount;
-      fullPathPointNum.put(deletion.getPath().getFullPath(), count);
     }
     compareSensorAndData(sourceData, mergedData);
     for (Entry<String, List<TimeValuePair>> sourceDataEntry : sourceData.entrySet()) {
@@ -272,8 +277,16 @@ public class CompactionCheckerUtils {
     for (Entry<String, long[]> deviceCountEntry : devicePointNumMap.entrySet()) {
       String device = deviceCountEntry.getKey();
       long[] statistics = deviceCountEntry.getValue();
-      assertEquals(statistics[0], mergedFile.getStartTime(device));
-      assertEquals(statistics[1], mergedFile.getEndTime(device));
+      long startTime = Long.MAX_VALUE;
+      for (TsFileResource mergedFile : mergedFiles) {
+        startTime = Math.min(startTime, mergedFile.getStartTime(device));
+      }
+      long endTime = Long.MIN_VALUE;
+      for (TsFileResource mergedFile : mergedFiles) {
+        endTime = Math.max(endTime, mergedFile.getEndTime(device));
+      }
+      assertEquals(statistics[0], startTime);
+      assertEquals(statistics[1], endTime);
     }
   }
 

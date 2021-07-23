@@ -117,7 +117,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
             LOGGER.warn("Delete file {} failed", mergedFile);
           }
         }
-        updateMergeModification(seqFile);
+        updateMergeModification(seqFile, unseqFiles);
       } finally {
         doubleWriteUnlock(seqFile);
       }
@@ -186,13 +186,20 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     seqFile.writeUnlock();
   }
 
-  private void updateMergeModification(TsFileResource seqFile) {
+  private void updateMergeModification(TsFileResource seqFile, List<TsFileResource> unseqFiles) {
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
       ModificationFile compactionModificationFile = ModificationFile.getCompactionMods(seqFile);
       for (Modification modification : compactionModificationFile.getModifications()) {
         seqFile.getModFile().write(modification);
+      }
+      for (TsFileResource unseqFile : unseqFiles) {
+        ModificationFile compactionUnseqModificationFile =
+            ModificationFile.getCompactionMods(unseqFile);
+        for (Modification modification : compactionUnseqModificationFile.getModifications()) {
+          seqFile.getModFile().write(modification);
+        }
       }
       try {
         seqFile.getModFile().close();

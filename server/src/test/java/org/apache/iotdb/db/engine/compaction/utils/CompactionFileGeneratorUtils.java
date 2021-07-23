@@ -61,9 +61,9 @@ public class CompactionFileGeneratorUtils {
       return new TsFileResource(
           new File(
               TestConstant.BASE_OUTPUT_PATH.concat(
-                  (index + 10)
+                  (index + 10000)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
-                      + (index + 10)
+                      + (index + 10000)
                       + IoTDBConstant.FILE_NAME_SEPARATOR
                       + 0
                       + IoTDBConstant.FILE_NAME_SEPARATOR

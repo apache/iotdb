@@ -134,7 +134,7 @@ public class CompactionTaskManager implements IService {
     if (pool != null && !pool.isTerminated()) {
       synchronized (CompactionScheduler.currentTaskNum) {
         CompactionScheduler.currentTaskNum.incrementAndGet();
-        logger.warn(
+        logger.info(
             "submitted a compaction task, currentTaskNum={}",
             CompactionScheduler.currentTaskNum.get());
         Future<Void> future = pool.submit(compactionMergeTask);

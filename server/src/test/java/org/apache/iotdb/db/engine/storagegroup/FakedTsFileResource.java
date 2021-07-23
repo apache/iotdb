@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
+
 public class FakedTsFileResource extends TsFileResource {
+  /** time index */
+  protected ITimeIndex timeIndex;
 
   private long tsFileSize;
 
@@ -32,6 +37,13 @@ public class FakedTsFileResource extends TsFileResource {
     this.tsFileSize = tsFileSize;
     super.closed = isClosed;
     super.isMerging = isMerging;
+  }
+
+  public FakedTsFileResource(long tsFileSize, long startTime, long endTime) {
+    this.timeIndex = new FileTimeIndex();
+    timeIndex.putStartTime("", startTime);
+    timeIndex.putEndTime("", endTime);
+    this.tsFileSize = tsFileSize;
   }
 
   public void setTsFileSize(long tsFileSize) {

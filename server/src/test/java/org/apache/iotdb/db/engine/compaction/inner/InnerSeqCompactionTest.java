@@ -206,7 +206,9 @@ public class InnerSeqCompactionTest {
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.renameLevelFilesMods(toMergeResources, targetTsFileResource);
-            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResource);
+            List<TsFileResource> targetTsFileResources = new ArrayList<>();
+            targetTsFileResources.add(targetTsFileResource);
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
             Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
             if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
               if (toMergeFileNum == 2) {
@@ -433,7 +435,9 @@ public class InnerSeqCompactionTest {
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.renameLevelFilesMods(toMergeResources, targetTsFileResource);
-            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResource);
+            List<TsFileResource> targetTsFileResources = new ArrayList<>();
+            targetTsFileResources.add(targetTsFileResource);
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
             Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
             if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
               if (toMergeFileNum == 2) {
@@ -696,7 +700,9 @@ public class InnerSeqCompactionTest {
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.renameLevelFilesMods(toMergeResources, targetTsFileResource);
-            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResource);
+            List<TsFileResource> targetTsFileResources = new ArrayList<>();
+            targetTsFileResources.add(targetTsFileResource);
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
             Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
             if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
               if (toMergeFileNum == 2) {

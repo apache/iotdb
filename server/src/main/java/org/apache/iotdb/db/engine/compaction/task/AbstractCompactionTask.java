@@ -54,7 +54,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       LOGGER.warn(e.getMessage(), e);
     } finally {
       CompactionScheduler.currentTaskNum.decrementAndGet();
-      LOGGER.warn("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
+      LOGGER.info("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
       CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
     }
     return null;

@@ -85,8 +85,8 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
     if (seqFileList.isEmpty() || unSeqFileList.isEmpty()) {
       return false;
     }
-    if (unSeqFileList.size() > config.getMaxOpenFileNumInCrossSpaceCompaction()) {
-      unSeqFileList = unSeqFileList.subList(0, config.getMaxOpenFileNumInCrossSpaceCompaction());
+    if (unSeqFileList.size() > config.getMaxCompactionCandidateFileNum()) {
+      unSeqFileList = unSeqFileList.subList(0, config.getMaxCompactionCandidateFileNum());
     }
     long budget = config.getMergeMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
