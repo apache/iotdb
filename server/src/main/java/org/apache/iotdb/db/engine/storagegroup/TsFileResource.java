@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -464,7 +463,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-          return timeIndex.getDevices(file.getPath());
+    return timeIndex.getDevices(file.getPath());
   }
 
   public boolean endTimeEmpty() {

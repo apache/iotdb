@@ -460,30 +460,30 @@ public class IoTDBLoadExternalTsfileIT {
 
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
         assertEquals(
-                1,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getUnSequenceFileList()
-                        .size());
+            1,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getUnSequenceFileList()
+                .size());
         assertEquals(
-                3,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getSequenceFileTreeSet()
-                        .size());
+            3,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getSequenceFileTreeSet()
+                .size());
       } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
         assertEquals(
-                2,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getUnSequenceFileList()
-                        .size());
+            2,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getUnSequenceFileList()
+                .size());
         assertEquals(
-                2,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getSequenceFileTreeSet()
-                        .size());
+            2,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getSequenceFileTreeSet()
+                .size());
       }
 
       assertNotNull(tmpDir.listFiles());

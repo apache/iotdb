@@ -1326,28 +1326,4 @@ public class TsFileProcessor {
   public boolean alreadyMarkedClosing() {
     return shouldClose;
   }
-
-  /**
-   * get all devices when the TsFile is not close. It consists of three part: 1. flushingMemTables,
-   * workMemtable is added into the flushingMemTables and memtables are ready to write to disk 2.
-   * workMemTable, the memtables ready to be written in memory 3. writer, the memtables which have
-   * been written to disk
-   *
-   * @return a set of all deviceId
-   */
-  public Set<String> getDevices() {
-    Set<String> devicesSet = new HashSet<>();
-
-    for (IMemTable item : flushingMemTables) {
-      devicesSet.addAll(item.getDevices());
-    }
-    if (workMemTable != null) {
-      devicesSet.addAll(workMemTable.getDevices());
-    }
-
-    if (writer != null) {
-      devicesSet.addAll(writer.getMetadatasForQuery().keySet());
-    }
-    return devicesSet;
-  }
 }

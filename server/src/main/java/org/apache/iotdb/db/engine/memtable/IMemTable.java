@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -141,8 +140,4 @@ public interface IMemTable {
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
-
-
-  /** get devices from memTable * */
-  Set<String> getDevices();
 }

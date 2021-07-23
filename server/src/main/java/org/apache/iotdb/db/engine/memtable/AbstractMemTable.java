@@ -432,12 +432,4 @@ public abstract class AbstractMemTable implements IMemTable {
     maxPlanIndex = Math.max(index, maxPlanIndex);
     minPlanIndex = Math.min(index, minPlanIndex);
   }
-
-  @Override
-  public Set<String> getDevices() {
-    if (memTableMap != null) {
-      return memTableMap.keySet();
-    }
-    return  Collections.emptySet();
-  }
 }

@@ -122,8 +122,7 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public Set<String> getDevices(String tsFilePath) {
     try {
-      TsFileSequenceReader fileReader =
-              FileReaderManager.getInstance().get(tsFilePath, true);
+      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
     } catch (IOException e) {
       logger.error("Can't read file {} from disk ", tsFilePath, e);

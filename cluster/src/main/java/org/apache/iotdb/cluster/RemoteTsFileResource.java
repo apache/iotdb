@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.NodeSerializeUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
 import java.io.DataOutputStream;
@@ -48,8 +47,7 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public RemoteTsFileResource() {
     setClosed(true);
-    this.timeIndex =
-            IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
+    this.timeIndex = IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
   }
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
@@ -109,11 +107,11 @@ public class RemoteTsFileResource extends TsFileResource {
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
     timeIndex =
-            IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getTimeIndexLevel()
-                    .getTimeIndex()
-                    .deserialize(buffer);
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getTimeIndexLevel()
+            .getTimeIndex()
+            .deserialize(buffer);
 
     withModification = buffer.get() == 1;
 
