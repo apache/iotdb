@@ -23,9 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -66,17 +63,17 @@ public class TracingManagerTest {
   }
 
   @Test
-  public void tracingQueryTest() throws IOException, IllegalPathException {
+  public void tracingQueryTest() throws IOException {
     if (!tracingManager.getWriterStatus()) {
       tracingManager.openTracingWriteStream();
     }
     String[] ans = {
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",
-      "Query Id: 10 - Number of series paths: 0",
+      "Query Id: 10 - Number of series paths: 3",
       "Query Id: 10 - Query Statement: " + sql,
       "Query Id: 10 - Start time: 2020-12-",
-      "Query Id: 10 - Number of series paths: 0",
+      "Query Id: 10 - Number of series paths: 3",
       "Query Id: 10 - Number of sequence files: 1",
       "Query Id: 10 - SeqFile_1-1-0.tsfile root.sg.d1[1, 999], root.sg.d2[2, 998]",
       "Query Id: 10 - Number of unSequence files: 0",
@@ -84,15 +81,9 @@ public class TracingManagerTest {
       "Query Id: 10 - Average size of chunks: 1371",
       "Query Id: 10 - Total cost time: "
     };
-
-    AlignByDevicePlan plan = new AlignByDevicePlan();
-    plan.setPaths(Collections.emptyList());
-    plan.setDevices(Collections.emptyList());
-    AlignByDeviceDataSet dataSet = new AlignByDeviceDataSet(plan, null, null);
-
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L);
-    tracingManager.writePathsNum(queryId, dataSet);
-    tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, plan);
+    tracingManager.writePathsNum(queryId, 3);
+    tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, 3);
     tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
     tracingManager.writeEndTime(queryId);
@@ -100,13 +91,13 @@ public class TracingManagerTest {
 
     File tracingFile =
         SystemFileFactory.INSTANCE.getFile(tracingDir + File.separator + IoTDBConstant.TRACING_LOG);
-    try (BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile))) {
-      String str;
-      int cnt = 0;
-      while ((str = bufferedReader.readLine()) != null) {
-        Assert.assertTrue(str.contains(ans[cnt++]));
-      }
+    BufferedReader bufferedReader = new BufferedReader(new FileReader(tracingFile));
+    String str;
+    int cnt = 0;
+    while ((str = bufferedReader.readLine()) != null) {
+      Assert.assertTrue(str.contains(ans[cnt++]));
     }
+    bufferedReader.close();
   }
 
   void prepareTsFileResources() {

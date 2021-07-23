@@ -79,6 +79,7 @@ import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -749,7 +750,13 @@ public class TSServiceImpl implements TSIService.Iface {
               statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
 
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
-      tracingManager.writeQueryInfo(queryId, statement, startTime, plan);
+      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+        if (!(plan instanceof AlignByDevicePlan)) {
+          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
+        } else {
+          tracingManager.writeQueryInfo(queryId, statement, startTime);
+        }
+      }
 
       String username = sessionManager.getUsername(sessionId);
       plan.setLoginUserName(username);
@@ -819,7 +826,9 @@ public class TSServiceImpl implements TSIService.Iface {
 
       resp.setQueryId(queryId);
 
-      tracingManager.writePathsNum(queryId, newDataSet);
+      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
+        tracingManager.writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
+      }
       queryTimeManager.unRegisterQuery(queryId, plan);
       if (config.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
@@ -1060,7 +1069,9 @@ public class TSServiceImpl implements TSIService.Iface {
         sessionManager.requestQueryId(
             statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
 
-    //    tracingManager.writeQueryInfo(queryId, statement, startTime, queryPlan);
+    if (config.isEnablePerformanceTracing()) {
+      tracingManager.writeQueryInfo(queryId, statement, startTime, queryPlan.getPaths().size());
+    }
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
 

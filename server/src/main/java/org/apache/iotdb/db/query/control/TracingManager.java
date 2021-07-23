@@ -18,16 +18,10 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +39,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TracingManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
   private static final String QUERY_ID = "Query Id: ";
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
-
   private BufferedWriter writer;
   private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
 
-  private TracingManager(String dirName, String logFileName) {
+  public TracingManager(String dirName, String logFileName) {
     initTracingManager(dirName, logFileName);
   }
 
@@ -80,12 +71,8 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public void writeQueryInfo(long queryId, String statement, long startTime, PhysicalPlan plan)
+  public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)
       throws IOException {
-    if (!config.isEnablePerformanceTracing() || !(plan instanceof QueryPlan)) {
-      return;
-    }
-
     queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder
@@ -98,19 +85,15 @@ public class TracingManager {
         .append(" - Start time: ")
         .append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
         .append("\n" + QUERY_ID)
-        .append(queryId);
-    if (plan instanceof AlignByDevicePlan) {
-      builder.append(" - Number of series paths: ").append(plan.getPaths().size()).append("\n");
-    }
+        .append(queryId)
+        .append(" - Number of series paths: ")
+        .append(pathsNum)
+        .append("\n");
     writer.write(builder.toString());
   }
 
   // for align by device query
   public void writeQueryInfo(long queryId, String statement, long startTime) throws IOException {
-    if (!config.isEnablePerformanceTracing()) {
-      return;
-    }
-
     queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder
@@ -126,16 +109,12 @@ public class TracingManager {
     writer.write(builder.toString());
   }
 
-  public void writePathsNum(long queryId, QueryDataSet dataSet) throws IOException {
-    if (!config.isEnablePerformanceTracing() || !(dataSet instanceof AlignByDeviceDataSet)) {
-      return;
-    }
-
+  public void writePathsNum(long queryId, int pathsNum) throws IOException {
     StringBuilder builder =
         new StringBuilder(QUERY_ID)
             .append(queryId)
             .append(" - Number of series paths: ")
-            .append(((AlignByDeviceDataSet) dataSet).getPathsNum())
+            .append(pathsNum)
             .append("\n");
     writer.write(builder.toString());
   }
@@ -143,10 +122,6 @@ public class TracingManager {
   public void writeTsFileInfo(
       long queryId, Set<TsFileResource> seqFileResources, Set<TsFileResource> unSeqFileResources)
       throws IOException {
-    if (!config.isEnablePerformanceTracing()) {
-      return;
-    }
-
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
     StringBuilder builder =
@@ -201,10 +176,6 @@ public class TracingManager {
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize)
       throws IOException {
-    if (!config.isEnablePerformanceTracing()) {
-      return;
-    }
-
     StringBuilder builder =
         new StringBuilder(QUERY_ID)
             .append(queryId)
@@ -219,10 +190,6 @@ public class TracingManager {
   }
 
   public void writeEndTime(long queryId) throws IOException {
-    if (!config.isEnablePerformanceTracing()) {
-      return;
-    }
-
     long endTime = System.currentTimeMillis();
     StringBuilder builder =
         new StringBuilder(QUERY_ID)
