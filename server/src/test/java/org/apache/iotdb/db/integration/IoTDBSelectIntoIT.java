@@ -19,118 +19,99 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
-import org.junit.After;
-import org.junit.Before;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import static org.junit.Assert.fail;
-
 // TODO: check null values
 public class IoTDBSelectIntoIT {
 
-  private static final String[] INSERTION_SQLS = {
-    "insert into root.sg.d1(time, s2, s3, s4, s5, s6) values (0, 0, 0, 0, true, '0')",
-    "insert into root.sg.d1(time, s1, s3, s4, s5, s6) values (1, 1, 1, 1, false, '1')",
-    "insert into root.sg.d1(time, s1, s2, s4, s5, s6) values (2, 2, 2, 2, true, '2')",
-    "insert into root.sg.d1(time, s1, s2, s3, s5, s6) values (3, 3, 3, 3, false, '3')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
-  };
-
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    createTimeSeries();
-    generateData();
-  }
-
-  private void createTimeSeries() throws MetadataException {
-    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s2"),
-        TSDataType.INT64,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s3"),
-        TSDataType.FLOAT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s4"),
-        TSDataType.DOUBLE,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s5"),
-        TSDataType.BOOLEAN,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.s6"),
-        TSDataType.TEXT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d1.empty"),
-        TSDataType.TEXT,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-
-    IoTDB.metaManager.createTimeseries(
-        new PartialPath("root.sg.d2.s1"),
-        TSDataType.INT32,
-        TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED,
-        null);
-  }
-
-  private void generateData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : INSERTION_SQLS) {
-        statement.execute(dataGenerationSql);
-      }
-
-      statement.execute("insert into root.sg.d2(time, s1) values (0, 0)");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
+  //  private static final String[] INSERTION_SQLS = {
+  //    "insert into root.sg.d1(time, s2, s3, s4, s5, s6) values (0, 0, 0, 0, true, '0')",
+  //    "insert into root.sg.d1(time, s1, s3, s4, s5, s6) values (1, 1, 1, 1, false, '1')",
+  //    "insert into root.sg.d1(time, s1, s2, s4, s5, s6) values (2, 2, 2, 2, true, '2')",
+  //    "insert into root.sg.d1(time, s1, s2, s3, s5, s6) values (3, 3, 3, 3, false, '3')",
+  //    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
+  //  };
+  //
+  //  @Before
+  //  public void setUp() throws Exception {
+  //    EnvironmentUtils.envSetUp();
+  //    Class.forName(Config.JDBC_DRIVER_NAME);
+  //    createTimeSeries();
+  //    generateData();
+  //  }
+  //
+  //  private void createTimeSeries() throws MetadataException {
+  //    IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
+  //
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s1"),
+  //        TSDataType.INT32,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s2"),
+  //        TSDataType.INT64,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s3"),
+  //        TSDataType.FLOAT,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s4"),
+  //        TSDataType.DOUBLE,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s5"),
+  //        TSDataType.BOOLEAN,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.s6"),
+  //        TSDataType.TEXT,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d1.empty"),
+  //        TSDataType.TEXT,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //
+  //    IoTDB.metaManager.createTimeseries(
+  //        new PartialPath("root.sg.d2.s1"),
+  //        TSDataType.INT32,
+  //        TSEncoding.PLAIN,
+  //        CompressionType.UNCOMPRESSED,
+  //        null);
+  //  }
+  //
+  //  private void generateData() {
+  //    try (Connection connection =
+  //            DriverManager.getConnection(
+  //                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  //        Statement statement = connection.createStatement()) {
+  //      for (String dataGenerationSql : INSERTION_SQLS) {
+  //        statement.execute(dataGenerationSql);
+  //      }
+  //
+  //      statement.execute("insert into root.sg.d2(time, s1) values (0, 0)");
+  //    } catch (SQLException throwable) {
+  //      fail(throwable.getMessage());
+  //    }
+  //  }
+  //
+  //  @After
+  //  public void tearDown() throws Exception {
+  //    EnvironmentUtils.cleanEnv();
+  //  }
   //
   //  @Test // TODO: check values
   //  public void selectIntoSameDevice() {
