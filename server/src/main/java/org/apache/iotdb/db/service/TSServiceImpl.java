@@ -1265,6 +1265,10 @@ public class TSServiceImpl implements TSIService.Iface {
               req.fetchSize,
               req.timeout,
               req.getSessionId());
+    } catch (InterruptedException e) {
+      LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
+      Thread.currentThread().interrupt();
+      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing update statement"));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing update statement"));
     }
