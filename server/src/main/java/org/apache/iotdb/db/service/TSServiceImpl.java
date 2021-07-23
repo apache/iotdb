@@ -194,7 +194,7 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final AtomicInteger queryCount = new AtomicInteger(0);
   private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   private final SessionManager sessionManager = SessionManager.getInstance();
-  private final TracingManager tracingManager = TracingManager.getInstance();
+  //  private final TracingManager tracingManager = TracingManager.getInstance();
 
   protected Planner processor;
   protected IPlanExecutor executor;
