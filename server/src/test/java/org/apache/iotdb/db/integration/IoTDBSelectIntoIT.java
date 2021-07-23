@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -49,15 +49,15 @@ public class IoTDBSelectIntoIT {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
   };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
     generateData();
   }
 
-  private static void createTimeSeries() throws MetadataException {
+  private void createTimeSeries() throws MetadataException {
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
 
     IoTDB.metaManager.createTimeseries(
@@ -112,7 +112,7 @@ public class IoTDBSelectIntoIT {
         null);
   }
 
-  private static void generateData() {
+  private void generateData() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -127,8 +127,8 @@ public class IoTDBSelectIntoIT {
     }
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
   //
