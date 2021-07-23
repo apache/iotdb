@@ -22,6 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.*;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -34,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +46,7 @@ public class TsFileSketchTool {
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
-    filename = "D:\\JavaSpace\\iotdb\\iotdb\\tsfile\\target\\MetadataIndexConstructorTest.tsfile";
+    filename = "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1627008644239-8-0-0.tsfile";
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
@@ -118,6 +120,12 @@ public class TsFileSketchTool {
             printlnBoth(
                 pw,
                 String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
+            PageHeader pageHeader =
+                    reader.readPageHeader(
+                            chunk.getHeader().getDataType(), chunk.getHeader().getChunkType() == MetaMarker.CHUNK_HEADER);
+//            reader.readPage(chunk.getHeader(),chunk.getHeader().getCompressionType());
+//            ByteBuffer pageData = reader.readPage(pageHeader, chunk.getHeader().getCompressionType());
+//            reader.readPage()
             nextChunkGroupHeaderPos =
                 chunkMetadata.getOffsetOfChunkHeader()
                     + chunk.getHeader().getSerializedSize()

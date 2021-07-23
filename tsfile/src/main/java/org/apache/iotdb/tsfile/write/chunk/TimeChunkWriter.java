@@ -235,6 +235,7 @@ public class TimeChunkWriter {
 
     // write all pages of this column
     writer.writeBytesToStream(pageBuffer);
+    logger.debug("write time chunk {} from {} to {}",measurementId,dataOffset,writer.getPos());
 
     int dataSize = (int) (writer.getPos() - dataOffset);
     if (dataSize != pageBuffer.size()) {

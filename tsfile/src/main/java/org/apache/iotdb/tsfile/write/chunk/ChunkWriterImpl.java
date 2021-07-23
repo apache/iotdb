@@ -440,6 +440,8 @@ public class ChunkWriterImpl implements IChunkWriter {
     writer.writeBytesToStream(pageBuffer);
 
     int dataSize = (int) (writer.getPos() - dataOffset);
+    logger.debug("write normal chunk {} from {} to {}",measurementSchema.getMeasurementId(),dataOffset,writer.getPos());
+
     if (dataSize != pageBuffer.size()) {
       throw new IOException(
           "Bytes written is inconsistent with the size of data: "

@@ -1077,6 +1077,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             } else {
               // only one page without statistic, we need to iterate each point to generate
               // statistic
+              // todo: 什么意思？为什么time到这里不拿statistic
               PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
               Decoder valueDecoder =
                   Decoder.getDecoderByType(

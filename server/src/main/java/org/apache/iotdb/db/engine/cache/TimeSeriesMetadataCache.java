@@ -355,7 +355,7 @@ public class TimeSeriesMetadataCache {
       res.add(timeseriesMetadata);
       for (String subSensor : subSensorList) {
         timeseriesMetadata =
-            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
+            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device,key.measurement+TsFileConstant.PATH_SEPARATOR+subSensor));
         if (timeseriesMetadata != null) {
           res.add(timeseriesMetadata);
         } else {
