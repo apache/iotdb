@@ -517,4 +517,17 @@ public class IoTDBSelectIntoIT {
       assertTrue(throwable.getMessage().contains("desc clauses are not supported."));
     }
   }
+
+  @Test
+  public void testSameTargetPaths() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1, s2 into ${1}.s1, ${1}.s1 from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable.getMessage().contains("target paths in into clause should be different."));
+    }
+  }
 }

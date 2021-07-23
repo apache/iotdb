@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+import java.util.HashSet;
 import java.util.List;
 
 public class SelectIntoOperator extends Operator {
@@ -56,6 +57,11 @@ public class SelectIntoOperator extends Operator {
 
   public void check() throws LogicalOperatorException {
     queryOperator.check();
+
+    if (intoPaths.size() > new HashSet<>(intoPaths).size()) {
+      throw new LogicalOperatorException(
+          "select into: target paths in into clause should be different.");
+    }
 
     if (queryOperator.isAlignByDevice()) {
       throw new LogicalOperatorException("select into: align by device clauses are not supported.");
