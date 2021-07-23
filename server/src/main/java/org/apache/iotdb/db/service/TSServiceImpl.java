@@ -194,7 +194,6 @@ public class TSServiceImpl implements TSIService.Iface {
   private static final AtomicInteger queryCount = new AtomicInteger(0);
   private final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
   private final SessionManager sessionManager = SessionManager.getInstance();
-  //  private final TracingManager tracingManager = TracingManager.getInstance();
 
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -1071,10 +1070,10 @@ public class TSServiceImpl implements TSIService.Iface {
         sessionManager.requestQueryId(
             statementId, true, fetchSize, fetchSizeDeduplicatedPathNumPair.right);
 
-    //    if (config.isEnablePerformanceTracing()) {
-    //      tracingManager.writeQueryInfo(queryId, statement, startTime,
-    // queryPlan.getPaths().size());
-    //    }
+    if (config.isEnablePerformanceTracing()) {
+      TracingManager.getInstance()
+          .writeQueryInfo(queryId, statement, startTime, queryPlan.getPaths().size());
+    }
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, queryPlan);
 
@@ -1087,7 +1086,7 @@ public class TSServiceImpl implements TSIService.Iface {
               fetchSize);
       while (insertTabletPlansIterator.hasNext()) {
         TSStatus executionStatus =
-            insertTabletsInternal(insertTabletPlansIterator.next(), sessionId);
+            insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);
         if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
@@ -1108,7 +1107,8 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
-  private TSStatus insertTabletsInternal(List<InsertTabletPlan> insertTabletPlans, long sessionId) {
+  private TSStatus insertTabletsInternally(
+      List<InsertTabletPlan> insertTabletPlans, long sessionId) {
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < insertTabletPlans.size(); i++) {
       InsertTabletPlan insertTabletPlan = insertTabletPlans.get(i);
@@ -1695,7 +1695,7 @@ public class TSServiceImpl implements TSIService.Iface {
         return getNotLoggedInStatus();
       }
 
-      return insertTabletsInternal(req);
+      return insertTabletsInternally(req);
     } catch (NullPointerException e) {
       LOGGER.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1728,7 +1728,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** construct one InsertMultiTabletPlan and process it */
-  public TSStatus insertTabletsInternal(TSInsertTabletsReq req) throws IllegalPathException {
+  public TSStatus insertTabletsInternally(TSInsertTabletsReq req) throws IllegalPathException {
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
