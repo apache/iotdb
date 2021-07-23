@@ -85,13 +85,6 @@ public class AlignedTimeseriesSessionExample {
     }
 
     dataSet.closeOperationHandle();
-    dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
-    System.out.println(dataSet.getColumnNames());
-    while (dataSet.hasNext()) {
-      System.out.println(dataSet.next());
-    }
-
-    dataSet.closeOperationHandle();
   }
 
   private static void selectWithAlignByDeviceTest()
@@ -256,7 +249,7 @@ public class AlignedTimeseriesSessionExample {
     tablet.setAligned(true);
     long timestamp = 1;
 
-    for (long row = 0; row < 100; row++) {
+    for (long row = 1; row < 101; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
