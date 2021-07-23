@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
@@ -149,6 +150,9 @@ public class EnvironmentUtils {
 
     // clear system info
     SystemInfo.getInstance().close();
+
+    // clear memtable manager info
+    MemTableManager.getInstance().close();
 
     // delete all directory
     cleanAllDir();
