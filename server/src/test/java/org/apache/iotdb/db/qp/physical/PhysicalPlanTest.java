@@ -46,6 +46,7 @@ import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
@@ -1224,5 +1225,12 @@ public class PhysicalPlanTest {
     ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
     Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
+  }
+
+  @Test
+  public void testCreateStorageGroup() throws QueryProcessException {
+    String sqlStr = "CREATE STORAGE GROUP root.sg";
+    SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals("SetStorageGroup{root.sg}", plan.toString());
   }
 }
