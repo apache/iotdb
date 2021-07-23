@@ -22,6 +22,8 @@ package org.apache.iotdb.db.engine.selectinto;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -37,16 +39,24 @@ public class InsertTabletPlansIterator {
 
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
+  private final QueryPlan queryPlan;
   private final QueryDataSet queryDataSet;
+
   private final PartialPath fromPath;
   private final List<PartialPath> intoPaths;
+
   private final int fetchSize;
 
   private InsertTabletPlanGenerator[] insertTabletPlanGenerators;
 
   public InsertTabletPlansIterator(
-      QueryDataSet queryDataSet, PartialPath fromPath, List<PartialPath> intoPaths, int fetchSize)
+      QueryPlan queryPlan,
+      QueryDataSet queryDataSet,
+      PartialPath fromPath,
+      List<PartialPath> intoPaths,
+      int fetchSize)
       throws IllegalPathException {
+    this.queryPlan = queryPlan;
     this.queryDataSet = queryDataSet;
     this.fromPath = fromPath;
     this.intoPaths = intoPaths;
@@ -76,14 +86,22 @@ public class InsertTabletPlansIterator {
   }
 
   private void constructInsertTabletPlanGenerators() {
+    final Map<String, Integer> sourcePathToQueryDataSetIndex = queryPlan.getPathToIndex();
+    final List<ResultColumn> resultColumns = queryPlan.getResultColumns();
+
     Map<String, InsertTabletPlanGenerator> deviceToPlanGeneratorMap = new HashMap<>();
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
       String device = intoPaths.get(i).getDevice();
       if (!deviceToPlanGeneratorMap.containsKey(device)) {
         deviceToPlanGeneratorMap.put(device, new InsertTabletPlanGenerator(device, fetchSize));
       }
-      deviceToPlanGeneratorMap.get(device).addMeasurementIdIndex(intoPaths, i);
+      deviceToPlanGeneratorMap
+          .get(device)
+          .collectTargetPathInformation(
+              intoPaths.get(i).getMeasurement(),
+              sourcePathToQueryDataSetIndex.get(resultColumns.get(i).getResultColumnName()));
     }
+
     insertTabletPlanGenerators =
         deviceToPlanGeneratorMap.values().toArray(new InsertTabletPlanGenerator[0]);
   }

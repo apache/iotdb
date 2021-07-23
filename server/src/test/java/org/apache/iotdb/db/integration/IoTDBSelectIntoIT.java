@@ -238,12 +238,12 @@ public class IoTDBSelectIntoIT {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
-      statement.execute("select s1, s1 into s2, s3 from root.sg.d1");
+      statement.execute("select s1, s1 into s1s2, s1s3 from root.sg.d1");
 
-      try (ResultSet resultSet = statement.executeQuery("select s2, s3 from root.sg.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1s2, s1s3 from root.sg.d1")) {
         assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
           assertTrue(resultSet.next());
           for (int j = 0; j < 2 + 1; ++j) {
             assertEquals(resultSet.getString(2), resultSet.getString(3));

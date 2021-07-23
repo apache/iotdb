@@ -36,12 +36,15 @@ import java.util.List;
 /** internallyConstructNewPlan -> collectRowRecord * N -> generateInsertTabletPlan */
 public class InsertTabletPlanGenerator {
 
-  private final String intoDevice;
-  private final List<Integer> intoMeasurementIndexes;
-  private final List<String> intoMeasurementIds;
+  private final String targetDevice;
+  // the index of target path in into clause -> the index of output column of query data set
+  private final List<Integer> targetPathIndexToQueryDataSetIndex;
+  // the index of target path in into clause -> the measurement id of the target path
+  private final List<String> targetMeasurementIds;
 
   private final int fetchSize;
 
+  // the following fields are used to construct plan
   private int rowCount;
   private long[] times;
   private Object[] columns;
@@ -50,30 +53,29 @@ public class InsertTabletPlanGenerator {
 
   private int numberOfInitializedColumns;
 
-  public InsertTabletPlanGenerator(String intoDevice, int fetchSize) {
-    this.intoDevice = intoDevice;
-    // column index of insertTabletPlan -> column index of queryDataSet (column index of intoPaths)
-    intoMeasurementIndexes = new ArrayList<>();
-    intoMeasurementIds = new ArrayList<>();
+  public InsertTabletPlanGenerator(String targetDevice, int fetchSize) {
+    this.targetDevice = targetDevice;
+    targetPathIndexToQueryDataSetIndex = new ArrayList<>();
+    targetMeasurementIds = new ArrayList<>();
 
     this.fetchSize = fetchSize;
   }
 
-  public void addMeasurementIdIndex(List<PartialPath> intoPaths, int intoMeasurementIndex) {
-    intoMeasurementIndexes.add(intoMeasurementIndex);
-    intoMeasurementIds.add(intoPaths.get(intoMeasurementIndex).getMeasurement());
+  public void collectTargetPathInformation(String targetMeasurementId, int queryDataSetIndex) {
+    targetMeasurementIds.add(targetMeasurementId);
+    targetPathIndexToQueryDataSetIndex.add(queryDataSetIndex);
   }
 
   public void internallyConstructNewPlan() {
     rowCount = 0;
     times = new long[fetchSize];
-    columns = new Object[intoMeasurementIds.size()];
-    bitMaps = new BitMap[intoMeasurementIds.size()];
+    columns = new Object[targetMeasurementIds.size()];
+    bitMaps = new BitMap[targetMeasurementIds.size()];
     for (int i = 0; i < bitMaps.length; ++i) {
       bitMaps[i] = new BitMap(fetchSize);
       bitMaps[i].markAll();
     }
-    dataTypes = new TSDataType[intoMeasurementIds.size()];
+    dataTypes = new TSDataType[targetMeasurementIds.size()];
   }
 
   public void collectRowRecord(RowRecord rowRecord) {
@@ -86,7 +88,7 @@ public class InsertTabletPlanGenerator {
     times[rowCount] = rowRecord.getTimestamp();
 
     for (int i = 0; i < columns.length; ++i) {
-      Field field = rowRecord.getFields().get(intoMeasurementIndexes.get(i));
+      Field field = rowRecord.getFields().get(targetPathIndexToQueryDataSetIndex.get(i));
 
       // if the field is NULL
       if (field == null || field.getDataType() == null) {
@@ -136,12 +138,12 @@ public class InsertTabletPlanGenerator {
       }
 
       // get the field index of the row record
-      int intoMeasurementIndex = intoMeasurementIndexes.get(i);
+      int queryDataSetIndex = targetPathIndexToQueryDataSetIndex.get(i);
       // if the field is not null
-      if (fields.get(intoMeasurementIndex) != null
-          && fields.get(intoMeasurementIndex).getDataType() != null) {
+      if (fields.get(queryDataSetIndex) != null
+          && fields.get(queryDataSetIndex).getDataType() != null) {
         // set the data type to the field type
-        dataTypes[i] = fields.get(intoMeasurementIndex).getDataType();
+        dataTypes[i] = fields.get(queryDataSetIndex).getDataType();
         initializedDataTypeIndexes.add(i);
       }
     }
@@ -193,7 +195,7 @@ public class InsertTabletPlanGenerator {
         continue;
       }
 
-      nonEmptyColumnNames.add(intoMeasurementIds.get(i));
+      nonEmptyColumnNames.add(targetMeasurementIds.get(i));
       times[countOfNonEmptyColumns] = times[i];
       columns[countOfNonEmptyColumns] = columns[i];
       bitMaps[countOfNonEmptyColumns] = bitMaps[i];
@@ -203,7 +205,7 @@ public class InsertTabletPlanGenerator {
     }
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(new PartialPath(intoDevice), nonEmptyColumnNames);
+        new InsertTabletPlan(new PartialPath(targetDevice), nonEmptyColumnNames);
 
     insertTabletPlan.setAligned(false);
     insertTabletPlan.setRowCount(rowCount);
