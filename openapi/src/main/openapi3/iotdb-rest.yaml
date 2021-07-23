@@ -508,9 +508,15 @@ components:
       description: Group By Time Plan in IoTDB
       x-examples:
         example-1:
-          interval: 0
+          aggregation: string
           stime: 0
           etime: 0
+          groupBy:
+          - step: string
+            samplingInterval: string
+          limitAll:
+          - limit: string
+            slimit: string
           fills:
           - dtype: string
             fun: string

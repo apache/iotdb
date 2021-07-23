@@ -16,6 +16,8 @@
  */
 package org.apache.iotdb.openapi.gen.handler;
 
+import org.apache.iotdb.openapi.gen.handler.filter.ApiOriginFilter;
+
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
@@ -40,7 +42,6 @@ public class OpenApiServer {
         ApiOriginFilter.class, "/*", EnumSet.of(DispatcherType.INCLUDE, DispatcherType.REQUEST));
     ServletHolder holder = context.addServlet(ServletContainer.class, "/*");
     holder.setInitOrder(1);
-
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
         "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.openapi.gen.handler");
