@@ -829,7 +829,6 @@ public class TSServiceImpl implements TSIService.Iface {
       if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
         tracingManager.writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
-      queryTimeManager.unRegisterQuery(queryId, plan);
       if (config.isEnableMetricService()) {
         long endTime = System.currentTimeMillis();
         SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
@@ -840,6 +839,7 @@ public class TSServiceImpl implements TSIService.Iface {
           }
         }
       }
+      queryTimeManager.unRegisterQuery(queryId, plan);
 
       return resp;
     } catch (Exception e) {
