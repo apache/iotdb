@@ -389,7 +389,7 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
-  public void testDifferentNumbersOfSourcePathsAndTargetPaths() {
+  public void testDifferentNumbersOfSourcePathsAndTargetPaths0() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
@@ -402,7 +402,10 @@ public class IoTDBSelectIntoIT {
               .contains(
                   "the number of source paths and the number of target paths should be the same"));
     }
+  }
 
+  @Test
+  public void testDifferentNumbersOfSourcePathsAndTargetPaths1() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
@@ -415,7 +418,10 @@ public class IoTDBSelectIntoIT {
               .contains(
                   "the number of source paths and the number of target paths should be the same"));
     }
+  }
 
+  @Test
+  public void testDifferentNumbersOfSourcePathsAndTargetPaths2() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
