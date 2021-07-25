@@ -1088,7 +1088,7 @@ public class TSServiceImpl implements TSIService.Iface {
         TSStatus executionStatus =
             insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);
         if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
         }
       }

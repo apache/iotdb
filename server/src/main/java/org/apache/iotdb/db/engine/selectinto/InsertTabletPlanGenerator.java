@@ -76,6 +76,8 @@ public class InsertTabletPlanGenerator {
       bitMaps[i].markAll();
     }
     dataTypes = new TSDataType[targetMeasurementIds.size()];
+
+    numberOfInitializedColumns = 0;
   }
 
   public void collectRowRecord(RowRecord rowRecord) {

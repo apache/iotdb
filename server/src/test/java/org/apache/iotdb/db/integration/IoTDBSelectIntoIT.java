@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -54,8 +54,8 @@ public class IoTDBSelectIntoIT {
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
   };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();
@@ -127,13 +127,17 @@ public class IoTDBSelectIntoIT {
       }
 
       statement.execute("insert into root.sg.d2(time, s1) values (0, 0)");
+
+      for (int i = 0; i < 10001; ++i) {
+        statement.execute(String.format("insert into root.sg.d3(time, s1) values (%d, %d)", i, i));
+      }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
@@ -250,6 +254,30 @@ public class IoTDBSelectIntoIT {
           }
         }
 
+        assertFalse(resultSet.next());
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testLargeData() {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+      statement.execute("select s1 into large_s1 from root.sg.d3");
+
+      try (ResultSet resultSet = statement.executeQuery("select large_s1 from root.sg.d3")) {
+        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 0; i < 10001; ++i) {
+          assertTrue(resultSet.next());
+          assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+        }
         assertFalse(resultSet.next());
       }
     } catch (SQLException throwable) {
