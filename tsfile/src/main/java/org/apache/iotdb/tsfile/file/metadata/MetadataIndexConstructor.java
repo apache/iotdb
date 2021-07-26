@@ -73,7 +73,7 @@ public class MetadataIndexConstructor {
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
         if (numOfValueColumns > 0) {
-          // must be value column，不清楚这里是否需要加一层检验？外层可否保证？
+          // must be value column
           numOfValueColumns--;
           timeseriesMetadata.setMeasurementId(timeseriesMetadata.getMeasurementId());
         } else if (timeseriesMetadata.isTimeColumn()) {

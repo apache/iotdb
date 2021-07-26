@@ -77,7 +77,7 @@ public class MetadataIndexConstructorTest {
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
   }
 
-  /** 5个实体，每个实体有5个物理量（docs.例1） */
+  /** Example 1: 5 entities with 5 measurements each */
   @Test
   public void singleIndexTest1() {
     int deviceNum = 5;
@@ -96,7 +96,7 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, measurements);
   }
 
-  /** 1个实体，每个实体有150个物理量（docs.例2） */
+  /** Example 2: 1 entity with 150 measurements */
   @Test
   public void singleIndexTest2() {
     int deviceNum = 1;
@@ -115,7 +115,7 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, measurements);
   }
 
-  /** 150个实体，每个实体有1个物理量（docs.例3） */
+  /** Example 3: 150 entities with 1 measurement each */
   @Test
   public void singleIndexTest3() {
     int deviceNum = 150;
@@ -134,7 +134,7 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, measurements);
   }
 
-  /** 150个实体，每个实体有150个物理量（docs.例4） */
+  /** Example 4: 150 entities with 150 measurements each */
   @Test
   public void singleIndexTest4() {
     int deviceNum = 150;
@@ -153,7 +153,7 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, measurements);
   }
 
-  /** 1个实体，20个物理量，2个多元时间序列组，每个多元时间序列组分别有9个物理量（docs.例5） */
+  /** Example 5: 1 entities with 2 vectors, 9 measurements for each vector */
   @Test
   public void vectorIndexTest1() {
     String[] devices = {"d0"};
@@ -161,7 +161,7 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, null);
   }
 
-  /** 1个实体，30个物理量，2个多元时间序列组，每个多元时间序列组分别有15个物理量（docs.例6） */
+  /** Example 6: 1 entities with 2 vectors, 15 measurements for each vector */
   @Test
   public void vectorIndexTest2() {
     String[] devices = {"d0"};
@@ -170,7 +170,7 @@ public class MetadataIndexConstructorTest {
   }
 
   /**
-   * 综合测试，包括多元时间序列与简单时间序列（docs.例7）
+   * Example 7: 2 entities, measurements of entities are shown in the following table
    *
    * <p>d0.s0~s4 | d0.v0.(s0~s8) | d0.z0~z3 d1.s0~s14 | d1.v0.(s0~s3)
    */
