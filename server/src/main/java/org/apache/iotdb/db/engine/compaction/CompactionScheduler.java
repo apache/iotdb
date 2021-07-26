@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionS
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
+import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
@@ -36,6 +37,16 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * CompactionScheduler schedule and submit the compaction task periodically, and it count the total
+ * number of running compaction task. There are three compaction strategy: BALANCE, INNER_CROSS,
+ * CROSS_INNER. Difference strategies will lead to different compaction preferences. For different
+ * types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call the
+ * corresponding {@link org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector
+ * selector} according to the compaction machanism of the task(e.g. LevelCompaction,
+ * SizeTiredCompaction), and the selection and submission process is carried out in the {@link
+ * AbstractCompactionSelector#selectAndSubmit() selectAndSubmit()} in selector.
+ */
 public class CompactionScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);

@@ -36,6 +36,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * SizeTiredSelector selects files based on the total size or total number of files. When the total
+ * size of consecutively selected files exceeds the threshold or the number exceeds the threshold,
+ * these files are submitted to a inner space compaction task.
+ */
 public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();

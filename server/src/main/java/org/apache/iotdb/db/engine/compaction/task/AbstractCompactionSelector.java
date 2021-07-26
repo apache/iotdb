@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+/**
+ * AbstractCompactionSelector is the base class of all CompactionSelector. It runs the file
+ * selection process, if there still threads availabe for compaction task, it will submit a
+ * compaction task to {@link org.apache.iotdb.db.engine.compaction.CompactionTaskManager} and
+ * increase the global compaction task count.
+ */
 public abstract class AbstractCompactionSelector {
   public abstract boolean selectAndSubmit();
 }
