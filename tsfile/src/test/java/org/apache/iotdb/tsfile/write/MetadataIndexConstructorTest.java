@@ -308,7 +308,8 @@ public class MetadataIndexConstructorTest {
   }
 
   /**
-   * generate correct devices and measurements for test
+   * generate correct devices and measurements for test Note that if the metadata index tree is
+   * re-designed, you may need to modify this function as well.
    *
    * @param correctDevices output
    * @param correctMeasurements output

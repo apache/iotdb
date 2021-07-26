@@ -42,14 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -265,7 +258,7 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return Collections.emptyList();
       }
-      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), subSensorList);
+      return readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
     }
 
     List<TimeseriesMetadata> res = new ArrayList<>();
@@ -295,32 +288,7 @@ public class TimeSeriesMetadataCache {
             return Collections.emptyList();
           }
           List<TimeseriesMetadata> timeSeriesMetadataList =
-              reader.readTimeseriesMetadata(path, allSensors);
-          // for new implementation of index tree, subSensor may not all stored in one leaf
-          // for this case, it's necessary to make sure all subSensor's timeseries add to list
-          int vectorValueCnt = 0;
-          for (int i = 0; i < timeSeriesMetadataList.size(); i++) {
-            TimeseriesMetadata tsMetadata = timeSeriesMetadataList.get(i);
-            if (tsMetadata.getTSDataType().equals(TSDataType.VECTOR)
-                && tsMetadata.getMeasurementId().equals(key.measurement)) {
-              vectorValueCnt =
-                  subSensorList.size() > timeSeriesMetadataList.size() - i
-                      ? timeSeriesMetadataList.size() - i - 1
-                      : subSensorList.size() - 1;
-              break;
-            }
-          }
-          while (vectorValueCnt < subSensorList.size()) {
-            Path subPath =
-                new Path(
-                    key.device,
-                    key.measurement
-                        + TsFileConstant.PATH_SEPARATOR
-                        + subSensorList.get(vectorValueCnt));
-            List<TimeseriesMetadata> subList = reader.readTimeseriesMetadata(subPath, allSensors);
-            vectorValueCnt += subList.size();
-            timeSeriesMetadataList.addAll(subList);
-          }
+              readTimeseriesMetadataForVector(reader, key, subSensorList, allSensors);
           Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map = new HashMap<>();
           // put TimeSeriesMetadata of all sensors used in this query into cache
           timeSeriesMetadataList.forEach(
@@ -360,6 +328,55 @@ public class TimeSeriesMetadataCache {
       }
       return res;
     }
+  }
+
+  /**
+   * Support for vector, extraction of common function of `get`
+   *
+   * @param key vector's own fullPath, e.g. root.sg1.d1.vector
+   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param allSensors all sensors of the device in one device, to vector, this should contain both
+   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   * @param reader TsFileSequenceReader created by file
+   */
+  private List<TimeseriesMetadata> readTimeseriesMetadataForVector(
+      TsFileSequenceReader reader,
+      TimeSeriesMetadataCacheKey key,
+      List<String> subSensorList,
+      Set<String> allSensors)
+      throws IOException {
+    Path path = new Path(key.device, key.measurement);
+    List<TimeseriesMetadata> timeSeriesMetadataList =
+        reader.readTimeseriesMetadata(path, allSensors);
+    // for new implementation of index tree, subSensor may not all stored in one leaf
+    // for this case, it's necessary to make sure all subSensor's timeseries add to list
+    TreeSet<String> subSensorsSet = new TreeSet<>(subSensorList);
+    for (int i = 0; i < timeSeriesMetadataList.size(); i++) {
+      TimeseriesMetadata tsMetadata = timeSeriesMetadataList.get(i);
+      if (tsMetadata.getTSDataType().equals(TSDataType.VECTOR)
+          && tsMetadata.getMeasurementId().equals(key.measurement)) {
+        for (int j = i + 1; j < timeSeriesMetadataList.size(); j++) {
+          tsMetadata = timeSeriesMetadataList.get(j);
+          if (!subSensorsSet.isEmpty() && subSensorsSet.contains(tsMetadata.getMeasurementId())) {
+            subSensorsSet.remove(tsMetadata.getMeasurementId());
+          }
+        }
+        break;
+      }
+    }
+    while (!subSensorsSet.isEmpty()) {
+      Path subPath =
+          new Path(
+              key.device, key.measurement + TsFileConstant.PATH_SEPARATOR + subSensorsSet.first());
+      List<TimeseriesMetadata> subList = reader.readTimeseriesMetadata(subPath, allSensors);
+      for (TimeseriesMetadata tsMetadata : subList) {
+        if (!subSensorsSet.isEmpty() && subSensorsSet.contains(tsMetadata.getMeasurementId())) {
+          subSensorsSet.remove(tsMetadata.getMeasurementId());
+        }
+      }
+      timeSeriesMetadataList.addAll(subList);
+    }
+    return timeSeriesMetadataList;
   }
 
   /**
