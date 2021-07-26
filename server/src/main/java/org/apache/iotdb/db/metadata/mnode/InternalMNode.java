@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -253,6 +254,10 @@ public class InternalMNode extends MNode implements IMNode {
     for (Entry<String, IMNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(logWriter);
     }
+  }
+
+  public static InternalMNode deserializeFrom(MNodePlan plan) {
+    return new InternalMNode(null, plan.getName());
   }
 
   /**

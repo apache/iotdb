@@ -1874,7 +1874,7 @@ public class MTree implements Serializable {
           node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
           childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
         } else if (plan instanceof MNodePlan) {
-          node = new InternalMNode(null, ((MNodePlan) plan).getName());
+          node = InternalMNode.deserializeFrom((MNodePlan) plan);
           childrenSize = ((MNodePlan) plan).getChildSize();
         }
 
