@@ -56,7 +56,8 @@ public class IoTDBResultMetadataTest {
 
     flag = false;
     try {
-      metadata = new IoTDBResultMetadata(false, null, "QUERY", Collections.emptyList(), null, false);
+      metadata =
+          new IoTDBResultMetadata(false, null, "QUERY", Collections.emptyList(), null, false);
       metadata.getColumnCount();
     } catch (Exception e) {
       flag = true;

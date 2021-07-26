@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import com.google.common.primitives.Bytes;
-import java.util.BitSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -135,6 +133,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import com.google.common.primitives.Bytes;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -146,6 +145,7 @@ import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -600,14 +600,14 @@ public class TSServiceImpl implements TSIService.Iface {
 
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
-          statement,
-          req.statementId,
-          physicalPlan,
-          req.fetchSize,
-          req.timeout,
-          sessionManager.getUsername(req.getSessionId()),
-          req.isEnableRedirectQuery(),
-          req.isJdbcQuery())
+              statement,
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              req.timeout,
+              sessionManager.getUsername(req.getSessionId()),
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : executeUpdateStatement(physicalPlan, req.getSessionId());
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
@@ -632,14 +632,14 @@ public class TSServiceImpl implements TSIService.Iface {
 
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
-          statement,
-          req.statementId,
-          physicalPlan,
-          req.fetchSize,
-          req.timeout,
-          sessionManager.getUsername(req.getSessionId()),
-          req.isEnableRedirectQuery(),
-          req.isJdbcQuery())
+              statement,
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              req.timeout,
+              sessionManager.getUsername(req.getSessionId()),
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (InterruptedException e) {
@@ -664,14 +664,14 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.rawDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
-          "",
-          req.statementId,
-          physicalPlan,
-          req.fetchSize,
-          config.getQueryTimeoutThreshold(),
-          sessionManager.getUsername(req.sessionId),
-          req.isEnableRedirectQuery(),
-          req.isJdbcQuery())
+              "",
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              config.getQueryTimeoutThreshold(),
+              sessionManager.getUsername(req.sessionId),
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (InterruptedException e) {
@@ -696,14 +696,14 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.lastDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
-          "",
-          req.statementId,
-          physicalPlan,
-          req.fetchSize,
-          config.getQueryTimeoutThreshold(),
-          sessionManager.getUsername(req.sessionId),
-          req.isEnableRedirectQuery(),
-          req.isJdbcQuery())
+              "",
+              req.statementId,
+              physicalPlan,
+              req.fetchSize,
+              config.getQueryTimeoutThreshold(),
+              sessionManager.getUsername(req.sessionId),
+              req.isEnableRedirectQuery(),
+              req.isJdbcQuery())
           : RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
     } catch (InterruptedException e) {
@@ -732,8 +732,8 @@ public class TSServiceImpl implements TSIService.Iface {
       boolean enableRedirect,
       boolean isJdbcQuery)
       throws QueryProcessException, SQLException, StorageEngineException,
-      QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-      TException, AuthException {
+          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
+          TException, AuthException {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
@@ -767,7 +767,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
       if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
-        resp = getQueryColumnHeaders(plan, username,isJdbcQuery);
+        resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
       if (plan instanceof QueryPlan) {
         ((QueryPlan) plan).setEnableRedirect(enableRedirect);
@@ -791,7 +791,7 @@ public class TSServiceImpl implements TSIService.Iface {
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan) {
-        resp = getQueryColumnHeaders(plan, username,isJdbcQuery);
+        resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
@@ -915,7 +915,8 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** get ResultSet schema */
-  private TSExecuteStatementResp getQueryColumnHeaders(PhysicalPlan physicalPlan, String username,boolean isJdbcQuery)
+  private TSExecuteStatementResp getQueryColumnHeaders(
+      PhysicalPlan physicalPlan, String username, boolean isJdbcQuery)
       throws AuthException, TException, QueryProcessException, MetadataException {
 
     List<String> respColumns = new ArrayList<>();
@@ -963,7 +964,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   // wide means not align by device
   private void getWideQueryHeaders(
-      QueryPlan plan, List<String> respColumns, List<String> columnTypes,List<String> respSgColumns,
+      QueryPlan plan,
+      List<String> respColumns,
+      List<String> columnTypes,
+      List<String> respSgColumns,
       Boolean isJdbcQuery,
       BitSet aliasList)
       throws TException, MetadataException {
@@ -1176,7 +1180,7 @@ public class TSServiceImpl implements TSIService.Iface {
   /** create QueryDataSet and buffer it for fetchResults */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-      IOException, MetadataException, SQLException, TException, InterruptedException {
+          IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
@@ -1230,7 +1234,7 @@ public class TSServiceImpl implements TSIService.Iface {
             statement, sessionManager.getZoneId(sessionId), DEFAULT_FETCH_SIZE);
     return physicalPlan.isQuery()
         ? RpcUtils.getTSExecuteStatementResp(
-        TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
         : executeUpdateStatement(physicalPlan, sessionId);
   }
 
