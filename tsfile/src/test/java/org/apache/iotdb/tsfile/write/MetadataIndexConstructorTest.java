@@ -52,6 +52,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 /** test for MetadataIndexConstructor */
 public class MetadataIndexConstructorTest {
   private static final Logger logger = LoggerFactory.getLogger(MetadataIndexConstructorTest.class);
@@ -209,10 +212,10 @@ public class MetadataIndexConstructorTest {
     // 4. compare correct result with TsFile's metadata
     Arrays.sort(devices);
     // 4.1 make sure device in order
-    assert correctDevices.size() == devices.length;
-    assert actualDevices.size() == correctDevices.size();
+    assertEquals(correctDevices.size(), devices.length);
+    assertEquals(actualDevices.size(), correctDevices.size());
     for (int i = 0; i < actualDevices.size(); i++) {
-      assert actualDevices.get(i).equals(correctDevices.get(i));
+      assertEquals(actualDevices.get(i), correctDevices.get(i));
     }
     // 4.2 make sure timeseries in order
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
@@ -220,11 +223,9 @@ public class MetadataIndexConstructorTest {
           reader.getAllTimeseriesMetadata();
       for (int j = 0; j < actualDevices.size(); j++) {
         for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
-          assert allTimeseriesMetadata
-              .get(actualDevices.get(j))
-              .get(i)
-              .getMeasurementId()
-              .equals(correctFirstMeasurements.get(j).get(i));
+          assertEquals(
+              allTimeseriesMetadata.get(actualDevices.get(j)).get(i).getMeasurementId(),
+              correctFirstMeasurements.get(j).get(i));
         }
       }
     } catch (IOException e) {
@@ -233,10 +234,9 @@ public class MetadataIndexConstructorTest {
     // 4.3 make sure split leaf correctly
     for (int j = 0; j < actualDevices.size(); j++) {
       for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
-        assert actualMeasurements
-            .get(j)
-            .get(i)
-            .equals(correctFirstMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
+        assertEquals(
+            actualMeasurements.get(j).get(i),
+            correctFirstMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
       }
     }
   }
@@ -263,8 +263,9 @@ public class MetadataIndexConstructorTest {
       List<List<String>> measurements,
       TsFileSequenceReader reader,
       MetadataIndexNode node) {
-    assert node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)
-        || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE);
+    assertTrue(
+        node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)
+            || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE));
     for (int i = 0; i < node.getChildren().size(); i++) {
       MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
       long endOffset = node.getEndOffset();
@@ -288,8 +289,9 @@ public class MetadataIndexConstructorTest {
       List<List<String>> measurements,
       TsFileSequenceReader reader,
       MetadataIndexNode node) {
-    assert node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)
-        || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT);
+    assertTrue(
+        node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)
+            || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     for (int i = 0; i < node.getChildren().size(); i++) {
       MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
       long endOffset = node.getEndOffset();
