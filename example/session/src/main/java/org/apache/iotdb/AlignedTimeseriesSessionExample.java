@@ -247,7 +247,7 @@ public class AlignedTimeseriesSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
-    long timestamp = 1;
+    long timestamp = 0;
 
     for (long row = 1; row < 101; row++) {
       int rowIndex = tablet.rowSize++;

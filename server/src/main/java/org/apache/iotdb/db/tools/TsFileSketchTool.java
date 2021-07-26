@@ -46,7 +46,7 @@ public class TsFileSketchTool {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
     filename =
-        "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\unsequence\\root.sg_1\\0\\0\\1627008644239-8-0-0.tsfile";
+        "D:\\JavaSpace\\iotdb\\iotdb\\data\\data\\sequence\\root.sg_1\\0\\0\\1627267202918-1-0-0.tsfile";
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
@@ -119,12 +119,28 @@ public class TsFileSketchTool {
                     + chunkMetadata.getStatistics());
             printlnBoth(
                 pw,
-                String.format("%20s", "") + "|\t\t[marker] " + chunk.getHeader().getChunkType());
+                String.format("%20s", "")
+                    + "|\t\t[chunk header] "
+                    + "marker="
+                    + chunk.getHeader().getChunkType()
+                    + ", measurementId="
+                    + chunk.getHeader().getMeasurementID()
+                    + ", dataSize="
+                    + chunk.getHeader().getDataSize()
+                    + ", serializedSize="
+                    + chunk.getHeader().getSerializedSize());
+
+            printlnBoth(pw, String.format("%20s", "") + "|\t\t[chunk] " + chunk.getData());
             PageHeader pageHeader =
-                reader.readPageHeader(
-                    chunk.getHeader().getDataType(),
-                    chunk.getHeader().getChunkType() == MetaMarker.CHUNK_HEADER);
-            //            reader.readPage(chunk.getHeader(),chunk.getHeader().getCompressionType());
+                PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
+            printlnBoth(
+                pw,
+                String.format("%20s", "")
+                    + "|\t\t[page] "
+                    + " CompressedSize:"
+                    + pageHeader.getCompressedSize()
+                    + " ,UncompressedSize:"
+                    + pageHeader.getUncompressedSize());
             //            ByteBuffer pageData = reader.readPage(pageHeader,
             // chunk.getHeader().getCompressionType());
             //            reader.readPage()

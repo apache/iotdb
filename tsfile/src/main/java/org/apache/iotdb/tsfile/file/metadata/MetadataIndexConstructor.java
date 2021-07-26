@@ -41,8 +41,6 @@ public class MetadataIndexConstructor {
 
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
-  private static final String PATH_SEPERATOR = ".";
-
   private MetadataIndexConstructor() {
     throw new IllegalStateException("Utility class");
   }
@@ -57,8 +55,6 @@ public class MetadataIndexConstructor {
   public static MetadataIndexNode constructMetadataIndex(
       Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap, TsFileOutput out)
       throws IOException {
-    // TODO:just for test, delete when merge...
-    //    config.setMaxDegreeOfIndexNode(3);
 
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
 
@@ -79,8 +75,7 @@ public class MetadataIndexConstructor {
         if (numOfValueColumns > 0) {
           // must be value column，不清楚这里是否需要加一层检验？外层可否保证？
           numOfValueColumns--;
-          timeseriesMetadata.setMeasurementId(
-              vectorName + PATH_SEPERATOR + timeseriesMetadata.getMeasurementId());
+          timeseriesMetadata.setMeasurementId(timeseriesMetadata.getMeasurementId());
         } else if (timeseriesMetadata.isTimeColumn()) {
           vectorName = timeseriesMetadata.getMeasurementId();
           for (int j = i + 1; j < entry.getValue().size(); j++) {

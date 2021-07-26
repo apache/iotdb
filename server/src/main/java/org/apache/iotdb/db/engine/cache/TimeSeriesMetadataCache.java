@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -252,9 +253,13 @@ public class TimeSeriesMetadataCache {
       boolean debug)
       throws IOException {
     // put all sub sensors into allSensors
-    //    allSensors.addAll(subSensorList);
-    subSensorList.forEach(
-        subSensor -> allSensors.add(key.measurement + TsFileConstant.PATH_SEPARATOR + subSensor));
+    for (int i = 0; i < subSensorList.size(); i++) {
+      subSensorList.set(i, key.measurement + TsFileConstant.PATH_SEPARATOR + subSensorList.get(i));
+    }
+    allSensors.addAll(subSensorList);
+    //    subSensorList.forEach(
+    //        subSensor -> allSensors.add(key.measurement + TsFileConstant.PATH_SEPARATOR +
+    // subSensor));
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -294,6 +299,31 @@ public class TimeSeriesMetadataCache {
           }
           List<TimeseriesMetadata> timeSeriesMetadataList =
               reader.readTimeseriesMetadata(path, allSensors);
+          // for new implementation of index tree, subSensor may not all stored in one leaf
+          // for this case, it's necessary to make sure all subSensor's timeseries add to list
+          int vectorValueCnt = 0;
+          for (int i = 0; i < timeSeriesMetadataList.size(); i++) {
+            TimeseriesMetadata tsMetadata = timeSeriesMetadataList.get(i);
+            if (tsMetadata.getTSDataType().equals(TSDataType.VECTOR)
+                && tsMetadata.getMeasurementId().equals(key.measurement)) {
+              vectorValueCnt =
+                  subSensorList.size() > timeSeriesMetadataList.size() - i
+                      ? timeSeriesMetadataList.size() - i - 1
+                      : subSensorList.size() - 1;
+              break;
+            }
+          }
+          while (vectorValueCnt < subSensorList.size()) {
+            Path subPath =
+                new Path(
+                    key.device,
+                    key.measurement
+                        + TsFileConstant.PATH_SEPARATOR
+                        + subSensorList.get(vectorValueCnt));
+            List<TimeseriesMetadata> subList = reader.readTimeseriesMetadata(subPath, allSensors);
+            vectorValueCnt += subList.size();
+            timeSeriesMetadataList.addAll(subList);
+          }
           Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map = new HashMap<>();
           // put TimeSeriesMetadata of all sensors used in this query into cache
           timeSeriesMetadataList.forEach(
@@ -356,10 +386,11 @@ public class TimeSeriesMetadataCache {
       for (String subSensor : subSensorList) {
         timeseriesMetadata =
             map.get(
-                new TimeSeriesMetadataCacheKey(
-                    key.filePath,
-                    key.device,
-                    key.measurement + TsFileConstant.PATH_SEPARATOR + subSensor));
+                //                new TimeSeriesMetadataCacheKey(
+                //                    key.filePath,
+                //                    key.device,
+                //                    subSensor));
+                new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
         if (timeseriesMetadata != null) {
           res.add(timeseriesMetadata);
         } else {
