@@ -389,7 +389,7 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
-  public void testDifferentNumbersOfSourcePathsAndTargetPaths0() {
+  public void testDifferentNumbersOfSourcePathsAndTargetPaths() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
@@ -402,10 +402,7 @@ public class IoTDBSelectIntoIT {
               .contains(
                   "the number of source paths and the number of target paths should be the same"));
     }
-  }
 
-  @Test
-  public void testDifferentNumbersOfSourcePathsAndTargetPaths1() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
@@ -418,10 +415,7 @@ public class IoTDBSelectIntoIT {
               .contains(
                   "the number of source paths and the number of target paths should be the same"));
     }
-  }
 
-  @Test
-  public void testDifferentNumbersOfSourcePathsAndTargetPaths2() {
     try (Statement statement =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
@@ -483,9 +477,6 @@ public class IoTDBSelectIntoIT {
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
             .createStatement()) {
       statement.execute("select s1 into root.${wrong}.s1 from root.sg.d1");
-      ResultSet resultSet = statement.executeQuery("select sg.d1.s1, d1.sg.s1 from root");
-      assertEquals(1, resultSet.getMetaData().getColumnCount());
-      assertFalse(resultSet.next());
       fail();
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("the x of ${x} should be an integer."));
