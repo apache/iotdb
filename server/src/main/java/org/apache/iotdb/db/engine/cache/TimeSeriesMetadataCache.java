@@ -257,9 +257,6 @@ public class TimeSeriesMetadataCache {
       subSensorList.set(i, key.measurement + TsFileConstant.PATH_SEPARATOR + subSensorList.get(i));
     }
     allSensors.addAll(subSensorList);
-    //    subSensorList.forEach(
-    //        subSensor -> allSensors.add(key.measurement + TsFileConstant.PATH_SEPARATOR +
-    // subSensor));
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -385,12 +382,7 @@ public class TimeSeriesMetadataCache {
       res.add(timeseriesMetadata);
       for (String subSensor : subSensorList) {
         timeseriesMetadata =
-            map.get(
-                //                new TimeSeriesMetadataCacheKey(
-                //                    key.filePath,
-                //                    key.device,
-                //                    subSensor));
-                new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
+            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
         if (timeseriesMetadata != null) {
           res.add(timeseriesMetadata);
         } else {

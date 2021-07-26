@@ -230,8 +230,8 @@ public class AlignedTimeseriesSessionExample {
     List<String> schemaList = new ArrayList<>();
     schemaList.add("vector");
 
-//    session.createSchemaTemplate(
-//        "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
+    session.createSchemaTemplate(
+        "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
     session.setSchemaTemplate("template1", "root.sg_1");
   }
 
