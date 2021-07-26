@@ -319,7 +319,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet queryDataSet = clusterQueryRouter.udtfQuery(udtfPlan, context);
       for (int i = 0; i < 20; i++) {
