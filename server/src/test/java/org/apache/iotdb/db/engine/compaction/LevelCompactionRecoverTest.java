@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
@@ -139,7 +140,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         true,
         new ArrayList<>());
     compactionLogger.close();
-    levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
+    levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
     context = new QueryContext();
     path =
@@ -254,7 +255,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     }
     logStream.close();
 
-    levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
+    levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
     context = new QueryContext();
     path =
@@ -408,6 +409,9 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
   @Test
   public void testCompactionMergeRecoverMergeFinishedUnseq()
       throws IOException, IllegalPathException {
+    int prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
+
     LevelCompactionTsFileManagement levelCompactionTsFileManagement =
         new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, tempSGDir.getPath());
     levelCompactionTsFileManagement.addAll(seqResources, true);
@@ -466,7 +470,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         false,
         new ArrayList<>());
     compactionLogger.close();
-    levelCompactionTsFileManagement.addRecover(targetTsFileResource, false);
+    levelCompactionTsFileManagement.add(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
     context = new QueryContext();
     path =
@@ -493,6 +497,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
       }
     }
     assertEquals(500, count);
+
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   /** compaction recover merge start just log source file */
@@ -671,7 +677,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         new HashSet<>(),
         true,
         new ArrayList<>());
-    levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
+    levelCompactionTsFileManagement.add(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();
     QueryContext context = new QueryContext();

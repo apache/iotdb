@@ -35,12 +35,14 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -348,6 +350,12 @@ public abstract class PhysicalPlan {
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
           break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -398,6 +406,8 @@ public abstract class PhysicalPlan {
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION
   }
 
   public long getIndex() {

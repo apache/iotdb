@@ -96,7 +96,8 @@ public class EnvironmentUtils {
       .assignQueryId(true, 1024, 0);
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static long oldSeqTsFileSize = config.getSeqTsFileSize();
+  private static long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -129,7 +130,8 @@ public class EnvironmentUtils {
     // delete all directory
     cleanAllDir();
 
-    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    config.setSeqTsFileSize(oldSeqTsFileSize);
+    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
