@@ -192,7 +192,6 @@ public class MetadataIndexConstructor {
       Queue<MetadataIndexNode> metadataIndexNodeQueue,
       TsFileOutput out)
       throws IOException {
-    // 这个是干嘛用的？？？
     currentIndexNode.setEndOffset(out.getPosition());
     metadataIndexNodeQueue.add(currentIndexNode);
   }
