@@ -54,9 +54,9 @@ public class TsFileWriteWithTablet {
       String device = Constant.DEVICE_PREFIX + 1;
       String sensorPrefix = "sensor_";
       // the number of rows to include in the tablet
-      int rowNum = 10;
+      int rowNum = 1000000;
       // the number of values to include in the tablet
-      int sensorNum = 3;
+      int sensorNum = 10;
 
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
