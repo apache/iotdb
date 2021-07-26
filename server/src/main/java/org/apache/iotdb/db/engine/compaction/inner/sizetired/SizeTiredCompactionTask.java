@@ -43,6 +43,10 @@ import java.util.Set;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
 
+/**
+ * SizeTiredCompactionTask compact serveral inner space files selected by {@link
+ * SizeTiredCompactionSelector} into one file.
+ */
 public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionTask.class);
   protected List<TsFileResource> selectedTsFileResourceList;

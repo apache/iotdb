@@ -34,6 +34,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+/**
+ * CompactionRecoverTask execute the recover process for all compaction task sequentially, including
+ * InnerCompactionTask in sequence/unsequence space, CrossSpaceCompaction.
+ */
 public class CompactionRecoverTask implements Callable<Void> {
   private static final Logger logger = LoggerFactory.getLogger(CompactionRecoverTask.class);
   private CompactionRecoverCallBack compactionRecoverCallBack;
@@ -54,18 +58,18 @@ public class CompactionRecoverTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    logger.warn("recovering sequence inner compaction");
+    logger.info("recovering sequence inner compaction");
     recoverInnerCompaction(true);
-    logger.warn("recovering unsequence inner compaction");
+    logger.info("recovering unsequence inner compaction");
     recoverInnerCompaction(false);
-    logger.warn("recovering cross compaction");
+    logger.info("recovering cross compaction");
     recoverCrossCompaction();
-    logger.warn("try to synchronize CompactionScheduler");
+    logger.info("try to synchronize CompactionScheduler");
     CompactionScheduler.decPartitionCompaction(
         logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
     CompactionScheduler.currentTaskNum.decrementAndGet();
     compactionRecoverCallBack.call();
-    logger.warn(
+    logger.info(
         "recover task finish, current compaction thread is {}",
         CompactionScheduler.currentTaskNum.get());
     return null;
@@ -119,7 +123,7 @@ public class CompactionRecoverTask implements Callable<Void> {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs = MergeLogger.findCrossSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
-          logger.warn("calling cross compaction task");
+          logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()
               .getConfig()
               .getCrossCompactionStrategy()
