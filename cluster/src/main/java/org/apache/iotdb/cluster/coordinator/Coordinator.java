@@ -68,11 +68,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 
@@ -455,26 +451,23 @@ public class Coordinator {
         || plan instanceof InsertMultiTabletPlan
         || plan instanceof CreateMultiTimeSeriesPlan
         || plan instanceof InsertRowsPlan) {
-      status = forwardMultiSubPlan(planGroupMap, plan);
-    } else if (planGroupMap.size() == 1) {
-      status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
-    } else {
-      status = forwardToMultipleGroup(planGroupMap);
-    }
-    boolean hasCreated = false;
-    try {
-      if (plan instanceof InsertPlan
-          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+      Map<PhysicalPlan, TSStatus> subStatusMap = forwardMultiSubPlan(planGroupMap, plan);
+      try {
+        handleMultiSubPLanAfterForward(planGroupMap, plan, subStatusMap);
+      } catch (MetadataException | CheckConsistencyException e) {
+        logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
       }
-    } catch (MetadataException | CheckConsistencyException e) {
-      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      status = concludeStatus(subStatusMap, planGroupMap, plan);
+    } else {
+      if (planGroupMap.size() == 1) {
+        status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
+      } else {
+        status = forwardToMultipleGroup(planGroupMap);
+      }
+      status = handlePLanAfterForward(planGroupMap, plan, status);
     }
-    if (hasCreated) {
-      status = forwardPlan(planGroupMap, plan);
-    }
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
       status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
@@ -568,8 +561,23 @@ public class Coordinator {
    * @param planGroupMap sub-plan -> data group pairs
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private TSStatus forwardMultiSubPlan(
+  private Map<PhysicalPlan, TSStatus> forwardMultiSubPlan(
       Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan parentPlan) {
+    Map<PhysicalPlan, TSStatus> subStatusMap = new HashMap<>();
+    TSStatus tmpStatus;
+    // send sub-plans to each belonging data group and collect results
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      tmpStatus = forwardToSingleGroup(entry);
+      subStatusMap.put(entry.getKey(), tmpStatus);
+      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+    }
+    return subStatusMap;
+  }
+
+  private TSStatus concludeStatus(
+      Map<PhysicalPlan, TSStatus> subStatusMap,
+      Map<PhysicalPlan, PartitionGroup> planGroupMap,
+      PhysicalPlan parentPlan) {
     List<String> errorCodePartitionGroups = new ArrayList<>();
     TSStatus tmpStatus;
     TSStatus[] subStatus = null;
@@ -578,9 +586,8 @@ public class Coordinator {
     EndPoint endPoint = null;
     int totalRowNum = parentPlan.getPaths().size();
     // send sub-plans to each belonging data group and collect results
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-      tmpStatus = forwardToSingleGroup(entry);
-      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+    for (Map.Entry<PhysicalPlan, TSStatus> entry : subStatusMap.entrySet()) {
+      tmpStatus = entry.getValue();
       noFailure = (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
       isBatchFailure =
           (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) || isBatchFailure;
@@ -647,7 +654,7 @@ public class Coordinator {
             String.format(
                 "[%s@%s:%s:%s]",
                 tmpStatus.getCode(),
-                entry.getValue().getHeader(),
+                planGroupMap.get(entry.getKey()).getHeader(),
                 tmpStatus.getMessage(),
                 tmpStatus.subStatus));
       }
@@ -740,6 +747,61 @@ public class Coordinator {
       status =
           StatusUtils.getStatus(
               StatusUtils.EXECUTE_STATEMENT_ERROR, MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
+    }
+    return status;
+  }
+
+  private void handleMultiSubPLanAfterForward(
+      Map<PhysicalPlan, PartitionGroup> planGroupMap,
+      PhysicalPlan plan,
+      Map<PhysicalPlan, TSStatus> subStatusMap)
+      throws IllegalPathException, CheckConsistencyException {
+    if (plan instanceof InsertPlan) {
+      boolean hasCreated = true;
+      Map<PhysicalPlan, PartitionGroup> retryPlanGroupMap = new HashMap<>();
+      for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+        PhysicalPlan subPlan = entry.getKey();
+        TSStatus tmpSubStatus = subStatusMap.get(subPlan);
+        if (tmpSubStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          continue;
+        }
+        boolean hasError = false;
+        for (TSStatus subStatus : tmpSubStatus.subStatus) {
+          if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              && subStatus.getCode() != TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+            hasError = true;
+            break;
+          }
+        }
+        if (!hasError) {
+          hasCreated = hasCreated && createTimeseriesForFailedInsertion(((InsertPlan) plan));
+          retryPlanGroupMap.put(entry.getKey(), entry.getValue());
+        }
+      }
+      if (hasCreated) {
+        Map<PhysicalPlan, TSStatus> newSubStatusMap = forwardMultiSubPlan(retryPlanGroupMap, plan);
+
+        // merge new status of plans retried into original status
+        subStatusMap.putAll(newSubStatusMap);
+      }
+    }
+  }
+
+  private TSStatus handlePLanAfterForward(
+      Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan, TSStatus status) {
+    boolean hasCreated = false;
+    try {
+      if (plan instanceof InsertPlan
+          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+      }
+    } catch (MetadataException | CheckConsistencyException e) {
+      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    if (hasCreated) {
+      status = forwardPlan(planGroupMap, plan);
     }
     return status;
   }

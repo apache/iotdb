@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
@@ -224,6 +225,10 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   public List<InsertTabletPlan> getInsertTabletPlanList() {
     return insertTabletPlanList;
+  }
+
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertTabletPlanList.size());
   }
 
   public void setResults(Map<Integer, TSStatus> results) {
