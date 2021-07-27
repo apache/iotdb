@@ -281,7 +281,7 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties
                   .getProperty(
-                      "unseq_memtable_flush_interval",
+                      "unseq_memtable_flush_interval_in_ms",
                       Long.toString(conf.getUnseqMemtableFlushInterval()))
                   .trim());
       if (unseqMemTableFlushInterval > 0) {
@@ -292,7 +292,7 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties
                   .getProperty(
-                      "unseq_memtable_flush_check_interval",
+                      "unseq_memtable_flush_check_interval_in_ms",
                       Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
                   .trim());
       if (unseqMemTableFlushCheckInterval > 0) {
