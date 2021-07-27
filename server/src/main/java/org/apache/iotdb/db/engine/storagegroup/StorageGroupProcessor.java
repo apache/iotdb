@@ -1556,7 +1556,8 @@ public class StorageGroupProcessor {
     writeLock("timedFlushMemTable");
     try {
       // only check unsequence tsfiles' memtables
-      List<TsFileProcessor> tsFileProcessors = new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      List<TsFileProcessor> tsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
       long timestampBaseline = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timestampBaseline) {
