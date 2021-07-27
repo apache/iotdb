@@ -403,7 +403,6 @@ public class TimeSeriesMetadataCache {
         if (timeseriesMetadata != null) {
           res.add(timeseriesMetadata);
         } else {
-          //          res.clear();
           break;
         }
       }

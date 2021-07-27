@@ -46,7 +46,6 @@ import java.util.TreeMap;
 public class TsFileSketchTool {
 
   private String filename;
-  private String outFile;
   private PrintWriter pw;
   private TsFileSketchToolReader reader;
   private String splitStr; // for split different part of TsFile
@@ -69,7 +68,6 @@ public class TsFileSketchTool {
   public TsFileSketchTool(String filename, String outFile) {
     try {
       this.filename = filename;
-      this.outFile = outFile;
       pw = new PrintWriter(new FileWriter(outFile));
       reader = new TsFileSketchToolReader(filename);
       StringBuilder str1 = new StringBuilder();
@@ -284,12 +282,14 @@ public class TsFileSketchTool {
                   + chunk.getHeader().getSerializedSize());
 
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[chunk] " + chunk.getData());
-            PageHeader pageHeader;
-            if (((byte) (chunk.getHeader().getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
-                pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
-            } else {
-                pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
-            }
+          PageHeader pageHeader;
+          if (((byte) (chunk.getHeader().getChunkType() & 0x3F))
+              == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+            pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
+          } else {
+            pageHeader =
+                PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
+          }
           printlnBoth(
               pw,
               String.format("%20s", "")
@@ -417,28 +417,6 @@ public class TsFileSketchTool {
     public TsFileSketchToolReader(String file) throws IOException {
       super(file);
     }
-
-    public TsFileSketchToolReader(String file, boolean loadMetadataSize) throws IOException {
-      super(file, loadMetadataSize);
-    }
-
-    public TsFileSketchToolReader(String file, boolean loadMetadata, boolean cacheDeviceMetadata)
-        throws IOException {
-      super(file, loadMetadata, cacheDeviceMetadata);
-    }
-
-    public TsFileSketchToolReader(TsFileInput input) throws IOException {
-      super(input);
-    }
-
-    public TsFileSketchToolReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
-      super(input, loadMetadataSize);
-    }
-
-    public TsFileSketchToolReader(TsFileInput input, long fileMetadataPos, int fileMetadataSize) {
-      super(input, fileMetadataPos, fileMetadataSize);
-    }
-
     /**
      * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
      *
