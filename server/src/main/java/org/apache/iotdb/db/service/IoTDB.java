@@ -42,7 +42,6 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +63,6 @@ public class IoTDB implements IoTDBMBean {
   public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
-      TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(3);
     } catch (IOException e) {
       logger.error("meet error when doing start checking", e);
     }
