@@ -49,9 +49,12 @@ public class HybridTimeseriesSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    //    insertRecord(ROOT_SG1_D2);
-    //    insertTabletWithAlignedTimeseriesMethod();
-    //    insertRecord(ROOT_SG1_D1);
+    insertRecord(ROOT_SG1_D2, 0, 100);
+    insertTabletWithAlignedTimeseriesMethod(0, 100);
+    insertRecord(ROOT_SG1_D1, 0, 100);
+    session.executeNonQueryStatement("flush");
+    //    insertTabletWithAlignedTimeseriesMethod(100,200);
+    //    insertRecord(ROOT_SG1_D1,1,200);
     //    session.executeNonQueryStatement("flush");
     selectTest();
 
@@ -59,7 +62,7 @@ public class HybridTimeseriesSessionExample {
   }
 
   private static void selectTest() throws StatementExecutionException, IoTDBConnectionException {
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1.vector.s2");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg_1.d1");
     System.out.println(dataSet.getColumnNames());
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
@@ -68,7 +71,7 @@ public class HybridTimeseriesSessionExample {
     dataSet.closeOperationHandle();
   }
   /** Method 1 for insert tablet with aligned timeseries */
-  private static void insertTabletWithAlignedTimeseriesMethod()
+  private static void insertTabletWithAlignedTimeseriesMethod(int minTime, int maxTime)
       throws IoTDBConnectionException, StatementExecutionException {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
@@ -81,17 +84,15 @@ public class HybridTimeseriesSessionExample {
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
-    long timestamp = 0;
+    long timestamp = minTime;
 
-    for (long row = 1; row < 101; row++) {
+    for (long row = minTime; row < maxTime; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
           schemaList.get(0).getValueMeasurementIdList().get(0), rowIndex, row * 10 + 1L);
-      //          new SecureRandom().nextLong());
       tablet.addValue(
           schemaList.get(0).getValueMeasurementIdList().get(1), rowIndex, (int) (row * 10 + 2));
-      //          new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -106,7 +107,7 @@ public class HybridTimeseriesSessionExample {
     }
   }
 
-  private static void insertRecord(String deviceId)
+  private static void insertRecord(String deviceId, int minTime, int maxTime)
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -119,7 +120,7 @@ public class HybridTimeseriesSessionExample {
     types.add(TSDataType.INT64);
     types.add(TSDataType.INT64);
 
-    for (long time = 0; time < 100; time++) {
+    for (long time = minTime; time < maxTime; time++) {
       List<Object> values = new ArrayList<>();
       values.add(time * 10 + 3L);
       values.add(time * 10 + 4L);
