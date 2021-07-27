@@ -302,10 +302,10 @@ public class IoTDBConfig {
    * When a memTable's created time is older than current time minus this, the memtable is flushed
    * to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 24 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
 
   /** The interval to check whether the memtable needs flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 12 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
