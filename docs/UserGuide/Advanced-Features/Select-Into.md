@@ -117,6 +117,8 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
 
 ### Supported Query Types
 
+**Note that except for the following types of queries, other types of queries (such as `LAST` queries) are not supported. **
+
 * Raw time series query
 
   ```sql
@@ -173,6 +175,8 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
 
 
 ### Special Cluases Supported in Queries
+
+**Note that except for the following clauses, other query clauses (such as `DESC`, `SOFFSET`, etc.) are not supported. **
 
 * Value filter
 
