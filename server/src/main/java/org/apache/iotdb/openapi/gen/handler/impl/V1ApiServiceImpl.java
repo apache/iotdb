@@ -126,7 +126,7 @@ public class V1ApiServiceImpl extends V1ApiService {
               etime);
     } else if (StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
         && groupByFillPlan.getGroupBy() == null
-            && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())) {
+        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())) {
       sql =
           String.format(
               "select %s(%s) FROM %s where time>=%d and time<%d",
@@ -155,7 +155,7 @@ public class V1ApiServiceImpl extends V1ApiService {
         && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
         && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
         && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
-        && (groupByFillPlan.getFills() == null||groupByFillPlan.getFills().size()==0)) {
+        && (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
       sql =
           String.format(
               "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s)",
@@ -186,7 +186,8 @@ public class V1ApiServiceImpl extends V1ApiService {
               groupByFillPlan.getGroupBy().getSamplingInterval());
     } else if (groupByFillPlan.getGroupBy() != null
         && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && groupByFillPlan.getFills() != null&&groupByFillPlan.getFills().size()>0
+        && groupByFillPlan.getFills() != null
+        && groupByFillPlan.getFills().size() > 0
         && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
         && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
         && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
@@ -205,7 +206,7 @@ public class V1ApiServiceImpl extends V1ApiService {
               groupByFillPlan.getFills().get(0).getDuration());
     } else if (groupByFillPlan.getGroupBy() != null
         && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && (groupByFillPlan.getFills() != null&&groupByFillPlan.getFills().size()>0)
+        && (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0)
         && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
         && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
         && StringUtils.isEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
