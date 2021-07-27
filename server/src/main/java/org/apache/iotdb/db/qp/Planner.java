@@ -63,16 +63,7 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = logicalGenerator.generate(sqlStr, zoneId);
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(fetchSize);
-    if (operator instanceof SFWOperator && ((SFWOperator) operator).isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
-      // while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
-      // set it to Integer.MAX_VALUE - 1
-      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    }
-    operator = logicalOptimize(operator, maxDeduplicatedPathNum);
+    operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     PhysicalPlan physicalPlan = physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
     physicalPlan.setDebug(operator.isDebug());
@@ -120,16 +111,7 @@ public class Planner {
 
     queryOp.setFilterOperator(filterOp);
 
-    int maxDeduplicatedPathNum =
-        QueryResourceManager.getInstance().getMaxDeduplicatedPathNum(rawDataQueryReq.fetchSize);
-    if (queryOp.isLastQuery()) {
-      // Dataset of last query actually has only three columns, so we shouldn't limit the path num
-      // while constructing logical plan
-      // To avoid overflowing because logicalOptimize function may do maxDeduplicatedPathNum + 1, we
-      // set it to Integer.MAX_VALUE - 1
-      maxDeduplicatedPathNum = Integer.MAX_VALUE - 1;
-    }
-    SFWOperator op = (SFWOperator) logicalOptimize(queryOp, maxDeduplicatedPathNum);
+    SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     PhysicalPlan physicalPlan =
@@ -145,7 +127,7 @@ public class Planner {
    * @return optimized logical operator
    * @throws LogicalOptimizeException exception in logical optimizing
    */
-  protected Operator logicalOptimize(Operator operator, int maxDeduplicatedPathNum)
+  protected Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException, PathNumOverLimitException {
     switch (operator.getType()) {
       case AUTHOR:
@@ -178,7 +160,7 @@ public class Planner {
       case UPDATE:
       case DELETE:
         SFWOperator root = (SFWOperator) operator;
-        return optimizeSFWOperator(root, maxDeduplicatedPathNum);
+        return optimizeSFWOperator(root);
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -191,10 +173,10 @@ public class Planner {
    * @return optimized select-from-where operator
    * @throws LogicalOptimizeException exception in SFW optimizing
    */
-  private SFWOperator optimizeSFWOperator(SFWOperator root, int maxDeduplicatedPathNum)
+  private SFWOperator optimizeSFWOperator(SFWOperator root)
       throws LogicalOperatorException, PathNumOverLimitException {
     ConcatPathOptimizer concatPathOptimizer = getConcatPathOptimizer();
-    root = (SFWOperator) concatPathOptimizer.transform(root, maxDeduplicatedPathNum);
+    root = (SFWOperator) concatPathOptimizer.transform(root);
     FilterOperator filter = root.getFilterOperator();
     if (filter == null) {
       return root;

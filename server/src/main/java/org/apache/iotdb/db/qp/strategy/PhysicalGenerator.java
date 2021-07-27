@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -541,8 +542,8 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
-      int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-          .getMaxDeduplicatedPathNum(fetchSize);
+      int maxDeduplicatedPathNum = IoTDBDescriptor.getInstance()
+          .getConfig().getMaxQueryDeduplicatedPathNum();
 
       if (measurements.size() > maxDeduplicatedPathNum) {
         throw new PathNumOverLimitException(maxDeduplicatedPathNum, measurements.size());
@@ -737,9 +738,6 @@ public class PhysicalGenerator {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
-        .getMaxDeduplicatedPathNum(fetchSize);
-    int deduplicatedPathNum = 0;
     int index = 0;
     for (Pair<PartialPath, Integer> indexedPath : indexedPaths) {
       String column = indexedPath.left.getTsAlias();
@@ -755,10 +753,6 @@ public class PhysicalGenerator {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
         rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
-        deduplicatedPathNum++;
-        if (deduplicatedPathNum > maxDeduplicatedPathNum) {
-          throw new PathNumOverLimitException(maxDeduplicatedPathNum, deduplicatedPathNum);
-        }
         columnSet.add(column);
         rawDataQueryPlan.addPathToIndex(column, index++);
         if (queryPlan instanceof AggregationPlan) {

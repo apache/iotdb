@@ -640,11 +640,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 
-      // In case users forget to set this field in query, use the default value
-      if (fetchSize == 0) {
-        fetchSize = DEFAULT_FETCH_SIZE;
-      }
-
       if (plan instanceof ShowTimeSeriesPlan) {
         //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
         if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
@@ -667,36 +662,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       if (plan.getOperatorType() == OperatorType.AGGREGATION) {
         resp.setIgnoreTimeStamp(true);
-        // the actual row number of aggregation query is 1
-        fetchSize = 1;
       } // else default ignoreTimeStamp is false
-
-      if (plan instanceof GroupByTimePlan) {
-        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) plan;
-        // the actual row number of group by query should be calculated from startTime, endTime and interval.
-        fetchSize = Math.min(
-            (int) ((groupByTimePlan.getEndTime() - groupByTimePlan.getStartTime()) / groupByTimePlan
-                .getInterval()), fetchSize);
-      }
 
       resp.setOperationType(plan.getOperatorType().toString());
 
-      // get deduplicated path num
-      int deduplicatedPathNum = -1;
-      if (plan instanceof AlignByDevicePlan) {
-        deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
-      } else if (plan instanceof LastQueryPlan) {
-        // dataset of last query consists of three column: time column + value column = 1 deduplicatedPathNum
-        // and we assume that the memory which sensor name takes equals to 1 deduplicatedPathNum
-        deduplicatedPathNum = 2;
-        // last query's actual row number should be the minimum between the number of series and fetchSize
-        fetchSize = Math.min(((LastQueryPlan) plan).getDeduplicatedPaths().size(), fetchSize);
-      } else if (plan instanceof RawDataQueryPlan) {
-        deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
-      }
-
       // generate the queryId for the operation
-      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
+      queryId = generateQueryId(true);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
         if (!(plan instanceof AlignByDevicePlan)) {
           TracingManager.getInstance()
@@ -1147,7 +1118,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executeNonQueryPlan(plan);
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
-    long queryId = generateQueryId(false, DEFAULT_FETCH_SIZE, -1);
+    long queryId = generateQueryId(false);
     resp.setQueryId(queryId);
     return resp;
   }
@@ -1809,9 +1780,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
 
-  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  private long generateQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
   protected List<TSDataType> getSeriesTypesByPaths(List<PartialPath> paths,
