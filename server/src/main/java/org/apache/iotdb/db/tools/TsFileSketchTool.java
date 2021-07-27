@@ -54,6 +54,8 @@ public class TsFileSketchTool {
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
+//    filename = "D:\\JavaSpace\\iotdb\\iotdb\\tsfile\\target\\MetadataIndexConstructorTest.tsfile";
+    filename = "D:\\JavaSpace\\iotdb\\iotdb\\test.tsfile";
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
@@ -292,7 +294,7 @@ public class TsFileSketchTool {
                   + "|\t\t[page] "
                   + " CompressedSize:"
                   + pageHeader.getCompressedSize()
-                  + " ,UncompressedSize:"
+                  + ", UncompressedSize:"
                   + pageHeader.getUncompressedSize());
           nextChunkGroupHeaderPos =
               chunkMetadata.getOffsetOfChunkHeader()
