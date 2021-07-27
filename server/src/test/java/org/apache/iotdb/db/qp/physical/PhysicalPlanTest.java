@@ -1013,7 +1013,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" schema=true", filePath);
+    metadata = String.format("load \"%s\" autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1023,7 +1023,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" schema=false", filePath);
+    metadata = String.format("load \"%s\" autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1033,7 +1033,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" schema=true,level=3", filePath);
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1043,7 +1043,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" schema=true,level=3,metadata=false", filePath);
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
@@ -1053,7 +1053,7 @@ public class PhysicalPlanTest {
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" schema=true,level=3,metadata=true", filePath);
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(

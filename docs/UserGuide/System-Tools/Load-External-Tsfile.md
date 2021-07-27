@@ -31,7 +31,7 @@ The user sends specified commands to the Apache IoTDB system through the Cli too
 
 #### load tsfiles
 
-The command to load tsfiles is `load "<path/dir>" [schema=true/false][,level=int][,metadata=true/false]`.
+The command to load tsfiles is `load "<path/dir>" [autoregister=true/false][,sglevel=int][,verify=true/false]`.
 
 This command has two usages:
 
@@ -39,25 +39,25 @@ This command has two usages:
 
 The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile` or `{systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile`. This command has three options: schema, level and metadata.
 
-SCHEMA option. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If this parameter is true, the schema is created automatically. If it is false, the schema will not be created. By default, the schema will be created.
+AUTOREGISTER option. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If this parameter is true, the schema is created automatically. If it is false, the schema will not be created. By default, the schema will be created.
 
-LEVEL option. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-engine.properties`.
+SGLEVEL option. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-engine.properties`.
 
-METADATA option. If this parameter is true, All timeseries in this loading tsfile will be compared with the timeseries in IoTDB. If existing a measurement which has different datatype with the measurement in IoTDB, the loading process will be stopped and exit. If consistence can be promised, setting false for this parameter will be a better choice.
+VERIFY option. If this parameter is true, All timeseries in this loading tsfile will be compared with the timeseries in IoTDB. If existing a measurement which has different datatype with the measurement in IoTDB, the loading process will be stopped and exit. If consistence can be promised, setting false for this parameter will be a better choice.
 
 If the `.resource` file corresponding to the file exists, it will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding `.resource` file will be regenerated from the tsfile file.
 
 Examples:
 
 * `load "/Users/Desktop/data/1575028885956-101-0.tsfile"`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" schema=false`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" schema=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" level=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" metadata=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" schema=true,level=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" metadata=false,level=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" schema=false,metadata=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" schema=false,level=1,metadata=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true,sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=false,sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,verify=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,sglevel=1,verify=true`
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 
@@ -66,10 +66,10 @@ The second parameter indicates the path of the tsfile to be loaded and the name 
 Examples:
 
 * `load "/Users/Desktop/data"`
-* `load "/Users/Desktop/data" schema=false`
-* `load "/Users/Desktop/data" schema=true`
-* `load "/Users/Desktop/data" schema=true,level=1`
-* `load "/Users/Desktop/data" schema=false,level=1,metadata=true`
+* `load "/Users/Desktop/data" autoregister=false`
+* `load "/Users/Desktop/data" autoregister=true`
+* `load "/Users/Desktop/data" autoregister=true,sglevel=1`
+* `load "/Users/Desktop/data" autoregister=false,sglevel=1,verify=true`
 
 #### remove a tsfile
 

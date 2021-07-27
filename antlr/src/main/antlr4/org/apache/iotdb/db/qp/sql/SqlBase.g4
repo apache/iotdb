@@ -683,9 +683,9 @@ property
     ;
 
 loadFilesClause
-    : SCHEMA OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
-    | LEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
-    | METADATA OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    : AUTOREGISTER OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    | SGLEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
+    | VERIFY OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
     ;
 
 triggerEventClause
@@ -1178,6 +1178,18 @@ FOR
 
 SCHEMA
     : S C H E M A
+    ;
+
+AUTOREGISTER
+    : A U T O R E G I S T E R
+    ;
+
+VERIFY
+    : V E R I F Y
+    ;
+
+SGLEVEL
+    : S G L E V E L
     ;
 
 TEMPORARY

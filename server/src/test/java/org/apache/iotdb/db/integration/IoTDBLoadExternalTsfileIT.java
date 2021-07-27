@@ -618,7 +618,7 @@ public class IoTDBLoadExternalTsfileIT {
       boolean hasError = false;
       try {
         statement.execute(
-            String.format("load \"%s\" schema=false,level=1", tmpDir.getAbsolutePath()));
+            String.format("load \"%s\" autoregister=false,sglevel=1", tmpDir.getAbsolutePath()));
       } catch (Exception e) {
         hasError = true;
       }
@@ -626,7 +626,8 @@ public class IoTDBLoadExternalTsfileIT {
 
       // test load metadata automatically, it will succeed.
       tmpDir = tmpDir.getParentFile().getParentFile().getParentFile();
-      statement.execute(String.format("load \"%s\" schema=true,level=1", tmpDir.getAbsolutePath()));
+      statement.execute(
+          String.format("load \"%s\" autoregister=true,sglevel=1", tmpDir.getAbsolutePath()));
       resources =
           new ArrayList<>(
               StorageEngine.getInstance()
@@ -727,7 +728,7 @@ public class IoTDBLoadExternalTsfileIT {
       }
       assertTrue(hasError);
 
-      statement.execute("load \"" + vehicleTmpDir + "\" metadata=false");
+      statement.execute("load \"" + vehicleTmpDir + "\" verify=false");
       assertEquals(
           1,
           StorageEngine.getInstance()
@@ -747,7 +748,7 @@ public class IoTDBLoadExternalTsfileIT {
       }
       assertTrue(hasError);
 
-      statement.execute("load \"" + testTmpDir + "\" metadata=false");
+      statement.execute("load \"" + testTmpDir + "\" verify=false");
       assertEquals(
           2,
           StorageEngine.getInstance()

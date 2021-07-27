@@ -2361,16 +2361,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
    * @param ctx context of property statement
    */
   private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
-    if (ctx.SCHEMA() != null) {
+    if (ctx.AUTOREGISTER() != null) {
       operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));
-    } else if (ctx.LEVEL() != null) {
+    } else if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
-    } else if (ctx.METADATA() != null) {
+    } else if (ctx.VERIFY() != null) {
       operator.setMetadataCheck(Boolean.parseBoolean(ctx.booleanClause().getText()));
     } else {
       throw new SQLParserException(
           String.format(
-              "load tsfile format %s error, please input SCHEMA | LEVEL | METADATA.",
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
               ctx.getText()));
     }
     if (ctx.loadFilesClause() != null) {
