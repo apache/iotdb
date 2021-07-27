@@ -72,7 +72,7 @@ public class SessionManager {
       return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
     } else {
       // only used for test
-      return TimeZone.getDefault();
+      return TimeZone.getTimeZone("+08:00");
     }
   }
 
@@ -133,18 +133,16 @@ public class SessionManager {
     }
   }
 
-  public long requestQueryId(
-      Long statementId, boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    long queryId = requestQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(Long statementId, boolean isDataQuery) {
+    long queryId = requestQueryId(isDataQuery);
     statementIdToQueryId
         .computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
         .add(queryId);
     return queryId;
   }
 
-  public long requestQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
   public void releaseQueryResource(long queryId) throws StorageEngineException {

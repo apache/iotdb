@@ -45,6 +45,7 @@ import java.sql.SQLXML;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,9 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
+  private boolean isRpcFetchResult = true;
+  private List<String> sgColumns;
+  private BitSet aliasColumnMap;
 
   public AbstractIoTDBJDBCResultSet(
       Statement statement,
@@ -84,6 +88,73 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
             timeout);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
+  }
+
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
+      throws SQLException {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout,
+            sgColumns,
+            aliasColumnMap);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
+    this.aliasColumnMap = aliasColumnMap;
+  }
+
+  public AbstractIoTDBJDBCResultSet(
+      Statement statement,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql,
+      long queryId,
+      long sessionId,
+      long timeout,
+      boolean isRpcFetchResult)
+      throws SQLException {
+    this.ioTDBRpcDataSet =
+        new IoTDBRpcDataSet(
+            sql,
+            columnNameList,
+            columnTypeList,
+            columnNameIndex,
+            ignoreTimeStamp,
+            queryId,
+            ((IoTDBStatement) statement).getStmtId(),
+            client,
+            sessionId,
+            null,
+            statement.getFetchSize(),
+            timeout);
+    this.statement = statement;
+    this.columnTypeList = columnTypeList;
+    this.isRpcFetchResult = isRpcFetchResult;
   }
 
   @Override
@@ -398,7 +469,24 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
+    String operationType = "";
+    boolean nonAlign = false;
+    try {
+      if (statement.getResultSet() instanceof IoTDBJDBCResultSet) {
+        operationType = ((IoTDBJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBJDBCResultSet) statement.getResultSet()).getSgColumns();
+      } else if (statement.getResultSet() instanceof IoTDBNonAlignJDBCResultSet) {
+        operationType = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getOperationType();
+        this.sgColumns = ((IoTDBNonAlignJDBCResultSet) statement.getResultSet()).getSgColumns();
+        nonAlign = true;
+      }
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
     return new IoTDBResultMetadata(
+        nonAlign,
+        sgColumns,
+        operationType,
         ioTDBRpcDataSet.columnNameList,
         ioTDBRpcDataSet.columnTypeList,
         ioTDBRpcDataSet.ignoreTimeStamp);
@@ -656,7 +744,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
     if (ioTDBRpcDataSet.emptyResultSet) {
       return false;
     }
-    if (fetchResults()) {
+    if (isRpcFetchResult && fetchResults()) {
       constructOneRow();
       return true;
     }

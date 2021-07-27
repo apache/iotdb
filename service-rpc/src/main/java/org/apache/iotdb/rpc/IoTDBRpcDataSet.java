@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +122,114 @@ public class IoTDBRpcDataSet {
       }
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
+        this.columnNameList.add(name);
+        this.columnTypeList.add(columnTypeList.get(i));
+        if (!columnOrdinalMap.containsKey(name)) {
+          int index = columnNameIndex.get(name);
+          columnOrdinalMap.put(name, index + START_INDEX);
+          columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+        }
+      }
+    } else {
+      this.columnTypeDeduplicatedList = new ArrayList<>();
+      int index = START_INDEX;
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = columnNameList.get(i);
+        this.columnNameList.add(name);
+        this.columnTypeList.add(columnTypeList.get(i));
+        if (!columnOrdinalMap.containsKey(name)) {
+          columnOrdinalMap.put(name, index++);
+          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        }
+      }
+    }
+
+    time = new byte[Long.BYTES];
+    currentBitmap = new byte[columnTypeDeduplicatedList.size()];
+    values = new byte[columnTypeDeduplicatedList.size()][];
+    for (int i = 0; i < values.length; i++) {
+      TSDataType dataType = columnTypeDeduplicatedList.get(i);
+      switch (dataType) {
+        case BOOLEAN:
+          values[i] = new byte[1];
+          break;
+        case INT32:
+          values[i] = new byte[Integer.BYTES];
+          break;
+        case INT64:
+          values[i] = new byte[Long.BYTES];
+          break;
+        case FLOAT:
+          values[i] = new byte[Float.BYTES];
+          break;
+        case DOUBLE:
+          values[i] = new byte[Double.BYTES];
+          break;
+        case TEXT:
+          values[i] = null;
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+      }
+    }
+    this.tsQueryDataSet = queryDataSet;
+    this.emptyResultSet = (queryDataSet == null || !queryDataSet.time.hasRemaining());
+  }
+
+  public IoTDBRpcDataSet(
+      String sql,
+      List<String> columnNameList,
+      List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
+      boolean ignoreTimeStamp,
+      long queryId,
+      long statementId,
+      TSIService.Iface client,
+      long sessionId,
+      TSQueryDataSet queryDataSet,
+      int fetchSize,
+      long timeout,
+      List<String> sgList,
+      BitSet aliasColumnMap) {
+    this.sessionId = sessionId;
+    this.statementId = statementId;
+    this.ignoreTimeStamp = ignoreTimeStamp;
+    this.sql = sql;
+    this.queryId = queryId;
+    this.client = client;
+    this.fetchSize = fetchSize;
+    this.timeout = timeout;
+    columnSize = columnNameList.size();
+
+    this.columnNameList = new ArrayList<>();
+    this.columnTypeList = new ArrayList<>();
+    if (!ignoreTimeStamp) {
+      this.columnNameList.add(TIMESTAMP_STR);
+      this.columnTypeList.add(String.valueOf(TSDataType.INT64));
+    }
+    // deduplicate and map
+    this.columnOrdinalMap = new HashMap<>();
+    if (!ignoreTimeStamp) {
+      this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+    }
+
+    // deduplicate and map
+    if (columnNameIndex != null) {
+      this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
+      for (int i = 0; i < columnNameIndex.size(); i++) {
+        columnTypeDeduplicatedList.add(null);
+      }
+      for (int i = 0; i < columnNameList.size(); i++) {
+        String name = "";
+        if (sgList != null
+            && sgList.size() > 0
+            && (aliasColumnMap == null || !aliasColumnMap.get(i))) {
+          name = sgList.get(i) + "." + columnNameList.get(i);
+        } else {
+          name = columnNameList.get(i);
+        }
+
         this.columnNameList.add(name);
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {

@@ -117,6 +117,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateUserContext;
@@ -1111,6 +1112,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitShowContinuousQueriesStatement(ShowContinuousQueriesStatementContext ctx) {
     return new ShowContinuousQueriesOperator(SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES);
+  }
+
+  @Override
+  public Operator visitCreateStorageGroup(CreateStorageGroupContext ctx) {
+    SetStorageGroupOperator setStorageGroupOperator =
+        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupOperator.setPath(path);
+    return setStorageGroupOperator;
   }
 
   @Override
@@ -2130,8 +2140,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       long timestamp;
       if (insertMultiValues.get(i).dateFormat() != null) {
         timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
-      } else {
+      } else if (insertMultiValues.get(i).INT() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      } else if (insertMultiValues.size() != 1) {
+        throw new SQLParserException("need timestamps when insert multi rows");
+      } else {
+        timestamp = parseTimeFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
       List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();

@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.logfile.TagLogFile;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -2449,7 +2450,15 @@ public class MManager {
   }
 
   private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
-    getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    try {
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    } catch (PathNotExistException e) {
+      // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
+      // when writing concurrently, so we need a auto-create mechanism here
+      mtree.getDeviceNodeWithAutoCreating(
+          plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    }
   }
 
   public long getTotalSeriesNumber() {

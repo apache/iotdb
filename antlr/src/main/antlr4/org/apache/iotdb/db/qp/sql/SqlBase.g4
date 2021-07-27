@@ -37,6 +37,7 @@ statement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
@@ -363,7 +364,7 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
     ;
 measurementName
     : nodeNameWithoutStar
@@ -377,6 +378,7 @@ insertValuesSpec
 insertMultiValue
     : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
 measurementValue
@@ -567,7 +569,6 @@ nodeNameWithoutStar
     | PREVIOUSUNTILLAST
     | METADATA
     | TIMESERIES
-    | TIMESTAMP
     | PROPERTY
     | WITH
     | DATATYPE
@@ -614,7 +615,6 @@ nodeNameWithoutStar
     | DISABLE
     | ALIGN
     | COMPRESSION
-    | TIME
     | ATTRIBUTES
     | TAGS
     | RENAME
