@@ -101,6 +101,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
   @Override
   protected void doCompaction() throws Exception {
+    // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
         TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
@@ -110,14 +111,14 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
+    File logFile = null;
     try {
-      File logFile =
+      logFile =
           new File(
               dataDirectory
                   + File.separator
                   + targetFileName
                   + CompactionLogger.COMPACTION_LOG_NAME);
-      // compaction execution
       CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
         compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
@@ -126,6 +127,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
+      // carry out the compaction
       CompactionUtils.compact(
           targetTsFileResource,
           selectedTsFileResourceList,
@@ -136,9 +138,6 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       compactionLogger.close();
-      if (logFile.exists()) {
-        logFile.delete();
-      }
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
         resource.setMerging(false);
@@ -149,16 +148,17 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
     }
-    // apply write lock for TsFileResource list
+    // get write lock for TsFileResource list with timeout
     try {
       tsFileResourceManager.writeLockWithTimeout("size-tired compaction", 20000);
     } catch (WriteLockFailedException e) {
-      // if the thread of time partition deletion get the write lock,
-      // current thread will catch a WriteLockFailException, then terminate the thread itself
+      // if current compaction thread couldn't get writelock
+      // a WriteLockFailException will be thrown, then terminate the thread itself
       LOGGER.info(
-          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task",
+          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file",
           fullStorageGroupName,
           e);
+      targetTsFileResource.getTsFile().delete();
       throw new InterruptedException(
           String.format(
               "%s [Compaction] compaction abort because cannot acquire write lock",
@@ -177,6 +177,9 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
       LOGGER.info("{} [SizeTiredCompactionTask] all compaction task finish", fullStorageGroupName);
+      if (logFile.exists()) {
+        logFile.delete();
+      }
     } finally {
       tsFileResourceManager.writeUnlock();
     }

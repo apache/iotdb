@@ -37,9 +37,11 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * SizeTiredSelector selects files based on the total size or total number of files. When the total
- * size of consecutively selected files exceeds the threshold or the number exceeds the threshold,
- * these files are submitted to a inner space compaction task.
+ * SizeTiredSelector selects files based on the total size or total number of files, and the
+ * selected files are always continuous. When the total size of consecutively selected files exceeds
+ * the threshold or the number exceeds the threshold, these files are submitted to the inner space
+ * compaction task. If a file that is being compacted or not closed is encountered when the
+ * threshold is not reached, a compaction task will also be submitted.
  */
 public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSelector {
   private static final Logger LOGGER = LoggerFactory.getLogger(SizeTiredCompactionSelector.class);
@@ -79,14 +81,21 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         logicalStorageGroupName + "-" + virtualStorageGroupName);
     int submitTaskNum = 0;
     try {
+      // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
+        // if no available thread for new compaction task
+        // or compaction of current type is disable
+        // just return
         if ((CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
           return taskSubmitted;
         }
+        // the file size reach threshold
+        // or meet a unchoosable file
+        // submit a task
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
@@ -96,6 +105,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         }
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
+        // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
           // submit the task
