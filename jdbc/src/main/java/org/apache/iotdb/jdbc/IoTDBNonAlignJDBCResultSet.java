@@ -97,9 +97,16 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
     List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
-      String name = sgColumns.get(i) + "." + columnNameList.get(i);
-      newSgColumns.add(sgColumns.get(i));
-      newSgColumns.add(sgColumns.get(i));
+      String name = "";
+      if (sgColumns != null) {
+        name = sgColumns.get(i) + "." + columnNameList.get(i);
+        newSgColumns.add(sgColumns.get(i));
+        newSgColumns.add(sgColumns.get(i));
+      } else {
+        name = columnNameList.get(i);
+        newSgColumns.add("");
+        newSgColumns.add("");
+      }
       ioTDBRpcDataSet.columnNameList.add(TIMESTAMP_STR + name);
       ioTDBRpcDataSet.columnNameList.add(name);
       ioTDBRpcDataSet.columnTypeList.add(String.valueOf(TSDataType.INT64));
