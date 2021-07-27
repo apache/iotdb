@@ -712,7 +712,8 @@ var config = {
 							// The trigger module has not been implemented yet,
 							// so the website should not show users how to use it to avoid misleading.
 							// ['Advanced-Features/Triggers','Trigger'],
-							['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 						]
 					},
 					{
@@ -1504,7 +1505,8 @@ var config = {
 						  // The trigger module has not been implemented yet,
 						  // so the website should not show users how to use it to avoid misleading.
 						  // ['Advanced-Features/Triggers','触发器'],
-							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+              ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
+              ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 						]
 					},
 					{
