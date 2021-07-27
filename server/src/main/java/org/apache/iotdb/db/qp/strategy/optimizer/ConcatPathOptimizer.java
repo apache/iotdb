@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -52,7 +54,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public Operator transform(Operator operator, int maxDeduplicatedPathNum)
+  public Operator transform(Operator operator)
       throws LogicalOptimizeException, PathNumOverLimitException {
     if (!(operator instanceof SFWOperator)) {
       logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
@@ -93,7 +95,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         // concat paths and remove stars
         int seriesLimit = ((QueryOperator) operator).getSeriesLimit();
         int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
-        concatSelect(prefixPaths, select, seriesLimit, seriesOffset, maxDeduplicatedPathNum);
+        concatSelect(prefixPaths, select, seriesLimit, seriesOffset);
       } else {
         isAlignByDevice = true;
         for (PartialPath path : initialSuffixPaths) {
@@ -159,7 +161,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * selectOperator's suffixPathList. Treat aggregations similarly.
    */
   private void concatSelect(List<PartialPath> fromPaths, SelectOperator selectOperator, int limit,
-      int offset, int maxDeduplicatedPathNum)
+      int offset)
       throws LogicalOptimizeException, PathNumOverLimitException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
 
@@ -180,8 +182,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       }
     }
 
-    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset,
-        maxDeduplicatedPathNum);
+    removeStarsInPath(allPaths, afterConcatAggregations, selectOperator, limit, offset);
   }
 
   private FilterOperator concatFilter(List<PartialPath> fromPaths, FilterOperator operator,
@@ -274,11 +275,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeStarsInPath(List<PartialPath> paths, List<String> afterConcatAggregations,
-      SelectOperator selectOperator, int finalLimit, int finalOffset, int maxDeduplicatedPathNum)
+      SelectOperator selectOperator, int finalLimit, int finalOffset)
       throws LogicalOptimizeException, PathNumOverLimitException {
     int offset = finalOffset;
-    int limit = finalLimit == 0 || maxDeduplicatedPathNum < finalLimit
-        ? maxDeduplicatedPathNum + 1 : finalLimit;
+    int limit = finalLimit == 0 ? Integer.MAX_VALUE : finalLimit;
     int consumed = 0;
     List<PartialPath> retPaths = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
@@ -313,7 +313,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           limit -= pair.right;
         }
         if (limit == 0) {
-          if (retPaths.size() == maxDeduplicatedPathNum + 1) {
+          int maxDeduplicatedPathNum =
+              IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
+          if (maxDeduplicatedPathNum < retPaths.size()) {
             throw new PathNumOverLimitException(maxDeduplicatedPathNum);
           }
           break;

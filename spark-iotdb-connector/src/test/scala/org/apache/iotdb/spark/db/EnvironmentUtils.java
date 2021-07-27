@@ -92,8 +92,7 @@ public class EnvironmentUtils {
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static DirectoryManager directoryManager = DirectoryManager.getInstance();
 
-  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
-      .assignQueryId(true, 1024, 0);
+  public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
   private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
@@ -184,7 +183,7 @@ public class EnvironmentUtils {
     StorageEngine.getInstance().reset();
     MultiFileLogNodeManager.getInstance().start();
     FlushManager.getInstance().start();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
