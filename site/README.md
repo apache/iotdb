@@ -58,7 +58,7 @@ npm run dev
 npm run build
 ```
 
-Remeber, only the changes of site/src can be logged by Git. 
+Remember, only the changes of site/src can be logged by Git. 
 All changes in the target folder will be ignored by Git.
 
 ## Deploy Manually
