@@ -156,17 +156,7 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
   @Override
   public String getColumnLabel(int column) throws SQLException {
     checkColumnIndex(column);
-    if (operationType.equals("QUERY") && nonAlign) {
-      if (column % 2 == 1
-          && columnInfoList.get(column - 1).length() >= 4
-          && columnInfoList.get(column - 1).substring(0, 4).equals("Time")) {
-        return "Time";
-      } else {
-        return columnInfoList.get(column - 1);
-      }
-    } else {
-      return columnInfoList.get(column - 1);
-    }
+    return columnInfoList.get(column - 1);
   }
 
   @Override

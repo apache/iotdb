@@ -98,7 +98,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = "";
-      if (sgColumns != null) {
+      if (sgColumns != null&&sgColumns.size()>0) {
         name = sgColumns.get(i) + "." + columnNameList.get(i);
         newSgColumns.add(sgColumns.get(i));
         newSgColumns.add(sgColumns.get(i));
