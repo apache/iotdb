@@ -79,7 +79,7 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
       throws IOException, StorageEngineException, QueryProcessException {
     ClusterPlanner processor = new ClusterPlanner();
     String sqlStr = "select sin(s0) from root.* where time >= 5";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));

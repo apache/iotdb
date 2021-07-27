@@ -22,7 +22,7 @@
 
 ## FLUSH
 
-将指定存储组的内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
+将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。
 
 ```
 IoTDB> FLUSH 
@@ -32,9 +32,9 @@ IoTDB> FLUSH root.sg1,root.sg2
 
 ## MERGE
 
-触发层级合并和乱序合并。当前IoTDB支持使用如下两种SQL手动触发数据文件的合并：
+触发层级合并和乱序合并。当前 IoTDB 支持使用如下两种 SQL 手动触发数据文件的合并：
 
-* `MERGE` 先触发层级合并，等层级合并执行完后，再触发乱序合并。在乱序合并中，仅重写重复的Chunk，整理速度快，但是最终磁盘会存在多余数据。
+* `MERGE` 先触发层级合并，等层级合并执行完后，再触发乱序合并。在乱序合并中，仅重写重复的 Chunk，整理速度快，但是最终磁盘会存在多余数据。
 * `FULL MERGE` 先触发层级合并，等层级合并执行完后，再触发乱序合并。在乱序合并中，将需要合并的顺序和乱序文件的所有数据都重新写一份，整理速度慢，最终磁盘将不存在无用的数据。
 
 ```
@@ -44,7 +44,7 @@ IoTDB> FULL MERGE
 
 ## CLEAR CACHE
 
-手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
+手动清除 chunk, chunk metadata 和 timeseries metadata 的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
 ```
 IoTDB> CLEAR CACHE
 ```
@@ -84,7 +84,7 @@ E.g. ((IoTDBStatement) statement).executeQuery(String sql, long timeoutInMS)
 E.g. session.executeQueryStatement(String sql, long timeout)
 ```
 
-如果不配置超时时间参数或将超时时间设置为 0，将使用服务器端默认的超时时间.
+如果不配置超时时间参数或将超时时间设置为 0，将使用服务器端默认的超时时间。
 
 ### 查询中止
 

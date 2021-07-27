@@ -19,13 +19,13 @@
 
 -->
 
-## Mlog解析工具
+## Mlog 解析工具
 
-0.12.x版本之后，IoTDB将元数据文件编码成二进制。
+0.12.x 版本之后，IoTDB 将元数据文件编码成二进制。
 
 如果想要解析元数据成人可读的方式，可以使用本工具来解析指定元数据文件。
 
-该工具可以同时解析snapshot文件和mlog文件。
+该工具可以同时解析 snapshot 文件和 mlog 文件。
 
 ### 使用方式
 
@@ -35,4 +35,3 @@ Linux/MacOS
 Windows
 
 > .\mLogParser.bat -f \your path\mlog.bin -o \your path\mlog.txt
-
