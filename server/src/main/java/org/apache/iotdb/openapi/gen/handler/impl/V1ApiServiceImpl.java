@@ -108,18 +108,88 @@ public class V1ApiServiceImpl extends V1ApiService {
     }
   }
 
-  @Override
-  public Response postV1GrafanaData(
-      GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
-    Gson result = new Gson();
-    Map timemap = new HashMap();
+  private String getSql(GroupByFillPlan groupByFillPlan) {
     List<String> pathList = groupByFillPlan.getPaths();
     String path = Joiner.on(".").join(pathList);
     String sql = "";
-    List<Map> listtemp = new ArrayList<>();
+
     long stime = (long) (groupByFillPlan.getStime().doubleValue() * timePrecision);
     long etime = (long) (groupByFillPlan.getEtime().doubleValue() * timePrecision);
-    if (groupByFillPlan.getFills() != null && groupByFillPlan.getFills().size() > 0) {
+    if (StringUtils.isEmpty(groupByFillPlan.getAggregation())
+        && groupByFillPlan.getGroupBy() == null) {
+      sql =
+          String.format(
+              "select %s FROM %s where time>=%d and time<%d",
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime);
+    } else if (StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && groupByFillPlan.getGroupBy() == null
+            && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime);
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
+        && groupByFillPlan.getFills() == null) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
+        && (groupByFillPlan.getFills() == null||groupByFillPlan.getFills().size()==0)) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getGroupBy().getStep());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
+        && groupByFillPlan.getFills() == null) {
+      sql =
+          String.format(
+              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              groupByFillPlan.getAggregation(),
+              path.substring(path.lastIndexOf('.') + 1),
+              path.substring(0, path.lastIndexOf('.')),
+              stime,
+              etime,
+              stime,
+              etime,
+              groupByFillPlan.getGroupBy().getSamplingInterval());
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && groupByFillPlan.getFills() != null&&groupByFillPlan.getFills().size()>0
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
       sql =
           String.format(
               "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
@@ -130,22 +200,42 @@ public class V1ApiServiceImpl extends V1ApiService {
               stime,
               etime,
               groupByFillPlan.getGroupBy().getSamplingInterval(),
-              groupByFillPlan.getGroupBy().getStep(),
               groupByFillPlan.getFills().get(0).getDataType(),
               groupByFillPlan.getFills().get(0).getPrevious(),
               groupByFillPlan.getFills().get(0).getDuration());
-    } else {
+    } else if (groupByFillPlan.getGroupBy() != null
+        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
+        && (groupByFillPlan.getFills() != null&&groupByFillPlan.getFills().size()>0)
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
+        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
+        && StringUtils.isEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
       sql =
           String.format(
-              "select avg(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
+              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s])",
               path.substring(path.lastIndexOf('.') + 1),
               path.substring(0, path.lastIndexOf('.')),
               stime,
               etime,
               stime,
               etime,
-              "1s");
-      // groupByFillPlan.getInterval());
+              groupByFillPlan.getGroupBy().getSamplingInterval(),
+              groupByFillPlan.getFills().get(0).getDataType(),
+              groupByFillPlan.getFills().get(0).getPrevious());
+    }
+    return sql;
+  }
+
+  @Override
+  public Response postV1GrafanaData(
+      GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
+    Gson result = new Gson();
+    Map timemap = new HashMap();
+
+    List<Map> listtemp = new ArrayList<>();
+    List<Map> resultList = new ArrayList<Map>();
+    String sql = getSql(groupByFillPlan);
+    if (sql.equals("")) {
+      return Response.ok().entity(result.toJson(resultList)).build();
     }
     try {
       Planner planner = new Planner();
@@ -235,145 +325,8 @@ public class V1ApiServiceImpl extends V1ApiService {
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     Gson result = new Gson();
     List<Map> resultList = new ArrayList<Map>();
-    List<String> pathList = groupByFillPlan.getPaths();
-    String path = Joiner.on(".").join(pathList);
-    String sql = "";
-
-    long stime = (long) (groupByFillPlan.getStime().doubleValue() * timePrecision);
-    long etime = (long) (groupByFillPlan.getEtime().doubleValue() * timePrecision);
-    if (StringUtils.isEmpty(groupByFillPlan.getAggregation())
-        && groupByFillPlan.getGroupBy() == null) {
-      sql =
-          String.format(
-              "select %s FROM %s where time>=%d and time<%d",
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime);
-    } else if (StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
-        && (groupByFillPlan.getGroupBy() == null
-            || StringUtils.isEmpty(groupByFillPlan.getGroupBy().getSamplingInterval()))) {
-      sql =
-          String.format(
-              "select %s(%s) FROM %s where time>=%d and time<%d",
-              groupByFillPlan.getAggregation(),
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime);
-    } else if (groupByFillPlan.getGroupBy() != null
-            && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
-            && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-            && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
-        || (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
-      sql =
-          String.format(
-              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
-              groupByFillPlan.getAggregation(),
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval());
-    } else if (groupByFillPlan.getGroupBy() != null
-        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
-        && (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
-      sql =
-          String.format(
-              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s)",
-              groupByFillPlan.getAggregation(),
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval(),
-              groupByFillPlan.getGroupBy().getStep());
-    } else if (groupByFillPlan.getGroupBy() != null
-        && StringUtils.isNotEmpty(groupByFillPlan.getAggregation())
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
-        && (groupByFillPlan.getFills() == null || groupByFillPlan.getFills().size() == 0)) {
-      sql =
-          String.format(
-              "select %s(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s)",
-              groupByFillPlan.getAggregation(),
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval());
-    } else if (groupByFillPlan.getGroupBy() != null
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && StringUtils.isEmpty(groupByFillPlan.getGroupBy().getStep())
-        && groupByFillPlan.getFills() != null
-        && groupByFillPlan.getFills().size() > 0
-        && groupByFillPlan.getFills().get(0).getDataType() != null
-        && groupByFillPlan.getFills().get(0).getPrevious() != null
-        && groupByFillPlan.getFills().get(0).getDuration() != null) {
-      sql =
-          String.format(
-              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s) fill (%s[%s,%s])",
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval(),
-              groupByFillPlan.getFills().get(0).getDataType(),
-              groupByFillPlan.getFills().get(0).getPrevious(),
-              groupByFillPlan.getFills().get(0).getDuration());
-    } else if (groupByFillPlan.getGroupBy() != null
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
-        && groupByFillPlan.getFills() != null
-        && groupByFillPlan.getFills().size() > 0
-        && groupByFillPlan.getFills().get(0).getDataType() != null
-        && groupByFillPlan.getFills().get(0).getPrevious() != null
-        && groupByFillPlan.getFills().get(0).getDuration() != null) {
-      sql =
-          String.format(
-              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s) fill (%s[%s,%s])",
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval(),
-              groupByFillPlan.getGroupBy().getStep(),
-              groupByFillPlan.getFills().get(0).getDataType(),
-              groupByFillPlan.getFills().get(0).getPrevious(),
-              groupByFillPlan.getFills().get(0).getDuration());
-    } else if (groupByFillPlan.getGroupBy() != null
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getSamplingInterval())
-        && StringUtils.isNotEmpty(groupByFillPlan.getGroupBy().getStep())
-        && groupByFillPlan.getFills() != null
-        && groupByFillPlan.getFills().size() > 0
-        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getDataType())
-        && StringUtils.isNotEmpty(groupByFillPlan.getFills().get(0).getPrevious())
-        && StringUtils.isEmpty(groupByFillPlan.getFills().get(0).getDuration())) {
-      sql =
-          String.format(
-              "select last_value(%s) FROM %s where time>=%d and time<%d group by ([%d, %d),%s,%s) fill (%s[%s])",
-              path.substring(path.lastIndexOf('.') + 1),
-              path.substring(0, path.lastIndexOf('.')),
-              stime,
-              etime,
-              stime,
-              etime,
-              groupByFillPlan.getGroupBy().getSamplingInterval(),
-              groupByFillPlan.getGroupBy().getStep(),
-              groupByFillPlan.getFills().get(0).getDataType());
-    } else {
+    String sql = getSql(groupByFillPlan);
+    if (sql.equals("")) {
       return Response.ok().entity(result.toJson(resultList)).build();
     }
     if (groupByFillPlan.getLimitAll() != null
