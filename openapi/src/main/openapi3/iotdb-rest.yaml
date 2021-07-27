@@ -445,7 +445,7 @@ components:
           type: array
           items:
             type: string
-        valuses:
+        values:
           type: array
           items:
             type: string
@@ -519,7 +519,8 @@ components:
             slimit: string
           fills:
           - dtype: string
-            fun: string
+            previous: string
+            duration: string
           paths:
           - - string
     GrafanaDataFrame:

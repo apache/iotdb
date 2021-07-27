@@ -856,7 +856,7 @@ public class V1ApiServiceImpl extends V1ApiService {
       throws NotFoundException {
     Map resultMap = new HashMap<String, Object>();
     List<String> listParam = writeData.getParams();
-    List<String> listValues = writeData.getValuses();
+    List<String> listValues = writeData.getValues();
     List<String> pathList = writeData.getPaths();
     StringBuilder sql = new StringBuilder();
     String path = Joiner.on(".").join(pathList);
@@ -869,6 +869,7 @@ public class V1ApiServiceImpl extends V1ApiService {
         .append(") values (")
         .append(s)
         .append(")");
+    System.out.println(sql+"----------");
     String resultValue = insertDb(securityContext, sql.toString());
     if (resultValue.equals("success")) {
       resultMap.put("code", 200);
