@@ -53,9 +53,6 @@ public class HybridTimeseriesSessionExample {
     insertTabletWithAlignedTimeseriesMethod(0, 100);
     insertRecord(ROOT_SG1_D1, 0, 100);
     session.executeNonQueryStatement("flush");
-    //    insertTabletWithAlignedTimeseriesMethod(100,200);
-    //    insertRecord(ROOT_SG1_D1,1,200);
-    //    session.executeNonQueryStatement("flush");
     selectTest();
 
     session.close();

@@ -54,9 +54,6 @@ public class TsFileSketchTool {
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
     String filename = fileNames.left;
-    //    filename =
-    // "D:\\JavaSpace\\iotdb\\iotdb\\tsfile\\target\\MetadataIndexConstructorTest.tsfile";
-    filename = "C:\\Users\\admin\\Desktop\\test.tsfile";
     String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
@@ -287,8 +284,12 @@ public class TsFileSketchTool {
                   + chunk.getHeader().getSerializedSize());
 
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[chunk] " + chunk.getData());
-          PageHeader pageHeader =
-              PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
+            PageHeader pageHeader;
+            if (((byte) (chunk.getHeader().getChunkType() & 0x3F)) == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
+                pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunkMetadata.getStatistics());
+            } else {
+                pageHeader = PageHeader.deserializeFrom(chunk.getData(), chunk.getHeader().getDataType());
+            }
           printlnBoth(
               pw,
               String.format("%20s", "")
@@ -377,7 +378,7 @@ public class TsFileSketchTool {
 
       treeOutputStringBuffer.add(
           tableWriter.toString()
-              + "└───────["
+              + "└───["
               + metadataIndexEntry.getName()
               + ","
               + metadataIndexEntry.getOffset()
