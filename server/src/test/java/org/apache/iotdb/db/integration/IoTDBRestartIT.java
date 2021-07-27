@@ -361,8 +361,8 @@ public class IoTDBRestartIT {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
-    long tsfileSize = config.getTsFileSizeThreshold();
-    config.setTsFileSizeThreshold(10000000);
+    long tsfileSize = config.getSeqTsFileSize();
+    config.setSeqTsFileSize(10000000);
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -396,7 +396,7 @@ public class IoTDBRestartIT {
     }
 
     config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    config.setTsFileSizeThreshold(tsfileSize);
+    config.setSeqTsFileSize(tsfileSize);
     EnvironmentUtils.cleanEnv();
   }
 
