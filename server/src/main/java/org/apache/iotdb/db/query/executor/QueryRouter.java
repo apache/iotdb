@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByTimeDataSet;
@@ -198,7 +199,8 @@ public class QueryRouter implements IQueryRouter {
               plan.getStartTime(),
               plan.getEndTime(),
               plan.isSlidingStepByMonth(),
-              plan.isIntervalByMonth())));
+              plan.isIntervalByMonth(),
+              SessionManager.getInstance().getCurrSessionTimeZone())));
     } else {
       return new GlobalTimeExpression(
           new GroupByFilter(
