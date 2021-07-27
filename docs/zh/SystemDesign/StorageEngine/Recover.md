@@ -27,7 +27,7 @@
 
 * org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.recover()
 
-* 首先获得该存储组下所有以。tsfile 结尾的数据文件，返回 TsFileResource，共有如下几个文件列表
+* 首先获得该存储组下所有以 .tsfile 结尾的数据文件，返回 TsFileResource，共有如下几个文件列表
 
 * 顺序文件
 	* 0.10 版本的文件（封口/未封口）

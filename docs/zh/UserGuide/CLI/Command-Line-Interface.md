@@ -200,7 +200,7 @@ Shell > sbin\start-cli.bat -h {host} -p {rpcPort} -u {user} -pw {password} -e {s
 
 4. 查询验证数据是否插入成功
 
-那么通过使用 cli/Shell 工具的-e 参数，可以采用如下的脚本：
+那么通过使用 cli/Shell 工具的 -e 参数，可以采用如下的脚本：
 
 ```shell
 # !/bin/bash
@@ -233,4 +233,4 @@ Total line number = 3
 It costs 0.267s
 ```
 
-需要特别注意的是，在脚本中使用-e 参数时要对特殊字符进行转义。
+需要特别注意的是，在脚本中使用 -e 参数时要对特殊字符进行转义。

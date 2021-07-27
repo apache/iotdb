@@ -50,6 +50,7 @@ TypeInformation[] typeInformations = new TypeInformation[] {
 	Types.LONG,
 	Types.FLOAT,
 	Types.INT,
+    Types.INT,
 	Types.FLOAT,
 	Types.INT,
 	Types.INT
@@ -106,6 +107,11 @@ String[] filedNames = {
 	"device_2.sensor_3"
 };
 TypeInformation[] typeInformations = new TypeInformation[] {
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
+    Types.LONG,
 	Types.LONG,
 	Types.LONG
 };

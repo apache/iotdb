@@ -227,9 +227,9 @@ mlog.bin 存储二进制编码。我们可以使用 [MlogParser Tool](https://io
 	
 	> 格式：11,path
 
-* 创建时间序列 create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+* 创建时间序列 create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
 
-	> mlog: 0,root.turbine.d1.s1,3,2,1,, 温度，offset
+	> mlog: 0,root.turbine.d1.s1,3,2,1,temperature,offset
 	
 	> 格式：0,path,TSDataType,TSEncoding,CompressionType,[properties],[alias],[tag-attribute offset]
 

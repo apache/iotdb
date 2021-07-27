@@ -91,7 +91,7 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) 和 [google
 3. 开启插件，并保持默认的 GOOGLE 格式 (2-space indents)
 4. 在 Spotless 没有升级到 18+之前，不要升级 google-java-format 插件
 5. 安装 [Save Actions 插件](https://plugins.jetbrains.com/plugin/7642-save-actions) , 并开启插件，打开 "Optimize imports" and "Reformat file" 选项。
-6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为。*\.java”, 避免在编辑的其他文件时候发生意外的重新格式化
+6. 在“Save Actions”设置页面中，将 "File Path Inclusion" 设置为 .*\.java”, 避免在编辑的其他文件时候发生意外的重新格式化
 
 ## 贡献代码
 
