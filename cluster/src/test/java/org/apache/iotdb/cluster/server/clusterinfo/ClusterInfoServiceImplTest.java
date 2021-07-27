@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server.clusterinfo;
 
-import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
@@ -52,7 +52,7 @@ public class ClusterInfoServiceImplTest {
     metaClusterServer.getMember().stop();
     metaClusterServer.setMetaGroupMember(metaGroupMember);
 
-    ClusterMain.setMetaClusterServer(metaClusterServer);
+    ClusterIoTDB.setMetaClusterServer(metaClusterServer);
 
     metaClusterServer.getIoTDB().metaManager.setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
@@ -61,11 +61,11 @@ public class ClusterInfoServiceImplTest {
 
   @After
   public void tearDown() throws MetadataException {
-    ClusterMain.getMetaServer()
+    ClusterIoTDB.getMetaServer()
         .getIoTDB()
         .metaManager
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
-    ClusterMain.getMetaServer().stop();
+    ClusterIoTDB.getMetaServer().stop();
   }
 
   @Test

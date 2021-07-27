@@ -27,15 +27,20 @@ import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.ClusterRPCService;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.JMXService;
+import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.apache.thrift.TException;
@@ -53,9 +58,12 @@ import java.util.Set;
 
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
 
-public class ClusterMain {
+//we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
+public class ClusterIoTDB {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClusterMain.class);
+  private static final Logger logger = LoggerFactory.getLogger(ClusterIoTDB.class);
+  private final String mbeanName =
+      String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
   // establish the cluster as a seed
   private static final String MODE_START = "-s";
@@ -65,7 +73,12 @@ public class ClusterMain {
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
-  private static MetaClusterServer metaServer;
+  private MetaClusterServer metaServer;
+
+  private IoTDB iotdb = IoTDB.getInstance();
+
+  // Cluster IoTDB uses a individual registerManager with its parent.
+  private RegisterManager registerManager = new RegisterManager();
 
   public static void main(String[] args) {
     if (args.length < 1) {
@@ -76,7 +89,6 @@ public class ClusterMain {
               + "-a: start the node as a new node\n"
               + "-r: remove the node out of the cluster\n",
           IoTDBConstant.IOTDB_CONF);
-
       return;
     }
 
@@ -103,50 +115,18 @@ public class ClusterMain {
     String mode = args[0];
     logger.info("Running mode {}", mode);
 
-    if (MODE_START.equals(mode)) {
-      try {
-        metaServer = new MetaClusterServer();
-        startServerCheck();
-        preStartCustomize();
-        metaServer.start();
-        metaServer.buildCluster();
-        // Currently, we do not register ClusterInfoService as a JMX Bean,
-        // so we use startService() rather than start()
-        ClusterInfoServer.getInstance().startService();
-      } catch (TTransportException
-          | StartupException
-          | QueryProcessException
-          | StartUpCheckFailureException
-          | ConfigInconsistentException e) {
-        metaServer.stop();
-        logger.error("Fail to start meta server", e);
-      }
-    } else if (MODE_ADD.equals(mode)) {
-      try {
-        long startTime = System.currentTimeMillis();
-        metaServer = new MetaClusterServer();
-        preStartCustomize();
-        metaServer.start();
-        metaServer.joinCluster();
-        // Currently, we do not register ClusterInfoService as a JMX Bean,
-        // so we use startService() rather than start()
-        ClusterInfoServer.getInstance().startService();
+    ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
+    //we start IoTDB kernel first.
+    cluster.iotdb.active();
 
-        logger.info(
-            "Adding this node {} to cluster costs {} ms",
-            metaServer.getMember().getThisNode(),
-            (System.currentTimeMillis() - startTime));
-      } catch (TTransportException
-          | StartupException
-          | QueryProcessException
-          | StartUpCheckFailureException
-          | ConfigInconsistentException e) {
-        metaServer.stop();
-        logger.error("Fail to join cluster", e);
-      }
+    //then we start the cluster module.
+    if (MODE_START.equals(mode)) {
+      cluster.activeStartNodeMode();
+    } else if (MODE_ADD.equals(mode)) {
+      cluster.activeAddNodeMode();
     } else if (MODE_REMOVE.equals(mode)) {
       try {
-        doRemoveNode(args);
+        cluster.doRemoveNode(args);
       } catch (IOException e) {
         logger.error("Fail to remove node in cluster", e);
       }
@@ -155,7 +135,61 @@ public class ClusterMain {
     }
   }
 
-  private static void startServerCheck() throws StartupException {
+  public void activeStartNodeMode() {
+    try {
+      metaServer = new MetaClusterServer();
+      startServerCheck();
+      preStartCustomize();
+      metaServer.start();
+      metaServer.buildCluster();
+      // Currently, we do not register ClusterInfoService as a JMX Bean,
+      // so we use startService() rather than start()
+      ClusterInfoServer.getInstance().startService();
+      // JMX based DBA API
+      registerManager.register(ClusterMonitor.INSTANCE);
+      // we must wait until the metaGroup established.
+      // So that the ClusterRPCService can work.
+      registerManager.register(ClusterRPCService.getInstance());
+    } catch (TTransportException
+        | StartupException
+        | QueryProcessException
+        | StartUpCheckFailureException
+        | ConfigInconsistentException e) {
+      stop();
+      logger.error("Fail to start meta server", e);
+    }
+  }
+
+  public void activeAddNodeMode() {
+    try {
+      long startTime = System.currentTimeMillis();
+      metaServer = new MetaClusterServer();
+      preStartCustomize();
+      metaServer.start();
+      metaServer.joinCluster();
+      // Currently, we do not register ClusterInfoService as a JMX Bean,
+      // so we use startService() rather than start()
+      ClusterInfoServer.getInstance().startService();
+      // JMX based DBA API
+      registerManager.register(ClusterMonitor.INSTANCE);
+      //finally, we start the RPC service
+      registerManager.register(ClusterRPCService.getInstance());
+      logger.info(
+          "Adding this node {} to cluster costs {} ms",
+          metaServer.getMember().getThisNode(),
+          (System.currentTimeMillis() - startTime));
+    } catch (TTransportException
+        | StartupException
+        | QueryProcessException
+        | StartUpCheckFailureException
+        | ConfigInconsistentException e) {
+      stop();
+      logger.error("Fail to join cluster", e);
+    }
+  }
+
+
+  private void startServerCheck() throws StartupException {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     // check the initial replicateNum and refuse to start when the replicateNum <= 0
     if (config.getReplicationNum() <= 0) {
@@ -218,7 +252,7 @@ public class ClusterMain {
     }
   }
 
-  private static void doRemoveNode(String[] args) throws IOException {
+  private void doRemoveNode(String[] args) throws IOException {
     if (args.length != 3) {
       logger.error("Usage: -r <ip> <metaPort>");
       return;
@@ -255,7 +289,7 @@ public class ClusterMain {
     }
   }
 
-  private static void handleNodeRemovalResp(Long response, Node nodeToRemove, long startTime) {
+  private void handleNodeRemovalResp(Long response, Node nodeToRemove, long startTime) {
     if (response == Response.RESPONSE_AGREE) {
       logger.info(
           "Node {} is successfully removed, cost {}ms",
@@ -273,13 +307,13 @@ public class ClusterMain {
     }
   }
 
-  public static MetaClusterServer getMetaServer() {
+  public MetaClusterServer getMetaServer() {
     return metaServer;
   }
 
   /** Developers may perform pre-start customizations here for debugging or experiments. */
   @SuppressWarnings("java:S125") // leaving examples
-  private static void preStartCustomize() {
+  private void preStartCustomize() {
     // customize data distribution
     // The given example tries to divide storage groups like "root.sg_1", "root.sg_2"... into k
     // nodes evenly, and use default strategy for other groups
@@ -324,8 +358,35 @@ public class ClusterMain {
         });
   }
 
+
+
   @TestOnly
-  public static void setMetaClusterServer(MetaClusterServer metaClusterServer) {
+  public void setMetaClusterServer(MetaClusterServer metaClusterServer) {
     metaServer = metaClusterServer;
+  }
+
+  public void stop() {
+    deactivate();
+  }
+
+  private void deactivate() {
+    logger.info("Deactivating Cluster IoTDB...");
+    metaServer.stop();
+    registerManager.deregisterAll();
+    JMXService.deregisterMBean(mbeanName);
+    logger.info("ClusterIoTDB is deactivated.");
+    //stop the iotdb kernel
+    iotdb.stop();
+  }
+
+
+  public static ClusterIoTDB getInstance() {
+    return ClusterIoTDBHolder.INSTANCE;
+  }
+  private static class ClusterIoTDBHolder {
+
+    private static final ClusterIoTDB INSTANCE = new ClusterIoTDB();
+
+    private ClusterIoTDBHolder() {}
   }
 }

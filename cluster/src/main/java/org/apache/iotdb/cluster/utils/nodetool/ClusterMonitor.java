@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
-import org.apache.iotdb.cluster.ClusterMain;
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -201,7 +201,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   private MetaGroupMember getMetaGroupMember() {
-    MetaClusterServer metaClusterServer = ClusterMain.getMetaServer();
+    MetaClusterServer metaClusterServer = ClusterIoTDB.getInstance().getMetaServer();
     if (metaClusterServer == null) {
       return null;
     }

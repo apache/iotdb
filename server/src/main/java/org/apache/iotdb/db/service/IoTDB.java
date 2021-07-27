@@ -152,6 +152,14 @@ public class IoTDB implements IoTDBMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");
+    //some user may call Tracing on but do not close tracing.
+    //so, when remove the system, we have to close the tracing
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      TracingManager.getInstance().close();
+    }
+    PrimitiveArrayManager.close();
+    SystemInfo.getInstance().close();
+
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
@@ -174,15 +182,9 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public void shutdown() throws Exception {
-    logger.info("Deactivating IoTDB...");
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      TracingManager.getInstance().close();
-    }
-    registerManager.shutdownAll();
-    PrimitiveArrayManager.close();
-    SystemInfo.getInstance().close();
-    JMXService.deregisterMBean(mbeanName);
-    logger.info("IoTDB is deactivated.");
+    stop();
+
+    logger.info("IoTDB is shutdown.");
   }
 
   private void setUncaughtExceptionHandler() {

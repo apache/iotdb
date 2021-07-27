@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
@@ -64,10 +65,8 @@ public class MetaClusterServer extends RaftServer
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
   private Coordinator coordinator;
-  // the single-node IoTDB instance
-  private IoTDB ioTDB;
-  // to register the ClusterMonitor that helps monitoring the cluster
-  private RegisterManager registerManager = new RegisterManager();
+
+
   private MetaAsyncService asyncService;
   private MetaSyncService syncService;
   private MetaHeartbeatServer metaHeartbeatServer;
@@ -94,28 +93,24 @@ public class MetaClusterServer extends RaftServer
   public void start() throws TTransportException, StartupException {
     super.start();
     metaHeartbeatServer.start();
-    ioTDB = new IoTDB();
+
     IoTDB.setMetaManager(CMManager.getInstance());
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(member);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
-    ioTDB.active();
+    //TODO FIXME move this out of MetaClusterServer
+    IoTDB.getInstance().active();
+
     member.start();
-    // JMX based DBA API
-    registerManager.register(ClusterMonitor.INSTANCE);
+
   }
 
   /** Also stops the IoTDB instance, the MetaGroupMember and the ClusterMonitor. */
   @Override
   public void stop() {
-    if (ioTDB == null) {
-      return;
-    }
+
     metaHeartbeatServer.stop();
     super.stop();
-    ioTDB.stop();
-    ioTDB = null;
     member.stop();
-    registerManager.deregisterAll();
   }
 
   /** Build a initial cluster with other nodes on the seed list. */
@@ -371,8 +366,4 @@ public class MetaClusterServer extends RaftServer
     this.member = metaGroupMember;
   }
 
-  @TestOnly
-  public IoTDB getIoTDB() {
-    return ioTDB;
-  }
 }

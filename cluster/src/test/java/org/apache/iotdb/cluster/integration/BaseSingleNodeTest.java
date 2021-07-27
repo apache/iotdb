@@ -51,6 +51,7 @@ public abstract class BaseSingleNodeTest {
 
   @After
   public void tearDown() throws Exception {
+    //TODO fixme
     metaServer.stop();
     recoverConfigs();
     EnvironmentUtils.cleanEnv();

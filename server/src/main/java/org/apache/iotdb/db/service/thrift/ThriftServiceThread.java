@@ -61,7 +61,7 @@ public class ThriftServiceThread extends Thread {
       String bindAddress,
       int port,
       int maxWorkerThreads,
-      int timeoutMs,
+      int timeoutSecond,
       TServerEventHandler serverEventHandler,
       boolean compress) {
     if (compress) {
@@ -77,7 +77,7 @@ public class ThriftServiceThread extends Thread {
           new TThreadPoolServer.Args(serverTransport)
               .maxWorkerThreads(maxWorkerThreads)
               .minWorkerThreads(CommonUtils.getCpuCores())
-              .stopTimeoutVal(timeoutMs);
+              .stopTimeoutVal(timeoutSecond);
       poolArgs.executorService =
           IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs, threadsName);
       poolArgs.processor(processor);

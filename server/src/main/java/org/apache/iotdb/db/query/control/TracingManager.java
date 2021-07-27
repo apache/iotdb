@@ -44,11 +44,18 @@ public class TracingManager {
   private BufferedWriter writer;
   private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
 
-  public TracingManager(String dirName, String logFileName) {
-    initTracingManager(dirName, logFileName);
+  private TracingManager() {
+    initTracingManager();
   }
 
-  public void initTracingManager(String dirName, String logFileName) {
+  public void initTracingManager() {
+    if (this.writer != null) {
+      //the tracing manager has been initialized.
+      return;
+    }
+    String dirName = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
+    String logFileName = IoTDBConstant.TRACING_LOG;
+
     File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
     if (!tracingDir.exists()) {
       if (tracingDir.mkdirs()) {
@@ -203,31 +210,17 @@ public class TracingManager {
 
   public void close() {
     try {
+      queryStartTime.clear();
       writer.close();
+      writer = null;
     } catch (IOException e) {
       logger.error("Meeting error while Close the tracing log stream : {}", e.getMessage());
     }
   }
 
-  public boolean getWriterStatus() {
-    try {
-      writer.flush();
-      return true;
-    } catch (IOException e) {
-      return false;
-    }
-  }
-
-  public void openTracingWriteStream() {
-    initTracingManager(
-        IoTDBDescriptor.getInstance().getConfig().getTracingDir(), IoTDBConstant.TRACING_LOG);
-  }
-
   private static class TracingManagerHelper {
 
-    private static final TracingManager INSTANCE =
-        new TracingManager(
-            IoTDBDescriptor.getInstance().getConfig().getTracingDir(), IoTDBConstant.TRACING_LOG);
+    private static final TracingManager INSTANCE = new TracingManager();
 
     private TracingManagerHelper() {}
   }

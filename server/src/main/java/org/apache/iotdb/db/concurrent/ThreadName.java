@@ -46,7 +46,9 @@ public enum ThreadName {
   QUERY_SERVICE("Query"),
   WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
-  CLUSTER_INFO_SERVICE("ClusterInfoClient");
+  CLUSTER_INFO_SERVICE("ClusterInfoClient"),
+  CLUSTER_RPC_SERVICE("ClusterRPC"),
+  CLUSTER_RPC_CLIENT("Cluster-RPC-Client");
 
   private final String name;
 

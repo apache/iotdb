@@ -55,6 +55,9 @@ public enum ServiceType {
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
   CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),
   CLUSTER_INFO_SERVICE("Cluster Monitor Service (thrift-based)", "Cluster Monitor-Thrift"),
+
+  CLUSTER_RPC_SERVICE("Cluster RPC ServerService", "ClusterRPCService"),
+
   ;
 
   private final String name;

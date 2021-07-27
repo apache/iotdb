@@ -16,37 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
+package org.apache.iotdb.cluster.server;
+
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
+import org.apache.iotdb.db.service.RPCServiceThriftHandler;
+import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
-/** A service to handle jdbc request from client. */
-public class RPCService extends ThriftService implements RPCServiceMBean {
+public class ClusterRPCService  extends ThriftService implements ClusterRPCServiceMBean {
 
-  private TSServiceImpl impl;
+  private ClusterTSServiceImpl impl;
 
-  public static RPCService getInstance() {
-    return RPCServiceHolder.INSTANCE;
-  }
+  private ClusterRPCService() {}
 
   @Override
   public ThriftService getImplementation() {
-    return getInstance();
+    return ClusterRPCServiceHolder.INSTANCE;
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.CLUSTER_RPC_SERVICE;
   }
 
   @Override
   public void initTProcessor()
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl =
-        (TSServiceImpl)
-            Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
-                .newInstance();
+      throws IllegalAccessException, InstantiationException {
+    impl = new ClusterTSServiceImpl();
     processor = new Processor<>(impl);
   }
 
@@ -58,7 +64,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.RPC_CLIENT.getName(),
+              ThreadName.CLUSTER_RPC_CLIENT.getName(),
               config.getRpcAddress(),
               config.getRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
@@ -68,7 +74,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.CLUSTER_RPC_SERVICE.getName());
   }
 
   @Override
@@ -78,12 +84,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   @Override
   public int getBindPort() {
-    return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.RPC_SERVICE;
+    return ClusterDescriptor.getInstance().getConfig().getClusterRpcPort();
   }
 
   @Override
@@ -91,10 +92,23 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     return getBindPort();
   }
 
-  private static class RPCServiceHolder {
+  public static ClusterRPCService getInstance() {
+    return ClusterRPCServiceHolder.INSTANCE;
+  }
 
-    private static final RPCService INSTANCE = new RPCService();
+  public void assignExecutorToServiceImpl(MetaGroupMember member) throws QueryProcessException {
+    this.impl.setExecutor(member);
+  }
 
-    private RPCServiceHolder() {}
+  public void assignCoordinator(Coordinator coordinator) {
+    this.impl.setCoordinator(coordinator);
+  }
+
+
+  private static class ClusterRPCServiceHolder {
+
+    private static final ClusterRPCService INSTANCE = new ClusterRPCService();
+
+    private ClusterRPCServiceHolder() {}
   }
 }

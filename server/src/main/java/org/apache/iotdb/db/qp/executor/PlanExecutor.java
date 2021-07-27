@@ -471,9 +471,7 @@ public class PlanExecutor implements IPlanExecutor {
     if (!plan.isTracingOn()) {
       TracingManager.getInstance().close();
     } else {
-      if (!TracingManager.getInstance().getWriterStatus()) {
-        TracingManager.getInstance().openTracingWriteStream();
-      }
+      TracingManager.getInstance().initTracingManager();
     }
   }
 

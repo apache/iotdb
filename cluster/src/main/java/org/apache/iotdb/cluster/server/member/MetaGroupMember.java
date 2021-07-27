@@ -65,7 +65,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.ClientServer;
+import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -213,7 +213,7 @@ public class MetaGroupMember extends RaftMember {
    * an override of TSServiceImpl, which redirect JDBC and Session requests to the MetaGroupMember
    * so they can be processed cluster-wide
    */
-  private ClientServer clientServer;
+  private ClusterTSServiceImpl clusterTSServiceImpl;
 
   private DataClientProvider dataClientProvider;
 
@@ -276,7 +276,7 @@ public class MetaGroupMember extends RaftMember {
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
     dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
-    clientServer = new ClientServer(this);
+    clusterTSServiceImpl = new ClusterTSServiceImpl(this);
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
@@ -333,7 +333,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Stop the heartbeat and catch-up thread pool, DataClusterServer, ClientServer and reportThread.
+   * Stop the heartbeat and catch-up thread pool, DataClusterServer, ClusterTSServiceImpl and reportThread.
    * Calling the method twice does not induce side effects.
    */
   @Override
@@ -345,8 +345,8 @@ public class MetaGroupMember extends RaftMember {
     if (getDataHeartbeatServer() != null) {
       getDataHeartbeatServer().stop();
     }
-    if (clientServer != null) {
-      clientServer.stop();
+    if (clusterTSServiceImpl != null) {
+      clusterTSServiceImpl.stop();
     }
     if (reportThread != null) {
       reportThread.shutdownNow();
@@ -371,14 +371,14 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Start DataClusterServer and ClientServer so this node will be able to respond to other nodes
+   * Start DataClusterServer and ClusterTSServiceImpl so this node will be able to respond to other nodes
    * and clients.
    */
   protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
-    clientServer.setCoordinator(this.coordinator);
-    clientServer.start();
+    clusterTSServiceImpl.setCoordinator(this.coordinator);
+    clusterTSServiceImpl.start();
   }
 
   /**
@@ -549,7 +549,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Send a join cluster request to "node". If the joining is accepted, set the partition table,
-   * start DataClusterServer and ClientServer and initialize DataGroupMembers.
+   * start DataClusterServer and ClusterTSServiceImpl and initialize DataGroupMembers.
    *
    * @return true if the node has successfully joined the cluster, false otherwise.
    */
@@ -669,7 +669,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Deserialize a partition table from the buffer, save it locally, add nodes from the partition
-   * table and start DataClusterServer and ClientServer.
+   * table and start DataClusterServer and ClusterTSServiceImpl.
    */
   public synchronized void acceptPartitionTable(
       ByteBuffer partitionTableBuffer, boolean needSerialization) {
@@ -715,7 +715,7 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Process a HeartBeatResponse from a follower. If the follower has provided its identifier, try
    * registering for it and if all nodes have registered and there is no available partition table,
-   * initialize a new one and start the ClientServer and DataClusterServer. If the follower requires
+   * initialize a new one and start the ClusterTSServiceImpl and DataClusterServer. If the follower requires
    * a partition table, add it to the blind node list so that at the next heartbeat this node will
    * send it a partition table
    */
@@ -800,7 +800,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Start the DataClusterServer and ClientServer so this node can serve other nodes and clients.
+   * Start the DataClusterServer and ClusterTSServiceImpl` so this node can serve other nodes and clients.
    * Also build DataGroupMembers using the partition table.
    */
   protected synchronized void startSubServers() {
@@ -1814,8 +1814,8 @@ public class MetaGroupMember extends RaftMember {
                     // ignore
                   }
                   super.stop();
-                  if (clientServer != null) {
-                    clientServer.stop();
+                  if (clusterTSServiceImpl != null) {
+                    clusterTSServiceImpl.stop();
                   }
                   logger.info("{} has been removed from the cluster", name);
                 })

@@ -64,11 +64,6 @@ public abstract class ThriftService implements IService {
     }
   }
 
-  public int getRPCPort() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getRpcPort();
-  }
-
   public abstract ThriftService getImplementation();
 
   @Override
