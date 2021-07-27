@@ -133,7 +133,6 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
     ITimeIndex newTimeIndex =
         IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
-
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }
@@ -186,7 +185,6 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     ITimeIndex timeIndex = (ITimeIndex) timeIndexField.get(secondTsFileResource);
     ITimeIndex newTimeIndex =
         IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().getTimeIndex();
-
     for (String device : devices) {
       newTimeIndex.updateStartTime(device, timeIndex.getStartTime(device));
     }

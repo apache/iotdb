@@ -457,7 +457,6 @@ public class IoTDBLoadExternalTsfileIT {
               .getProcessor(new PartialPath("root.vehicle"))
               .getUnSequenceFileList()
               .size());
-
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
         assertEquals(
             1,
@@ -485,7 +484,6 @@ public class IoTDBLoadExternalTsfileIT {
                 .getSequenceFileTreeSet()
                 .size());
       }
-
       assertNotNull(tmpDir.listFiles());
       assertEquals(
           0,

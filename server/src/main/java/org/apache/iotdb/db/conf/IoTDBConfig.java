@@ -639,6 +639,7 @@ public class IoTDBConfig {
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
    */
   private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+
   // just for test
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
