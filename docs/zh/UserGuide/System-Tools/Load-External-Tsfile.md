@@ -24,18 +24,18 @@
 ## 加载 TsFile
 
 ### 介绍
-加载外部tsfile文件工具允许用户向正在运行中的Apache IoTDB中加载、删除或移出tsfile文件。
+加载外部 tsfile 文件工具允许用户向正在运行中的 Apache IoTDB 中加载、删除或移出 tsfile 文件。
 
 ### 使用方式
-用户通过Cli工具或JDBC向Apache IoTDB系统发送指定命令实现文件加载的功能。
+用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
-#### 加载tsfile文件
-加载tsfile文件的指令为：`load "<path/dir>" [true/false] [storage group level]`
+#### 加载 tsfile 文件
+加载 tsfile 文件的指令为：`load "<path/dir>" [true/false] [storage group level]`
 
 该指令有两种用法：
-1. 通过指定文件路径(绝对路径)加载单tsfile文件。
+1. 通过指定文件路径（绝对路径）加载单 tsfile 文件。
 
-第二个参数表示待加载的tsfile文件的路径，其中文件名称需要符合tsfile的命名规范，即`{systemTime}-{versionNum}-{mergeNum}.tsfile`。第三、四个参数为可选项。当待加载的tsfile文件中时间序列对应的元数据不存在时，用户可以选择是否自动创建schema，参数为true表示自动创建schema，相反false表示不创建，缺省时默认创建schema。当tsfile对应的存储组不存在时，用户可以通过第四个参数来制定存储组的级别，默认为`iotdb-engine.properties`中设置的级别。若待加载的tsfile文件对应的`.resource`文件存在，会被一并加载至Apache IoTDB数据文件的目录和引擎中，否则将通过tsfile文件重新生成对应的`.resource`文件，即加载的tsfile文件所对应的`.resource`文件不是必要的。
+第二个参数表示待加载的 tsfile 文件的路径，其中文件名称需要符合 tsfile 的命名规范，即`{systemTime}-{versionNum}-{mergeNum}.tsfile`。第三、四个参数为可选项。当待加载的 tsfile 文件中时间序列对应的元数据不存在时，用户可以选择是否自动创建 schema，参数为 true 表示自动创建 schema，相反 false 表示不创建，缺省时默认创建 schema。当 tsfile 对应的存储组不存在时，用户可以通过第四个参数来制定存储组的级别，默认为`iotdb-engine.properties`中设置的级别。若待加载的 tsfile 文件对应的`.resource`文件存在，会被一并加载至 Apache IoTDB 数据文件的目录和引擎中，否则将通过 tsfile 文件重新生成对应的`.resource`文件，即加载的 tsfile 文件所对应的`.resource`文件不是必要的。
 
 示例：
 
@@ -44,10 +44,9 @@
 * load `"/Users/Desktop/data/1575028885956-101-0.tsfile" true`
 * load `"/Users/Desktop/data/1575028885956-101-0.tsfile" true 1`
 
+2. 通过指定文件夹路径（绝对路径）批量加载文件。
 
-2. 通过指定文件夹路径(绝对路径)批量加载文件。
-
-第二个参数表示待加载的tsfile文件的路径，其中文件名称需要符合tsfile的命名规范，即`{systemTime}-{versionNum}-{mergeNum}.tsfile`。第三、四个参数为可选项。当待加载的tsfile文件中时间序列对应的元数据不存在时，用户可以选择是否自动创建schema，参数为true表示自动创建schema，相反false表示不创建，缺省时默认创建schema。当tsfile对应的存储组不存在时，用户可以通过第四个参数来制定存储组的级别，默认为`iotdb-engine.properties`中设置的级别。若待加载文件对应的`.resource`文件存在，则会一并加载至Apache IoTDB数据文件目录和引擎中，否则将通过tsfile文件重新生成对应的`.resource`文件，即加载的tsfile文件所对应的`.resource`文件不是必要的。
+第二个参数表示待加载的 tsfile 文件的路径，其中文件名称需要符合 tsfile 的命名规范，即`{systemTime}-{versionNum}-{mergeNum}.tsfile`。第三、四个参数为可选项。当待加载的 tsfile 文件中时间序列对应的元数据不存在时，用户可以选择是否自动创建 schema，参数为 true 表示自动创建 schema，相反 false 表示不创建，缺省时默认创建 schema。当 tsfile 对应的存储组不存在时，用户可以通过第四个参数来制定存储组的级别，默认为`iotdb-engine.properties`中设置的级别。若待加载文件对应的`.resource`文件存在，则会一并加载至 Apache IoTDB 数据文件目录和引擎中，否则将通过 tsfile 文件重新生成对应的`.resource`文件，即加载的 tsfile 文件所对应的`.resource`文件不是必要的。
 
 示例：
 
@@ -56,22 +55,22 @@
 * load `"/Users/Desktop/data" true`
 * load `"/Users/Desktop/data" true 1`
 
-#### 删除tsfile文件
+#### 删除 tsfile 文件
 
-删除tsfile文件的指令为：`remove "<path>"`
+删除 tsfile 文件的指令为：`remove "<path>"`
 
-该指令通过指定文件路径删除tsfile文件，具体做法是将该tsfile和其对应的`.resource`和`.modification`文件全部删除。
+该指令通过指定文件路径删除 tsfile 文件，具体做法是将该 tsfile 和其对应的`.resource`和`.modification`文件全部删除。
 
 示例：
 
 * `remove "root.vehicle/1575028885956-101-0.tsfile"`
 * `remove "1575028885956-101-0.tsfile"`
 
-#### 移出tsfile文件至指定目录
+#### 移出 tsfile 文件至指定目录
 
-移出tsfile文件的指令为：`move "<path>" "<dir>"`
+移出 tsfile 文件的指令为：`move "<path>" "<dir>"`
 
-该指令将指定路径的tsfile文件移动至目标文件夹(绝对路径)中，具体做法是在引擎中移出该tsfile，并将该tsfile文件和其对应的`.resource`文件移动到目标文件夹下
+该指令将指定路径的 tsfile 文件移动至目标文件夹（绝对路径）中，具体做法是在引擎中移出该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
 
 示例：
 
