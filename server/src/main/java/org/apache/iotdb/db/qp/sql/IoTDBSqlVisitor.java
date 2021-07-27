@@ -2376,7 +2376,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     } else if (ctx.SGLEVEL() != null) {
       operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
     } else if (ctx.VERIFY() != null) {
-      operator.setMetadataCheck(Boolean.parseBoolean(ctx.booleanClause().getText()));
+      operator.setVerifyMetadata(Boolean.parseBoolean(ctx.booleanClause().getText()));
     } else {
       throw new SQLParserException(
           String.format(

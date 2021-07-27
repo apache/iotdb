@@ -37,7 +37,7 @@ This command has two usages:
 
 1. Load a single tsfile by specifying a file path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile` or `{systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile`. This command has three options: schema, level and metadata.
+The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. This command has three options: autoregister, sglevel and verify.
 
 AUTOREGISTER option. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If this parameter is true, the schema is created automatically. If it is false, the schema will not be created. By default, the schema will be created.
 
@@ -61,7 +61,7 @@ Examples:
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile` or `{systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile`. The options above also works for this command.
+The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. The options above also works for this command.
 
 Examples:
 

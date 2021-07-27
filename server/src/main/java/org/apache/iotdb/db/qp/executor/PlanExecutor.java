@@ -1098,12 +1098,11 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
-        if (plan.getMetadataCheck() && !loadNewTsFileCheckMetadata(reader)) {
-          throw new QueryProcessException(
-              "loading tsfile metadata is inconsistent with existing timeseries.");
+        if (plan.getVerifyMetadata()) {
+          loadNewTsFileVerifyMetadata(reader);
         }
       } catch (IOException e) {
-        logger.error("can not get timeseries metadata from {}.", file.getAbsoluteFile());
+        logger.warn("can not get timeseries metadata from {}.", file.getAbsoluteFile());
         throw new QueryProcessException(e.getMessage());
       }
 
@@ -1143,8 +1142,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean loadNewTsFileCheckMetadata(TsFileSequenceReader tsFileSequenceReader)
-      throws MetadataException, IOException {
+  private void loadNewTsFileVerifyMetadata(TsFileSequenceReader tsFileSequenceReader)
+      throws MetadataException, QueryProcessException, IOException {
     Map<String, List<TimeseriesMetadata>> metadataSet =
         tsFileSequenceReader.getAllTimeseriesMetadata();
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
@@ -1159,12 +1158,17 @@ public class PlanExecutor implements IPlanExecutor {
         if (IoTDB.metaManager.isPathExist(fullPath)) {
           TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
           if (dataType != metadata.getTSDataType()) {
-            return false;
+            throw new QueryProcessException(
+                fullPath.getFullPath()
+                    + " is "
+                    + metadata.getTSDataType().name()
+                    + " in the loading TsFile but is "
+                    + dataType.name()
+                    + " in IoTDB.");
           }
         }
       }
     }
-    return true;
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

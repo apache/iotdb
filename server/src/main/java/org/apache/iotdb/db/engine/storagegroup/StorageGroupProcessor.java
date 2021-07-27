@@ -1304,11 +1304,11 @@ public class StorageGroupProcessor {
   private String getNewTsFileName(long timePartitionId) {
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
-    return getNewTsFileName(System.currentTimeMillis(), version, 0);
+    return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
-  private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return TsFileResource.getNewTsFileName(time, version, mergeCnt, 0);
+  private String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
+    return TsFileResource.getNewTsFileName(time, version, mergeCnt, unSeqMergeCnt);
   }
 
   /**
@@ -2302,20 +2302,22 @@ public class StorageGroupProcessor {
             getNewTsFileName(
                 System.currentTimeMillis(),
                 getAndSetNewVersion(newFilePartitionId, newTsFileResource),
+                0,
                 0);
-        renameInfo = "unsequence";
+        renameInfo = IoTDBConstant.UNSEQUENCE_FLODER_NAME;
         tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
+        newTsFileResource.setSeq(false);
       } else {
         // check whether the file name needs to be renamed.
         newFileName = getFileNameForSequenceLoadingFile(insertPos, newTsFileResource, sequenceList);
-        renameInfo = "sequence";
+        renameInfo = IoTDBConstant.SEQUENCE_FLODER_NAME;
         tsFileType = LoadTsFileType.LOAD_SEQUENCE;
         newTsFileResource.setSeq(true);
       }
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
         logger.info(
-            "Tsfile {} must be renamed to {} for loading into the " + renameInfo + " list.",
+            "TsFile {} must be renamed to {} for loading into the " + renameInfo + " list.",
             tsfileToBeInserted.getName(),
             newFileName);
         newTsFileResource.setFile(
@@ -2524,7 +2526,7 @@ public class StorageGroupProcessor {
 
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
-   * ({systemTime}-{versionNum}-{mergeNum}-{unsequenceMergeNum}.tsfile).
+   * ({systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile).
    *
    * <p>The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the
    * list based on the file name and ensure the correctness of the order, so there are three cases.
@@ -2564,10 +2566,11 @@ public class StorageGroupProcessor {
 
     long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
     if (insertIndex != tsFileManagement.size(true) - 1 && meanTime == subsequenceTime) {
-      throw new LoadFileException("can not load tsfile with the same establish time");
+      throw new LoadFileException("can not load TsFile because of can not find suitable location");
     }
 
-    return getNewTsFileName(meanTime, getAndSetNewVersion(timePartitionId, newTsFileResource), 0);
+    return getNewTsFileName(
+        meanTime, getAndSetNewVersion(timePartitionId, newTsFileResource), 0, 0);
   }
 
   private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
