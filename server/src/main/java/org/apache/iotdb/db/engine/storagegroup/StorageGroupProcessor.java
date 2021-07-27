@@ -1553,13 +1553,11 @@ public class StorageGroupProcessor {
   }
 
   public void timedFlushMemTable() {
-    List<TsFileProcessor> tsFileProcessors = new ArrayList<>();
-    // only check unsequence tsfiles' memtables
-    tsFileProcessors.addAll(workUnsequenceTsFileProcessors.values());
-    long timestampBaseline = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
-
     writeLock("timedFlushMemTable");
     try {
+      // only check unsequence tsfiles' memtables
+      List<TsFileProcessor> tsFileProcessors = new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      long timestampBaseline = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
         if (tsFileProcessor.getWorkMemTableCreatedTime() < timestampBaseline) {
           logger.info(
