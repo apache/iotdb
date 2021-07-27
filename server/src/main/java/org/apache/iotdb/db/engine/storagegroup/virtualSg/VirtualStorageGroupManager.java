@@ -106,10 +106,10 @@ public class VirtualStorageGroupManager {
   }
 
   /** push check memtable flush interval down to all sg */
-  public void checkMemTableFlushInterval() {
+  public void timedFlushMemTable() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.checkMemTableFlushInterval();
+        storageGroupProcessor.timedFlushMemTable();
       }
     }
   }

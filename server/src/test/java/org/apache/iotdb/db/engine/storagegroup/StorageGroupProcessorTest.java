@@ -61,6 +61,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class StorageGroupProcessorTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
@@ -69,11 +70,13 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+  private boolean prevEnableTimedFlushMemtable = false;
+
   @Before
   public void setUp() throws Exception {
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
+    prevEnableTimedFlushMemtable = config.isEnableTimedFlushUnseqMemtable();
+    config.setEnableTimedFlushUnseqMemtable(true);
+    config.setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
@@ -87,9 +90,8 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushMemtable);
+    config.setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -307,7 +309,6 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
           TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
 
@@ -349,7 +350,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -431,7 +431,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -513,7 +512,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -612,7 +610,7 @@ public class StorageGroupProcessorTest {
     }
 
     processor.syncCloseAllWorkingTsFileProcessors();
-    processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    processor.merge(config.isForceFullMerge());
     while (processor.getTsFileManagement().isUnseqMerging) {
       // wait
     }
@@ -632,19 +630,26 @@ public class StorageGroupProcessorTest {
   public void testCheckMemTableFlushInterval()
       throws IllegalPathException, InterruptedException, WriteProcessException,
           TriggerExecutionException {
-    // create one memtable
+    // create one seq memtable & close
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertRowPlan(record));
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    // create one unseq memtable
+    record = new TSRecord(1, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    // check memtable's flush interval & flush it
-    long preFLushInterval = IoTDBDescriptor.getInstance().getConfig().getMemtableFlushInterval();
-    IoTDBDescriptor.getInstance().getConfig().setMemtableFlushInterval(500);
+    // check memtable's flush interval & flush the unsequence memtable
+    long preFLushInterval = config.getUnseqMemtableFlushInterval();
+    config.setUnseqMemtableFlushInterval(500);
 
     Thread.sleep(500);
 
-    processor.checkMemTableFlushInterval();
+    processor.timedFlushMemTable();
 
     FlushManager flushManager = FlushManager.getInstance();
     int waitCnt = 0;
@@ -661,7 +666,7 @@ public class StorageGroupProcessorTest {
 
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    IoTDBDescriptor.getInstance().getConfig().setMemtableFlushInterval(preFLushInterval);
+    config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
   class DummySGP extends StorageGroupProcessor {
