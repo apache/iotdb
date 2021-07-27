@@ -66,11 +66,16 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(devices.size(), outputStream);
+    Set<String> stringMemoryReducedSet = new ConcurrentSet<>();
     for (String device : devices) {
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedSet.add(cachedDevicePool.computeIfAbsent(device, k -> k));
       ReadWriteIOUtils.write(device, outputStream);
     }
     ReadWriteIOUtils.write(startTime, outputStream);
     ReadWriteIOUtils.write(endTime, outputStream);
+    devices = stringMemoryReducedSet;
   }
 
   @Override
@@ -119,12 +124,12 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
+  public boolean stillLives(long ttlLowerBound) {
+    if (ttlLowerBound == Long.MAX_VALUE) {
       return true;
     }
     // the file cannot be deleted if any device still lives
-    return endTime >= timeLowerBound;
+    return endTime >= ttlLowerBound;
   }
 
   @Override
@@ -207,5 +212,10 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public long getEndTime(String deviceId) {
     return endTime;
+  }
+
+  @Override
+  public boolean checkDeviceIdExist(String deviceId) {
+    return true;
   }
 }

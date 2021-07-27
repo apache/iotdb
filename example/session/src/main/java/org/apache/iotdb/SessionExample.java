@@ -53,7 +53,8 @@ public class SessionExample {
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session(LOCAL_HOST, 6667, "root", "root");
+    session =
+        new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
     session.open(false);
 
     // set session fetchSize
@@ -665,5 +666,15 @@ public class SessionExample {
   private static void setTimeout() throws StatementExecutionException {
     Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
     tempSession.setTimeout(60000);
+  }
+
+  private static void createClusterSession() throws IoTDBConnectionException {
+    ArrayList<String> nodeList = new ArrayList<>();
+    nodeList.add("127.0.0.1:6669");
+    nodeList.add("127.0.0.1:6667");
+    nodeList.add("127.0.0.1:6668");
+    Session clusterSession = new Session(nodeList, "root", "root");
+    clusterSession.open();
+    clusterSession.close();
   }
 }

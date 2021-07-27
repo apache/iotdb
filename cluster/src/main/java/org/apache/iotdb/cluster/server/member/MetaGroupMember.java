@@ -83,7 +83,6 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
-import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -96,6 +95,8 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -382,8 +383,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted
-   * seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
@@ -1474,7 +1474,7 @@ public class MetaGroupMember extends RaftMember {
    */
   public List<PartitionGroup> routeFilter(Filter filter, PartialPath path)
       throws StorageEngineException, EmptyIntervalException {
-    Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    Intervals intervals = TimeValuePairUtils.extractTimeInterval(filter);
     if (intervals.isEmpty()) {
       throw new EmptyIntervalException(filter);
     }

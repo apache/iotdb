@@ -258,14 +258,12 @@ Note that the keys are arranged in dictionary order in each type of nodes (ENTIT
 Example 1\~4 is an example of a single-variable timeseries.
 
 Example 5\~6 is an example of a multi-variale timeseries.
-
 Example 7 is a comprehensive example.
 
 * **Example 1: 5 entities with 5 measurements each**
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
-
-In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root node is `INTERNAL_ENTITY` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
+  <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
+  In the case of 5 entities with 5 measurements each: Since the numbers of entities and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each IndexNode is composed of no more than 10 index entries. The root node is `INTERNAL_ENTITY` type, and the 5 index entries point to index nodes of related entities. These nodes point to  `TimeseriesIndex` directly, as they are `LEAF_MEASUREMENT` type.
 
 * **Example 2: 1 entity with 150 measurements**
 
@@ -439,7 +437,7 @@ For Linux or MacOs:
 
 An example on macOS:
 
-```shell
+```
 /iotdb/server/target/iotdb-server-{version}/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ｜````````````````````````
 Starting Printing the TsFile Sketch
