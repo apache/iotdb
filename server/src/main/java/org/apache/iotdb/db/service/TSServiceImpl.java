@@ -1174,6 +1174,7 @@ public class TSServiceImpl implements TSIService.Iface {
     return new QueryContext(queryId, debug);
   }
 
+  /** update statement can be: 1. select-into statement 2. non-query statement */
   @Override
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
     if (!checkLogin(req.getSessionId())) {
@@ -1202,6 +1203,7 @@ public class TSServiceImpl implements TSIService.Iface {
     }
   }
 
+  /** update statement can be: 1. select-into statement 2. non-query statement */
   private TSExecuteStatementResp executeUpdateStatement(
       String statement,
       long statementId,
