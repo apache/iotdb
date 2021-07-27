@@ -34,10 +34,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Collections;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
@@ -55,7 +56,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       new CompactionMergeTaskPoolManager();
   private ScheduledExecutorService scheduledPool;
   private ExecutorService pool;
-  private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
@@ -68,13 +69,12 @@ public class CompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
               ThreadName.COMPACTION_SERVICE.getName());
       this.scheduledPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
+              Integer.MAX_VALUE, ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
@@ -175,15 +175,17 @@ public class CompactionMergeTaskPoolManager implements IService {
    * corresponding storage group.
    */
   public void abortCompaction(String storageGroup) {
-    List<Future<Void>> subTasks =
-        storageGroupTasks.getOrDefault(storageGroup, Collections.emptyList());
-    for (Future<Void> next : subTasks) {
+    Set<Future<Void>> subTasks =
+        storageGroupTasks.getOrDefault(storageGroup, Collections.emptySet());
+    Iterator<Future<Void>> subIterator = subTasks.iterator();
+    while (subIterator.hasNext()) {
+      Future<Void> next = subIterator.next();
       if (!next.isDone() && !next.isCancelled()) {
         next.cancel(true);
         sgCompactionStatus.put(storageGroup, false);
       }
+      subIterator.remove();
     }
-    subTasks.clear();
   }
 
   public synchronized void clearCompactionStatus(String storageGroupName) {
@@ -211,7 +213,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       sgCompactionStatus.put(storageGroup, true);
       Future<Void> future = pool.submit(storageGroupCompactionTask);
       storageGroupTasks
-          .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
+          .computeIfAbsent(storageGroup, k -> new ConcurrentSkipListSet<>())
           .add(future);
     }
   }
