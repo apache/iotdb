@@ -583,7 +583,7 @@ public class MTree implements Serializable {
 
     // synchronize check and add, we need addChild become atomic operation
     // only write on mtree will be synchronized
-    synchronized (this){
+    synchronized (this) {
       if (cur.hasChild(nodeNames[i])) {
         // node b has child sg
         if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
@@ -594,11 +594,11 @@ public class MTree implements Serializable {
       } else {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
           throw new PathAlreadyExistException(
-                  cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
+              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
         StorageGroupMNode storageGroupMNode =
-                new StorageGroupMNode(
-                        cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+            new StorageGroupMNode(
+                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         cur.addChild(nodeNames[i], storageGroupMNode);
       }
     }
