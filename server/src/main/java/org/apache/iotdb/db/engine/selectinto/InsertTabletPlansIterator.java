@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.selectinto;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -45,7 +46,7 @@ public class InsertTabletPlansIterator {
   private final PartialPath fromPath;
   private final List<PartialPath> intoPaths;
 
-  private final int fetchSize;
+  private final int tabletRowLimit;
 
   private InsertTabletPlanGenerator[] insertTabletPlanGenerators;
 
@@ -53,14 +54,15 @@ public class InsertTabletPlansIterator {
       QueryPlan queryPlan,
       QueryDataSet queryDataSet,
       PartialPath fromPath,
-      List<PartialPath> intoPaths,
-      int fetchSize)
+      List<PartialPath> intoPaths)
       throws IllegalPathException {
     this.queryPlan = queryPlan;
     this.queryDataSet = queryDataSet;
     this.fromPath = fromPath;
     this.intoPaths = intoPaths;
-    this.fetchSize = fetchSize;
+
+    tabletRowLimit =
+        IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
 
     generateActualIntoPaths();
     constructInsertTabletPlanGenerators();
@@ -93,7 +95,7 @@ public class InsertTabletPlansIterator {
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
       String device = intoPaths.get(i).getDevice();
       if (!deviceToPlanGeneratorMap.containsKey(device)) {
-        deviceToPlanGeneratorMap.put(device, new InsertTabletPlanGenerator(device, fetchSize));
+        deviceToPlanGeneratorMap.put(device, new InsertTabletPlanGenerator(device, tabletRowLimit));
       }
       deviceToPlanGeneratorMap
           .get(device)
@@ -126,7 +128,7 @@ public class InsertTabletPlansIterator {
 
   private void collectRowRecordIntoInsertTabletPlanGenerators() throws IOException {
     int count = 0;
-    while (queryDataSet.hasNext() && count < fetchSize) {
+    while (queryDataSet.hasNext() && count < tabletRowLimit) {
       RowRecord rowRecord = queryDataSet.next();
       for (InsertTabletPlanGenerator insertTabletPlanGenerator : insertTabletPlanGenerators) {
         insertTabletPlanGenerator.collectRowRecord(rowRecord);

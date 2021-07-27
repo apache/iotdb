@@ -227,3 +227,8 @@ intoPath
 
 更多用户权限相关的内容，请参考[权限管理语句](../Administration-Management/Administration.md)。
 
+
+
+## 配置参数
+
+* `select_into_insert_tablet_plan_row_limit`：执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数。 默认为 10000。

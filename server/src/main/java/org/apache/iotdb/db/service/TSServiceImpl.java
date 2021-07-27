@@ -1011,8 +1011,7 @@ public class TSServiceImpl implements TSIService.Iface {
               queryPlan,
               createQueryDataSet(queryId, queryPlan, fetchSize),
               selectIntoPlan.getFromPath(),
-              selectIntoPlan.getIntoPaths(),
-              fetchSize);
+              selectIntoPlan.getIntoPaths());
       while (insertTabletPlansIterator.hasNext()) {
         TSStatus executionStatus =
             insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);

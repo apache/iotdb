@@ -227,3 +227,9 @@ The user must have the following permissions to execute a query write-back state
 
 For more user permissions related content, please refer to [Account Management Statements](../Administration-Management/Administration.md).
 
+
+
+## Configurable Properties
+
+* `select_into_insert_tablet_plan_row_limit`: The maximum number of rows can be processed in one insert-tablet-plan when executing select-into statements. 10000 by default.
+

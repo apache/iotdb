@@ -551,6 +551,12 @@ public class IoTDBConfig {
    */
   private long continuousQueryMinimumEveryInterval = 1000;
 
+  /**
+   * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
+   * statements.
+   */
+  private int selectIntoInsertTabletPlanRowLimit = 10000;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -1474,6 +1480,14 @@ public class IoTDBConfig {
 
   public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getSelectIntoInsertTabletPlanRowLimit() {
+    return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
   }
 
   public int getMergeWriteThroughputMbPerSec() {

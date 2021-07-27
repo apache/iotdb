@@ -42,7 +42,7 @@ public class InsertTabletPlanGenerator {
   // the index of column in InsertTabletPlan -> the measurement id of the column
   private final List<String> targetMeasurementIds;
 
-  private final int fetchSize;
+  private final int tabletRowLimit;
 
   // the following fields are used to construct plan
   private int rowCount;
@@ -53,12 +53,12 @@ public class InsertTabletPlanGenerator {
 
   private int numberOfInitializedColumns;
 
-  public InsertTabletPlanGenerator(String targetDevice, int fetchSize) {
+  public InsertTabletPlanGenerator(String targetDevice, int tabletRowLimit) {
     this.targetDevice = targetDevice;
     queryDataSetIndexes = new ArrayList<>();
     targetMeasurementIds = new ArrayList<>();
 
-    this.fetchSize = fetchSize;
+    this.tabletRowLimit = tabletRowLimit;
   }
 
   public void collectTargetPathInformation(String targetMeasurementId, int queryDataSetIndex) {
@@ -68,11 +68,11 @@ public class InsertTabletPlanGenerator {
 
   public void internallyConstructNewPlan() {
     rowCount = 0;
-    times = new long[fetchSize];
+    times = new long[tabletRowLimit];
     columns = new Object[targetMeasurementIds.size()];
     bitMaps = new BitMap[targetMeasurementIds.size()];
     for (int i = 0; i < bitMaps.length; ++i) {
-      bitMaps[i] = new BitMap(fetchSize);
+      bitMaps[i] = new BitMap(tabletRowLimit);
       bitMaps[i].markAll();
     }
     dataTypes = new TSDataType[targetMeasurementIds.size()];
@@ -163,22 +163,22 @@ public class InsertTabletPlanGenerator {
     for (int i : initializedDataTypeIndexes) {
       switch (dataTypes[i]) {
         case BOOLEAN:
-          columns[i] = new boolean[fetchSize];
+          columns[i] = new boolean[tabletRowLimit];
           break;
         case INT32:
-          columns[i] = new int[fetchSize];
+          columns[i] = new int[tabletRowLimit];
           break;
         case INT64:
-          columns[i] = new long[fetchSize];
+          columns[i] = new long[tabletRowLimit];
           break;
         case FLOAT:
-          columns[i] = new float[fetchSize];
+          columns[i] = new float[tabletRowLimit];
           break;
         case DOUBLE:
-          columns[i] = new double[fetchSize];
+          columns[i] = new double[tabletRowLimit];
           break;
         case TEXT:
-          columns[i] = new Binary[fetchSize];
+          columns[i] = new Binary[tabletRowLimit];
           break;
         default:
           throw new UnSupportedDataTypeException(

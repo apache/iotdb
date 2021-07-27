@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -45,6 +46,9 @@ import static org.junit.Assert.fail;
 
 // TODO: check null values
 public class IoTDBSelectIntoIT {
+
+  private static final int ROW_LIMIT =
+      IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
 
   private static final String[] INSERTION_SQLS = {
     "insert into root.sg.d1(time, s2, s3, s4, s5, s6) values (0, 0, 0, 0, true, '0')",
@@ -128,7 +132,8 @@ public class IoTDBSelectIntoIT {
 
       statement.execute("insert into root.sg.d2(time, s1) values (0, 0)");
 
-      for (int i = 0; i < 10001; ++i) {
+      final int size = ROW_LIMIT + 1;
+      for (int i = 0; i < size; ++i) {
         statement.execute(String.format("insert into root.sg.d3(time, s1) values (%d, %d)", i, i));
       }
     } catch (SQLException throwable) {
@@ -271,7 +276,8 @@ public class IoTDBSelectIntoIT {
       try (ResultSet resultSet = statement.executeQuery("select large_s1 from root.sg.d3")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 0; i < 10001; ++i) {
+        final int size = ROW_LIMIT + 1;
+        for (int i = 0; i < size; ++i) {
           assertTrue(resultSet.next());
           assertEquals(
               Double.parseDouble(resultSet.getString(1)),
