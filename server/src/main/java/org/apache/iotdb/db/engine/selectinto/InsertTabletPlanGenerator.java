@@ -37,9 +37,9 @@ import java.util.List;
 public class InsertTabletPlanGenerator {
 
   private final String targetDevice;
-  // the index of target path in into clause -> the index of output column of query data set
-  private final List<Integer> targetPathIndexToQueryDataSetIndex;
-  // the index of target path in into clause -> the measurement id of the target path
+  // the index of column in InsertTabletPlan -> the index of output column of query data set
+  private final List<Integer> queryDataSetIndexes;
+  // the index of column in InsertTabletPlan -> the measurement id of the column
   private final List<String> targetMeasurementIds;
 
   private final int fetchSize;
@@ -55,7 +55,7 @@ public class InsertTabletPlanGenerator {
 
   public InsertTabletPlanGenerator(String targetDevice, int fetchSize) {
     this.targetDevice = targetDevice;
-    targetPathIndexToQueryDataSetIndex = new ArrayList<>();
+    queryDataSetIndexes = new ArrayList<>();
     targetMeasurementIds = new ArrayList<>();
 
     this.fetchSize = fetchSize;
@@ -63,7 +63,7 @@ public class InsertTabletPlanGenerator {
 
   public void collectTargetPathInformation(String targetMeasurementId, int queryDataSetIndex) {
     targetMeasurementIds.add(targetMeasurementId);
-    targetPathIndexToQueryDataSetIndex.add(queryDataSetIndex);
+    queryDataSetIndexes.add(queryDataSetIndex);
   }
 
   public void internallyConstructNewPlan() {
@@ -90,7 +90,7 @@ public class InsertTabletPlanGenerator {
     times[rowCount] = rowRecord.getTimestamp();
 
     for (int i = 0; i < columns.length; ++i) {
-      Field field = rowRecord.getFields().get(targetPathIndexToQueryDataSetIndex.get(i));
+      Field field = rowRecord.getFields().get(queryDataSetIndexes.get(i));
 
       // if the field is NULL
       if (field == null || field.getDataType() == null) {
@@ -140,7 +140,7 @@ public class InsertTabletPlanGenerator {
       }
 
       // get the field index of the row record
-      int queryDataSetIndex = targetPathIndexToQueryDataSetIndex.get(i);
+      int queryDataSetIndex = queryDataSetIndexes.get(i);
       // if the field is not null
       if (fields.get(queryDataSetIndex) != null
           && fields.get(queryDataSetIndex).getDataType() != null) {
