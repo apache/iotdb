@@ -29,7 +29,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
-            <totalSizeCap>3GB</totalSizeCap>
+            <totalSizeCap>6GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -48,7 +48,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
-            <totalSizeCap>3GB</totalSizeCap>
+            <totalSizeCap>6GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
@@ -67,7 +67,7 @@
             <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyyMMdd}.%i.log.gz</fileNamePattern>
             <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
-            <totalSizeCap>6GB</totalSizeCap>
+            <totalSizeCap>12GB</totalSizeCap>
         </rollingPolicy>
         <append>true</append>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
