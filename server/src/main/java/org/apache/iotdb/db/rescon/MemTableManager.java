@@ -102,6 +102,10 @@ public class MemTableManager {
     notifyAll();
   }
 
+  public synchronized void close() {
+    currentMemtableNumber = 0;
+  }
+
   private static class InstanceHolder {
 
     private static final MemTableManager INSTANCE = new MemTableManager();

@@ -74,6 +74,7 @@ public class SessionExample {
     insertTablet();
     insertTablets();
     insertRecords();
+    selectInto();
     createAndDropContinuousQueries();
     nonQuery();
     query();
@@ -485,6 +486,19 @@ public class SessionExample {
       tablet2.reset();
       tablet3.reset();
     }
+  }
+
+  private static void selectInto() throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(
+        "select s1, s2, s3 into into_s1, into_s2, into_s3 from root.sg1.d1");
+
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select into_s1, into_s2, into_s3 from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    dataSet.closeOperationHandle();
   }
 
   private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {

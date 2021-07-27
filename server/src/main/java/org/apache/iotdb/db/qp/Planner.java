@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -41,9 +42,6 @@ import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
 import java.time.ZoneId;
-
-import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.QUERY;
-import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.QUERY_INDEX;
 
 /** provide a integration method for other user. */
 public class Planner {
@@ -109,9 +107,15 @@ public class Planner {
    */
   protected Operator logicalOptimize(Operator operator)
       throws LogicalOperatorException, PathNumOverLimitException {
-    return operator.getType().equals(QUERY) || operator.getType().equals(QUERY_INDEX)
-        ? optimizeQueryOperator((QueryOperator) operator)
-        : operator;
+    switch (operator.getType()) {
+      case QUERY:
+      case QUERY_INDEX:
+        return optimizeQueryOperator((QueryOperator) operator);
+      case SELECT_INTO:
+        return optimizeSelectIntoOperator((SelectIntoOperator) operator);
+      default:
+        return operator;
+    }
   }
 
   /**
@@ -136,6 +140,12 @@ public class Planner {
     whereComponent.setFilterOperator(filter);
 
     return root;
+  }
+
+  private Operator optimizeSelectIntoOperator(SelectIntoOperator operator)
+      throws PathNumOverLimitException, LogicalOperatorException {
+    operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator()));
+    return operator;
   }
 
   @TestOnly
