@@ -652,7 +652,7 @@ public class V1ApiServiceImpl extends V1ApiService {
             Math.min(getFetchSizeForGroupByTimePlan((GroupByTimePlan) physicalPlan), fetchSize);
       }
       QueryRouter qr = new QueryRouter();
-      Long quertId = QueryResourceManager.getInstance().assignQueryId(true, fetchSize, -1);
+      Long quertId = QueryResourceManager.getInstance().assignQueryId(true);
       QueryContext context = new QueryContext(quertId);
       return executor.processQuery(physicalPlan, context);
 
