@@ -54,6 +54,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -62,6 +64,7 @@ import java.util.List;
 
 public class StorageGroupProcessorTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static Logger logger = LoggerFactory.getLogger(StorageGroupProcessorTest.class);
 
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
@@ -637,6 +640,7 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
     processor.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
     // create one unseq memtable
     record = new TSRecord(1, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -645,7 +649,7 @@ public class StorageGroupProcessorTest {
 
     // check memtable's flush interval & flush the unsequence memtable
     long preFLushInterval = config.getUnseqMemtableFlushInterval();
-    config.setUnseqMemtableFlushInterval(500);
+    config.setUnseqMemtableFlushInterval(5);
 
     Thread.sleep(500);
 
@@ -659,8 +663,8 @@ public class StorageGroupProcessorTest {
         || FlushManager.getInstance().getNumberOfWorkingSubTasks() != 0) {
       Thread.sleep(500);
       ++waitCnt;
-      if (waitCnt > 10) {
-        throw new InterruptedException("wait more than " + waitCnt * 500 + " ms");
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
       }
     }
 
