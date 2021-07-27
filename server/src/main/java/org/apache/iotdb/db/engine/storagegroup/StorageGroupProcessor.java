@@ -1421,6 +1421,28 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void timedFlushMemTable() {
+    writeLock("timedFlushMemTable");
+    try {
+      // only check unsequence tsfiles' memtables
+      List<TsFileProcessor> tsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      long timestampBaseline = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
+      for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timestampBaseline) {
+          logger.info(
+              "Exceed flush interval, so flush work memtable of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {

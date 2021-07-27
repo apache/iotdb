@@ -85,6 +85,15 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** push check memtable flush interval down to all sg */
+  public void timedFlushMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushMemTable();
+      }
+    }
+  }
+
   /**
    * get processor from device id
    *

@@ -278,6 +278,34 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
+      conf.setEnableTimedFlushUnseqMemtable(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_timed_flush_unseq_memtable",
+                  Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
+
+      long unseqMemTableFlushInterval =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "unseq_memtable_flush_interval_in_ms",
+                      Long.toString(conf.getUnseqMemtableFlushInterval()))
+                  .trim());
+      if (unseqMemTableFlushInterval > 0) {
+        conf.setUnseqMemtableFlushInterval(unseqMemTableFlushInterval);
+      }
+
+      long unseqMemTableFlushCheckInterval =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "unseq_memtable_flush_check_interval_in_ms",
+                      Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
+                  .trim());
+      if (unseqMemTableFlushCheckInterval > 0) {
+        conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
+      }
+
       conf.setAvgSeriesPointNumberThreshold(
           Integer.parseInt(
               properties.getProperty(

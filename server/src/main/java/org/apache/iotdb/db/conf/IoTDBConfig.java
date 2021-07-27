@@ -274,6 +274,18 @@ public class IoTDBConfig {
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
 
+  /** Whether to timed flush unsequence tsfiles' memtables. */
+  private boolean enableTimedFlushUnseqMemtable = false;
+
+  /**
+   * When a memTable's created time is older than current time minus this, the memtable is flushed
+   * to disk.(only check unsequence tsfiles' memtables) Unit: ms
+   */
+  private long unseqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+
+  /** The interval to check whether the memtable needs flushing. Unit: ms */
+  private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
+
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
 
@@ -1401,6 +1413,30 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isEnableTimedFlushUnseqMemtable() {
+    return enableTimedFlushUnseqMemtable;
+  }
+
+  public void setEnableTimedFlushUnseqMemtable(boolean enableTimedFlushUnseqMemtable) {
+    this.enableTimedFlushUnseqMemtable = enableTimedFlushUnseqMemtable;
+  }
+
+  public long getUnseqMemtableFlushInterval() {
+    return unseqMemtableFlushInterval;
+  }
+
+  public void setUnseqMemtableFlushInterval(long unseqMemtableFlushInterval) {
+    this.unseqMemtableFlushInterval = unseqMemtableFlushInterval;
+  }
+
+  public long getUnseqMemtableFlushCheckInterval() {
+    return unseqMemtableFlushCheckInterval;
+  }
+
+  public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
+    this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

@@ -1217,6 +1217,11 @@ public class TsFileProcessor {
     return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
   }
 
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableCreatedTime() {
+    return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
   public boolean isSequence() {
     return sequence;
   }

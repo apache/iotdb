@@ -143,4 +143,6 @@ public interface IMemTable {
   long getMaxPlanIndex();
 
   long getMinPlanIndex();
+
+  long getCreatedTime();
 }
