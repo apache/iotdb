@@ -46,7 +46,7 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private IoTDBConfig conf = new IoTDBConfig();
+  private final IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -741,6 +741,12 @@ public class IoTDBDescriptor {
 
       conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1088,6 +1094,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
                   Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+
+      // update insert-tablet-plan's row limit for select-into
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
