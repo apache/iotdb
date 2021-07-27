@@ -52,7 +52,7 @@ public class DataLogApplier extends BaseApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplier.class);
 
-  private DataGroupMember dataGroupMember;
+  protected DataGroupMember dataGroupMember;
 
   public DataLogApplier(MetaGroupMember metaGroupMember, DataGroupMember dataGroupMember) {
     super(metaGroupMember);
@@ -110,12 +110,12 @@ public class DataLogApplier extends BaseApplier {
     }
   }
 
-  private void applyInsert(InsertMultiTabletPlan plan)
+  protected void applyInsert(InsertMultiTabletPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
       try {
-        IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
+        IoTDB.metaManager.getStorageGroupPath(insertTabletPlan.getPrefixPath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -132,12 +132,12 @@ public class DataLogApplier extends BaseApplier {
     applyPhysicalPlan(plan, dataGroupMember);
   }
 
-  private void applyInsert(InsertRowsPlan plan)
+  protected void applyInsert(InsertRowsPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
       try {
-        IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
+        IoTDB.metaManager.getStorageGroupPath(insertRowPlan.getPrefixPath());
       } catch (StorageGroupNotSetException e) {
         try {
           if (!hasSync) {
@@ -154,7 +154,7 @@ public class DataLogApplier extends BaseApplier {
     applyPhysicalPlan(plan, dataGroupMember);
   }
 
-  private void applyInsert(InsertPlan plan)
+  protected void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     try {
       IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());

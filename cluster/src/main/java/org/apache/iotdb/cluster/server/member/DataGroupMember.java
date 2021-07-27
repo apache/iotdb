@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -38,6 +37,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
+import org.apache.iotdb.cluster.log.applier.SingleReplicaApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -79,12 +79,11 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -163,6 +162,8 @@ public class DataGroupMember extends RaftMember {
 
   private LastAppliedPatitionTableVersion lastAppliedPartitionTableVersion;
 
+  SingleReplicaApplier singleReplicaApplier;
+
   @TestOnly
   public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
@@ -199,6 +200,7 @@ public class DataGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
       applier = new AsyncDataLogApplier(applier, name);
     }
+    singleReplicaApplier = new SingleReplicaApplier(metaGroupMember, this);
     logManager =
         new FilePartitionedSnapshotLogManager(
             applier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
@@ -689,25 +691,13 @@ public class DataGroupMember extends RaftMember {
           }
           handleChangeMembershipLogWithoutRaft(log);
         } else {
-          getLocalExecutor().processNonQuery(plan);
+          singleReplicaApplier.applyPhysicalPlan(plan);
         }
         return StatusUtils.OK;
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
-        if (cause instanceof StorageGroupNotSetException
-            || cause instanceof UndefinedTemplateException) {
-          try {
-            metaGroupMember.syncLeaderWithConsistencyCheck(true);
-            if (plan instanceof InsertPlan && ((InsertPlan) plan).getFailedMeasurements() != null) {
-              ((InsertPlan) plan).recoverFromFailure();
-            }
-            getLocalExecutor().processNonQuery(plan);
-            return StatusUtils.OK;
-          } catch (CheckConsistencyException ce) {
-            return StatusUtils.getStatus(StatusUtils.CONSISTENCY_FAILURE, ce.getMessage());
-          } catch (Exception ne) {
-            return handleLogExecutionException(plan, IOUtils.getRootCause(ne));
-          }
+        if (!(cause instanceof PathNotExistException)) {
+          logger.debug("Exception occurred when executing {} in single replica mode", plan, e);
         }
         return handleLogExecutionException(plan, cause);
       }
