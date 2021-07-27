@@ -258,12 +258,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileMetadata readFileMetadata() throws IOException {
     try {
       if (tsFileMetaData == null) {
-
-        logger.info(
-            "Start reading file {} metadata from {}, length {}",
-            file,
-            fileMetadataPos,
-            fileMetadataSize);
         tsFileMetaData =
             TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
       }
@@ -654,10 +648,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             .addAll(timeseriesMetadataList);
       } else {
         // deviceId should be determined by LEAF_DEVICE node
-        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-          deviceId = metadataIndex.getName();
-        }
-        //        deviceId = metadataIndex.getName();
+        //        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+        //          deviceId = metadataIndex.getName();
+        //        }
+        deviceId = metadataIndex.getName();
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {

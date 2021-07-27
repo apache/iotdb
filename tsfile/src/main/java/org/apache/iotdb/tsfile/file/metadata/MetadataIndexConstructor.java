@@ -68,35 +68,14 @@ public class MetadataIndexConstructor {
       MetadataIndexNode currentIndexNode =
           new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
       int serializedTimeseriesMetadataNum = 0;
-      String vectorName = ""; // record previous vector name
-      int numOfValueColumns = 0;
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
-        if (numOfValueColumns > 0) {
-          // must be value column
-          numOfValueColumns--;
-          timeseriesMetadata.setMeasurementId(timeseriesMetadata.getMeasurementId());
-        } else if (timeseriesMetadata.isTimeColumn()) {
-          vectorName = timeseriesMetadata.getMeasurementId();
-          for (int j = i + 1; j < entry.getValue().size(); j++) {
-            if (entry.getValue().get(j).isValueColumn()) {
-              numOfValueColumns++;
-            } else {
-              break;
-            }
-          }
-        }
         if (serializedTimeseriesMetadataNum == 0
             || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
           if (currentIndexNode.isFull()) {
             addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
             currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
           }
-
-          logger.debug(
-              "Add entry started by {}(offset={})",
-              timeseriesMetadata.getMeasurementId(),
-              out.getPosition());
           currentIndexNode.addEntry(
               new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
           serializedTimeseriesMetadataNum = 0;
@@ -122,10 +101,7 @@ public class MetadataIndexConstructor {
           new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
       for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
         metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        logger.debug(
-            "Serialize MetadataIndexNode {}, offset={}", entry.getKey(), out.getPosition());
         entry.getValue().serializeTo(out.wrapAsStream());
-        logger.debug("Serialize MetadataIndexNode {}, to={}", entry.getKey(), out.getPosition());
       }
       metadataIndexNode.setEndOffset(out.getPosition());
       return metadataIndexNode;
@@ -176,8 +152,6 @@ public class MetadataIndexConstructor {
         }
         currentIndexNode.addEntry(
             new MetadataIndexEntry(metadataIndexNode.peek().getName(), out.getPosition()));
-
-        logger.debug("SerializeTo metadataIndexNode offset=", out.getPosition());
         metadataIndexNode.serializeTo(out.wrapAsStream());
       }
       addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);

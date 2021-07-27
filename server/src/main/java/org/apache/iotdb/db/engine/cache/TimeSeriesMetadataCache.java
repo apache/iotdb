@@ -285,6 +285,7 @@ public class TimeSeriesMetadataCache {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
             }
+            allSensors.removeAll(subSensorList);
             return Collections.emptyList();
           }
           List<TimeseriesMetadata> timeSeriesMetadataList =
@@ -313,6 +314,7 @@ public class TimeSeriesMetadataCache {
       if (debug) {
         DEBUG_LOGGER.info("The file doesn't have this time series {}.", key);
       }
+      allSensors.removeAll(subSensorList);
       return Collections.emptyList();
     } else {
       if (debug) {
@@ -326,6 +328,7 @@ public class TimeSeriesMetadataCache {
       for (int i = 0; i < res.size(); i++) {
         res.set(i, new TimeseriesMetadata(res.get(i)));
       }
+      allSensors.removeAll(subSensorList);
       return res;
     }
   }

@@ -234,7 +234,6 @@ public class ValueChunkWriter {
     writer.writeBytesToStream(pageBuffer);
 
     int dataSize = (int) (writer.getPos() - dataOffset);
-    logger.debug("write value chunk {} from {} to {}", measurementId, dataOffset, writer.getPos());
     if (dataSize != pageBuffer.size()) {
       throw new IOException(
           "Bytes written is inconsistent with the size of data: "

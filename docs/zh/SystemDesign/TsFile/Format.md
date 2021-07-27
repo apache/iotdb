@@ -21,10 +21,6 @@
 
 # TsFile 文件格式
 
-[TOC]
-
-
-
 
 ## 1. TsFile 设计
 

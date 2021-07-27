@@ -364,10 +364,6 @@ public class TsFileIOWriter {
       if (!chunkMetadata.getDataType().equals(dataType)) {
         continue;
       }
-      logger.debug(
-          "Serialize chunkMetadata {} when chunkMetadataListLength={}",
-          chunkMetadata.getMeasurementUid(),
-          chunkMetadataListLength);
       chunkMetadataListLength += chunkMetadata.serializeTo(publicBAOS, serializeStatistic);
       seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
     }

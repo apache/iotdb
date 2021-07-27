@@ -84,16 +84,16 @@ public class MetadataIndexConstructorTest {
     int measurementNum = 5;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
-    String[][] measurements = new String[deviceNum][];
+    String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
       devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
-      measurements[i] = new String[measurementNum];
+      singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
+        singleMeasurement[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
-    test(devices, vectorMeasurement, measurements);
+    test(devices, vectorMeasurement, singleMeasurement);
   }
 
   /** Example 2: 1 entity with 150 measurements */
@@ -103,16 +103,16 @@ public class MetadataIndexConstructorTest {
     int measurementNum = 150;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
-    String[][] measurements = new String[deviceNum][];
+    String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
       devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
-      measurements[i] = new String[measurementNum];
+      singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
+        singleMeasurement[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
-    test(devices, vectorMeasurement, measurements);
+    test(devices, vectorMeasurement, singleMeasurement);
   }
 
   /** Example 3: 150 entities with 1 measurement each */
@@ -122,16 +122,16 @@ public class MetadataIndexConstructorTest {
     int measurementNum = 1;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
-    String[][] measurements = new String[deviceNum][];
+    String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
       devices[i] = "d" + generateIndexString(i, deviceNum);
       vectorMeasurement[i] = new int[0];
-      measurements[i] = new String[measurementNum];
+      singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
+        singleMeasurement[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
-    test(devices, vectorMeasurement, measurements);
+    test(devices, vectorMeasurement, singleMeasurement);
   }
 
   /** Example 4: 150 entities with 150 measurements each */
@@ -141,16 +141,16 @@ public class MetadataIndexConstructorTest {
     int measurementNum = 1;
     String[] devices = new String[deviceNum];
     int[][] vectorMeasurement = new int[deviceNum][];
-    String[][] measurements = new String[deviceNum][];
+    String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
       devices[i] = "d" + i;
       vectorMeasurement[i] = new int[0];
-      measurements[i] = new String[measurementNum];
+      singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
-        measurements[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
+        singleMeasurement[i][j] = measurementPrefix + generateIndexString(j, measurementNum);
       }
     }
-    test(devices, vectorMeasurement, measurements);
+    test(devices, vectorMeasurement, singleMeasurement);
   }
 
   /** Example 5: 1 entities with 2 vectors, 9 measurements for each vector */
@@ -178,14 +178,14 @@ public class MetadataIndexConstructorTest {
   public void compositeIndexTest() {
     String[] devices = {"d0", "d1"};
     int[][] vectorMeasurement = {{9}, {4}};
-    String[][] measurements = {
+    String[][] singleMeasurement = {
       {"s0", "s1", "s2", "s3", "s4", "z0", "z1", "z2", "z3"},
       {
         "s00", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12",
         "s13", "s14"
       }
     };
-    test(devices, vectorMeasurement, measurements);
+    test(devices, vectorMeasurement, singleMeasurement);
   }
 
   /**
