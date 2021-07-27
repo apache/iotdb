@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -56,16 +55,15 @@ public class Planner {
 
   @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
-    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
+    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
   }
 
-  /** @param fetchSize this parameter only take effect when it is a query plan */
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
       throws QueryProcessException {
     Operator operator = logicalGenerator.generate(sqlStr, zoneId);
     operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    PhysicalPlan physicalPlan = physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
+    PhysicalPlan physicalPlan = physicalGenerator.transformToPhysicalPlan(operator);
     physicalPlan.setDebug(operator.isDebug());
     return physicalPlan;
   }
@@ -114,8 +112,7 @@ public class Planner {
     SFWOperator op = (SFWOperator) logicalOptimize(queryOp);
 
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    PhysicalPlan physicalPlan =
-        physicalGenerator.transformToPhysicalPlan(op, rawDataQueryReq.fetchSize);
+    PhysicalPlan physicalPlan = physicalGenerator.transformToPhysicalPlan(op);
     physicalPlan.setDebug(op.isDebug());
     return physicalPlan;
   }

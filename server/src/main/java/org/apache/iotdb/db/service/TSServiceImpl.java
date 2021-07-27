@@ -71,13 +71,11 @@ import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -464,7 +462,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private boolean executeStatementInBatch(String statement, List<TSStatus> result, long sessionId) {
     try {
       PhysicalPlan physicalPlan = processor
-          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
       }
@@ -517,8 +515,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String statement = req.getStatement();
 
       PhysicalPlan physicalPlan = processor
-          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
-              req.fetchSize);
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
         return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
             req.fetchSize,
@@ -556,8 +553,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan;
       try {
         physicalPlan = processor
-            .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
-                req.fetchSize);
+            .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -1137,7 +1133,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     PhysicalPlan physicalPlan;
     try {
       physicalPlan = processor
-          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
     } catch (QueryProcessException | SQLParserException e) {
       logger.warn(ERROR_PARSING_SQL, statement, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
