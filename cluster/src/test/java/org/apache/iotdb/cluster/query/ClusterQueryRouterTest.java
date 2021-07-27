@@ -52,7 +52,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -316,10 +315,10 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   public void testUDTFQuery() throws QueryProcessException, StorageEngineException {
     ClusterPlanner processor = new ClusterPlanner();
     String sqlStr = "select sin(s0) from root.*";
-    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet queryDataSet = clusterQueryRouter.udtfQuery(udtfPlan, context);
       for (int i = 0; i < 20; i++) {
