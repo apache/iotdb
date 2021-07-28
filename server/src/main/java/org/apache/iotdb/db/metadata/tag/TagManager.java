@@ -73,7 +73,7 @@ public class TagManager {
     return TagManagerHolder.INSTANCE;
   }
 
-  private TagManager() {}
+  public TagManager() {}
 
   public void init() throws IOException {
     tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);

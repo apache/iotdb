@@ -49,7 +49,7 @@ public class TemplateManager {
     return TemplateManagerHolder.INSTANCE;
   }
 
-  private TemplateManager() {}
+  public TemplateManager() {}
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     Template template = new Template(plan);

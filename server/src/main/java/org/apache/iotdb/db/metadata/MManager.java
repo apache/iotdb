@@ -150,8 +150,8 @@ public class MManager {
   private MTree mtree;
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, Pair<IMNode, Template>> mNodeCache;
-  private TagManager tagManager = TagManager.getInstance();
-  private TemplateManager templateManager = TemplateManager.getInstance();
+  private TagManager tagManager;
+  private TemplateManager templateManager;
 
   private static class MManagerHolder {
 
@@ -221,6 +221,8 @@ public class MManager {
     try {
       isRecovering = true;
 
+      templateManager = new TemplateManager();
+      tagManager = new TagManager();
       tagManager.init();
       mtree = new MTree();
       mtree.init();
