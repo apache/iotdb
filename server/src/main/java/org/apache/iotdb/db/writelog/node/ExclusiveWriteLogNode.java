@@ -211,6 +211,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       deleted = true;
       return this.bufferArray;
     } finally {
+      FLUSH_BUFFER_THREAD_POOL.shutdown();
       lock.unlock();
     }
   }
