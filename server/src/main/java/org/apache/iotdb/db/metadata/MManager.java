@@ -294,19 +294,22 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
-
+    PhysicalPlan plan;
     while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
       try {
         plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        operation(plan);
         idx++;
       } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        break;
+      }
+      if (plan == null) {
+        continue;
+      }
+      try {
+        operation(plan);
+      } catch (MetadataException | IOException e) {
+        logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
       }
     }
 

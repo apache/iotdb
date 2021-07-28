@@ -28,7 +28,7 @@ TsFile 的 Hive 连接器实现了通过 Hive 读取外部 TsFile 类型的文�
 * 将单个 TsFile 文件加载进 Hive，不论文件是存储在本地文件系统或者是 HDFS 中
 * 将某个特定目录下的所有文件加载进 Hive，不论文件是存储在本地文件系统或者是 HDFS 中
 * 使用 HQL 查询 TsFile
-* 到现在为止, 写操作在 hive-connector 中还不支持. 所以, HQL 中的 insert 操作是不被允许的
+* 到现在为止，写操作在 hive-connector 中还不支持。所以，HQL 中的 insert 操作是不被允许的
 
 ### 设计原理
 
@@ -79,12 +79,11 @@ public interface IReaderSet {
   private List<String> deviceIdList = new ArrayList<>();
   ```
 
-  设备名列表，这个顺序与 dataSetList 的顺序一致，即 deviceIdList[i] 是 dataSetList[i] 的设备名.
+  设备名列表，这个顺序与 dataSetList 的顺序一致，即 deviceIdList[i] 是 dataSetList[i] 的设备名。
 
 * private int currentIndex = 0;
 
   当前正在被处理的 QueryDataSet 的下标
-
 
 这个类在构造函数里，调用了`TSFRecordReader`的`initialize(TSFInputSplit, Configuration, IReaderSet, List<QueryDataSet>, List<String>)`方法去初始化上面提到的一些类字段。它覆写了`RecordReader`的`next()`方法，用以返回从 TsFile 里读出的数据。
 
@@ -92,19 +91,17 @@ public interface IReaderSet {
 
 我们注意到它从 TsFile 读取出来数据之后，是以`MapWritable`的形式返回的，这里的`MapWritable`其实就是一个`Map`，只不过它的 key 与 value 都做了序列化与反序列化的特殊适配，它的读取流程如下
 
-1. 首先判断`dataSetList`当前位置的`QueryDataSet`还有没有值，如果没有值，则将`currentIndex`递增1，直到找到第一个有值的`QueryDataSet`
+1. 首先判断`dataSetList`当前位置的`QueryDataSet`还有没有值，如果没有值，则将`currentIndex`递增 1，直到找到第一个有值的`QueryDataSet`
 2. 然后调用`QueryDataSet`的`next()`方法获得`RowRecord`
 3. 最后调用`TSFRecordReader`的`getCurrentValue()`方法，将`RowRecord`中的值放入`MapWritable`里
 
-
 #### org.apache.iotdb.hive.TsFileSerDe
 
-这个类继承了`AbstractSerDe`，也是我们实现Hive从自定义输入格式中读取数据所必须的。
+这个类继承了`AbstractSerDe`，也是我们实现 Hive 从自定义输入格式中读取数据所必须的。
 
 它覆写了`AbstractSerDe`的`initialize()`方法，在这个方法里，从用户的建表 sql 里，解析出相应的设备名，传感器名以及传感器对应的类型。还要构建出`ObjectInspector`对象，这个对象主要负责数据类型的转化，由于 TsFile 只支持原始数据类型，所以当出现其他数据类型时，需要抛出异常，具体的构建过程在`createObjectInspectorWorker()`方法中可以看到。
 
 这个类的最主要职责就是序列化和反序列化不同文件格式的数据，由于我们的 Hive 连接器暂时只支持读取操作，并不支持 insert 操作，所以只有反序列化的过程，所以仅覆写了`deserialize(Writable)`方法，该方法里调用了`TsFileDeserializer`的`deserialize()`方法。
-
 
 #### org.apache.iotdb.hive.TsFileDeserializer
 
