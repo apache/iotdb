@@ -635,7 +635,7 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException {
+      throws IOException, StorageGroupProcessorException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -683,10 +683,18 @@ public class StorageGroupProcessor {
         }
       }
     }
+
     tsFiles.sort(this::compareFileName);
+    if (!tsFiles.isEmpty()) {
+      checkTsFileTime(tsFiles.get(tsFiles.size() - 1));
+    }
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
+
     upgradeFiles.sort(this::compareFileName);
+    if (!upgradeFiles.isEmpty()) {
+      checkTsFileTime(upgradeFiles.get(upgradeFiles.size() - 1));
+    }
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
@@ -709,6 +717,18 @@ public class StorageGroupProcessor {
           tempResource.renameTo(originResource);
         }
       }
+    }
+  }
+
+  /** check if the tsfile's time is smaller than system current time */
+  private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
+    String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long time = Long.parseLong(items[0]);
+    if (time > System.currentTimeMillis()) {
+      throw new StorageGroupProcessorException(
+          String.format(
+              "the time of tsfile %s is larger than system current time, please check it.",
+              tsFile.getAbsolutePath()));
     }
   }
 
