@@ -98,7 +98,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
-        LOGGER.info(
+        LOGGER.warn(
             "{} cannot select merge candidates under the budget {}",
             logicalStorageGroupName,
             budget);
@@ -133,6 +133,11 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
           .submitTask(
               logicalStorageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
       taskSubmitted = true;
+      LOGGER.info(
+          "{} [Compaction] submit a task with {} sequence file and {} unseq files",
+          logicalStorageGroupName + "-" + virtualGroupId,
+          mergeResource.getSeqFiles().size(),
+          mergeResource.getUnseqFiles().size());
     } catch (MergeException | IOException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }

@@ -40,6 +40,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,6 +54,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionSchedulerTest {
+  static final Logger LOGGER = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
@@ -965,7 +968,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(0);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
@@ -997,10 +1000,12 @@ public class CompactionSchedulerTest {
       tsFileResourceManager.add(tsFileResource, false);
     }
 
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
         Thread.sleep(10);
+        LOGGER.warn("{}", tsFileResourceManager.getTsFileList(false).size());
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
