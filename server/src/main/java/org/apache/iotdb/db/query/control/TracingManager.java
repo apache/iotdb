@@ -39,10 +39,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TracingManager {
 
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
-  private static final String QUERY_ID = "Query Id: ";
+  private static final String QUERY_ID = "Query Id: %d";
   private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS";
   private BufferedWriter writer;
   private Map<Long, Long> queryStartTime = new ConcurrentHashMap<>();
+  private Map<Long, TracingInfo> tracingInfoMap = new ConcurrentHashMap<>();
 
   public TracingManager(String dirName, String logFileName) {
     initTracingManager(dirName, logFileName);
@@ -71,23 +72,24 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
+  public Map<Long, TracingInfo> getTracingInfoMap() {
+    return tracingInfoMap;
+  }
+
   public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)
       throws IOException {
     queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder
-        .append(QUERY_ID)
-        .append(queryId)
-        .append(" - Query Statement: ")
-        .append(statement)
-        .append("\n" + QUERY_ID)
-        .append(queryId)
+        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(" - Query Statement: %s", statement))
+        .append("\n")
+        .append(String.format(QUERY_ID, queryId))
         .append(" - Start time: ")
         .append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
-        .append("\n" + QUERY_ID)
-        .append(queryId)
-        .append(" - Number of series paths: ")
-        .append(pathsNum)
+        .append("\n")
+        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(" - Number of series paths: %d", pathsNum))
         .append("\n");
     writer.write(builder.toString());
   }
@@ -97,12 +99,10 @@ public class TracingManager {
     queryStartTime.put(queryId, startTime);
     StringBuilder builder = new StringBuilder();
     builder
-        .append(QUERY_ID)
-        .append(queryId)
-        .append(" - Query Statement: ")
-        .append(statement)
-        .append("\n" + QUERY_ID)
-        .append(queryId)
+        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(" - Query Statement: %s", statement))
+        .append("\n")
+        .append(String.format(QUERY_ID, queryId))
         .append(" - Start time: ")
         .append(new SimpleDateFormat(DATE_FORMAT).format(startTime))
         .append("\n");
@@ -111,15 +111,14 @@ public class TracingManager {
 
   public void writePathsNum(long queryId, int pathsNum) throws IOException {
     StringBuilder builder =
-        new StringBuilder(QUERY_ID)
-            .append(queryId)
-            .append(" - Number of series paths: ")
-            .append(pathsNum)
+        new StringBuilder(String.format(QUERY_ID, queryId))
+            .append(String.format(" - Number of series paths: %d", pathsNum))
             .append("\n");
     writer.write(builder.toString());
   }
 
-  public void writeTracingInfo(long queryId, TracingInfo tracingInfo) throws IOException {
+  public void writeTracingInfo(long queryId) throws IOException {
+    TracingInfo tracingInfo = tracingInfoMap.get(queryId);
     writeTsFileInfo(queryId, tracingInfo.getSeqFileSet(), tracingInfo.getUnSeqFileSet());
     writeChunksInfo(queryId, tracingInfo.getTotalChunkNum(), tracingInfo.getTotalChunkPoints());
     writeOverlappedPageInfo(
@@ -132,12 +131,10 @@ public class TracingManager {
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
     StringBuilder builder =
-        new StringBuilder(QUERY_ID)
-            .append(queryId)
-            .append(" - Number of sequence files: ")
-            .append(seqFileResources.size());
+        new StringBuilder(String.format(QUERY_ID, queryId))
+            .append(String.format(" - Number of sequence files: %d", seqFileResources.size()));
     if (!seqFileResources.isEmpty()) {
-      builder.append("\n" + QUERY_ID).append(queryId).append(" - SeqFiles: ");
+      builder.append("\n").append(String.format(QUERY_ID, queryId)).append(" - SeqFiles: ");
       Iterator<TsFileResource> seqFileIterator = seqFileResources.iterator();
       while (seqFileIterator.hasNext()) {
         builder.append(seqFileIterator.next().getTsFile().getName());
@@ -148,12 +145,11 @@ public class TracingManager {
     }
 
     builder
-        .append("\n" + QUERY_ID)
-        .append(queryId)
-        .append(" - Number of unSequence files: ")
-        .append(unSeqFileResources.size());
+        .append("\n")
+        .append(String.format(QUERY_ID, queryId))
+        .append(String.format(" - Number of unSequence files: %d", unSeqFileResources.size()));
     if (!unSeqFileResources.isEmpty()) {
-      builder.append("\n" + QUERY_ID).append(queryId).append(" - UnSeqFiles: ");
+      builder.append("\n").append(String.format(QUERY_ID, queryId)).append(" - UnSeqFiles: ");
       Iterator<TsFileResource> unSeqFileIterator = unSeqFileResources.iterator();
       while (unSeqFileIterator.hasNext()) {
         builder.append(unSeqFileIterator.next().getTsFile().getName());
@@ -168,12 +164,11 @@ public class TracingManager {
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkPoints)
       throws IOException {
+    double avgChunkPoints = totalChunkPoints / totalChunkNum;
     StringBuilder builder =
-        new StringBuilder(QUERY_ID)
-            .append(queryId)
+        new StringBuilder(String.format(QUERY_ID, queryId))
             .append(String.format(" - Number of chunks: %d", totalChunkNum))
-            .append(", Average data points of chunks: ")
-            .append(totalChunkPoints / totalChunkNum)
+            .append(String.format(", Average data points of chunks: %.1f", avgChunkPoints))
             .append("\n");
     writer.write(builder.toString());
   }
@@ -181,8 +176,7 @@ public class TracingManager {
   public void writeOverlappedPageInfo(long queryId, int totalPageNum, int overlappedPageNum)
       throws IOException {
     StringBuilder builder =
-        new StringBuilder(QUERY_ID)
-            .append(queryId)
+        new StringBuilder(String.format(QUERY_ID, queryId))
             .append(" - Rate of overlapped pages: ")
             .append(String.format("%.1f%%, ", (double) overlappedPageNum / totalPageNum * 100))
             .append(
@@ -194,8 +188,7 @@ public class TracingManager {
   public void writeEndTime(long queryId) throws IOException {
     long endTime = System.currentTimeMillis();
     StringBuilder builder =
-        new StringBuilder(QUERY_ID)
-            .append(queryId)
+        new StringBuilder(String.format(QUERY_ID, queryId))
             .append(" - Total cost time: ")
             .append(endTime - queryStartTime.remove(queryId))
             .append("ms\n");
