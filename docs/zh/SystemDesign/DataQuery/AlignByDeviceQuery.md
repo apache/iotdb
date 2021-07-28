@@ -106,7 +106,7 @@ SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
         }
 
         // 分别取得带聚合函数和不带聚合函数（实际时间序列）的数据类型
-        // 带聚合函数的数据类型 `columnDataTypes` 用于 1.数据类型一致性检查 2.表头计算，输出结果集
+        // 带聚合函数的数据类型 `columnDataTypes` 用于 1. 数据类型一致性检查 2. 表头计算，输出结果集
         // 时间序列的实际数据类型 `measurementDataTypes` 则用于 AlignByDeviceDataSet 中的实际查询
         String aggregation =
             originAggregations != null && !originAggregations.isEmpty()
@@ -135,7 +135,7 @@ SELECT s1, '1', *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
           // 进行到这一步说明该 Measurement 在该设备下存在且正确，
           // 首先更新 measurementSetOfGivenSuffix，重复则不可再加入
-          // 其次如果该 measurement 之前其被识别为 NonExist类型，则将其更新为 Exist
+          // 其次如果该 measurement 之前其被识别为 NonExist 类型，则将其更新为 Exist
           if (measurementSetOfGivenSuffix.add(measurementChecked)
               || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
             measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
@@ -168,7 +168,7 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 
 `concatFilterPath()` 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。
 
-示例中，设备1过滤条件拼接后的结果为 `time = 1 AND root.sg.d1.s1 < 25`，设备2为 `time = 1 AND root.sg.d2.s1 < 25`。
+示例中，设备 1 过滤条件拼接后的结果为 `time = 1 AND root.sg.d1.s1 < 25`，设备 2 为 `time = 1 AND root.sg.d2.s1 < 25`。
 
 下面用示例总结一下通过该阶段计算得到的变量信息：
 
@@ -227,7 +227,7 @@ private void getAlignByDeviceQueryHeaders(
 
 - org.apache.iotdb.db.utils.QueryDataSetUtils
 
-接下来需要填充结果，AlignByDeviceQuery 将调用 `TSServiceImpl.fillRpcReturnData()` 方法，然后根据查询类型进入 `QueryDataSetUtils.convertQueryDataSetByFetchSize()` 方法.
+接下来需要填充结果，AlignByDeviceQuery 将调用 `TSServiceImpl.fillRpcReturnData()` 方法，然后根据查询类型进入 `QueryDataSetUtils.convertQueryDataSetByFetchSize()` 方法。
 
 `convertQueryDataSetByFetchSize()` 方法中获取结果的重要方法为 QueryDataSet 的 `hasNext()` 方法。
 
@@ -250,10 +250,10 @@ private void getAlignByDeviceQueryHeaders(
 
 其具体实现逻辑如下：
 
-1. 首先判断当前结果集是否被初始化且有下一个结果，如果是则直接返回 true，即当前可以调用 `next()` 方法获取下一个 `RowRecord`；否则设置结果集未被初始化进入步骤2.
+1. 首先判断当前结果集是否被初始化且有下一个结果，如果是则直接返回 true，即当前可以调用 `next()` 方法获取下一个 `RowRecord`；否则设置结果集未被初始化进入步骤 2.
 2. 迭代 `deviceIterator` 获取本次执行需要的设备，之后通过设备路径在 MManager 中查询到该设备节点，并取得该设备节点下的所有传感器节点，保存为 `measurementOfGivenDevice`.
 3. 遍历当前查询中的所有 measurement，将其与执行设备的所有传感器节点进行比较，得到该设备需要查询的列 `executeColumns`. 之后拼接当前设备名与 measurements，计算当前设备的查询路径、数据类型及过滤条件，得到对应的字段分别为 `executePaths`, `tsDataTypes`, `expression`，如果是聚合查询，则还需要计算 `executeAggregations`。
-4. 判断当前子查询类型为 GroupByQuery, AggregationQuery, FillQuery 或 RawDataQuery 进行对应的查询并返回结果集，实现逻辑可参考[原始数据查询](../DataQuery/RawDataQuery.md)，[聚合查询](../DataQuery/AggregationQuery.md)，[降采样查询](../DataQuery/GroupByQuery.md)。
+4. 判断当前子查询类型为 GroupByQuery, AggregationQuery, FillQuery 或 RawDataQuery 进行对应的查询并返回结果集，实现逻辑可参考 [原始数据查询](../DataQuery/RawDataQuery.md)，[聚合查询](../DataQuery/AggregationQuery.md)，[降采样查询](../DataQuery/GroupByQuery.md)。
 
 通过 `hasNextWithoutConstraint()` 方法初始化结果集并确保有下一结果后，则可调用 `QueryDataSet.next()` 方法获取下一个 `RowRecord`.
 

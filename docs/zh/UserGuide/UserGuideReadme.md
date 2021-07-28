@@ -18,15 +18,14 @@
     under the License.
 
 -->
-# IoTDB用户手册Toc
+# IoTDB 用户手册 Toc
 
-我们一直都在致力于不断向IOTDB中引入更多功能，因此不同的发行版本的用户手册文档也不尽相同。
+我们一直都在致力于不断向 IOTDB 中引入更多功能，因此不同的发行版本的用户手册文档也不尽相同。
 
-"In Progress Version" 用于匹配IOTDB源代码存储库的master分支。
-其他文档用于匹配IoTDB发布的版本。
+"In Progress Version" 用于匹配 IOTDB 源代码存储库的 master 分支。
+其他文档用于匹配 IoTDB 发布的版本。
 
 - [In progress version](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html) 
 - [Version 0.10.x](https://iotdb.apache.org/UserGuide/V0.10.x/Get%20Started/QuickStart.html)
 - [Version 0.9.x](https://iotdb.apache.org/UserGuide/V0.9.x/0-Get%20Started/1-QuickStart.html)
 - [Version 0.8.x](https://iotdb.apache.org/UserGuide/V0.8.x/0-Get%20Started/1-QuickStart.html)
-

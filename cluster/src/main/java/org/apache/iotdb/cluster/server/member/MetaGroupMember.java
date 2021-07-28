@@ -383,8 +383,7 @@ public class MetaGroupMember extends RaftMember {
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted
-   * seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
