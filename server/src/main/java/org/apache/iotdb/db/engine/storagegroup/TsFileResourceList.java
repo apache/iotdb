@@ -314,6 +314,9 @@ public class TsFileResourceList implements List<TsFileResource> {
   public TsFileResource set(int index, TsFileResource element) {
     int currIndex = 0;
     TsFileResource currTsFileResource = header;
+    if (header == null && index > 0) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
     while (currIndex != index) {
       if (currTsFileResource.next == null) {
         if (currIndex == index - 1) {

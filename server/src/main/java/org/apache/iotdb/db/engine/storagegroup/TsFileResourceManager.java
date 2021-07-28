@@ -78,11 +78,11 @@ public class TsFileResourceManager {
   }
 
   public TsFileResourceList getSequenceListByTimePartition(long timePartition) {
-    return sequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
+    return sequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    return unsequenceFiles.getOrDefault(timePartition, new TsFileResourceList());
+    return unsequenceFiles.computeIfAbsent(timePartition,l -> new TsFileResourceList());
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {

@@ -602,6 +602,10 @@ public class StorageGroupProcessorTest {
     int originCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(10);
+    boolean originEnableSeqSpaceCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+    boolean originEnableUnseqSpaceCompaction = IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
@@ -640,6 +644,8 @@ public class StorageGroupProcessorTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCompactionCandidateFileNum(originCandidateFileNum);
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(originEnableUnseqSpaceCompaction);
   }
 
   @Test

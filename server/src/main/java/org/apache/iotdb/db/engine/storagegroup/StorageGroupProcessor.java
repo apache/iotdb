@@ -2169,7 +2169,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted,
           newTsFileResource,
           newFilePartitionId,
-          tsFileResourceManager.size(true))) {
+          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId).size())) {
         updateLatestTimeMap(newTsFileResource);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
@@ -2235,7 +2235,7 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
-      List<TsFileResource> sequenceList = tsFileResourceManager.getTsFileList(true);
+      List<TsFileResource> sequenceList = tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
       String newFileName, renameInfo;
@@ -2503,7 +2503,7 @@ public class StorageGroupProcessor {
       String preName = sequenceList.get(insertIndex).getTsFile().getName();
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
-    if (insertIndex == tsFileResourceManager.size(true) - 1) {
+    if (insertIndex == tsFileResourceManager.getSequenceListByTimePartition(timePartitionId).size() - 1) {
       subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
@@ -2610,7 +2610,11 @@ public class StorageGroupProcessor {
           logger.error("The file {} has already been loaded in sequence list", tsFileResource);
           return false;
         }
-        tsFileResourceManager.insert(tsFileResource, true, insertPos + 1);
+        if (insertPos == -1) {
+          tsFileResourceManager.insert(tsFileResource, true, 0);
+        } else {
+          tsFileResourceManager.insert(tsFileResource, true, insertPos);
+        }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
             tsFileToLoad.getAbsolutePath(),
