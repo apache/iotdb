@@ -70,8 +70,6 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -238,11 +236,6 @@ public abstract class RaftMember {
 
   /** If this node can not be the leader, this parameter will be set true. */
   private volatile boolean skipElection = false;
-
-  /**
-   * localExecutor is used to directly execute plans like load configuration in the underlying IoTDB
-   */
-  protected PlanExecutor localExecutor;
 
   protected RaftMember() {}
 
@@ -593,13 +586,6 @@ public abstract class RaftMember {
           response);
     }
     return response;
-  }
-
-  public PlanExecutor getLocalExecutor() throws QueryProcessException {
-    if (localExecutor == null) {
-      localExecutor = new PlanExecutor();
-    }
-    return localExecutor;
   }
 
   /**

@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -83,6 +84,9 @@ public class Coordinator {
   private Node thisNode;
   /** router calculates the partition groups that a partitioned plan should be sent to */
   private ClusterPlanRouter router;
+
+  /** planExecutor executes non-query locally */
+  private PlanExecutor planExecutor;
 
   private static final String MSG_MULTIPLE_ERROR =
       "The following errors occurred when executing "
@@ -141,7 +145,10 @@ public class Coordinator {
   private TSStatus executeNonQueryLocally(PhysicalPlan plan) {
     boolean execRet;
     try {
-      execRet = metaGroupMember.getLocalExecutor().processNonQuery(plan);
+      if (planExecutor == null) {
+        planExecutor = new PlanExecutor();
+      }
+      execRet = planExecutor.processNonQuery(plan);
     } catch (QueryProcessException e) {
       if (e.getErrorCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
         logger.debug("meet error while processing non-query. ", e);

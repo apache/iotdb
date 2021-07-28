@@ -34,18 +34,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.sql.*;
+import java.util.*;
 
 import static org.junit.Assert.fail;
 
@@ -482,6 +479,195 @@ public abstract class Cases {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(resultSet.getDouble(2), resultSet.getDouble(3), 0);
           Assert.assertFalse(resultSet.next());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testAutoCreateSchema()
+      throws SQLException, IoTDBConnectionException, StatementExecutionException {
+
+    List<String> measurement_list = new ArrayList<>();
+    measurement_list.add("s1");
+    measurement_list.add("s2");
+    measurement_list.add("s3");
+
+    List<TSDataType> type_list = new ArrayList<>();
+    type_list.add(TSDataType.DOUBLE);
+    type_list.add(TSDataType.DOUBLE);
+    type_list.add(TSDataType.DOUBLE);
+
+    List<String> value_list = new ArrayList<>();
+    value_list.add(String.valueOf(1.0));
+    value_list.add(String.valueOf(2.0));
+    value_list.add(String.valueOf(3.0));
+
+    for (int i = 0; i < 10; i++) {
+      String sg = "root.sg" + String.valueOf(i);
+      session.setStorageGroup(sg);
+      for (int j = 0; j < 10; j++) {
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s.d1.s%s WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY",
+                sg, j));
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s.d2.s%s WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY",
+                sg, j));
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s.d3.s%s WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY",
+                sg, j));
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s.d4.s%s WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY",
+                sg, j));
+      }
+    }
+
+    // step 1: insert into existent time series.
+    for (int i = 0; i < 10; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1.0, 2.0, 3.0);
+      }
+    }
+
+    List<List<String>> measurements_list = new ArrayList<>();
+    List<List<String>> values_list = new ArrayList<>();
+    List<String> device_list = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      String device_path = String.format("root.sg%s.d2", i);
+      device_list.add(device_path);
+      measurements_list.add(measurement_list);
+      values_list.add(value_list);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> time_list = new ArrayList<>();
+      for (int i = 0; i < 10; i++) {
+        time_list.add(t);
+      }
+      session.insertRecords(device_list, time_list, measurements_list, values_list);
+    }
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.DOUBLE));
+
+    Map<String, Tablet> tabletMap = new HashMap<>();
+    for (int i = 0; i < 10; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1.0);
+        tablet.addValue("s2", rowIndex, 2.0);
+        tablet.addValue("s3", rowIndex, 3.0);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    // step 2: test auto create sg and time series schema
+    for (int i = 10; i < 20; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1.0, 2.0, 3.0);
+      }
+    }
+
+    device_list.clear();
+    for (int i = 10; i < 20; i++) {
+      String device_path = String.format("root.sg%s.d2", i);
+      device_list.add(device_path);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> time_list = new ArrayList<>();
+      for (int i = 0; i < 10; i++) {
+        time_list.add(t);
+      }
+      session.insertRecords(device_list, time_list, measurements_list, values_list);
+    }
+
+    tabletMap.clear();
+    for (int i = 10; i < 20; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1.0);
+        tablet.addValue("s2", rowIndex, 2.0);
+        tablet.addValue("s3", rowIndex, 3.0);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    // step 3: test auto create schema
+    for (int i = 0; i < 20; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d5", i), t, measurement_list, type_list, 1.0, 2.0, 3.0);
+      }
+    }
+
+    device_list.clear();
+    measurements_list.clear();
+    values_list.clear();
+    for (int i = 0; i < 20; i++) {
+      String device_path = String.format("root.sg%s.d6", i);
+      device_list.add(device_path);
+      measurements_list.add(measurement_list);
+      values_list.add(value_list);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> time_list = new ArrayList<>();
+      for (int i = 0; i < 20; i++) {
+        time_list.add(t);
+      }
+      session.insertRecords(device_list, time_list, measurements_list, values_list);
+    }
+
+    tabletMap.clear();
+    for (int i = 0; i < 20; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d7", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1.0);
+        tablet.addValue("s2", rowIndex, 2.0);
+        tablet.addValue("s3", rowIndex, 3.0);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d8", i));
+      tabletMap.put(String.format("root.sg%s.d8", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 20; i++) {
+        for (int d = 1; d <= 8; d++) {
+          ResultSet resultSet =
+              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+          for (long t = 0; t < 3; t++) {
+            Assert.assertTrue(resultSet.next());
+            Assert.assertEquals(resultSet.getLong(1), t);
+            Assert.assertEquals(resultSet.getString(2), "1.0");
+            Assert.assertEquals(resultSet.getString(3), "2.0");
+            Assert.assertEquals(resultSet.getString(4), "3.0");
+          }
         }
       }
     }
