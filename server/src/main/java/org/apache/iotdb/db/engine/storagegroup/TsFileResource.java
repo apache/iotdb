@@ -175,7 +175,7 @@ public class TsFileResource {
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
   }
 
-  /** for sealed TsFile, call setClosed to close TsFileResource * */
+  /** for sealed TsFile, call setClosed to close TsFileResource */
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
