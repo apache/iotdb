@@ -171,7 +171,7 @@ public class IoTDBSessionVectorIT {
     tablet.setAligned(true);
     long timestamp = 0;
 
-    for (long row = 1; row < 101; row++) {
+    for (long row = 0; row < 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(

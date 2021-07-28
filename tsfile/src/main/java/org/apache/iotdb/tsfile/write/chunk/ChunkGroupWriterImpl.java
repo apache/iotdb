@@ -88,8 +88,7 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
         throw new NoMeasurementException("measurement id" + measurementId + " not found!");
       }
       if (dataType.equals(TSDataType.VECTOR)) {
-        int valuesColumnNum = writeVectorDataType(tablet, measurementId, i);
-        i += (valuesColumnNum - 1);
+        writeVectorDataType(tablet, measurementId, i);
       } else {
         writeByDataType(tablet, measurementId, dataType, i);
       }
@@ -103,9 +102,8 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
    * @param tablet table
    * @param measurement vector measurement
    * @param index measurement start index
-   * @return number of values' column
    */
-  private int writeVectorDataType(Tablet tablet, String measurement, int index) {
+  private void writeVectorDataType(Tablet tablet, String measurement, int index) {
     // reference: MemTableFlushTask.java
     int batchSize = tablet.rowSize;
     VectorMeasurementSchema vectorMeasurementSchema =
@@ -142,7 +140,6 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
       }
       vectorChunkWriter.write(time);
     }
-    return valueDataTypes.size();
   }
 
   /**

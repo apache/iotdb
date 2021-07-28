@@ -377,7 +377,7 @@ public class TsFileSketchTool {
 
       treeOutputStringBuffer.add(
           tableWriter.toString()
-              + "└───["
+              + "└──────["
               + metadataIndexEntry.getName()
               + ","
               + metadataIndexEntry.getOffset()
