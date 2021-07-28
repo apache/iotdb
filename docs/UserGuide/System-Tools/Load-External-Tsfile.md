@@ -31,33 +31,45 @@ The user sends specified commands to the Apache IoTDB system through the Cli too
 
 #### load tsfiles
 
-The command to load tsfiles is `load "<path/dir>" [true/false] [storage group level]`.
+The command to load tsfiles is `load "<path/dir>" [autoregister=true/false][,sglevel=int][,verify=true/false]`.
 
 This command has two usages:
 
 1. Load a single tsfile by specifying a file path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile`. The third and fourth parameters are optional. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If the third parameter is true, the schema is created automatically. If the third parameter is false, the schema will not be created. By default, the schema will be created. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-engine.properties`.
+The second parameter indicates the path of the tsfile to be loaded and the name of the tsfile needs to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. This command has three options: autoregister, sglevel and verify.
+
+AUTOREGISTER option. If the metadata correspond to the timeseries in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If this parameter is true, the schema is created automatically. If it is false, the schema will not be created. By default, the schema will be created.
+
+SGLEVEL option. If the storage group correspond to the tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it uses the storage group level which is set in `iotdb-engine.properties`.
+
+VERIFY option. If this parameter is true, All timeseries in this loading tsfile will be compared with the timeseries in IoTDB. If existing a measurement which has different datatype with the measurement in IoTDB, the loading process will be stopped and exit. If consistence can be promised, setting false for this parameter will be a better choice.
+
 If the `.resource` file corresponding to the file exists, it will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding `.resource` file will be regenerated from the tsfile file.
 
 Examples:
 
 * `load "/Users/Desktop/data/1575028885956-101-0.tsfile"`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" false`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" true 1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true,sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=false,sglevel=1`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,verify=true`
+* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,sglevel=1,verify=true`
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 
-The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile`. The third and fourth parameters are optional. When the metadata corresponding to the time series in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If the third parameter is true, the schema will be created automatically. If the third parameter is false, the schema will not be created. By default, the schema will be created. When the storage group corresponding to tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it'll use the storage group level which is set in `iotdb-engine.properties`.
-If the `.resource` file corresponding to the file  exists, they will be loaded into the data directory and engine of the Apache IoTDB. Otherwise, the corresponding` .resource` files will be regenerated from the tsfile sfile.
+The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`. The options above also works for this command.
 
 Examples:
 
 * `load "/Users/Desktop/data"`
-* `load "/Users/Desktop/data" false`
-* `load "/Users/Desktop/data" true`
-* `load "/Users/Desktop/data" true 1`
+* `load "/Users/Desktop/data" autoregister=false`
+* `load "/Users/Desktop/data" autoregister=true`
+* `load "/Users/Desktop/data" autoregister=true,sglevel=1`
+* `load "/Users/Desktop/data" autoregister=false,sglevel=1,verify=true`
 
 #### remove a tsfile
 

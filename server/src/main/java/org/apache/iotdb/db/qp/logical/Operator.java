@@ -126,6 +126,8 @@ public abstract class Operator {
     UDAF,
     UDTF,
 
+    SELECT_INTO,
+
     CREATE_FUNCTION,
     DROP_FUNCTION,
 

@@ -25,22 +25,20 @@ GroupByFill 查询的主要逻辑在 `GroupByFillDataSet`
 
 * `org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet`
 
-GroupByFill是对原降采样结果进行填充，目前仅支持使用前值填充的方式。
+GroupByFill 是对原降采样结果进行填充，目前仅支持使用前值填充的方式。
 
-* 在Group By Fill中，Group by子句不支持滑动步长，否则抛异常
-* Fill子句中仅能使用Previous和PREVIOUSUNTILLAST这两种插值方式，Linear不支持
-* Previous和PREVIOUSUNTILLAST对fill的时间不做限制
-* 填充只针对last_value这一聚合函数，其他的函数不支持，如果其他函数的聚合值查询结果为null，依旧为null，不进行填充
+* 在 Group By Fill 中，Group by 子句不支持滑动步长，否则抛异常
+* Fill 子句中仅能使用 Previous 和 PREVIOUSUNTILLAST 这两种插值方式，Linear 不支持
+* Previous 和 PREVIOUSUNTILLAST 对 fill 的时间不做限制
+* 填充只针对 last_value 这一聚合函数，其他的函数不支持，如果其他函数的聚合值查询结果为 null，依旧为 null，不进行填充
 
-## PREVIOUSUNTILLAST与PREVIOUS填充的区别
+## PREVIOUSUNTILLAST 与 PREVIOUS 填充的区别
 
-Previous填充方式的语意没有变，只要前面有值，就可以拿过来填充；
-PREVIOUSUNTILLAST考虑到在某些业务场景下，所填充的值的时间不能大于该时间序列last的时间戳（从业务角度考虑，取历史数据不能取未来历史数据）
+Previous 填充方式的语意没有变，只要前面有值，就可以拿过来填充；
+PREVIOUSUNTILLAST 考虑到在某些业务场景下，所填充的值的时间不能大于该时间序列 last 的时间戳（从业务角度考虑，取历史数据不能取未来历史数据）
 看下面的例子，或许更容易理解
 
-A点时间戳为1，B为5，C为20，D为30，N为8，M为38
-
-
+A 点时间戳为 1，B 为 5，C 为 20，D 为 30，N 为 8，M 为 38
 
 原始数据为<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/78784824-9f41ae00-79d8-11ea-9920-0825e081cae0.png">
 
@@ -56,8 +54,7 @@ A点时间戳为1，B为5，C为20，D为30，N为8，M为38
 | 28     | 30                             |
 | 30     | 40                             |
 
-
-当我们使用Previous插值方式时，即使D到M这一段是未来的数据，我们也会用D点的数据进行填充
+当我们使用 Previous 插值方式时，即使 D 到 M 这一段是未来的数据，我们也会用 D 点的数据进行填充
 
 `SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[previous])`
 
@@ -71,7 +68,7 @@ A点时间戳为1，B为5，C为20，D为30，N为8，M为38
 | 33     | 40               |
 | 38     | 40               |
 
-当我们使用NONLASTPREVIOUS插值方式时，因为D到M这一段是未来的数据，我们不会进行插值，还是返回null
+当我们使用 NONLASTPREVIOUS 插值方式时，因为 D 到 M 这一段是未来的数据，我们不会进行插值，还是返回 null
 
 `SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])`
 
@@ -148,29 +145,25 @@ private long[] lastTimeArray;
 ```
 protected RowRecord nextWithoutConstraint() throws IOException {
 
-    // 首先通过groupByEngineDataSet，获得原始的降采样查询结果行
+    // 首先通过 groupByEngineDataSet，获得原始的降采样查询结果行
     RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
 
     // 接下来对每个时间序列判断需不需要填充
     for (int i = 0; i < paths.size(); i++) {
       Field field = rowRecord.getFields().get(i);
-      // 当前值为null，需要进行填充
+      // 当前值为 null，需要进行填充
       if (field.getDataType() == null) {
-        // 当前一个值不为null 并且 (填充方式不是PREVIOUSUNTILLAST 或者 当前时间小于改时间序列的最近时间戳)
+        // 当前一个值不为 null 并且 （填充方式不是 PREVIOUSUNTILLAST 或者 当前时间小于改时间序列的最近时间戳）
         if (previousValue[i] != null
             && (!((PreviousFill) fillTypes.get(dataTypes.get(i))).isUntilLast()
             || rowRecord.getTimestamp() <= lastTimeArray[i])) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
       } else {
-        // 当前值不为null，不需要填充，用当前值更新previousValue数组
+        // 当前值不为 null，不需要填充，用当前值更新 previousValue 数组
         previousValue[i] = field.getObjectValue(field.getDataType());
       }
     }
     return rowRecord;
   }
 ```
-
-
-
-
