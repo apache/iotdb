@@ -561,4 +561,57 @@ public class IoTDBSelectIntoIT {
           throwable.getMessage().contains("target paths in into clause should be different."));
     }
   }
+
+  @Test
+  public void testContainerCase() throws SQLException {
+    try (Statement statement =
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
+            .createStatement()) {
+
+      for (int i = 0; i < 10; i++) {
+        statement.execute(
+            String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(1,1)", i));
+      }
+
+      statement.execute(
+          "SELECT device0.s, device1.s, device2.s, device3.s, device4.s, device5.s, device6.s, device7.s, device8.s, device9.s "
+              + "INTO device0.t, device1.t, device2.t, device3.t, device4.t, device5.t, device6.t, device7.t, device8.t, device9.t "
+              + "FROM root.sg;");
+
+      for (int i = 0; i < 10; i++) {
+        statement.execute(
+            String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(2,2)", i));
+        statement.execute(String.format("SELECT device%s.s into device%s.t from root.sg;", i, i));
+      }
+
+      for (int i = 0; i < 10; ++i) {
+        try (ResultSet resultSet =
+            statement.executeQuery(String.format("SELECT s, t FROM root.sg.device%s", i))) {
+          assertTrue(resultSet.next());
+          assertEquals(1, Double.parseDouble(resultSet.getString(1)), 0);
+          assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
+          assertTrue(resultSet.next());
+          assertEquals(2, Double.parseDouble(resultSet.getString(1)), 0);
+          assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
+          assertFalse(resultSet.next());
+        }
+      }
+    }
+  }
 }
