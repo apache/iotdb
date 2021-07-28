@@ -113,7 +113,13 @@ public class ChunkGroupWriterImpl implements IChunkGroupWriter {
     for (int row = 0; row < batchSize; row++) {
       long time = tablet.timestamps[row];
       for (int columnIndex = 0; columnIndex < valueDataTypes.size(); columnIndex++) {
-        boolean isNull = false; // TODO: 这是干嘛用的？
+        boolean isNull = false;
+        // check isNull by bitMap in tablet
+        if (tablet.bitMaps != null
+            && tablet.bitMaps[columnIndex] != null
+            && tablet.bitMaps[columnIndex].isMarked(row)) {
+          isNull = true;
+        }
         switch (valueDataTypes.get(columnIndex)) {
           case BOOLEAN:
             vectorChunkWriter.write(time, ((boolean[]) tablet.values[columnIndex])[row], isNull);

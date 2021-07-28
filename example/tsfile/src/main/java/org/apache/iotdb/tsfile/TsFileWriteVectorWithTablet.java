@@ -21,13 +21,11 @@ package org.apache.iotdb.tsfile;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
@@ -62,8 +60,6 @@ public class TsFileWriteVectorWithTablet {
       int rowNum = 10000;
       // the number of vector values to include in the tablet
       int multiSensorNum = 10;
-      // the number of single values to include in the tablet
-      int singleSensorNum = 5;
 
       String[] measurementNames = new String[multiSensorNum];
       TSDataType[] dataTypes = new TSDataType[multiSensorNum];
@@ -74,19 +70,11 @@ public class TsFileWriteVectorWithTablet {
         measurementNames[i] = sensorPrefix + (i + 1);
         dataTypes[i] = TSDataType.INT64;
       }
+      // vector schema
       IMeasurementSchema vectorMeasurementSchema =
           new VectorMeasurementSchema(vectorName, measurementNames, dataTypes);
       measurementSchemas.add(vectorMeasurementSchema);
       schema.registerTimeseries(new Path(device, vectorName), vectorMeasurementSchema);
-      for (int i = 0; i < singleSensorNum; i++) {
-        String mid = sensorPrefix + (multiSensorNum + i + 1);
-        IMeasurementSchema measurementSchema =
-            new MeasurementSchema(mid, TSDataType.INT64, TSEncoding.TS_2DIFF);
-        measurementSchemas.add(measurementSchema);
-        schema.registerTimeseries(
-            new Path(device, mid),
-            new MeasurementSchema(mid, TSDataType.INT64, TSEncoding.TS_2DIFF));
-      }
       // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
@@ -102,9 +90,13 @@ public class TsFileWriteVectorWithTablet {
         for (int r = 0; r < rowNum; r++, value++) {
           int row = tablet.rowSize++;
           timestamps[row] = timestamp++;
-          for (int i = 0; i < singleSensorNum + multiSensorNum; i++) {
-            long[] sensor = (long[]) values[i];
-            sensor[row] = value;
+          for (int i = 0; i < measurementSchemas.size(); i++) {
+            IMeasurementSchema measurementSchema = measurementSchemas.get(i);
+            if (measurementSchema instanceof VectorMeasurementSchema) {
+              for (String valueName : measurementSchema.getValueMeasurementIdList()) {
+                tablet.addValue(valueName, row, value);
+              }
+            }
           }
           // write Tablet to TsFile
           if (tablet.rowSize == tablet.getMaxRowNumber()) {
