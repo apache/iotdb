@@ -49,7 +49,6 @@ TsFile 文件层的写入接口有两种
 
 当调用 write 接口时，这个设备的数据会交给对应的 ChunkGroupWriter，其中的每个测点会交给对应的 ChunkWriter 进行写入。ChunkWriter 完成编码和打包（生成 Page）。
 
-
 ## 2、持久化 ChunkGroup
 
 * TsFileWriter.flushAllChunkGroups()
@@ -62,7 +61,7 @@ TsFile 文件层的写入接口有两种
 
 * TsFileWriter.close()
 
-根据内存中缓存的元数据，生成 TsFileMetadata 追加到文件尾部(`TsFileWriter.flushMetadataIndex()`)，最后关闭文件。
+根据内存中缓存的元数据，生成 TsFileMetadata 追加到文件尾部 (`TsFileWriter.flushMetadataIndex()`)，最后关闭文件。
 
 生成 TsFileMetadata 的过程中比较重要的一步是建立元数据索引 (MetadataIndex) 树。正如我们提到过的，元数据索引采用树形结构进行设计的目的是在设备数或者传感器数量过大时，可以不用一次读取所有的 `TimeseriesMetadata`，只需要根据所读取的传感器定位对应的节点，从而减少 I/O，加快查询速度。以下是建立元数据索引树的详细算法和过程：
 

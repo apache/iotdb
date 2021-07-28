@@ -30,9 +30,11 @@
 用户通过 Cli 工具或 JDBC 向 Apache IoTDB 系统发送指定命令实现文件加载的功能。
 
 #### 加载 tsfile 文件
+
 加载 tsfile 文件的指令为：`load "<path/dir>" [autoregister=true/false][,sglevel=int][,verify=true/false]`
 
 该指令有两种用法：
+
 1. 通过指定文件路径(绝对路径)加载单 tsfile 文件。
 
 第二个参数表示待加载的 tsfile 文件的路径，其中文件名称需要符合 tsfile 的命名规范，即`{systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile`。load 命令有三个可选项，分别是 autoregister，值域为 true/false，sglevel，值域为整数，verify，值域为 true/false。不同选项之间用逗号连接，选项之间无顺序要求。
@@ -85,7 +87,7 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 移出 tsfile 文件的指令为：`move "<path>" "<dir>"`
 
-该指令将指定路径的 tsfile 文件移动至目标文件夹(绝对路径)中，具体做法是在引擎中移出该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
+该指令将指定路径的 tsfile 文件移动至目标文件夹（绝对路径）中，具体做法是在引擎中移出该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
 
 示例：
 
