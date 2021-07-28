@@ -930,6 +930,33 @@ public class IoTDBDescriptor {
             "default_double_encoding", conf.getDefaultDoubleEncoding().toString()));
     conf.setDefaultTextEncoding(
         properties.getProperty("default_text_encoding", conf.getDefaultTextEncoding().toString()));
+
+    conf.setStartOpenApi(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_openApi", Boolean.toString(conf.isStartOpenApi()))));
+
+    conf.setOpenApiPort(
+        Integer.parseInt(
+            properties.getProperty("openApi_port", Integer.toString(conf.getOpenApiPort()))));
+
+    conf.setSgCount(
+        Integer.parseInt(properties.getProperty("sg_count", Integer.toString(conf.getSgCount()))));
+
+    conf.setEnable_https(
+        Boolean.parseBoolean(
+            properties.getProperty("enable_https", Boolean.toString(conf.isEnable_https()))));
+
+    conf.setKeyStorePath(properties.getProperty("key_store_path", conf.getKeyStorePath()));
+
+    conf.setKeyStorePwd(properties.getProperty("key_store_pwd", conf.getKeyStorePwd()));
+
+    conf.setTrustStorePath(properties.getProperty("trust_store_path", conf.getKeyStorePath()));
+
+    conf.setTrustStorePwd(properties.getProperty("trust_store_pwd", conf.getTrustStorePwd()));
+
+    conf.setIdleTimeout(
+        Integer.parseInt(
+            properties.getProperty("idle_timeout", Integer.toString(conf.getIdleTimeout()))));
   }
 
   private void loadTsFileProps(Properties properties) {
