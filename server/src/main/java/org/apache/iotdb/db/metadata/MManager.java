@@ -307,7 +307,7 @@ public class MManager {
   }
 
   /** function for clearing MTree */
-  public void clear() {
+  public synchronized void clear() {
     try {
       if (this.mtree != null) {
         this.mtree.clear();
