@@ -329,7 +329,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
     applier.apply(log);
 
-    for (int i=1;i<=4;i++){
+    for (int i = 1; i <= 4; i++) {
       QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(i, 0)), null);
       assertTrue(dataSet.hasNext());
       RowRecord record = dataSet.next();
