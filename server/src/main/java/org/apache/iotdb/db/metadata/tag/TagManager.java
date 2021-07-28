@@ -76,9 +76,7 @@ public class TagManager {
   private TagManager() {}
 
   public void init() throws IOException {
-    tagLogFile =
-        new TagLogFile(
-            IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), MetadataConstant.TAG_LOG);
+    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
   }
 
   public void addIndex(String tagKey, String tagValue, MeasurementMNode measurementMNode) {
