@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -49,7 +50,12 @@ public class TemplateManager {
     return TemplateManagerHolder.INSTANCE;
   }
 
-  public TemplateManager() {}
+  @TestOnly
+  public static TemplateManager getNewInstanceForTest() {
+    return new TemplateManager();
+  }
+
+  private TemplateManager() {}
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     Template template = new Template(plan);

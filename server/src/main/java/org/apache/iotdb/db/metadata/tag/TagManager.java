@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -73,7 +74,12 @@ public class TagManager {
     return TagManagerHolder.INSTANCE;
   }
 
-  public TagManager() {}
+  @TestOnly
+  public static TagManager getNewInstanceForTest() {
+    return new TagManager();
+  }
+
+  private TagManager() {}
 
   public void init() throws IOException {
     tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);

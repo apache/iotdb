@@ -486,7 +486,7 @@ public class MManagerBasicTest {
               .collect(Collectors.toSet()));
 
       MManager recoverManager = new MManager();
-      recoverManager.init();
+      recoverManager.initForMultiMManagerTest();
 
       assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));

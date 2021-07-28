@@ -150,8 +150,8 @@ public class MManager {
   private MTree mtree;
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, Pair<IMNode, Template>> mNodeCache;
-  private TagManager tagManager;
-  private TemplateManager templateManager;
+  private TagManager tagManager = TagManager.getInstance();
+  private TemplateManager templateManager = TemplateManager.getInstance();
 
   private static class MManagerHolder {
 
@@ -221,8 +221,6 @@ public class MManager {
     try {
       isRecovering = true;
 
-      templateManager = new TemplateManager();
-      tagManager = new TagManager();
       tagManager.init();
       mtree = new MTree();
       mtree.init();
@@ -237,6 +235,18 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
+  }
+
+  /**
+   * Attention!!!!!, this method could only be used for Tests involving multiple mmanagers. The
+   * singleton of templateManager and tagManager will cause interference between mmanagers if one of
+   * the mmanagers invoke init method or clear method
+   */
+  @TestOnly
+  public void initForMultiMManagerTest() {
+    templateManager = TemplateManager.getNewInstanceForTest();
+    tagManager = TagManager.getNewInstanceForTest();
+    init();
   }
 
   /** @return line number of the logFile */
