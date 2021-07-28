@@ -21,15 +21,18 @@ package util
 
 import (
 	"github.com/apache/iotdb-client-go/client"
+	"sync"
 )
 
 var (
 	Session        *client.Session
+	SessionConfig  client.Config
 	DeviceId       = "root.system_p.label_info"
 	MetricTagOrder = make(map[string]map[string]int32)
 	Timestamp      int64
 	Config         conf
 	MetricOrderTag = make(map[string]map[int32]string)
+    Lock           sync.Mutex
 )
 
 

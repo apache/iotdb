@@ -29,12 +29,12 @@ import (
 
 // Remove "" out of node in column
 func RemoveDoubleQuotes(column string) []string {
-	var start,end,num int
+	var start, end, num int
 	var nodes []string
 	for index, ch2 := range column {
 		if string(ch2) == "\"" {
-			if string(column[index-1]) != "\\"{
-				num ++
+			if string(column[index-1]) != "\\" {
+				num++
 			} else {
 				continue
 			}
@@ -44,8 +44,8 @@ func RemoveDoubleQuotes(column string) []string {
 			} else if num == 2 {
 				end = index
 				num = 0
-				node := column[start+1:end]
-				node = strings.Replace(node,"\\","",-1)
+				node := column[start+1 : end]
+				node = strings.Replace(node, "\\", "", -1)
 				nodes = append(nodes, node)
 			}
 		}
@@ -63,7 +63,7 @@ func TransColumnToPromTimeseries(columnNodes []string, promLabels []*prompb.Labe
 	orderLabel := MetricOrderTag["\""+columnNodes[0]+"\""]
 	for j := 1; j < len(columnNodes); j++ {
 		label := prompb.Label{
-			Name: orderLabel[int32(j)] ,
+			Name:  orderLabel[int32(j)],
 			Value: columnNodes[j],
 		}
 		promLabels = append(promLabels, &label)
@@ -74,41 +74,42 @@ func TransColumnToPromTimeseries(columnNodes []string, promLabels []*prompb.Labe
 
 // Trans IoTDB dataSet to prometheus result and add result to results([]result)
 func TransResultToPrometheus(sessionDataSet *client.SessionDataSet, promQueryResults []*prompb.QueryResult) []*prompb.QueryResult {
+	samplesMap := make(map[string][]prompb.Sample)
 	for next, err := sessionDataSet.Next(); err == nil && next; next, err = sessionDataSet.Next() {
-		sample := prompb.Sample{
-			Value:     0,
-			Timestamp: 0,
-		}
-		if !sessionDataSet.IsIgnoreTimeStamp() {
-			sample.Timestamp = sessionDataSet.GetInt64(client.TimestampColumnName)
-		}
-		var proTimeseries []*prompb.TimeSeries
 		for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
+			sample := prompb.Sample{
+				Value:     0,
+				Timestamp: sessionDataSet.GetInt64(client.TimestampColumnName),
+			}
 			columnName := sessionDataSet.GetColumnName(i)
 			v := sessionDataSet.GetValue(columnName)
-			var labels []*prompb.Label
 			if v == nil {
 				continue
 			} else {
-				columnNodes := RemoveDoubleQuotes(sessionDataSet.GetColumnName(i))
-				labels = TransColumnToPromTimeseries(columnNodes, labels)
-				sample.Value= v.(float64)
-				promTimes := prompb.TimeSeries{
-					Labels:  labels,
-					Samples: []prompb.Sample{sample},
-				}
-				proTimeseries = append(proTimeseries, &promTimes)
+				sample.Value = v.(float64)
+				samplesMap[sessionDataSet.GetColumnName(i)] = append(samplesMap[sessionDataSet.GetColumnName(i)], sample)
 			}
 		}
-
-		promResult := prompb.QueryResult{Timeseries: proTimeseries}
-		promQueryResults = append(promQueryResults,&promResult)
+	}
+	for k, v := range samplesMap {
+		columnNodes := RemoveDoubleQuotes(k)
+		var labels []*prompb.Label
+		labels = TransColumnToPromTimeseries(columnNodes, labels)
+		proTimes := prompb.TimeSeries{
+			Labels:  labels,
+			Samples: v,
+		}
+		var promTimeSeries []*prompb.TimeSeries
+		promTimeSeries = append(promTimeSeries, &proTimes)
+		promQueryResults = append(promQueryResults, &prompb.QueryResult{Timeseries: promTimeSeries})
 	}
 	return promQueryResults
 }
 
 // Trans metricName and labelValue to sensor and deviceId when execute write
 func TransWriteSchema(tagKeyValues map[string]string, metric string, sgName string) (dvId string, sensor string) {
+	Lock.Lock()
+	defer Lock.Unlock()
 	paths := make(map[int32]string)
 	tagOrderMap := MetricTagOrder[metric]
 	orderTagMap := MetricOrderTag[metric]
@@ -122,7 +123,7 @@ func TransWriteSchema(tagKeyValues map[string]string, metric string, sgName stri
 		if tagOrder == 0 {
 			// it is a new tag
 			tagOrderMap[k] = int32(len(tagOrderMap) + 1)
-			orderTagMap[int32(len(tagOrderMap) + 1)] = k
+			orderTagMap[int32(len(tagOrderMap)+1)] = k
 			measurements := []string{"metric_name", "tag_name", "tag_order"}
 			dataTypes := []client.TSDataType{client.TEXT, client.TEXT, client.INT32}
 			values := []interface{}{metric, k, tagOrderMap[k]}
@@ -175,10 +176,10 @@ func TransReadSchema(tagKeyValues map[string]string, metric string, sgName strin
 }
 
 // Add "" out of metricName and labelValue
-func AddDoubleQuotes(labelName string, labelValue string , metricName string, tagKeyValues map[string]string) (string,map[string]string) {
-	labelValue = strings.Replace(labelValue, "\"","\\\"",-1)
+func AddDoubleQuotes(labelName string, labelValue string, metricName string, tagKeyValues map[string]string) (string, map[string]string) {
+	labelValue = strings.Replace(labelValue, "\"", "\\\"", -1)
 	if labelName == MetricKey {
-		metricName = "\"" +labelValue + "\""
+		metricName = "\"" + labelValue + "\""
 	} else {
 		tagKeyValues[labelName] = "\"" + labelValue + "\""
 	}
@@ -186,9 +187,11 @@ func AddDoubleQuotes(labelName string, labelValue string , metricName string, ta
 }
 
 // Trans to PointQuerySQL through sensor, deviceId and time
-func TransToPointQuery(sensor string, dvId string, start int64, end int64) string {
-	sql := Select + sensor + From+ dvId + Where+ Time + Ge + strconv.Itoa(int(start)) + And + Time + Le +
+func TransToPointQuery(sensor string, dvId string, start int64, end int64, step int64) string {
+	sql := Select + sensor + From + dvId + Where + Time + Ge + strconv.Itoa(int(start)) + And + Time + Le +
 		strconv.Itoa(int(end))
+	sql = Select + LastValue + LeftSmall + sensor + RightSmall + From + dvId + GroupBy + LeftSmall + LeftMid + strconv.Itoa(int(start)) + Comma + strconv.Itoa(int(end)) +
+		RightSmall + Comma + strconv.Itoa(int(step)) + Ms + RightSmall + Fill
 	return sql
 }
 

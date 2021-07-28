@@ -30,6 +30,7 @@ import (
 	"github.com/golang/snappy"
 	. "github.com/iotdbrest"
 	"github.com/prometheus/prometheus/prompb"
+	"log"
 	"net/http"
 )
 
@@ -88,7 +89,6 @@ func (s *DefaultApiService) PostV1GrafanaNode(ctx context.Context, requestBody [
 
 // PostV1PrometheusQuery - Serve for queries from Prometheus
 func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent string, xPrometheusRemoteReadVersion string, body map[string]interface{}) (ImplResponse, error) {
-	util.Session.Open(false, 0)
 	req := body["prometheusReadRequest"].(prompb.ReadRequest)
 	var promResults []*prompb.QueryResult
 	for _, query := range req.Queries {
@@ -112,21 +112,26 @@ func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent
 				continue
 			}
 		}
-		sql := util.TransToPointQuery(sensor, dvId, startTime, endTime)
+		step := query.Hints.StepMs
+		sql := util.TransToPointQuery(sensor, dvId, startTime, endTime, step)
 		queryDataSet, _ := util.Session.ExecuteQueryStatement(sql,0)
 		promResults = util.TransResultToPrometheus(queryDataSet,promResults)
+
 	}
 	resp := prompb.ReadResponse{Results: promResults}
 	data, _ := proto.Marshal(&resp)
 	got := snappy.Encode(nil, data)
-	util.Session.Close()
 	return Response(http.StatusAccepted, got), nil
 }
 
 // PostV1PrometheusReceive - Serve for writing data by Prometheus
 func (s *DefaultApiService) PostV1PrometheusReceive(ctx context.Context, userAgent string, xPrometheusRemoteWriteVersion string, body map[string]interface{}) (ImplResponse, error) {
-	util.Session.Open(false, 0)
 	req := body["prometheusWriteRequest"].(prompb.WriteRequest)
+	session := client.NewSession(&util.SessionConfig)
+	err := session.Open(false, 0)
+	if err != nil {
+		log.Println("open error " , err)
+	}
 	for _, ts := range req.Timeseries {
 		var (
 			tagKeyValues = make(map[string]string)
@@ -139,10 +144,16 @@ func (s *DefaultApiService) PostV1PrometheusReceive(ctx context.Context, userAge
 		dvId, sensor := util.TransWriteSchema(tagKeyValues, metricName, sgName)
 		time := ts.Samples[0].Timestamp
 		value := ts.Samples[0].Value
-		util.Session.InsertRecord(dvId, []string{sensor}, []client.TSDataType{client.DOUBLE}, []interface{}{value}, time)
+		_, error := session.InsertRecord(dvId, []string{sensor}, []client.TSDataType{client.DOUBLE}, []interface{}{value}, time)
+		if error != nil {
+			log.Println(error)
+		}
 
 	}
-	util.Session.Close()
+	_, err = session.Close()
+	if err != nil {
+		log.Println("close error " , err)
+	}
 	return Response(http.StatusAccepted, nil), nil
 }
 

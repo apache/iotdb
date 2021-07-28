@@ -24,9 +24,17 @@ const (
 	SgPrefix = "system_p_sg"
 	NodesSeparator = "."
 	Wildcard = "*"
+	Comma = " , "
+	LastValue = "last_value"
+	Ms = "ms"
 	Root = "root"
 	Select = "select "
 	From = " from "
+	LeftSmall = " ( "
+	RightSmall = " ) "
+	LeftMid = " [ "
+	RightMid = " ] "
+	GroupBy = " group by "
 	Where = " where "
 	Time = " time "
 	Ge = " >= "
@@ -34,6 +42,7 @@ const (
 	And = " and "
 	// When there is no label in some positions,this position will be replaced by ph
 	Placeholder = "ph"
+	Fill = " fill(float[previous]) "
 )
 
 // const in prometheus

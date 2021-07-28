@@ -29,9 +29,11 @@ import (
 
 func main() {
 	util.Config.ReadConf()
-	util.Session.Open(false, 0)
+	err := util.Session.Open(false, 0)
+	if err != nil {
+		log.Println(err)
+	}
 	util.RecoverSchema()
-	util.Session.Close()
 	DefaultApiService := iotdbrestimpl.NewDefaultApiService()
 	DefaultApiController := iotdbrest.NewDefaultApiController(DefaultApiService)
 

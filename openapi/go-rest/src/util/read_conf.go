@@ -52,12 +52,12 @@ func (c *conf) ReadConf() *conf {
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
-	config := client.Config{
+	SessionConfig = client.Config{
 		Host:     Config.Host,
 		Port:     Config.Port,
 		UserName: Config.User,
 		Password: Config.Pass,
 	}
-	Session = client.NewSession(&config)
+	Session = client.NewSession(&SessionConfig)
 	return c
 }
