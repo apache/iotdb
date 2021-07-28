@@ -219,9 +219,10 @@ public class MManager {
     logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
+      tagManager.init();
+
       isRecovering = true;
 
-      tagManager.init();
       mtree = new MTree();
       mtree.init();
 
