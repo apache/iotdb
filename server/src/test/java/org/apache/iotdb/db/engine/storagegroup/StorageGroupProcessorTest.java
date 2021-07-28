@@ -644,12 +644,18 @@ public class StorageGroupProcessorTest {
 
     processor.timedFlushMemTable();
 
+    // wait until memtable flush task is done
+    Assert.assertEquals(1, processor.getWorkUnsequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor =
+        processor.getWorkUnsequenceTsFileProcessors().iterator().next();
     FlushManager flushManager = FlushManager.getInstance();
     int waitCnt = 0;
-    while (flushManager.getNumberOfPendingTasks() != 0
-        || FlushManager.getInstance().getNumberOfPendingSubTasks() != 0
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
         || flushManager.getNumberOfWorkingTasks() != 0
-        || FlushManager.getInstance().getNumberOfWorkingSubTasks() != 0) {
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
       Thread.sleep(500);
       ++waitCnt;
       if (waitCnt % 10 == 0) {
