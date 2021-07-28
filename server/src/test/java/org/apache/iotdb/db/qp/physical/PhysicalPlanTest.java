@@ -48,7 +48,9 @@ import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
@@ -1007,34 +1009,58 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true", filePath);
+    metadata = String.format("load \"%s\" autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" false", filePath);
+    metadata = String.format("load \"%s\" autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true 3", filePath);
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=true, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=false, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
   }
@@ -1047,7 +1073,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=REMOVE_FILE}",
             filePath),
         plan.toString());
   }
@@ -1061,7 +1087,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
             filePath, targetDir),
         plan.toString());
   }
@@ -1331,7 +1357,7 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals("CQ: x of ${x} should be an integer.", e.getMessage());
+      assertTrue(e.getMessage().contains("the x of ${x} should be an integer."));
     }
   }
 
@@ -1345,9 +1371,10 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals(
-          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
   }
 
@@ -1371,19 +1398,6 @@ public class PhysicalPlanTest {
 
   @Test
   public void testCreateCQ9() throws QueryProcessException {
-    String sql =
-        "CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO ${1}.${0}.${2}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
-    try {
-      CreateContinuousQueryPlan plan =
-          (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
-      fail();
-    } catch (ParseCancellationException e) {
-      assertTrue(e.getMessage().contains("mismatched input '.' expecting FROM"));
-    }
-  }
-
-  @Test
-  public void testCreateCQ10() throws QueryProcessException {
 
     String sql =
         "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
@@ -1392,14 +1406,15 @@ public class PhysicalPlanTest {
           (CreateContinuousQueryPlan) processor.parseSQLToPhysicalPlan(sql);
       fail();
     } catch (SQLParserException e) {
-      assertEquals(
-          "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.",
-          e.getMessage());
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix."));
     }
   }
 
   @Test
-  public void testCreateCQ11() throws QueryProcessException {
+  public void testCreateCQ10() throws QueryProcessException {
 
     String sql =
         "CREATE CQ cq1 RESAMPLE FOR 20s BEGIN SELECT max_value(temperature), avg(temperature) INTO root.${0}.${3}.temperature_max FROM root.ln.*.*.* GROUP BY time(10s), level = 3 END";
@@ -1413,7 +1428,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testCreateCQ12() throws QueryProcessException {
+  public void testCreateCQ11() throws QueryProcessException {
     long minEveryInterval =
         IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval();
     long everyInterval = minEveryInterval / 2;
@@ -1448,5 +1463,21 @@ public class PhysicalPlanTest {
     ShowContinuousQueriesPlan plan =
         (ShowContinuousQueriesPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
+  }
+
+  @Test
+  public void testShowFunction() throws QueryProcessException {
+    String sql = "SHOW FUNCTIONS";
+
+    ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowContentType.FUNCTIONS, plan.getShowContentType());
+  }
+
+  @Test
+  public void testCreateStorageGroup() throws QueryProcessException {
+    String sqlStr = "CREATE STORAGE GROUP root.sg";
+    SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals("SetStorageGroup{root.sg}", plan.toString());
   }
 }

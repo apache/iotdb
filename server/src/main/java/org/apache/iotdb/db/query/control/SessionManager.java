@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -36,6 +37,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class SessionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(SessionManager.class);
 
+  // When the client abnormally exits, we can still know who to disconnect
+  private final ThreadLocal<Long> currSessionId = new ThreadLocal<>();
   // Record the username for every rpc connection (session).
   private final Map<Long, String> sessionIdToUsername = new ConcurrentHashMap<>();
   private final Map<Long, ZoneId> sessionIdToZoneId = new ConcurrentHashMap<>();
@@ -56,8 +59,26 @@ public class SessionManager {
     // singleton
   }
 
+  public Long getCurrSessionId() {
+    return currSessionId.get();
+  }
+
+  public void removeCurrSessionId() {
+    currSessionId.remove();
+  }
+
+  public TimeZone getCurrSessionTimeZone() {
+    if (getCurrSessionId() != null) {
+      return TimeZone.getTimeZone(SessionManager.getInstance().getZoneId(getCurrSessionId()));
+    } else {
+      // only used for test
+      return TimeZone.getTimeZone("+08:00");
+    }
+  }
+
   public long requestSessionId(String username, String zoneId) {
     long sessionId = sessionIdGenerator.incrementAndGet();
+    currSessionId.set(sessionId);
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
 
@@ -112,18 +133,16 @@ public class SessionManager {
     }
   }
 
-  public long requestQueryId(
-      Long statementId, boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    long queryId = requestQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(Long statementId, boolean isDataQuery) {
+    long queryId = requestQueryId(isDataQuery);
     statementIdToQueryId
         .computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
         .add(queryId);
     return queryId;
   }
 
-  public long requestQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
   public void releaseQueryResource(long queryId) throws StorageEngineException {

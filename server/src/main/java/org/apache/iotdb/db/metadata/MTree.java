@@ -498,18 +498,23 @@ public class MTree implements Serializable {
       cur = cur.getChild(nodeNames[i]);
       i++;
     }
-    if (cur.hasChild(nodeNames[i])) {
-      // node b has child sg
-      if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
-        throw new StorageGroupAlreadySetException(path.getFullPath());
+
+    // synchronize check and add, we need addChild become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      if (cur.hasChild(nodeNames[i])) {
+        // node b has child sg
+        if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
+          throw new StorageGroupAlreadySetException(path.getFullPath());
+        } else {
+          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        }
       } else {
-        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        StorageGroupMNode storageGroupMNode =
+            new StorageGroupMNode(
+                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+        cur.addChild(nodeNames[i], storageGroupMNode);
       }
-    } else {
-      StorageGroupMNode storageGroupMNode =
-          new StorageGroupMNode(
-              cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      cur.addChild(nodeNames[i], storageGroupMNode);
     }
   }
 
@@ -1017,6 +1022,10 @@ public class MTree implements Serializable {
       } else {
         MNode child = node.getChild(nodes[idx]);
         if (child == null) {
+          if (node.isUseTemplate()
+              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
+            return 1;
+          }
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
           } else {
@@ -1027,6 +1036,9 @@ public class MTree implements Serializable {
       }
     } else {
       int sum = node instanceof MeasurementMNode ? 1 : 0;
+      if (node.isUseTemplate()) {
+        sum += node.getUpperTemplate().getSchemaMap().size();
+      }
       for (MNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
@@ -1084,22 +1096,22 @@ public class MTree implements Serializable {
   /** Traverse the MTree to get the count of devices. */
   private int getDevicesCount(MNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    int cnt = 0;
+    boolean curIsDevice = node.isUseTemplate();
+    int cnt = curIsDevice ? 1 : 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       MNode next = node.getChild(nodeReg);
       if (next != null) {
-        if (next instanceof MeasurementMNode && idx >= nodes.length) {
+        if (next instanceof MeasurementMNode && idx >= nodes.length && !curIsDevice) {
           cnt++;
         } else {
           cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
         }
       }
     } else {
-      boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
-        if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
+        if (child instanceof MeasurementMNode && !curIsDevice && idx >= nodes.length) {
           cnt++;
-          deviceAdded = true;
+          curIsDevice = true;
         }
         cnt += getDevicesCount(child, nodes, idx + 1);
       }

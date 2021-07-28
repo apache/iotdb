@@ -29,22 +29,27 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -52,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
@@ -115,6 +121,10 @@ public abstract class PhysicalPlan {
     return isQuery;
   }
 
+  public boolean isSelectInto() {
+    return false;
+  }
+
   public Operator.OperatorType getOperatorType() {
     return operatorType;
   }
@@ -165,7 +175,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -218,7 +228,9 @@ public abstract class PhysicalPlan {
   }
 
   public void setLoginUserName(String loginUserName) {
-    this.loginUserName = loginUserName;
+    if (this instanceof AuthorPlan) {
+      this.loginUserName = loginUserName;
+    }
   }
 
   public static class Factory {
@@ -380,6 +392,24 @@ public abstract class PhysicalPlan {
         case DROP_CONTINUOUS_QUERY:
           plan = new DropContinuousQueryPlan();
           break;
+        case MERGE:
+          plan = new MergePlan();
+          break;
+        case CREATE_SNAPSHOT:
+          plan = new CreateSnapshotPlan();
+          break;
+        case CLEARCACHE:
+          plan = new ClearCachePlan();
+          break;
+        case CREATE_FUNCTION:
+          plan = new CreateFunctionPlan();
+          break;
+        case DROP_FUNCTION:
+          plan = new DropFunctionPlan();
+          break;
+        case SELECT_INTO:
+          plan = new SelectIntoPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -388,13 +418,13 @@ public abstract class PhysicalPlan {
     }
   }
 
+  /** If you want to add new PhysicalPlanType, you must add it in the last. */
   public enum PhysicalPlanType {
     INSERT,
     DELETE,
     BATCHINSERT,
     SET_STORAGE_GROUP,
     CREATE_TIMESERIES,
-    CREATE_ALIGNED_TIMESERIES,
     TTL,
     GRANT_WATERMARK_EMBEDDING,
     REVOKE_WATERMARK_EMBEDDING,
@@ -423,7 +453,6 @@ public abstract class PhysicalPlan {
     MNODE,
     MEASUREMENT_MNODE,
     STORAGE_GROUP_MNODE,
-    CLUSTER_LOG,
     BATCH_INSERT_ONE_DEVICE,
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
@@ -432,13 +461,21 @@ public abstract class PhysicalPlan {
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
+    CREATE_ALIGNED_TIMESERIES,
+    CLUSTER_LOG,
     CREATE_TRIGGER,
     DROP_TRIGGER,
     START_TRIGGER,
     STOP_TRIGGER,
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    MERGE,
+    CREATE_SNAPSHOT,
+    CLEARCACHE,
+    CREATE_FUNCTION,
+    DROP_FUNCTION,
+    SELECT_INTO
   }
 
   public long getIndex() {

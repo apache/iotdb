@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -159,6 +160,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    */
   public long calcIntervalByMonth(long numMonths) {
     Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
     calendar.setTimeInMillis(startTime);
     calendar.add(Calendar.MONTH, (int) (numMonths));
     return calendar.getTimeInMillis();

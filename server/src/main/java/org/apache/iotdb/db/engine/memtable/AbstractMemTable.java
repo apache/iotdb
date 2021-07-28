@@ -73,6 +73,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
+  private long createdTime = System.currentTimeMillis();
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -306,7 +308,7 @@ public abstract class AbstractMemTable implements IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema partialVectorSchema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     if (partialVectorSchema.getType() == TSDataType.VECTOR) {
@@ -435,5 +437,10 @@ public abstract class AbstractMemTable implements IMemTable {
   void updatePlanIndexes(long index) {
     maxPlanIndex = Math.max(index, maxPlanIndex);
     minPlanIndex = Math.min(index, minPlanIndex);
+  }
+
+  @Override
+  public long getCreatedTime() {
+    return createdTime;
   }
 }

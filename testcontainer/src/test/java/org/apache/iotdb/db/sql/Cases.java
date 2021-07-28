@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.sql;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -39,6 +47,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.junit.Assert.fail;
+
 public abstract class Cases {
 
   protected Statement writeStatement;
@@ -46,6 +56,7 @@ public abstract class Cases {
   protected Statement[] readStatements;
   protected Connection[] readConnections;
   protected Session session;
+  private final Planner processor = new Planner();
 
   /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
   public abstract void init() throws Exception;
@@ -108,7 +119,7 @@ public abstract class Cases {
       if (resultSet.next()) {
         Assert.assertEquals(35.71, resultSet.getDouble(1), 0.01);
       } else {
-        Assert.fail("expect 1 result, but get an empty resultSet.");
+        fail("expect 1 result, but get an empty resultSet.");
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
@@ -132,6 +143,23 @@ public abstract class Cases {
       double last = Double.parseDouble(resultSet.getString(3));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
+    }
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1457
+    initDataArray =
+        new String[] {
+          "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
+          "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
+          "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
+        };
+
+    for (String initData : initDataArray) {
+      writeStatement.execute(initData);
+    }
+    try {
+      session.executeNonQueryStatement(" delete from root.ln.wf011.*");
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      Assert.assertFalse(e instanceof BatchExecutionException);
     }
 
     // test dictionary encoding
@@ -184,79 +212,6 @@ public abstract class Cases {
       resultSet.close();
     }
   }
-
-  //  @Test
-  //  public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
-  //    List<List<String>> measurementList = new ArrayList<>();
-  //    List<String> schemaNames = new ArrayList<>();
-  //    List<List<TSEncoding>> encodingList = new ArrayList<>();
-  //    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-  //    List<CompressionType> compressionTypes = new ArrayList<>();
-  //    List<TSDataType> dataTypes = new ArrayList<>();
-  //    List<TSEncoding> encodings = new ArrayList<>();
-  //    String[] vectorMeasurements = new String[10];
-  //
-  //    Stream.iterate(0, i -> i + 1)
-  //        .limit(10)
-  //        .forEach(
-  //            i -> {
-  //              dataTypes.add(TSDataType.DOUBLE);
-  //              vectorMeasurements[i] = "vm" + i;
-  //              encodings.add(TSEncoding.RLE);
-  //              compressionTypes.add(CompressionType.SNAPPY);
-  //            });
-  //    schemaNames.add("schema");
-  //    encodingList.add(encodings);
-  //    dataTypeList.add(dataTypes);
-  //    measurementList.add(Arrays.asList(vectorMeasurements));
-  //
-  //    session.createSchemaTemplate(
-  //        "testcontainer",
-  //        schemaNames,
-  //        measurementList,
-  //        dataTypeList,
-  //        encodingList,
-  //        compressionTypes);
-  //    session.setStorageGroup("root.template");
-  //    session.setSchemaTemplate("testcontainer", "root.template");
-  //
-  //    VectorMeasurementSchema vectorMeasurementSchema =
-  //        new VectorMeasurementSchema(
-  //            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
-  //
-  //    Tablet tablet = new Tablet("root.template.device1.vector",
-  //    Arrays.asList(vectorMeasurementSchema));
-  //    tablet.setAligned(true);
-  //    for (int i = 0; i < 10; i++) {
-  //      tablet.addTimestamp(i, i);
-  //      for (int j = 0; j < 10; j++) {
-  //        tablet.addValue("vm" + j, i, (double) i);
-  //        tablet.rowSize++;
-  //      }
-  //    }
-  //    session.insertTablet(tablet);
-  //
-  //    SessionDataSet sessionDataSet =
-  //        session.executeQueryStatement("select count(*) from root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    RowRecord next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet = session.executeQueryStatement("select count(vm1) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet =
-  //        session.executeQueryStatement("select count(vm1),count(vm2) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(2, next.getFields().size());
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //    Assert.assertEquals(10, next.getFields().get(1).getLongV());
-  //  }
 
   @Test
   public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
@@ -322,6 +277,64 @@ public abstract class Cases {
     }
 
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+  }
+
+  @Test
+  public void testCreateFunctionPlan1() {
+    try {
+      PhysicalPlan plan =
+          processor.parseSQLToPhysicalPlan(
+              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
+        Assert.fail();
+      }
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
+      Assert.assertEquals("udf", createFunctionPlan.getUdfName());
+      Assert.assertEquals(
+          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
+      Assert.assertFalse(createFunctionPlan.isTemporary());
+    } catch (QueryProcessException e) {
+      Assert.fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testCreateFunctionPlan2() { // create temporary function
+    try {
+      PhysicalPlan plan =
+          processor.parseSQLToPhysicalPlan(
+              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+      if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
+        Assert.fail();
+      }
+      CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
+      Assert.assertEquals("udf", createFunctionPlan.getUdfName());
+      Assert.assertEquals(
+          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
+      Assert.assertTrue(createFunctionPlan.isTemporary());
+    } catch (QueryProcessException e) {
+      Assert.fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testDropFunctionPlan() { // drop function
+    try {
+      DropFunctionPlan dropFunctionPlan =
+          (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
+      Assert.assertEquals("udf", dropFunctionPlan.getUdfName());
+    } catch (QueryProcessException e) {
+      Assert.fail(e.toString());
+    }
+  }
+
+  @Test
+  public void testShowFunction() throws QueryProcessException {
+    String sql = "SHOW FUNCTIONS";
+
+    ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 
   // test https://issues.apache.org/jira/browse/IOTDB-1407
@@ -402,6 +415,73 @@ public abstract class Cases {
       } finally {
         if (resultSet != null) {
           resultSet.close();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void clusterUDTFQueryTest() throws SQLException {
+    // Prepare data.
+    writeStatement.execute(
+        "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+    for (int i = 10; i < 20; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+    }
+
+    ResultSet resultSet = null;
+
+    // Try to execute udf query on each node.
+    // Without time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d");
+
+      double i = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
+
+    // With time filter
+    for (Statement readStatement : readStatements) {
+      resultSet = readStatement.executeQuery("SELECT sin(s) FROM root.sg.d WHERE time >= 5");
+
+      double i = 5;
+      while (resultSet.next()) {
+        Assert.assertEquals(Math.sin(i++), resultSet.getDouble(2), 0.00001);
+      }
+      Assert.assertFalse(resultSet.next());
+      resultSet.close();
+    }
+  }
+
+  @Test
+  public void testSelectInto() throws SQLException {
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d%s(timestamp,s) VALUES(%s,%s)", i, i, i));
+    }
+
+    writeStatement.execute(
+        "SELECT d0.s, d1.s, d2.s, d3.s, d4.s into d0.t, d1.t, d2.t, d3.t, d4.t from root.sg;");
+    for (int i = 5; i < 10; ++i) {
+      writeStatement.execute(String.format("SELECT d%s.s into d%s.t from root.sg;", i, i));
+    }
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; ++i) {
+        try (ResultSet resultSet =
+            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.d%s", i))) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(resultSet.getDouble(2), resultSet.getDouble(3), 0);
+          Assert.assertFalse(resultSet.next());
         }
       }
     }
