@@ -97,7 +97,8 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         if (targetResource == null) {
           targetResource = getSourceTsFile(targetFile);
           if (targetResource == null) {
-            throw new IOException(String.format("Cannot find compaction target file %s", targetFile));
+            throw new IOException(
+                String.format("Cannot find compaction target file %s", targetFile));
           }
         }
         List<TsFileResource> sourceTsFileResources = new ArrayList<>();

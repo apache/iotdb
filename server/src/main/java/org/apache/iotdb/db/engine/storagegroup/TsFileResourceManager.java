@@ -82,7 +82,7 @@ public class TsFileResourceManager {
   }
 
   public TsFileResourceList getUnsequenceListByTimePartition(long timePartition) {
-    return unsequenceFiles.computeIfAbsent(timePartition,l -> new TsFileResourceList());
+    return unsequenceFiles.computeIfAbsent(timePartition, l -> new TsFileResourceList());
   }
 
   public Iterator<TsFileResource> getIterator(boolean sequence) {

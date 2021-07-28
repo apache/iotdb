@@ -2235,7 +2235,8 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
-      List<TsFileResource> sequenceList = tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
+      List<TsFileResource> sequenceList =
+          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
       String newFileName, renameInfo;
@@ -2503,7 +2504,8 @@ public class StorageGroupProcessor {
       String preName = sequenceList.get(insertIndex).getTsFile().getName();
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
-    if (insertIndex == tsFileResourceManager.getSequenceListByTimePartition(timePartitionId).size() - 1) {
+    if (insertIndex
+        == tsFileResourceManager.getSequenceListByTimePartition(timePartitionId).size() - 1) {
       subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
