@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.control.TracingInfo;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
@@ -374,8 +373,7 @@ public class SeriesReader {
               .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
               .sum();
       TracingManager.getInstance()
-          .getTracingInfoMap()
-          .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
+          .getTracingInfo(context.getQueryId())
           .addChunkInfo(chunkMetadataList.size(), totalChunkPointsNum);
     }
 
@@ -573,10 +571,7 @@ public class SeriesReader {
   }
 
   private void addTotalPageNumInTracing(int pageNum) {
-    TracingManager.getInstance()
-        .getTracingInfoMap()
-        .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
-        .addTotalPageNum(pageNum);
+    TracingManager.getInstance().getTracingInfo(context.getQueryId()).addTotalPageNum(pageNum);
   }
 
   /**

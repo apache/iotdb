@@ -72,8 +72,8 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public Map<Long, TracingInfo> getTracingInfoMap() {
-    return tracingInfoMap;
+  public TracingInfo getTracingInfo(long queryId) {
+    return tracingInfoMap.computeIfAbsent(queryId, k -> new TracingInfo());
   }
 
   public void writeQueryInfo(long queryId, String statement, long startTime, int pathsNum)
@@ -164,7 +164,7 @@ public class TracingManager {
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkPoints)
       throws IOException {
-    double avgChunkPoints = totalChunkPoints / totalChunkNum;
+    double avgChunkPoints = (double) totalChunkPoints / totalChunkNum;
     StringBuilder builder =
         new StringBuilder(String.format(QUERY_ID, queryId))
             .append(String.format(" - Number of chunks: %d", totalChunkNum))

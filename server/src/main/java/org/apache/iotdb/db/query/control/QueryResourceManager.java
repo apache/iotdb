@@ -103,8 +103,7 @@ public class QueryResourceManager {
     // calculate the distinct number of seq and unseq tsfiles
     if (CONFIG.isEnablePerformanceTracing()) {
       TracingManager.getInstance()
-          .getTracingInfoMap()
-          .computeIfAbsent(context.getQueryId(), k -> new TracingInfo())
+          .getTracingInfo(context.getQueryId())
           .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
     }
     return queryDataSource;
@@ -118,7 +117,7 @@ public class QueryResourceManager {
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (CONFIG.isEnablePerformanceTracing()
-          && TracingManager.getInstance().getTracingInfoMap().get(queryId) != null) {
+          && TracingManager.getInstance().getTracingInfo(queryId) != null) {
         TracingManager.getInstance().writeTracingInfo(queryId);
         TracingManager.getInstance().writeEndTime(queryId);
       }
