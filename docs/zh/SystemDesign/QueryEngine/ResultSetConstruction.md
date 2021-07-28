@@ -148,7 +148,7 @@ SQL: `SELECT s2, s1, s2 FROM root.sg.d1;`
 | ---- | ------------- | ------------- |
 |      |               |               |
 
-为了还原最终结果集，需要构造一个列名到其在查询结果集中位置的映射集 `columnOrdinalMap`，方便从查询结果集中取出某一列对应的结果，该部分逻辑在新建最终结果集 `IoTDBQueryResultSet` 的构造函数内完成.
+为了还原最终结果集，需要构造一个列名到其在查询结果集中位置的映射集 `columnOrdinalMap`，方便从查询结果集中取出某一列对应的结果，该部分逻辑在新建最终结果集 `IoTDBQueryResultSet` 的构造函数内完成。
 
 - org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBResultSet()
 

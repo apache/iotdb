@@ -461,4 +461,29 @@ public abstract class Cases {
       resultSet.close();
     }
   }
+
+  @Test
+  public void testSelectInto() throws SQLException {
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d%s(timestamp,s) VALUES(%s,%s)", i, i, i));
+    }
+
+    writeStatement.execute(
+        "SELECT d0.s, d1.s, d2.s, d3.s, d4.s into d0.t, d1.t, d2.t, d3.t, d4.t from root.sg;");
+    for (int i = 5; i < 10; ++i) {
+      writeStatement.execute(String.format("SELECT d%s.s into d%s.t from root.sg;", i, i));
+    }
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; ++i) {
+        try (ResultSet resultSet =
+            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.d%s", i))) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(resultSet.getDouble(2), resultSet.getDouble(3), 0);
+          Assert.assertFalse(resultSet.next());
+        }
+      }
+    }
+  }
 }
