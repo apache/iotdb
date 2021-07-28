@@ -76,22 +76,6 @@ public class DataClientProvider {
   }
 
   /**
-   * Get a thrift client from the tail of deque that will connect to "node" using the data port for
-   * refresh.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public AsyncDataClient getAsyncDataClientForRefresh(Node node, int timeout) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClientForRefresh(node);
-    if (client == null) {
-      throw new IOException(GET_CLIENT_FAILED_MSG + node);
-    }
-    client.setTimeout(timeout);
-    return client;
-  }
-
-  /**
    * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
    * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
    * into the client pool, otherwise there is a risk of client leakage.
@@ -103,25 +87,6 @@ public class DataClientProvider {
    */
   public SyncDataClient getSyncDataClient(Node node, int timeout) throws IOException {
     SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
-    if (client == null) {
-      throw new IOException(GET_CLIENT_FAILED_MSG + node);
-    }
-    client.setTimeout(timeout);
-    return client;
-  }
-
-  /**
-   * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
-   * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
-   * into the client pool, otherwise there is a risk of client leakage.
-   *
-   * <p>Get a thrift client from the tail of deque that will connect to "node" using the data port.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public SyncDataClient getSyncDataClientForRefresh(Node node, int timeout) throws IOException {
-    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClientForRefresh(node);
     if (client == null) {
       throw new IOException(GET_CLIENT_FAILED_MSG + node);
     }
