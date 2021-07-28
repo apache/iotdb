@@ -698,8 +698,7 @@ public class IoTDBAlignByDeviceIT {
       Assert.assertTrue(
           e.getMessage()
               .contains(
-                  "The data types of the same measurement column should be the same across devices in "
-                      + "ALIGN_BY_DEVICE sql."));
+                  "The data types of the same measurement column should be the same across devices."));
     }
   }
 
