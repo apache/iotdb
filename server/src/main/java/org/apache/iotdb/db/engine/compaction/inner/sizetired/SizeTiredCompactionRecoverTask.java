@@ -94,6 +94,12 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource = getRecoverTsFileResource(targetFile);
+        if (targetResource == null) {
+          targetResource = getSourceTsFile(targetFile);
+          if (targetResource == null) {
+            throw new IOException(String.format("Cannot find compaction target file %s", targetFile));
+          }
+        }
         List<TsFileResource> sourceTsFileResources = new ArrayList<>();
 
         for (String file : sourceFileList) {
@@ -164,8 +170,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         return tsFileResource;
       }
     }
-    LOGGER.error("cannot get tsfile resource path: {}", filePath);
-    throw new IOException();
+    return null;
   }
 
   private TsFileResource getSourceTsFile(String filename) {

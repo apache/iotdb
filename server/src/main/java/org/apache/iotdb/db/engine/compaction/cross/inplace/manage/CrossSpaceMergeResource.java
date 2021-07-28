@@ -81,7 +81,8 @@ public class CrossSpaceMergeResource {
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(ttlLowerBound));
+        && (!res.isClosed() || res.stillLives(ttlLowerBound))
+        && !res.isMerging();
   }
 
   public CrossSpaceMergeResource(
