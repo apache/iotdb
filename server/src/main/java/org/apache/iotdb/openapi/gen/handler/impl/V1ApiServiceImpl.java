@@ -869,7 +869,6 @@ public class V1ApiServiceImpl extends V1ApiService {
         .append(") values (")
         .append(s)
         .append(")");
-    System.out.println(sql+"----------");
     String resultValue = insertDb(securityContext, sql.toString());
     if (resultValue.equals("success")) {
       resultMap.put("code", 200);
