@@ -213,79 +213,6 @@ public abstract class Cases {
     }
   }
 
-  //  @Test
-  //  public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
-  //    List<List<String>> measurementList = new ArrayList<>();
-  //    List<String> schemaNames = new ArrayList<>();
-  //    List<List<TSEncoding>> encodingList = new ArrayList<>();
-  //    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-  //    List<CompressionType> compressionTypes = new ArrayList<>();
-  //    List<TSDataType> dataTypes = new ArrayList<>();
-  //    List<TSEncoding> encodings = new ArrayList<>();
-  //    String[] vectorMeasurements = new String[10];
-  //
-  //    Stream.iterate(0, i -> i + 1)
-  //        .limit(10)
-  //        .forEach(
-  //            i -> {
-  //              dataTypes.add(TSDataType.DOUBLE);
-  //              vectorMeasurements[i] = "vm" + i;
-  //              encodings.add(TSEncoding.RLE);
-  //              compressionTypes.add(CompressionType.SNAPPY);
-  //            });
-  //    schemaNames.add("schema");
-  //    encodingList.add(encodings);
-  //    dataTypeList.add(dataTypes);
-  //    measurementList.add(Arrays.asList(vectorMeasurements));
-  //
-  //    session.createSchemaTemplate(
-  //        "testcontainer",
-  //        schemaNames,
-  //        measurementList,
-  //        dataTypeList,
-  //        encodingList,
-  //        compressionTypes);
-  //    session.setStorageGroup("root.template");
-  //    session.setSchemaTemplate("testcontainer", "root.template");
-  //
-  //    VectorMeasurementSchema vectorMeasurementSchema =
-  //        new VectorMeasurementSchema(
-  //            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
-  //
-  //    Tablet tablet = new Tablet("root.template.device1.vector",
-  //    Arrays.asList(vectorMeasurementSchema));
-  //    tablet.setAligned(true);
-  //    for (int i = 0; i < 10; i++) {
-  //      tablet.addTimestamp(i, i);
-  //      for (int j = 0; j < 10; j++) {
-  //        tablet.addValue("vm" + j, i, (double) i);
-  //        tablet.rowSize++;
-  //      }
-  //    }
-  //    session.insertTablet(tablet);
-  //
-  //    SessionDataSet sessionDataSet =
-  //        session.executeQueryStatement("select count(*) from root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    RowRecord next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet = session.executeQueryStatement("select count(vm1) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet =
-  //        session.executeQueryStatement("select count(vm1),count(vm2) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(2, next.getFields().size());
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //    Assert.assertEquals(10, next.getFields().get(1).getLongV());
-  //  }
-
   @Test
   public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
 
@@ -494,42 +421,6 @@ public abstract class Cases {
   }
 
   @Test
-  public void testApplyClearCache() throws InterruptedException {
-    String sql = "CLEAR CACHE";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
-  public void testApplyMerge() throws InterruptedException {
-    String sql = "MERGE";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
-  public void testCreateSnapshot() throws InterruptedException {
-    String sql = "CREATE SNAPSHOT FOR SCHEMA";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
   public void clusterUDTFQueryTest() throws SQLException {
     // Prepare data.
     writeStatement.execute(
@@ -568,6 +459,31 @@ public abstract class Cases {
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
+    }
+  }
+
+  @Test
+  public void testSelectInto() throws SQLException {
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.d%s(timestamp,s) VALUES(%s,%s)", i, i, i));
+    }
+
+    writeStatement.execute(
+        "SELECT d0.s, d1.s, d2.s, d3.s, d4.s into d0.t, d1.t, d2.t, d3.t, d4.t from root.sg;");
+    for (int i = 5; i < 10; ++i) {
+      writeStatement.execute(String.format("SELECT d%s.s into d%s.t from root.sg;", i, i));
+    }
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; ++i) {
+        try (ResultSet resultSet =
+            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.d%s", i))) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(resultSet.getDouble(2), resultSet.getDouble(3), 0);
+          Assert.assertFalse(resultSet.next());
+        }
+      }
     }
   }
 }

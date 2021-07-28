@@ -24,6 +24,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,6 +54,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,6 +63,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class StorageGroupProcessorTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static Logger logger = LoggerFactory.getLogger(StorageGroupProcessorTest.class);
 
   private String storageGroup = "root.vehicle.d0";
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
@@ -67,8 +73,14 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
+  private boolean prevEnableTimedFlushMemtable = false;
+
   @Before
   public void setUp() throws Exception {
+    prevEnableTimedFlushMemtable = config.isEnableTimedFlushUnseqMemtable();
+    config.setEnableTimedFlushUnseqMemtable(true);
+    config.setEnableSeqSpaceCompaction(false);
+    config.setEnableUnseqSpaceCompaction(false);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
@@ -82,6 +94,9 @@ public class StorageGroupProcessorTest {
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
     MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanEnv();
+    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushMemtable);
+    config.setEnableSeqSpaceCompaction(true);
+    config.setEnableUnseqSpaceCompaction(true);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -299,7 +314,6 @@ public class StorageGroupProcessorTest {
   public void testEnableDiscardOutOfOrderDataForInsertRowPlan()
       throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
           TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultValue = config.isEnableDiscardOutOfOrderData();
     config.setEnableDiscardOutOfOrderData(true);
 
@@ -341,7 +355,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet1()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -423,7 +436,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet2()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -505,7 +517,6 @@ public class StorageGroupProcessorTest {
   @Test
   public void testEnableDiscardOutOfOrderDataForInsertTablet3()
       throws QueryProcessException, IllegalPathException, IOException, TriggerExecutionException {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     boolean defaultEnableDiscard = config.isEnableDiscardOutOfOrderData();
     long defaultTimePartition = config.getPartitionInterval();
     boolean defaultEnablePartition = config.isEnablePartition();
@@ -629,6 +640,50 @@ public class StorageGroupProcessorTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCompactionCandidateFileNum(originCandidateFileNum);
+  }
+
+  @Test
+  public void testCheckMemTableFlushInterval()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException {
+    // create one seq memtable & close
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // create one unseq memtable
+    record = new TSRecord(1, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // check memtable's flush interval & flush the unsequence memtable
+    long preFLushInterval = config.getUnseqMemtableFlushInterval();
+    config.setUnseqMemtableFlushInterval(5);
+
+    Thread.sleep(500);
+
+    processor.timedFlushMemTable();
+
+    FlushManager flushManager = FlushManager.getInstance();
+    int waitCnt = 0;
+    while (flushManager.getNumberOfPendingTasks() != 0
+        || FlushManager.getInstance().getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || FlushManager.getInstance().getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    config.setUnseqMemtableFlushInterval(preFLushInterval);
   }
 
   class DummySGP extends StorageGroupProcessor {
