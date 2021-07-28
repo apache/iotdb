@@ -54,6 +54,7 @@ public class QueryResourceManager {
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
+  private IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * Record temporary files used for external sorting.
