@@ -169,7 +169,7 @@ public class MetaGroupMember extends RaftMember {
    * every "REFRESH_CLIENT_SEC" seconds, a dataClientRefresher thread will try to refresh one thrift
    * connection for each nodes other than itself.
    */
-  private static final int REFRESH_CLIENT_SEC = 1;
+  private static final int REFRESH_CLIENT_SEC = 5;
 
   /** how many times is a data record replicated, also the number of nodes in a data group */
   private static final int REPLICATION_NUM =
@@ -507,7 +507,7 @@ public class MetaGroupMember extends RaftMember {
       client.refreshConnection(req);
     } catch (IOException ignored) {
     } catch (TException e) {
-      logger.info("encounter refreshing client timeout, throw broken connection", e);
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
       // the connection may be broken, close it to avoid it being reused
       client.getInputProtocol().getTransport().close();
     } finally {
@@ -529,7 +529,7 @@ public class MetaGroupMember extends RaftMember {
     try {
       client.refreshConnection(new RefreshReuqest(), new GenericHandler<>(receiver, null));
     } catch (TException e) {
-      logger.info("encounter refreshing client timeout, throw broken connection", e);
+      logger.warn("encounter refreshing client timeout, throw broken connection", e);
     }
   }
 
