@@ -75,6 +75,19 @@ public class InternalMNode extends MNode {
         || (aliasChildren != null && aliasChildren.containsKey(name));
   }
 
+  /** get the child with the name */
+  @Override
+  public IMNode getChild(String name) {
+    IMNode child = null;
+    if (children != null) {
+      child = children.get(name);
+    }
+    if (child != null) {
+      return child;
+    }
+    return aliasChildren == null ? null : aliasChildren.get(name);
+  }
+
   /**
    * add a child to current mnode
    *
@@ -137,129 +150,6 @@ public class InternalMNode extends MNode {
     }
   }
 
-  /** delete the alias of a child */
-  @Override
-  public void deleteAliasChild(String alias) {
-    if (aliasChildren != null) {
-      aliasChildren.remove(alias);
-    }
-  }
-
-  @Override
-  public Template getDeviceTemplate() {
-    return deviceTemplate;
-  }
-
-  @Override
-  public void setDeviceTemplate(Template deviceTemplate) {
-    this.deviceTemplate = deviceTemplate;
-  }
-
-  /** get the child with the name */
-  @Override
-  public IMNode getChild(String name) {
-    IMNode child = null;
-    if (children != null) {
-      child = children.get(name);
-    }
-    if (child != null) {
-      return child;
-    }
-    return aliasChildren == null ? null : aliasChildren.get(name);
-  }
-
-  @Override
-  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
-    IMNode node = null;
-    // for aligned timeseries
-    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
-    for (String measurement : measurementList) {
-      IMNode nodeOfMeasurement = getChild(measurement);
-      if (node == null) {
-        node = nodeOfMeasurement;
-      } else {
-        if (node != nodeOfMeasurement) {
-          throw new AlignedTimeseriesException(
-              "Cannot get node of children in different aligned timeseries", name);
-        }
-      }
-    }
-    return node;
-  }
-
-  /** get the count of all MeasurementMNode whose ancestor is current node */
-  @Override
-  public int getMeasurementMNodeCount() {
-    if (children == null) {
-      return 0;
-    }
-    int measurementMNodeCount = 0;
-    for (IMNode child : children.values()) {
-      measurementMNodeCount += child.getMeasurementMNodeCount();
-    }
-    return measurementMNodeCount;
-  }
-
-  /** add an alias */
-  @Override
-  public boolean addAlias(String alias, IMNode child) {
-    if (aliasChildren == null) {
-      // double check, alias children volatile
-      synchronized (this) {
-        if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
-        }
-      }
-    }
-
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren() {
-    if (children == null) {
-      return Collections.emptyMap();
-    }
-    return children;
-  }
-
-  @Override
-  public Map<String, IMNode> getAliasChildren() {
-    if (aliasChildren == null) {
-      return Collections.emptyMap();
-    }
-    return aliasChildren;
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
-    this.children = children;
-  }
-
-  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
-    this.aliasChildren = aliasChildren;
-  }
-
-  @Override
-  public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
-    logWriter.serializeMNode(this);
-  }
-
-  void serializeChildren(MLogWriter logWriter) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (Entry<String, IMNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo(logWriter);
-    }
-  }
-
-  public static InternalMNode deserializeFrom(MNodePlan plan) {
-    return new InternalMNode(null, plan.getName());
-  }
-
   /**
    * replace a child of this mnode
    *
@@ -290,6 +180,84 @@ public class InternalMNode extends MNode {
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
+  @Override
+  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    IMNode node = null;
+    // for aligned timeseries
+    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
+    for (String measurement : measurementList) {
+      IMNode nodeOfMeasurement = getChild(measurement);
+      if (node == null) {
+        node = nodeOfMeasurement;
+      } else {
+        if (node != nodeOfMeasurement) {
+          throw new AlignedTimeseriesException(
+              "Cannot get node of children in different aligned timeseries", name);
+        }
+      }
+    }
+    return node;
+  }
+
+  @Override
+  public Map<String, IMNode> getChildren() {
+    if (children == null) {
+      return Collections.emptyMap();
+    }
+    return children;
+  }
+
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
+    this.children = children;
+  }
+
+  /** add an alias */
+  @Override
+  public boolean addAlias(String alias, IMNode child) {
+    if (aliasChildren == null) {
+      // double check, alias children volatile
+      synchronized (this) {
+        if (aliasChildren == null) {
+          aliasChildren = new ConcurrentHashMap<>();
+        }
+      }
+    }
+
+    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
+  }
+
+  /** delete the alias of a child */
+  @Override
+  public void deleteAliasChild(String alias) {
+    if (aliasChildren != null) {
+      aliasChildren.remove(alias);
+    }
+  }
+
+  @Override
+  public Map<String, IMNode> getAliasChildren() {
+    if (aliasChildren == null) {
+      return Collections.emptyMap();
+    }
+    return aliasChildren;
+  }
+
+  @Override
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
+    this.aliasChildren = aliasChildren;
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
+  }
+
   /**
    * get upper template of this node, remember we get nearest template alone this node to root
    *
@@ -309,12 +277,45 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
+  public Template getDeviceTemplate() {
+    return deviceTemplate;
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
+  public void setDeviceTemplate(Template deviceTemplate) {
+    this.deviceTemplate = deviceTemplate;
+  }
+
+  /** get the count of all MeasurementMNode whose ancestor is current node */
+  @Override
+  public int getMeasurementMNodeCount() {
+    if (children == null) {
+      return 0;
+    }
+    int measurementMNodeCount = 0;
+    for (IMNode child : children.values()) {
+      measurementMNodeCount += child.getMeasurementMNodeCount();
+    }
+    return measurementMNodeCount;
+  }
+
+  @Override
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
+
+    logWriter.serializeMNode(this);
+  }
+
+  void serializeChildren(MLogWriter logWriter) throws IOException {
+    if (children == null) {
+      return;
+    }
+    for (Entry<String, IMNode> entry : children.entrySet()) {
+      entry.getValue().serializeTo(logWriter);
+    }
+  }
+
+  public static InternalMNode deserializeFrom(MNodePlan plan) {
+    return new InternalMNode(null, plan.getName());
   }
 }

@@ -82,6 +82,16 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
+  public IMeasurementSchema getSchema() {
+    return schema;
+  }
+
+  @Override
+  public void setSchema(IMeasurementSchema schema) {
+    this.schema = schema;
+  }
+
+  @Override
   public int getMeasurementMNodeCount() {
     return 1;
   }
@@ -91,9 +101,50 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     return schema.getMeasurementCount();
   }
 
+  /**
+   * get data type
+   *
+   * @param measurementId if it's a vector schema, we need sensor name of it
+   * @return measurement data type
+   */
   @Override
-  public IMeasurementSchema getSchema() {
-    return schema;
+  public TSDataType getDataType(String measurementId) {
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      int index = schema.getMeasurementIdColumnIndex(measurementId);
+      return schema.getValueTSDataTypeList().get(index);
+    }
+  }
+
+  @Override
+  public long getOffset() {
+    return offset;
+  }
+
+  @Override
+  public void setOffset(long offset) {
+    this.offset = offset;
+  }
+
+  @Override
+  public String getAlias() {
+    return alias;
+  }
+
+  @Override
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  @Override
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
   }
 
   @Override
@@ -131,48 +182,8 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public String getFullPath() {
-    return concatFullPath();
-  }
-
-  @Override
   public void resetCache() {
     cachedLastValuePair = null;
-  }
-
-  @Override
-  public long getOffset() {
-    return offset;
-  }
-
-  @Override
-  public void setOffset(long offset) {
-    this.offset = offset;
-  }
-
-  @Override
-  public String getAlias() {
-    return alias;
-  }
-
-  @Override
-  public TriggerExecutor getTriggerExecutor() {
-    return triggerExecutor;
-  }
-
-  @Override
-  public void setAlias(String alias) {
-    this.alias = alias;
-  }
-
-  @Override
-  public void setSchema(IMeasurementSchema schema) {
-    this.schema = schema;
-  }
-
-  @Override
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    this.triggerExecutor = triggerExecutor;
   }
 
   @Override
@@ -218,25 +229,22 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     return node;
   }
 
-  /**
-   * get data type
-   *
-   * @param measurementId if it's a vector schema, we need sensor name of it
-   * @return measurement data type
-   */
   @Override
-  public TSDataType getDataType(String measurementId) {
-    if (schema instanceof MeasurementSchema) {
-      return schema.getType();
-    } else {
-      int index = schema.getMeasurementIdColumnIndex(measurementId);
-      return schema.getValueTSDataTypeList().get(index);
-    }
+  public String getFullPath() {
+    return concatFullPath();
   }
 
   @Override
   public boolean hasChild(String name) {
     return false;
+  }
+
+  @Override
+  public IMNode getChild(String name) {
+    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
+    throw new RuntimeException(
+        String.format(
+            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
   }
 
   @Override
@@ -255,26 +263,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void deleteAliasChild(String alias) {
-    // Do nothing
-  }
-
-  @Override
-  public IMNode getChild(String name) {
-    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
-    throw new RuntimeException(
-        String.format(
-            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
-  }
+  public void replaceChild(String measurement, IMNode newChildNode) {}
 
   @Override
   public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
     return null;
-  }
-
-  @Override
-  public boolean addAlias(String alias, IMNode child) {
-    return false;
   }
 
   @Override
@@ -283,28 +276,39 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public Map<String, IMNode> getAliasChildren() {
-    return null;
-  }
-
   public void setChildren(Map<String, IMNode> children) {
     // Do nothing
+  }
+
+  @Override
+  public boolean addAlias(String alias, IMNode child) {
+    return false;
+  }
+
+  @Override
+  public void deleteAliasChild(String alias) {
+    // Do nothing
+  }
+
+  @Override
+  public Map<String, IMNode> getAliasChildren() {
+    return null;
   }
 
   @Override
   public void setAliasChildren(Map<String, IMNode> aliasChildren) {}
 
   @Override
-  public void replaceChild(String measurement, IMNode newChildNode) {}
+  public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {}
 
   @Override
   public Template getUpperTemplate() {
     return parent.getUpperTemplate();
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return false;
   }
 
   @Override
@@ -316,7 +320,4 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void setDeviceTemplate(Template deviceTemplate) {}
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {}
 }

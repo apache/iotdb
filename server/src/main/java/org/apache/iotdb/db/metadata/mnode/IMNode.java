@@ -52,11 +52,7 @@ public interface IMNode extends Serializable {
 
   IMNode addChild(IMNode child);
 
-  boolean addAlias(String alias, IMNode child);
-
   void deleteChild(String name);
-
-  void deleteAliasChild(String alias);
 
   void replaceChild(String measurement, IMNode newChildNode);
 
@@ -64,9 +60,13 @@ public interface IMNode extends Serializable {
 
   Map<String, IMNode> getChildren();
 
-  Map<String, IMNode> getAliasChildren();
-
   void setChildren(Map<String, IMNode> children);
+
+  boolean addAlias(String alias, IMNode child);
+
+  void deleteAliasChild(String alias);
+
+  Map<String, IMNode> getAliasChildren();
 
   void setAliasChildren(Map<String, IMNode> aliasChildren);
 
