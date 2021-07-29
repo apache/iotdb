@@ -1709,8 +1709,7 @@ public class MManager {
 
     // 1. get device node
     Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
-    if (!(deviceMNode.left.isMeasurement())
-        && deviceMNode.left.getDeviceTemplate() != null) {
+    if (!(deviceMNode.left.isMeasurement()) && deviceMNode.left.getDeviceTemplate() != null) {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
@@ -1740,9 +1739,9 @@ public class MManager {
       try {
         String measurement = measurementList[i];
         IMNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
-        if (child.isMeasurement()) {
+        if (child != null && child.isMeasurement()) {
           measurementMNode = (IMeasurementMNode) child;
-        } else if (child.isStorageGroup()) {
+        } else if (child != null && child.isStorageGroup()) {
           throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
         } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
           // empty

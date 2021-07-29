@@ -1813,9 +1813,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
-        if (node.isStorageGroup()
-            && filter != null
-            && !filter.satisfy(node.getFullPath())) {
+        if (node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
           return res;
         }
       } else {
@@ -1838,9 +1836,7 @@ public class MTree implements Serializable {
       int targetLevel,
       StorageGroupFilter filter) {
     if (node == null
-        || node.isStorageGroup()
-            && filter != null
-            && !filter.satisfy(node.getFullPath())) {
+        || node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
       return;
     }
     if (targetLevel == 0) {
