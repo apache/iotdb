@@ -50,9 +50,11 @@ public class VectorChunkWriterImplTest {
     }
 
     chunkWriter.sealCurrentPage();
-    // time chunk: 14 + 4 + 160; value chunk 1: 8 + 2 + 4 + 3 + 80; value chunk 2: 8 + 2 + 4 + 3 +
-    // 20; value chunk 3: 9 + 4 + 7 + 20 * 8;
-    assertEquals(492L, chunkWriter.getCurrentChunkSize());
+    // time chunk: 17 + 4 + 160;
+    // value chunk 1: 19 + 2 + 4 + 3 + 80;
+    // value chunk 2: 19 + 2 + 4 + 3 + 20;
+    // value chunk 3: 20 + 4 + 7 + 20 * 8;
+    assertEquals(528, chunkWriter.getCurrentChunkSize());
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
@@ -63,7 +65,7 @@ public class VectorChunkWriterImplTest {
       // time chunk
       assertEquals(
           (byte) (0x80 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s1.time", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(164, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.VECTOR.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -72,7 +74,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 1
       assertEquals(0x40 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s1", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(89, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.FLOAT.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -81,7 +83,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 2
       assertEquals(0x40 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s2", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s2", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(29, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.INT32.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -90,7 +92,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 2
       assertEquals(0x40 | MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s3", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s3", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(171, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.DOUBLE.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -122,11 +124,11 @@ public class VectorChunkWriterImplTest {
     }
     chunkWriter.sealCurrentPage();
 
-    // time chunk: 14 + (4 + 17 + 160) * 2
-    // value chunk 1: 9 + (2 + 41 + 4 + 3 + 80) * 2
-    // value chunk 2: 9 + (2 + 41 + 4 + 3 + 20) * 2
-    // value chunk 3: 9 + (4 + 57 + 4 + 3 + 160) * 2
-    assertEquals(1259L, chunkWriter.getCurrentChunkSize());
+    // time chunk: 17 + (4 + 17 + 160) * 2
+    // value chunk 1: 20 + (2 + 41 + 4 + 3 + 80) * 2
+    // value chunk 2: 20 + (2 + 41 + 4 + 3 + 20) * 2
+    // value chunk 3: 20 + (4 + 57 + 4 + 3 + 160) * 2
+    assertEquals(1295, chunkWriter.getCurrentChunkSize());
 
     try {
       TestTsFileOutput testTsFileOutput = new TestTsFileOutput();
@@ -136,7 +138,7 @@ public class VectorChunkWriterImplTest {
       ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
       // time chunk
       assertEquals((byte) (0x80 | MetaMarker.CHUNK_HEADER), ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s1.time", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(362, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.VECTOR.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -145,7 +147,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 1
       assertEquals(0x40 | MetaMarker.CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s1", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s1", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(260, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.FLOAT.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -154,7 +156,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 2
       assertEquals(0x40 | MetaMarker.CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s2", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s2", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(140, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.INT32.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));
@@ -163,7 +165,7 @@ public class VectorChunkWriterImplTest {
 
       // value chunk 2
       assertEquals(0x40 | MetaMarker.CHUNK_HEADER, ReadWriteIOUtils.readByte(buffer));
-      assertEquals("s3", ReadWriteIOUtils.readVarIntString(buffer));
+      assertEquals("vectorName.s3", ReadWriteIOUtils.readVarIntString(buffer));
       assertEquals(456, ReadWriteForEncodingUtils.readUnsignedVarInt(buffer));
       assertEquals(TSDataType.DOUBLE.serialize(), ReadWriteIOUtils.readByte(buffer));
       assertEquals(CompressionType.UNCOMPRESSED.serialize(), ReadWriteIOUtils.readByte(buffer));

@@ -35,7 +35,7 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
   @Override
   public String getMeasurementId() {
-    return "s1.time";
+    return "vectorName";
   }
 
   @Override
