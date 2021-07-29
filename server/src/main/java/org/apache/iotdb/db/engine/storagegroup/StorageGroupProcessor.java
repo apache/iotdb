@@ -723,12 +723,18 @@ public class StorageGroupProcessor {
   /** check if the tsfile's time is smaller than system current time */
   private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    long time = Long.parseLong(items[0]);
-    if (time > System.currentTimeMillis()) {
+    long fileTime = Long.parseLong(items[0]);
+    long currentTime = System.currentTimeMillis();
+    if (fileTime > currentTime) {
       throw new StorageGroupProcessorException(
           String.format(
-              "the time of tsfile %s is larger than system current time, please check it.",
-              tsFile.getAbsolutePath()));
+              "virtual storage group %s[%s] is down, because the time of tsfile %s is larger than system current time, "
+                  + "file time is %d while system current time is %d, please check it.",
+              logicalStorageGroupName,
+              virtualStorageGroupId,
+              tsFile.getAbsolutePath(),
+              fileTime,
+              currentTime));
     }
   }
 
