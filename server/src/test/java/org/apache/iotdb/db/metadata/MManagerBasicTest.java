@@ -21,8 +21,9 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
@@ -347,7 +348,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -359,13 +360,13 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s1.t1"),
+          new PartialPath("root.laptop.d1.s2.t1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s2"),
+          new PartialPath("root.laptop.d1.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -388,8 +389,8 @@ public class MManagerBasicTest {
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 5);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 3);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 4);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 3);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2")), 2);
@@ -485,7 +486,7 @@ public class MManagerBasicTest {
               .collect(Collectors.toSet()));
 
       MManager recoverManager = new MManager();
-      recoverManager.init();
+      recoverManager.initForMultiMManagerTest();
 
       assertTrue(recoverManager.isStorageGroup(new PartialPath("root.laptop.d1")));
       assertFalse(recoverManager.isStorageGroup(new PartialPath("root.laptop.d2")));
@@ -860,7 +861,7 @@ public class MManagerBasicTest {
 
     manager.setDeviceTemplate(setDeviceTemplatePlan);
 
-    MNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
+    IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node.setUseTemplate(true);
 
     MeasurementSchema s11 =
@@ -1085,6 +1086,58 @@ public class MManagerBasicTest {
       assertEquals(
           "Path [root.sg1.d1.vector.s1 ( which is incompatible with template )] already exist",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTemplateAndNodePathCompatibility() throws MetadataException {
+    MManager manager = IoTDB.metaManager;
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s11"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    manager.createTimeseries(createTimeSeriesPlan);
+
+    try {
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      fail();
+    } catch (PathAlreadyExistException e) {
+      assertEquals("Path [root.sg1.d1.s11] already exist", e.getMessage());
+    }
+
+    manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
+
+    CreateTimeSeriesPlan createTimeSeriesPlan2 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.vector.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+    manager.createTimeseries(createTimeSeriesPlan2);
+
+    try {
+      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      fail();
+    } catch (PathAlreadyExistException e) {
+      assertEquals("Path [root.sg1.d1.vector] already exist", e.getMessage());
     }
   }
 
@@ -1396,7 +1449,7 @@ public class MManagerBasicTest {
     try {
       manager.setStorageGroup(new PartialPath("root.laptop"));
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1"),
+          new PartialPath("root.laptop.d0"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -1408,13 +1461,13 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s1.t1"),
+          new PartialPath("root.laptop.d1.s2.t1"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
           null);
       manager.createTimeseries(
-          new PartialPath("root.laptop.d1.s2"),
+          new PartialPath("root.laptop.d1.s3"),
           TSDataType.INT32,
           TSEncoding.PLAIN,
           CompressionType.GZIP,
@@ -1500,8 +1553,9 @@ public class MManagerBasicTest {
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(4, mNode.getMeasurementMNodeCount());
+      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(3, manager.getAllTimeseriesCount(IMNode.getPartialPath()));
+      assertEquals(1, IMNode.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1586,8 +1640,8 @@ public class MManagerBasicTest {
           new MeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      MNode mNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, mNode.getMeasurementMNodeCount());
+      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(1, IMNode.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 

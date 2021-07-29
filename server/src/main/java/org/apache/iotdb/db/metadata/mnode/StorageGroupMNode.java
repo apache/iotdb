@@ -23,7 +23,7 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
 
-public class StorageGroupMNode extends MNode {
+public class StorageGroupMNode extends InternalMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -33,7 +33,7 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }

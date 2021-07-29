@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -195,7 +195,7 @@ public class MManagerAdvancedTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
 
-    MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d0"));
+    IMNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d0"));
     Assert.assertEquals(
         TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
@@ -218,7 +218,7 @@ public class MManagerAdvancedTest {
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    MNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d2.s0"));
+    IMNode node = mmanager.getNodeByPath(new PartialPath("root.vehicle.d2.s0"));
     ((MeasurementMNode) node).updateCachedLast(tv1, true, Long.MIN_VALUE);
     ((MeasurementMNode) node).updateCachedLast(tv2, true, Long.MIN_VALUE);
     Assert.assertEquals(

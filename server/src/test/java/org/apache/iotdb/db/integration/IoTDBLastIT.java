@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -283,7 +283,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node =
+      IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt02.temperature"));
       ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
@@ -367,7 +367,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node =
+      IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
       ((MeasurementMNode) node).resetCache();
 
@@ -416,7 +416,7 @@ public class IoTDBLastIT {
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
 
-      MNode node =
+      IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt04.temperature"));
       ((MeasurementMNode) node).resetCache();
 

@@ -55,7 +55,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -1933,9 +1933,9 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
-      for (MNode measurementNode : node.getChildren().values()) {
+      for (IMNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null
             && originalPath.matchFullPath(measurementNode.getPartialPath())) {
           TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
@@ -2278,9 +2278,9 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      MNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
 
-      for (MNode measurementNode : node.getChildren().values()) {
+      for (IMNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
           ((MeasurementMNode) measurementNode).resetCache();
           logger.debug(
