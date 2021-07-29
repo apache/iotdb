@@ -82,6 +82,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
+  public IEntityMNode getParent() {
+    return (IEntityMNode) parent;
+  }
+
+  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }
@@ -263,7 +268,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void replaceChild(String measurement, IMNode newChildNode) {}
+  public void replaceChild(String oldChildName, IMNode newChildNode) {}
 
   @Override
   public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
@@ -281,32 +286,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public boolean addAlias(String alias, IMNode child) {
-    return false;
-  }
-
-  @Override
-  public void deleteAliasChild(String alias) {
-    // Do nothing
-  }
-
-  @Override
-  public Map<String, IMNode> getAliasChildren() {
-    return null;
-  }
-
-  @Override
-  public void setAliasChildren(Map<String, IMNode> aliasChildren) {}
-
-  @Override
-  public boolean isUseTemplate() {
-    return false;
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {}
-
-  @Override
   public Template getUpperTemplate() {
     return parent.getUpperTemplate();
   }
@@ -320,4 +299,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public void setDeviceTemplate(Template deviceTemplate) {}
+
+  @Override
+  public boolean isMeasurement() {
+    return true;
+  }
 }

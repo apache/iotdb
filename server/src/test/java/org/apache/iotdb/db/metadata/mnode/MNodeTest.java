@@ -47,16 +47,17 @@ public class MNodeTest {
     // after replacing a with c, the timeseries root.a.b becomes root.c.b
     InternalMNode rootNode = new InternalMNode(null, "root");
 
-    InternalMNode aNode = new InternalMNode(rootNode, "a");
+    IEntityMNode aNode = new EntityMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
 
-    InternalMNode bNode = new InternalMNode(aNode, "b");
+    MeasurementMNode bNode = new MeasurementMNode(aNode, "b", null, null);
+
     aNode.addChild(bNode.getName(), bNode);
     aNode.addAlias("aliasOfb", bNode);
 
     for (int i = 0; i < 500; i++) {
       service.submit(
-          new Thread(() -> rootNode.replaceChild(aNode.getName(), new InternalMNode(null, "c"))));
+          new Thread(() -> rootNode.replaceChild(aNode.getName(), new EntityMNode(null, "c"))));
     }
 
     if (!service.isShutdown()) {

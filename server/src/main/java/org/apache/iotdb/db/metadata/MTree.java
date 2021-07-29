@@ -340,12 +340,14 @@ public class MTree implements Serializable {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
+      IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
+
       IMeasurementMNode measurementMNode =
-          new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
-      cur.addChild(leafName, measurementMNode);
+          new MeasurementMNode(entityMNode, leafName, alias, dataType, encoding, compressor, props);
+      entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
       if (alias != null) {
-        cur.addAlias(alias, measurementMNode);
+        entityMNode.addAlias(alias, measurementMNode);
       }
       return measurementMNode;
     }
@@ -409,12 +411,14 @@ public class MTree implements Serializable {
         throw new PathAlreadyExistException(devicePath.getFullPath() + "." + leafName);
       }
 
+      IEntityMNode entityMNode = IEntityMNode.setToEntity(cur);
+
       int measurementsSize = measurements.size();
 
       // this measurementMNode could be a leaf or not.
       IMeasurementMNode measurementMNode =
           new MeasurementMNode(
-              cur,
+              entityMNode,
               leafName,
               new VectorMeasurementSchema(
                   leafName,
@@ -423,7 +427,7 @@ public class MTree implements Serializable {
                   encodings.toArray(new TSEncoding[measurementsSize]),
                   compressor),
               null);
-      cur.addChild(leafName, measurementMNode);
+      entityMNode.addChild(leafName, measurementMNode);
     }
   }
 
@@ -697,7 +701,7 @@ public class MTree implements Serializable {
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      curNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
+      deletedNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
     }
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and MeasurementMNode
@@ -1895,14 +1899,17 @@ public class MTree implements Serializable {
           ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
           for (int i = 0; i < childrenSize; i++) {
             IMNode child = nodeStack.removeFirst();
-            child.setParent(node);
             childrenMap.put(child.getName(), child);
             if (child instanceof MeasurementMNode) {
+              if (!node.isEntity()) {
+                node = IEntityMNode.setToEntity(node);
+              }
               String alias = ((IMeasurementMNode) child).getAlias();
               if (alias != null) {
-                node.addAlias(alias, child);
+                ((IEntityMNode) node).addAlias(alias, (IMeasurementMNode) child);
               }
             }
+            child.setParent(node);
           }
           node.setChildren(childrenMap);
         }
@@ -2010,6 +2017,14 @@ public class MTree implements Serializable {
         nodeStack.push(child);
         depthStack.push(depth);
       }
+    }
+  }
+
+  IEntityMNode setToEntity(IMNode node) {
+    // synchronize check and replace, we need replaceChild become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      return IEntityMNode.setToEntity(node);
     }
   }
 }

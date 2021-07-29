@@ -50,18 +50,8 @@ public class InternalMNode extends MNode {
   @SuppressWarnings("squid:S3077")
   protected transient volatile Map<String, IMNode> children = null;
 
-  /**
-   * suppress warnings reason: volatile for double synchronized check
-   *
-   * <p>This will be a ConcurrentHashMap instance
-   */
-  @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, IMNode> aliasChildren = null;
-
   // device template
   protected Template deviceTemplate = null;
-
-  private volatile boolean useTemplate = false;
 
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
@@ -71,8 +61,7 @@ public class InternalMNode extends MNode {
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name))
-        || (aliasChildren != null && aliasChildren.containsKey(name));
+    return (children != null && children.containsKey(name));
   }
 
   /** get the child with the name */
@@ -82,10 +71,7 @@ public class InternalMNode extends MNode {
     if (children != null) {
       child = children.get(name);
     }
-    if (child != null) {
-      return child;
-    }
-    return aliasChildren == null ? null : aliasChildren.get(name);
+    return child;
   }
 
   /**
@@ -153,30 +139,40 @@ public class InternalMNode extends MNode {
   /**
    * replace a child of this mnode
    *
-   * @param measurement measurement name
+   * @param oldChildName measurement name
    * @param newChildNode new child node
    */
   @Override
-  public void replaceChild(String measurement, IMNode newChildNode) {
-    IMNode oldChildNode = this.getChild(measurement);
+  public void replaceChild(String oldChildName, IMNode newChildNode) {
+    IMNode oldChildNode = this.getChild(oldChildName);
     if (oldChildNode == null) {
       return;
     }
 
     // newChildNode builds parent-child relationship
     Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    newChildNode.setChildren(grandChildren);
-    grandChildren.forEach(
-        (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
+    if (!grandChildren.isEmpty()) {
+      newChildNode.setChildren(grandChildren);
+      grandChildren.forEach(
+          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
+    }
 
-    Map<String, IMNode> grandAliasChildren = oldChildNode.getAliasChildren();
-    newChildNode.setAliasChildren(grandAliasChildren);
-    grandAliasChildren.forEach(
-        (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
+    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
+      Map<String, IMeasurementMNode> grandAliasChildren =
+          ((IEntityMNode) oldChildNode).getAliasChildren();
+      if (!grandAliasChildren.isEmpty()) {
+        ((IEntityMNode) newChildNode).setAliasChildren(grandAliasChildren);
+        grandAliasChildren.forEach(
+            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
+      }
+      ((IEntityMNode) newChildNode).setUseTemplate(oldChildNode.isUseTemplate());
+    }
+
+    newChildNode.setDeviceTemplate(oldChildNode.getDeviceTemplate());
 
     newChildNode.setParent(this);
 
-    this.deleteChild(measurement);
+    this.deleteChild(oldChildName);
     this.addChild(newChildNode.getName(), newChildNode);
   }
 
@@ -210,52 +206,6 @@ public class InternalMNode extends MNode {
   @Override
   public void setChildren(Map<String, IMNode> children) {
     this.children = children;
-  }
-
-  /** add an alias */
-  @Override
-  public boolean addAlias(String alias, IMNode child) {
-    if (aliasChildren == null) {
-      // double check, alias children volatile
-      synchronized (this) {
-        if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
-        }
-      }
-    }
-
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
-  }
-
-  /** delete the alias of a child */
-  @Override
-  public void deleteAliasChild(String alias) {
-    if (aliasChildren != null) {
-      aliasChildren.remove(alias);
-    }
-  }
-
-  @Override
-  public Map<String, IMNode> getAliasChildren() {
-    if (aliasChildren == null) {
-      return Collections.emptyMap();
-    }
-    return aliasChildren;
-  }
-
-  @Override
-  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
-    this.aliasChildren = aliasChildren;
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
   }
 
   /**

@@ -862,7 +862,7 @@ public class MManagerBasicTest {
     manager.setDeviceTemplate(setDeviceTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node.setUseTemplate(true);
+    node = manager.setUsingDeviceTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -1264,7 +1264,7 @@ public class MManagerBasicTest {
       SetDeviceTemplatePlan setDeviceTemplatePlan =
           new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -1357,7 +1357,7 @@ public class MManagerBasicTest {
       SetDeviceTemplatePlan setDeviceTemplatePlan =
           new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
           new PartialPath("root.computer.d1.s2"),
@@ -1368,7 +1368,7 @@ public class MManagerBasicTest {
 
       setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.getDeviceNode(new PartialPath("root.computer.d1")).setUseTemplate(true);
+      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
 
       Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
@@ -1423,7 +1423,7 @@ public class MManagerBasicTest {
       SetDeviceTemplatePlan setDeviceTemplatePlan =
           new SetDeviceTemplatePlan("template1", "root.laptop.d1");
       manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.getDeviceNode(new PartialPath("root.laptop.d1")).setUseTemplate(true);
+      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),

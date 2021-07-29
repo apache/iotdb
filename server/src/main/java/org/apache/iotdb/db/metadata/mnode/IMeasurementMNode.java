@@ -26,6 +26,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 /** This interface defines a MeasurementMNode's operation interfaces. */
 public interface IMeasurementMNode extends IMNode {
 
+  @Override
+  IEntityMNode getParent();
+
   IMeasurementSchema getSchema();
 
   void setSchema(IMeasurementSchema schema);

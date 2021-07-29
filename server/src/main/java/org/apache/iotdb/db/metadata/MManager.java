@@ -452,6 +452,9 @@ public class MManager {
               plan.getProps(),
               plan.getAlias());
 
+      // the cached mNode may be replaced by new entityMNode in mtree
+      mNodeCache.removeObject(path.getDevicePath());
+
       // update tag index
       if (plan.getTags() != null) {
         // tag key, tag value
@@ -553,6 +556,9 @@ public class MManager {
       // create time series in MTree
       mtree.createAlignedTimeseries(
           prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+
+      // the cached mNode may be replaced by new entityMNode in mtree
+      mNodeCache.removeObject(prefixPath.getDevicePath());
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
@@ -1748,10 +1754,14 @@ public class MManager {
               if (!plan.isAligned()) {
                 internalCreateTimeseries(
                     prefixPath.concatNode(measurement), plan.getDataTypes()[i]);
+                // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+                deviceMNode.left = mtree.getNodeByPath(deviceId);
                 measurementMNode = (IMeasurementMNode) deviceMNode.left.getChild(measurement);
               } else {
                 internalAlignedCreateTimeseries(
                     prefixPath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+                deviceMNode.left = mtree.getNodeByPath(deviceId);
                 measurementMNode = (IMeasurementMNode) deviceMNode.left.getChild(vectorId);
               }
             } else {
@@ -1876,7 +1886,7 @@ public class MManager {
       String schemaName = vectorId != null ? vectorId : measurement;
       IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.left.isUseTemplate()) {
-        deviceMNode.left.setUseTemplate(true);
+        deviceMNode.left = setUsingDeviceTemplate(deviceMNode.left);
         try {
           logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
         } catch (IOException e) {
@@ -1975,14 +1985,25 @@ public class MManager {
 
   private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
     try {
-      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+      setUsingDeviceTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {
       // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
       // when writing concurrently, so we need a auto-create mechanism here
       mtree.getDeviceNodeWithAutoCreating(
           plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
-      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+      setUsingDeviceTemplate(getDeviceNode(plan.getPrefixPath()));
     }
+  }
+
+  IEntityMNode setUsingDeviceTemplate(IMNode node) {
+    // this operation may change mtree structure and node type
+    // invoke mnode.setUseTemplate is invalid
+    IEntityMNode entityMNode = mtree.setToEntity(node);
+    entityMNode.setUseTemplate(true);
+    if (node != entityMNode) {
+      mNodeCache.removeObject(entityMNode.getPartialPath());
+    }
+    return entityMNode;
   }
 
   public long getTotalSeriesNumber() {
