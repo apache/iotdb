@@ -594,7 +594,7 @@ public class MManager {
       // for not support deleting part of aligned timeseies
       // should be removed after partial deletion is supported
       IMNode lastNode = getNodeByPath(allTimeseries.get(0));
-      if (lastNode instanceof MeasurementMNode) {
+      if (lastNode.isMeasurement()) {
         IMeasurementSchema schema = ((IMeasurementMNode) lastNode).getSchema();
         if (schema instanceof VectorMeasurementSchema) {
           if (schema.getValueMeasurementIdList().size() != allTimeseries.size()) {
@@ -1252,14 +1252,14 @@ public class MManager {
         }
       }
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.left instanceof StorageGroupMNode)) {
+      if (!(node.left.isStorageGroup())) {
         logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
       }
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
-      if (!(node.left instanceof StorageGroupMNode)) {
+      if (!(node.left.isStorageGroup())) {
         logWriter.autoCreateDeviceMNode(new AutoCreateDeviceMNodePlan(node.left.getPartialPath()));
       }
       return node;
@@ -1395,7 +1395,7 @@ public class MManager {
       PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1445,7 +1445,7 @@ public class MManager {
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1469,7 +1469,7 @@ public class MManager {
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1496,7 +1496,7 @@ public class MManager {
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1517,7 +1517,7 @@ public class MManager {
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1541,7 +1541,7 @@ public class MManager {
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
     IMNode IMNode = mtree.getNodeByPath(fullPath);
-    if (!(IMNode instanceof MeasurementMNode)) {
+    if (!(IMNode.isMeasurement())) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
     IMeasurementMNode leafMNode = (IMeasurementMNode) IMNode;
@@ -1579,7 +1579,7 @@ public class MManager {
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       IMNode node = nodeDeque.removeFirst();
-      if (node instanceof MeasurementMNode) {
+      if (node.isMeasurement()) {
         IMeasurementSchema nodeSchema = ((IMeasurementMNode) node).getSchema();
         timeseriesSchemas.add(
             new TimeseriesSchema(
@@ -1604,7 +1604,7 @@ public class MManager {
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
       IMNode node = nodeDeque.removeFirst();
-      if (node instanceof MeasurementMNode) {
+      if (node.isMeasurement()) {
         IMeasurementSchema nodeSchema = ((IMeasurementMNode) node).getSchema();
         measurementSchemas.add(nodeSchema);
       } else if (!node.getChildren().isEmpty()) {
@@ -1709,13 +1709,13 @@ public class MManager {
 
     // 1. get device node
     Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
-    if (!(deviceMNode.left instanceof MeasurementMNode)
+    if (!(deviceMNode.left.isMeasurement())
         && deviceMNode.left.getDeviceTemplate() != null) {
       deviceMNode.right = deviceMNode.left.getDeviceTemplate();
     }
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    if (deviceMNode.left instanceof MeasurementMNode
+    if (deviceMNode.left.isMeasurement()
         && ((IMeasurementMNode) deviceMNode.left).getSchema() instanceof VectorMeasurementSchema
         && !plan.isAligned()) {
       throw new MetadataException(
@@ -1726,7 +1726,7 @@ public class MManager {
     // check insert aligned InsertPlan for non-aligned timeseries
     else if (plan.isAligned()
         && deviceMNode.left.getChild(vectorId) != null
-        && !(deviceMNode.left.getChild(vectorId) instanceof MeasurementMNode)) {
+        && !(deviceMNode.left.getChild(vectorId).isMeasurement())) {
       throw new MetadataException(
           String.format(
               "Path [%s] is not an aligned timeseries, please set InsertPlan.isAligned() = false",
@@ -1740,9 +1740,9 @@ public class MManager {
       try {
         String measurement = measurementList[i];
         IMNode child = getMNode(deviceMNode.left, plan.isAligned() ? vectorId : measurement);
-        if (child instanceof MeasurementMNode) {
+        if (child.isMeasurement()) {
           measurementMNode = (IMeasurementMNode) child;
-        } else if (child instanceof StorageGroupMNode) {
+        } else if (child.isStorageGroup()) {
           throw new PathAlreadyExistException(deviceId + PATH_SEPARATOR + measurement);
         } else if ((measurementMNode = findTemplate(deviceMNode, measurement, vectorId)) != null) {
           // empty
