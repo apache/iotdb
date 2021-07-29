@@ -90,6 +90,11 @@ func (s *DefaultApiService) PostV1GrafanaNode(ctx context.Context, requestBody [
 // PostV1PrometheusQuery - Serve for queries from Prometheus
 func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent string, xPrometheusRemoteReadVersion string, body map[string]interface{}) (ImplResponse, error) {
 	req := body["prometheusReadRequest"].(prompb.ReadRequest)
+	session := client.NewSession(&util.SessionConfig)
+	err := session.Open(false, 0)
+	if err != nil {
+		log.Println("open error " , err)
+	}
 	var promResults []*prompb.QueryResult
 	for _, query := range req.Queries {
 		var (
@@ -99,6 +104,7 @@ func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent
 			sensor string
 		)
 		startTime := query.StartTimestampMs + util.StartTimeDeviation
+		//startTime := query.StartTimestampMs
 		endTime := query.EndTimestampMs
 		for _,label := range query.GetMatchers() {
 			metricName, tagKeyValues = util.AddDoubleQuotes(label.Name, label.Value, metricName, tagKeyValues)
@@ -113,8 +119,13 @@ func (s *DefaultApiService) PostV1PrometheusQuery(ctx context.Context, userAgent
 			}
 		}
 		step := query.Hints.StepMs
-		sql := util.TransToPointQuery(sensor, dvId, startTime, endTime, step)
-		queryDataSet, _ := util.Session.ExecuteQueryStatement(sql,0)
+		var sql string
+		if step == 0 {
+			sql = util.TransToPointQueryNoStep(sensor, dvId, startTime, endTime)
+		} else {
+			sql = util.TransToPointQuery(sensor, dvId, startTime, endTime, step)
+		}
+		queryDataSet, _ := session.ExecuteQueryStatement(sql,0)
 		promResults = util.TransResultToPrometheus(queryDataSet,promResults)
 
 	}

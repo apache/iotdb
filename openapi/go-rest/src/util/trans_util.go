@@ -188,10 +188,14 @@ func AddDoubleQuotes(labelName string, labelValue string, metricName string, tag
 
 // Trans to PointQuerySQL through sensor, deviceId and time
 func TransToPointQuery(sensor string, dvId string, start int64, end int64, step int64) string {
+	sql := Select + LastValue + LeftSmall + sensor + RightSmall + From + dvId + GroupBy + LeftSmall + LeftMid + strconv.Itoa(int(start)) + Comma + strconv.Itoa(int(end)) +
+		RightSmall + Comma + strconv.Itoa(int(step)) + Ms + RightSmall + Fill
+	return sql
+}
+
+func TransToPointQueryNoStep(sensor string, dvId string, start int64, end int64) string {
 	sql := Select + sensor + From + dvId + Where + Time + Ge + strconv.Itoa(int(start)) + And + Time + Le +
 		strconv.Itoa(int(end))
-	sql = Select + LastValue + LeftSmall + sensor + RightSmall + From + dvId + GroupBy + LeftSmall + LeftMid + strconv.Itoa(int(start)) + Comma + strconv.Itoa(int(end)) +
-		RightSmall + Comma + strconv.Itoa(int(step)) + Ms + RightSmall + Fill
 	return sql
 }
 
