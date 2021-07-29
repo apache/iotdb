@@ -197,7 +197,6 @@ public class InsertTabletPlanGenerator {
       }
 
       nonEmptyColumnNames.add(targetMeasurementIds.get(i));
-      times[countOfNonEmptyColumns] = times[i];
       columns[countOfNonEmptyColumns] = columns[i];
       bitMaps[countOfNonEmptyColumns] = bitMaps[i];
       dataTypes[countOfNonEmptyColumns] = dataTypes[i];
@@ -211,7 +210,6 @@ public class InsertTabletPlanGenerator {
     insertTabletPlan.setRowCount(rowCount);
 
     if (countOfNonEmptyColumns != columns.length) {
-      times = Arrays.copyOf(times, countOfNonEmptyColumns);
       columns = Arrays.copyOf(columns, countOfNonEmptyColumns);
       bitMaps = Arrays.copyOf(bitMaps, countOfNonEmptyColumns);
       dataTypes = Arrays.copyOf(dataTypes, countOfNonEmptyColumns);
