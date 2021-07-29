@@ -94,7 +94,8 @@ public class CompactionTaskManager implements IService {
         try {
           wait(200);
         } catch (InterruptedException e) {
-          e.printStackTrace();
+          logger.error("thread interrupted while waiting for compaction to end", e);
+          return;
         }
       }
       storageGroupTasks.clear();

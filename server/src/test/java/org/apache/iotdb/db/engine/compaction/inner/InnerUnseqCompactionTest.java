@@ -90,8 +90,8 @@ public class InnerUnseqCompactionTest {
       new CompactionOverlapType[] {
         CompactionOverlapType.FILE_NO_OVERLAP,
         CompactionOverlapType.FILE_OVERLAP_CHUNK_NO_OVERLAP,
-        CompactionOverlapType.FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP,
-        CompactionOverlapType.FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP
+        CompactionOverlapType.CHUNK_OVERLAP_PAGE_NO_OVERLAP,
+        CompactionOverlapType.PAGE_OVERLAP
       };
 
   @Before
@@ -227,7 +227,7 @@ public class InnerUnseqCompactionTest {
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
                     break;
-                  case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                  case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                     if (i == 0) {
                       chunkPagePointsRange = new ArrayList<>();
                       pagePointsRange = new ArrayList<>();
@@ -266,7 +266,7 @@ public class InnerUnseqCompactionTest {
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
                     break;
-                  case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                  case PAGE_OVERLAP:
                     if (i == 1) {
                       chunkPagePointsNum = new ArrayList<>();
                       pagePointsNum = new ArrayList<>();
@@ -379,12 +379,12 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
@@ -403,12 +403,12 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
@@ -429,12 +429,12 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1749L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1749L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1749L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3549L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1250L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1250L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1199L);
@@ -453,12 +453,12 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1800L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1800L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1250L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1250L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
@@ -483,13 +483,13 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
@@ -511,13 +511,13 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3000L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 650L);
@@ -543,14 +543,14 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
@@ -575,14 +575,14 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 3600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1200L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 650L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1250L);
@@ -613,7 +613,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2349L);
@@ -621,7 +621,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
@@ -649,7 +649,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2400L);
@@ -657,7 +657,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 600L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);
@@ -693,7 +693,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2349L);
@@ -704,7 +704,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
@@ -741,7 +741,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[10], 1000L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_NO_OVERLAP:
+                      case CHUNK_OVERLAP_PAGE_NO_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 2400L);
@@ -752,7 +752,7 @@ public class InnerUnseqCompactionTest {
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 600L);
                         break;
-                      case FILE_OVERLAP_CHUNK_OVERLAP_PAGE_OVERLAP:
+                      case PAGE_OVERLAP:
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
                         putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 600L);

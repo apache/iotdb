@@ -144,7 +144,7 @@ public class TsFileResourceManager {
     }
   }
 
-  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
+  public void addForRecover(TsFileResource tsFileResource, boolean sequence) {
     if (sequence) {
       sequenceRecoverTsFileResources.add(tsFileResource);
     } else {
@@ -288,7 +288,7 @@ public class TsFileResourceManager {
     return unsequenceRecoverTsFileResources;
   }
 
-  // ({systemTime}-{versionNum}-{compactionNum}-{mergeNum}.tsfile)
+  // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)
   public static int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);

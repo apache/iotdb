@@ -694,7 +694,7 @@ public class StorageGroupProcessor {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
-            tsFileResourceManager.addRecover(tsFileResource, isSeq);
+            tsFileResourceManager.addForRecover(tsFileResource, isSeq);
           } else {
             tsFileResource.setClosed(true);
             tsFileResourceManager.add(tsFileResource, isSeq);

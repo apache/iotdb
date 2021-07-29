@@ -140,7 +140,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
         new HashSet<>(),
         true);
     compactionLogger.close();
-    tsFileResourceManager.addRecover(targetTsFileResource, true);
+    tsFileResourceManager.addForRecover(targetTsFileResource, true);
     //    tsFileResourceManager.recover();
     List<TsFileResource> recoverTsFile = new ArrayList<>();
     recoverTsFile.add(targetTsFileResource);
@@ -269,7 +269,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     }
     logStream.close();
 
-    tsFileResourceManager.addRecover(targetTsFileResource, true);
+    tsFileResourceManager.addForRecover(targetTsFileResource, true);
     context = new QueryContext();
     path =
         new PartialPath(
@@ -386,7 +386,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     out.truncate(Long.parseLong(logs.get(logs.size() - 1).split(" ")[1]) - 1);
     out.close();
 
-    tsFileResourceManager.addRecover(targetTsFileResource, true);
+    tsFileResourceManager.addForRecover(targetTsFileResource, true);
     context = new QueryContext();
     path =
         new PartialPath(
@@ -472,7 +472,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
         new HashSet<>(),
         false);
     compactionLogger.close();
-    tsFileResourceManager.addRecover(targetTsFileResource, false);
+    tsFileResourceManager.addForRecover(targetTsFileResource, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
     CompactionScheduler.currentTaskNum.getAndIncrement();
     new SizeTiredCompactionRecoverTask(
@@ -678,7 +678,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
         compactionLogger,
         new HashSet<>(),
         true);
-    tsFileResourceManager.addRecover(targetTsFileResource, true);
+    tsFileResourceManager.addForRecover(targetTsFileResource, true);
     compactionLogger.close();
     QueryContext context = new QueryContext();
     PartialPath path =
