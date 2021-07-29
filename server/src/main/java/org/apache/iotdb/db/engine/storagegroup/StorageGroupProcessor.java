@@ -2169,7 +2169,7 @@ public class StorageGroupProcessor {
           tsfileToBeInserted,
           newTsFileResource,
           newFilePartitionId,
-          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId).size())) {
+          tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId).size() - 1)) {
         updateLatestTimeMap(newTsFileResource);
       }
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
@@ -2232,6 +2232,14 @@ public class StorageGroupProcessor {
    */
   public void loadNewTsFile(TsFileResource newTsFileResource) throws LoadFileException {
     File tsfileToBeInserted = newTsFileResource.getTsFile();
+    System.out.println(tsfileToBeInserted.getPath());
+    for (String device : newTsFileResource.getDevices()) {
+      System.out.println(
+          "startTime: "
+              + newTsFileResource.getStartTime(device)
+              + " endTime: "
+              + newTsFileResource.getEndTime(device));
+    }
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
@@ -2239,6 +2247,7 @@ public class StorageGroupProcessor {
           tsFileResourceManager.getSequenceListByTimePartition(newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
+      System.out.println(insertPos);
       String newFileName, renameInfo;
       LoadTsFileType tsFileType;
 
@@ -2615,7 +2624,7 @@ public class StorageGroupProcessor {
         if (insertPos == -1) {
           tsFileResourceManager.insert(tsFileResource, true, 0);
         } else {
-          tsFileResourceManager.insert(tsFileResource, true, insertPos);
+          tsFileResourceManager.insert(tsFileResource, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
