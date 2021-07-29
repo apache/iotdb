@@ -404,7 +404,6 @@ public class StorageGroupProcessor {
     } else if (!storageGroupSysDir.exists()) {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
-    // TODO: new TsFileManagement
 
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     executorService.scheduleWithFixedDelay(
