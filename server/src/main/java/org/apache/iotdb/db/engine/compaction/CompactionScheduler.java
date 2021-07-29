@@ -38,11 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * CompactionScheduler schedules and submits the compaction task periodically, and it counts the total
- * number of running compaction task. There are three compaction strategy: BALANCE, INNER_CROSS,
- * CROSS_INNER. Difference strategies will lead to different compaction preferences. For different
- * types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call the
- * corresponding {@link org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector
+ * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
+ * total number of running compaction task. There are three compaction strategy: BALANCE,
+ * INNER_CROSS, CROSS_INNER. Difference strategies will lead to different compaction preferences.
+ * For different types of compaction task(e.g. InnerSpaceCompaction), CompactionScheduler will call
+ * the corresponding {@link org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector
  * selector} according to the compaction machanism of the task(e.g. LevelCompaction,
  * SizeTiredCompaction), and the selection and submission process is carried out in the {@link
  * AbstractCompactionSelector#selectAndSubmit() selectAndSubmit()} in selector.

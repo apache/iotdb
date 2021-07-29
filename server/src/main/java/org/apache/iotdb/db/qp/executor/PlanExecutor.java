@@ -1139,7 +1139,7 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().loadNewTsFile(resource);
       }
     } catch (Exception e) {
-      logger.error("fail to load file {}",file.getName(), e);
+      logger.error("fail to load file {}", file.getName(), e);
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
     }
