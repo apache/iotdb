@@ -344,9 +344,7 @@ public class MetadataIndexConstructorTest {
       List<String> measurements = new ArrayList<>();
       // single-variable measurement
       if (singleMeasurement != null) {
-        for (int j = 0; j < singleMeasurement[i].length; j++) {
-          measurements.add(singleMeasurement[i][j]);
-        }
+        measurements.addAll(Arrays.asList(singleMeasurement[i]));
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
