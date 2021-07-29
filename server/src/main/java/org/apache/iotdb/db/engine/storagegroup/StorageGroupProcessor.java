@@ -2622,9 +2622,9 @@ public class StorageGroupProcessor {
           return false;
         }
         if (insertPos == -1) {
-          tsFileResourceManager.insert(tsFileResource, true, 0);
+          tsFileResourceManager.insertToPartitionFileList(tsFileResource, true, 0);
         } else {
-          tsFileResourceManager.insert(tsFileResource, true, insertPos + 1);
+          tsFileResourceManager.insertToPartitionFileList(tsFileResource, true, insertPos + 1);
         }
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
