@@ -51,8 +51,8 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -840,7 +840,7 @@ public class PlanExecutor implements IPlanExecutor {
     return new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
   }
 
-  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+  protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
@@ -852,9 +852,9 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<PartialPath> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<StorageGroupMNode> storageGroups = getAllStorageGroupNodes();
+    List<IStorageGroupMNode> storageGroups = getAllStorageGroupNodes();
     int timestamp = 0;
-    for (StorageGroupMNode mNode : storageGroups) {
+    for (IStorageGroupMNode mNode : storageGroups) {
       PartialPath sgName = mNode.getPartialPath();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;

@@ -34,10 +34,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.*;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -596,7 +593,7 @@ public class MTree implements Serializable {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        StorageGroupMNode storageGroupMNode =
+        IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         cur.addChild(nodeNames[i], storageGroupMNode);
@@ -762,11 +759,11 @@ public class MTree implements Serializable {
    * device], throw exception Get storage group node, if the give path is not a storage group, throw
    * exception
    */
-  StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+  IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
     IMNode node = getNodeByPath(path);
     if (node instanceof StorageGroupMNode) {
-      return (StorageGroupMNode) node;
+      return (IStorageGroupMNode) node;
     } else {
       throw new StorageGroupNotSetException(path.getFullPath(), true);
     }
@@ -777,7 +774,7 @@ public class MTree implements Serializable {
    * device], return the MNode of root.sg Get storage group node, the give path don't need to be
    * storage group path.
    */
-  StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+  IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
@@ -789,7 +786,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodes[i]);
       if (cur instanceof StorageGroupMNode) {
-        return (StorageGroupMNode) cur;
+        return (IStorageGroupMNode) cur;
       }
     }
     throw new StorageGroupNotSetException(path.getFullPath());
@@ -985,14 +982,14 @@ public class MTree implements Serializable {
   }
 
   /** Get all storage group MNodes */
-  List<StorageGroupMNode> getAllStorageGroupNodes() {
-    List<StorageGroupMNode> ret = new ArrayList<>();
+  List<IStorageGroupMNode> getAllStorageGroupNodes() {
+    List<IStorageGroupMNode> ret = new ArrayList<>();
     Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
       IMNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
-        ret.add((StorageGroupMNode) current);
+        ret.add((IStorageGroupMNode) current);
       } else {
         nodeStack.addAll(current.getChildren().values());
       }

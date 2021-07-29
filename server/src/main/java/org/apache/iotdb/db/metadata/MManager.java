@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -851,7 +852,7 @@ public class MManager {
   }
 
   /** Get all storage group MNodes */
-  public List<StorageGroupMNode> getAllStorageGroupNodes() {
+  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return mtree.getAllStorageGroupNodes();
   }
 
@@ -1203,13 +1204,13 @@ public class MManager {
    * device], return the MNode of root.sg Get storage group node by path. If storage group is not
    * set, StorageGroupNotSetException will be thrown
    */
-  public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
     return mtree.getStorageGroupNodeByStorageGroupPath(path);
   }
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
-  public StorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+  public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
     return mtree.getStorageGroupNodeByPath(path);
   }
 
