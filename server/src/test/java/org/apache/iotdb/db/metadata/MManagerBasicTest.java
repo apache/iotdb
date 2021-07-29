@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -878,7 +878,7 @@ public class MManagerBasicTest {
 
     assertTrue(allSchema.isEmpty());
 
-    MeasurementMNode[] mNodes =
+    IMeasurementMNode[] mNodes =
         manager.getMNodes(new PartialPath("root.sg1.d1"), new String[] {"s11"});
     assertNotNull(mNodes[0]);
     assertEquals(mNodes[0].getSchema(), s11);
@@ -1550,7 +1550,7 @@ public class MManagerBasicTest {
               columns,
               true);
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
@@ -1602,7 +1602,7 @@ public class MManagerBasicTest {
               columns,
               false);
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
       manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
@@ -1637,7 +1637,7 @@ public class MManagerBasicTest {
           new InsertRowPlan(
               new PartialPath("root.laptop.d1"), time, new String[] {"s0"}, dataTypes, columns);
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
@@ -1686,7 +1686,7 @@ public class MManagerBasicTest {
               columns,
               true);
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
       manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);

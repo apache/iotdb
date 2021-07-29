@@ -21,7 +21,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -215,8 +215,8 @@ public class IoTDBLastIT {
         }
       }
 
-      MeasurementMNode node =
-          (MeasurementMNode)
+      IMeasurementMNode node =
+          (IMeasurementMNode)
               IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt01.temperature"));
       node.resetCache();
 
@@ -285,7 +285,7 @@ public class IoTDBLastIT {
 
       IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt02.temperature"));
-      ((MeasurementMNode) node).resetCache();
+      ((IMeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
 
@@ -325,7 +325,7 @@ public class IoTDBLastIT {
       }
       Assert.assertEquals(cnt, retArray.length);
 
-      ((MeasurementMNode) node).resetCache();
+      ((IMeasurementMNode) node).resetCache();
       String[] retArray3 =
           new String[] {
             "900,root.ln.wf01.wt01.temperature,10.2",
@@ -369,7 +369,7 @@ public class IoTDBLastIT {
 
       IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
-      ((MeasurementMNode) node).resetCache();
+      ((IMeasurementMNode) node).resetCache();
 
       statement.execute(
           "INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
@@ -418,7 +418,7 @@ public class IoTDBLastIT {
 
       IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt04.temperature"));
-      ((MeasurementMNode) node).resetCache();
+      ((IMeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute("select last temperature from root.ln.wf01.wt04");
 

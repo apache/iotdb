@@ -51,6 +51,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -1323,7 +1324,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     try {
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-        plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
+        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
         // check whether types are match
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
@@ -1402,7 +1403,7 @@ public class PlanExecutor implements IPlanExecutor {
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
       // When insert data with sql statement, the data types will be null here.
       // We need to predicted the data types first
       if (insertRowPlan.getDataTypes()[0] == null) {
@@ -1456,7 +1457,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     try {
       insertTabletPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
       getSeriesSchemas(insertTabletPlan);
       if (insertTabletPlan.isAligned()) {
         insertTabletPlan.setPrefixPath(insertTabletPlan.getPrefixPath().getDevicePath());

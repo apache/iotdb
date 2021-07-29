@@ -175,7 +175,7 @@ public class MTree implements Serializable {
     }
   }
 
-  public static long getLastTimeStamp(MeasurementMNode node, QueryContext queryContext) {
+  public static long getLastTimeStamp(IMeasurementMNode node, QueryContext queryContext) {
     TimeValuePair last = node.getCachedLast();
     if (last != null) {
       return node.getCachedLast().getTimestamp();
@@ -267,7 +267,7 @@ public class MTree implements Serializable {
    * @param props props
    * @param alias alias of measurement
    */
-  MeasurementMNode createTimeseries(
+  IMeasurementMNode createTimeseries(
       PartialPath path,
       TSDataType dataType,
       TSEncoding encoding,
@@ -335,7 +335,7 @@ public class MTree implements Serializable {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
-      MeasurementMNode measurementMNode =
+      IMeasurementMNode measurementMNode =
           new MeasurementMNode(cur, leafName, alias, dataType, encoding, compressor, props);
       cur.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
@@ -407,7 +407,7 @@ public class MTree implements Serializable {
       int measurementsSize = measurements.size();
 
       // this measurementMNode could be a leaf or not.
-      MeasurementMNode measurementMNode =
+      IMeasurementMNode measurementMNode =
           new MeasurementMNode(
               cur,
               leafName,
@@ -534,9 +534,9 @@ public class MTree implements Serializable {
         if (i == nodeNames.length - 1) {
           return true;
         }
-        if (((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+        if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
           return i == nodeNames.length - 2
-              && ((MeasurementMNode) cur).getSchema().isCompatible(nodeNames[i + 1]);
+              && ((IMeasurementMNode) cur).getSchema().isCompatible(nodeNames[i + 1]);
         } else {
           return false;
         }
@@ -611,7 +611,7 @@ public class MTree implements Serializable {
   }
 
   /** Delete a storage group */
-  List<MeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
+  List<IMeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
     IMNode cur = getNodeByPath(path);
     if (!(cur instanceof StorageGroupMNode)) {
       throw new StorageGroupNotSetException(path.getFullPath());
@@ -621,14 +621,14 @@ public class MTree implements Serializable {
     cur.getParent().deleteChild(cur.getName());
 
     // collect all the LeafMNode in this storage group
-    List<MeasurementMNode> leafMNodes = new LinkedList<>();
+    List<IMeasurementMNode> leafMNodes = new LinkedList<>();
     Queue<IMNode> queue = new LinkedList<>();
     queue.add(cur);
     while (!queue.isEmpty()) {
       IMNode node = queue.poll();
       for (IMNode child : node.getChildren().values()) {
         if (child instanceof MeasurementMNode) {
-          leafMNodes.add((MeasurementMNode) child);
+          leafMNodes.add((IMeasurementMNode) child);
         } else {
           queue.add(child);
         }
@@ -676,7 +676,7 @@ public class MTree implements Serializable {
    *
    * @param path Format: root.node(.node)+
    */
-  Pair<PartialPath, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
+  Pair<PartialPath, IMeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(PartialPath path)
       throws MetadataException {
     IMNode curNode = getNodeByPath(path);
     if (!(curNode instanceof MeasurementMNode)) {
@@ -687,12 +687,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    MeasurementMNode deletedNode = (MeasurementMNode) curNode;
+    IMeasurementMNode deletedNode = (IMeasurementMNode) curNode;
 
     // delete the last node of path
     curNode.getParent().deleteChild(path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      curNode.getParent().deleteAliasChild(((MeasurementMNode) curNode).getAlias());
+      curNode.getParent().deleteAliasChild(((IMeasurementMNode) curNode).getAlias());
     }
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group and MeasurementMNode
@@ -713,7 +713,7 @@ public class MTree implements Serializable {
    * Get measurement schema for a given path. Path must be a complete Path from root to leaf node.
    */
   IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
-    MeasurementMNode node = (MeasurementMNode) getNodeByPath(path);
+    IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
     return node.getSchema();
   }
 
@@ -808,7 +808,7 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (cur instanceof MeasurementMNode) {
         if (i == nodes.length - 1
-            || ((MeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
+            || ((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
           return cur;
         } else {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1101,7 +1101,7 @@ public class MTree implements Serializable {
       throws PathNotExistException {
     if (node instanceof MeasurementMNode) {
       if (idx < nodes.length) {
-        if (((MeasurementMNode) node).getSchema().isCompatible(nodes[idx])) {
+        if (((IMeasurementMNode) node).getSchema().isCompatible(nodes[idx])) {
           return 1;
         } else {
           if (!wildcard) {
@@ -1111,7 +1111,7 @@ public class MTree implements Serializable {
           }
         }
       } else {
-        return ((MeasurementMNode) node).getMeasurementCount();
+        return ((IMeasurementMNode) node).getMeasurementCount();
       }
     }
     if (idx < nodes.length) {
@@ -1342,14 +1342,14 @@ public class MTree implements Serializable {
       throws MetadataException {
     if (node instanceof MeasurementMNode) {
       if ((nodes.length <= idx
-          || ((MeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
+          || ((IMeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema)) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
           if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
             return;
           }
         }
-        IMeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
+        IMeasurementSchema measurementSchema = ((IMeasurementMNode) node).getSchema();
         if (measurementSchema instanceof MeasurementSchema) {
           addMeasurementSchema(
               node, timeseriesSchemaList, needLast, queryContext, measurementSchema, "*");
@@ -1454,14 +1454,16 @@ public class MTree implements Serializable {
     if (Pattern.matches(reg.replace("*", ".*"), measurementSchema.getMeasurementId())) {
       PartialPath nodePath = node.getPartialPath();
       String[] tsRow = new String[7];
-      tsRow[0] = ((MeasurementMNode) node).getAlias();
+      tsRow[0] = ((IMeasurementMNode) node).getAlias();
       tsRow[1] = getStorageGroupPath(nodePath).getFullPath();
       tsRow[2] = measurementSchema.getType().toString();
       tsRow[3] = measurementSchema.getEncodingType().toString();
       tsRow[4] = measurementSchema.getCompressor().toString();
-      tsRow[5] = String.valueOf(((MeasurementMNode) node).getOffset());
+      tsRow[5] = String.valueOf(((IMeasurementMNode) node).getOffset());
       tsRow[6] =
-          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+          needLast
+              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              : null;
       Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
       timeseriesSchemaList.add(temp);
     }
@@ -1489,7 +1491,9 @@ public class MTree implements Serializable {
       tsRow[4] = schema.getCompressor().toString();
       tsRow[5] = "-1";
       tsRow[6] =
-          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+          needLast
+              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              : null;
       Pair<PartialPath, String[]> temp =
           new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
       timeseriesSchemaList.add(temp);
@@ -1520,7 +1524,9 @@ public class MTree implements Serializable {
       tsRow[4] = schema.getCompressor().toString();
       tsRow[5] = "-1";
       tsRow[6] =
-          needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node, queryContext)) : null;
+          needLast
+              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              : null;
       Pair<PartialPath, String[]> temp =
           new Pair<>(new PartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
       timeseriesSchemaList.add(temp);
@@ -1887,7 +1893,7 @@ public class MTree implements Serializable {
             child.setParent(node);
             childrenMap.put(child.getName(), child);
             if (child instanceof MeasurementMNode) {
-              String alias = ((MeasurementMNode) child).getAlias();
+              String alias = ((IMeasurementMNode) child).getAlias();
               if (alias != null) {
                 node.addAlias(alias, child);
               }
@@ -1926,7 +1932,7 @@ public class MTree implements Serializable {
         jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
       }
     } else if (node instanceof MeasurementMNode) {
-      MeasurementMNode leafMNode = (MeasurementMNode) node;
+      IMeasurementMNode leafMNode = (IMeasurementMNode) node;
       jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
       jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
       jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));

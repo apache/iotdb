@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.Planner;
@@ -159,7 +160,7 @@ public class TTLTest {
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
-        new MeasurementMNode[] {
+        new IMeasurementMNode[] {
           new MeasurementMNode(
               null, null, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
@@ -192,7 +193,7 @@ public class TTLTest {
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
     plan.setValues(new Object[] {1L});
     plan.setMeasurementMNodes(
-        new MeasurementMNode[] {
+        new IMeasurementMNode[] {
           new MeasurementMNode(
               null, null, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN), null)
         });
