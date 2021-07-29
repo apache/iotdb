@@ -66,7 +66,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -913,8 +912,14 @@ public class CMManager extends MManager {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-            result =
-                syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+            try {
+              result =
+                  syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+            } catch (TException e) {
+              // the connection may be broken, close it to avoid it being reused
+              syncDataClient.getInputProtocol().getTransport().close();
+              throw e;
+            }
           }
         }
         if (result != null) {
@@ -940,97 +945,6 @@ public class CMManager extends MManager {
       }
     }
     return Collections.emptyList();
-  }
-
-  /**
-   * Get the data types of "paths". If "aggregation" is not null, every path will use the
-   * aggregation. First get types locally and if some paths does not exists, pull them from other
-   * nodes.
-   *
-   * @return the left one of the pair is the column types (considering aggregation), the right one
-   *     of the pair is the measurement types (not considering aggregation)
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPaths(
-      List<PartialPath> pathStrs, String aggregation) throws MetadataException {
-    try {
-      return getSeriesTypesByPathsLocally(pathStrs, aggregation);
-    } catch (PathNotExistException e) {
-      // pull schemas remotely and cache them
-      metaPuller.pullTimeSeriesSchemas(pathStrs, null);
-      return getSeriesTypesByPathsLocally(pathStrs, aggregation);
-    }
-  }
-
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathsLocally(
-      List<PartialPath> pathStrs, String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes =
-        SchemaUtils.getSeriesTypesByPaths(pathStrs, (String) null);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregation == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes =
-          SchemaUtils.getAggregatedDataTypes(measurementDataTypes, aggregation);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
-    }
-  }
-
-  /**
-   * Get the data types of "paths". If "aggregations" is not null, each one of it correspond to one
-   * in "paths". First get types locally and if some paths does not exists, pull them from other
-   * nodes.
-   *
-   * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
-   * @return the left one of the pair is the column types (considering aggregation), the right one
-   *     of the pair is the measurement types (not considering aggregation)
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    try {
-      return getSeriesTypesByPathLocally(paths, aggregations);
-    } catch (PathNotExistException e) {
-      return getSeriesTypesByPathRemotely(paths, aggregations);
-    }
-  }
-
-  /**
-   * get data types of the given paths considering the aggregations from CMManger.
-   *
-   * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
-   * @return the left one of the pair is the column types (considering aggregation), the right one
-   *     of the pair is the measurement types (not considering aggregation)
-   */
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregations == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
-    }
-  }
-
-  /**
-   * pull schemas from remote nodes and cache them, then get data types of the given paths
-   * considering the aggregations from CMManger.
-   *
-   * @param aggregations nullable, when not null, correspond to "paths" one-to-one.
-   * @return the left one of the pair is the column types (considering aggregation), the right one
-   *     of the pair is the measurement types (not considering aggregation)
-   */
-  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    // pull schemas remotely and cache them
-    metaPuller.pullTimeSeriesSchemas(paths, null);
-    return getSeriesTypesByPathLocally(paths, aggregations);
   }
 
   /**
@@ -1163,8 +1077,13 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+        try {
+          result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
 
@@ -1291,8 +1210,13 @@ public class CMManager extends MManager {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        paths = syncDataClient.getAllDevices(header, pathsToQuery);
+        try {
+          paths = syncDataClient.getAllDevices(header, pathsToQuery);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return paths;
@@ -1565,7 +1489,7 @@ public class CMManager extends MManager {
               () -> {
                 try {
                   showTimeseries(group, plan, resultSet, context);
-                } catch (CheckConsistencyException e) {
+                } catch (CheckConsistencyException | MetadataException e) {
                   logger.error("Cannot get show timeseries result of {} from {}", plan, group);
                 }
                 return null;
@@ -1752,10 +1676,16 @@ public class CMManager extends MManager {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        plan.serialize(dataOutputStream);
-        resultBinary =
-            syncDataClient.getAllMeasurementSchema(
-                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        try {
+          plan.serialize(dataOutputStream);
+          resultBinary =
+              syncDataClient.getAllMeasurementSchema(
+                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return resultBinary;
@@ -1777,11 +1707,16 @@ public class CMManager extends MManager {
               metaGroupMember
                   .getClientProvider()
                   .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        plan.serialize(dataOutputStream);
-        resultBinary =
-            syncDataClient.getDevices(
-                group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        try {
+          plan.serialize(dataOutputStream);
+          resultBinary =
+              syncDataClient.getDevices(
+                  group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return resultBinary;

@@ -160,11 +160,10 @@ public class TsFileProcessor {
       StorageGroupInfo storageGroupInfo,
       CloseFileListener closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback,
-      boolean sequence,
-      int deviceNumInLastClosedTsFile)
+      boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.tsFileResource = new TsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
+    this.tsFileResource = new TsFileResource(tsfile, this);
     this.storageGroupInfo = storageGroupInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
@@ -1298,6 +1297,11 @@ public class TsFileProcessor {
 
   public long getWorkMemTableRamCost() {
     return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
+  }
+
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableCreatedTime() {
+    return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
   }
 
   public boolean isSequence() {
