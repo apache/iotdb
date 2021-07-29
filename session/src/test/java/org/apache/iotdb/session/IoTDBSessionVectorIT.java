@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 /** use session interface to IT for vector timeseries insert and select Black-box Testing */
 public class IoTDBSessionVectorIT {
@@ -82,10 +83,9 @@ public class IoTDBSessionVectorIT {
       }
 
       dataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
-    } catch (StatementExecutionException e) {
-      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -109,9 +109,7 @@ public class IoTDBSessionVectorIT {
       }
 
       dataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
   }
@@ -138,9 +136,7 @@ public class IoTDBSessionVectorIT {
       }
 
       dataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
   }
@@ -176,10 +172,8 @@ public class IoTDBSessionVectorIT {
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
           schemaList.get(0).getValueMeasurementIdList().get(0), rowIndex, row * 10 + 1L);
-      //          new SecureRandom().nextLong());
       tablet.addValue(
           schemaList.get(0).getValueMeasurementIdList().get(1), rowIndex, (int) (row * 10 + 2));
-      //          new SecureRandom().nextInt());
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);

@@ -52,8 +52,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /** test for MetadataIndexConstructor */
 public class MetadataIndexConstructorTest {
@@ -230,6 +229,7 @@ public class MetadataIndexConstructorTest {
       }
     } catch (IOException e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
     // 4.3 make sure split leaf correctly
     for (int j = 0; j < actualDevices.size(); j++) {
@@ -254,6 +254,7 @@ public class MetadataIndexConstructorTest {
       deviceDFS(devices, measurements, reader, metadataIndexNode);
     } catch (IOException e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -263,24 +264,29 @@ public class MetadataIndexConstructorTest {
       List<List<String>> measurements,
       TsFileSequenceReader reader,
       MetadataIndexNode node) {
-    assertTrue(
-        node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)
-            || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE));
-    for (int i = 0; i < node.getChildren().size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
-      long endOffset = node.getEndOffset();
-      if (i != node.getChildren().size() - 1) {
-        endOffset = node.getChildren().get(i + 1).getOffset();
+    try {
+      assertTrue(
+          node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)
+              || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE));
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
+        long endOffset = node.getEndOffset();
+        if (i != node.getChildren().size() - 1) {
+          endOffset = node.getChildren().get(i + 1).getOffset();
+        }
+        MetadataIndexNode subNode =
+            reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
+        if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          devices.add(metadataIndexEntry.getName());
+          measurements.add(new ArrayList<>());
+          measurementDFS(devices.size() - 1, measurements, reader, subNode);
+        } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
+          deviceDFS(devices, measurements, reader, subNode);
+        }
       }
-      MetadataIndexNode subNode =
-          reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
-      if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_DEVICE)) {
-        devices.add(metadataIndexEntry.getName());
-        measurements.add(new ArrayList<>());
-        measurementDFS(devices.size() - 1, measurements, reader, subNode);
-      } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_DEVICE)) {
-        deviceDFS(devices, measurements, reader, subNode);
-      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
   /** DFS in measurement level load actual measurements */
@@ -289,23 +295,29 @@ public class MetadataIndexConstructorTest {
       List<List<String>> measurements,
       TsFileSequenceReader reader,
       MetadataIndexNode node) {
-    assertTrue(
-        node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)
-            || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-    for (int i = 0; i < node.getChildren().size(); i++) {
-      MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
-      long endOffset = node.getEndOffset();
-      if (i != node.getChildren().size() - 1) {
-        endOffset = node.getChildren().get(i + 1).getOffset();
+
+    try {
+      assertTrue(
+          node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)
+              || node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        MetadataIndexEntry metadataIndexEntry = node.getChildren().get(i);
+        long endOffset = node.getEndOffset();
+        if (i != node.getChildren().size() - 1) {
+          endOffset = node.getChildren().get(i + 1).getOffset();
+        }
+        if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+          // 把每个叶子节点的第一个加进来
+          measurements.get(deviceIndex).add(metadataIndexEntry.getName());
+        } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
+          MetadataIndexNode subNode =
+              reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
+          measurementDFS(deviceIndex, measurements, reader, subNode);
+        }
       }
-      if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-        // 把每个叶子节点的第一个加进来
-        measurements.get(deviceIndex).add(metadataIndexEntry.getName());
-      } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
-        MetadataIndexNode subNode =
-            reader.getMetadataIndexNode(metadataIndexEntry.getOffset(), endOffset);
-        measurementDFS(deviceIndex, measurements, reader, subNode);
-      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -361,13 +373,12 @@ public class MetadataIndexConstructorTest {
    */
   private void generateFile(
       String[] devices, int[][] vectorMeasurement, String[][] singleMeasurement) {
-    try {
-      File f = FSFactoryProducer.getFSFactory().getFile(FILE_PATH);
-      if (f.exists() && !f.delete()) {
-        throw new RuntimeException("can not delete " + f.getAbsolutePath());
-      }
-      Schema schema = new Schema();
-      TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
+    File f = FSFactoryProducer.getFSFactory().getFile(FILE_PATH);
+    if (f.exists() && !f.delete()) {
+      fail("can not delete " + f.getAbsolutePath());
+    }
+    Schema schema = new Schema();
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
       // write single-variable timeseries
       if (singleMeasurement != null) {
         for (int i = 0; i < singleMeasurement.length; i++) {
@@ -445,9 +456,9 @@ public class MetadataIndexConstructorTest {
           }
         }
       }
-      tsFileWriter.close();
     } catch (Exception e) {
       logger.error("meet error in TsFileWrite with tablet", e);
+      fail(e.getMessage());
     }
   }
 

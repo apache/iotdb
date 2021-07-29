@@ -651,7 +651,6 @@ public class TsFileSequenceReader implements AutoCloseable {
         if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
           deviceId = metadataIndex.getName();
         }
-        //        deviceId = metadataIndex.getName();
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
@@ -1179,7 +1178,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
       truncatedSize = this.position() - 1;
     } catch (Exception e) {
-      e.printStackTrace();
       logger.info(
           "TsFile {} self-check cannot proceed at position {} " + "recovered, because : {}",
           file,
@@ -1278,14 +1276,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param endOffset end read offset
    * @return MetadataIndexNode
    */
-  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset) {
-    MetadataIndexNode metadataIndexNode = null;
-    try {
-      metadataIndexNode = MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
-    } catch (IOException e) {
-      logger.error("Something error happened while reading file metadata of file {}", file);
-    }
-    return metadataIndexNode;
+  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
+      throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
   }
 
   /**

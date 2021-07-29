@@ -365,7 +365,8 @@ public class TsFileSketchTool {
       MetadataIndexNode metadataIndexNode,
       TreeMap<Long, MetadataIndexNode> metadataIndexNodeMap,
       List<String> treeOutputStringBuffer,
-      int deep) {
+      int deep)
+      throws IOException {
     StringBuilder tableWriter = new StringBuilder("\t");
     for (int i = 0; i < deep; i++) {
       tableWriter.append("\t\t");

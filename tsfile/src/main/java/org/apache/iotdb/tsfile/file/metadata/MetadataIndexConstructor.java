@@ -24,9 +24,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.List;
@@ -36,8 +33,6 @@ import java.util.Queue;
 import java.util.TreeMap;
 
 public class MetadataIndexConstructor {
-
-  private static final Logger logger = LoggerFactory.getLogger(MetadataIndexConstructor.class);
 
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
@@ -80,10 +75,6 @@ public class MetadataIndexConstructor {
               new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
           serializedTimeseriesMetadataNum = 0;
         }
-        logger.debug(
-            "Start construct for {}'s timeseries metadata, offset={}",
-            timeseriesMetadata.getMeasurementId(),
-            out.getPosition());
         timeseriesMetadata.serializeTo(out.wrapAsStream());
         serializedTimeseriesMetadataNum++;
       }
