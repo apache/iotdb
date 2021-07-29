@@ -91,6 +91,11 @@ public class CompactionTaskManager implements IService {
     if (pool != null) {
       while (CompactionScheduler.currentTaskNum.get() > 0) {
         // wait
+        try {
+          wait(200);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
       storageGroupTasks.clear();
       logger.info("All compaction task finish");
