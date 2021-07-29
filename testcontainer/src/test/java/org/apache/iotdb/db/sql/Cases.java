@@ -466,21 +466,55 @@ public abstract class Cases {
   public void testSelectInto() throws SQLException {
     for (int i = 0; i < 10; i++) {
       writeStatement.execute(
-          String.format("INSERT INTO root.sg.d%s(timestamp,s) VALUES(%s,%s)", i, i, i));
+          String.format(
+              "CREATE timeseries root.sg.device%s.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+              i));
+      writeStatement.execute(
+          String.format(
+              "CREATE timeseries root.sg.device%s.t WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+              i));
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(1,1)", i));
     }
 
     writeStatement.execute(
-        "SELECT d0.s, d1.s, d2.s, d3.s, d4.s into d0.t, d1.t, d2.t, d3.t, d4.t from root.sg;");
-    for (int i = 5; i < 10; ++i) {
-      writeStatement.execute(String.format("SELECT d%s.s into d%s.t from root.sg;", i, i));
+        "SELECT device0.s, device1.s, device2.s, device3.s, device4.s, device5.s, device6.s, device7.s, device8.s, device9.s "
+            + "INTO device0.t, device1.t, device2.t, device3.t, device4.t, device5.t, device6.t, device7.t, device8.t, device9.t "
+            + "FROM root.sg;");
+
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(2,2)", i));
+      writeStatement.execute(
+          String.format("SELECT device%s.s into device%s.t from root.sg;", i, i));
     }
 
     for (Statement readStatement : readStatements) {
       for (int i = 0; i < 10; ++i) {
         try (ResultSet resultSet =
-            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.d%s", i))) {
+            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.device%s", i))) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(resultSet.getDouble(2), resultSet.getDouble(3), 0);
+          Assert.assertEquals(1, Double.parseDouble(resultSet.getString(1)), 0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(2, Double.parseDouble(resultSet.getString(1)), 0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
           Assert.assertFalse(resultSet.next());
         }
       }
