@@ -25,7 +25,7 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
@@ -114,7 +114,7 @@ public class IndexWholeMatchingPhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     Assert.assertEquals(QueryIndexPlan.class, plan.getClass());
     QueryIndexPlan queryIndexPlan = (QueryIndexPlan) plan;
-    Assert.assertEquals(Operator.OperatorType.QUERY_INDEX, queryIndexPlan.getOperatorType());
+    Assert.assertEquals(OperatorType.QUERY_INDEX, queryIndexPlan.getOperatorType());
     Assert.assertEquals(IndexType.RTREE_PAA, queryIndexPlan.getIndexType());
     Assert.assertEquals(1, queryIndexPlan.getPaths().size());
     Assert.assertEquals("root.Ery.*.Glu", queryIndexPlan.getPaths().get(0).getFullPath());

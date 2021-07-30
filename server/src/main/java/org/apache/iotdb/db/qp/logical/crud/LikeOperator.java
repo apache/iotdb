@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +38,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
+/** fuzzy query structure LikeOperator. */
 public class LikeOperator extends FunctionOperator {
 
   private Logger logger = LoggerFactory.getLogger(LikeOperator.class);
@@ -71,7 +71,7 @@ public class LikeOperator extends FunctionOperator {
       throw new LogicalOperatorException(type.toString(), "");
     } else {
       ret =
-          LIKE.getUnaryExpression(
+          Like.getUnaryExpression(
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
                       || (value.startsWith("\"") && value.endsWith("\""))
@@ -81,7 +81,7 @@ public class LikeOperator extends FunctionOperator {
     return new Pair<>(ret, singlePath.getFullPath());
   }
 
-  private static class LIKE {
+  private static class Like {
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         PartialPath path, String value) {
       return new SingleSeriesExpression(path, ValueFilter.like(value));
@@ -104,14 +104,8 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public LikeOperator copy() {
-    LikeOperator ret;
-    try {
-      ret =
-          new LikeOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
-    } catch (SQLParserException e) {
-      logger.error("error copy:", e);
-      return null;
-    }
+    LikeOperator ret =
+        new LikeOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;

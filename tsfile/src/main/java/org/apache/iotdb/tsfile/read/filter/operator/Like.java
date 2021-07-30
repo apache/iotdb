@@ -89,8 +89,8 @@ public class Like<T extends Comparable<T>> implements Filter {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
       ReadWriteIOUtils.writeObject(value, outputStream);
-    } catch (IOException ignored) {
-      // ignored
+    } catch (IOException ex) {
+      throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
     }
   }
 
