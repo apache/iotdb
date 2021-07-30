@@ -56,7 +56,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
@@ -268,7 +268,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[] {"1.0"});
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurementMNodes(new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+    insertPlan.setMeasurementMNodes(new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -323,7 +323,7 @@ public class DataLogApplierTest extends IoTDBTest {
       insertPlan.setValues(new Object[] {"1.0"});
       insertPlan.setNeedInferType(true);
       insertPlan.setMeasurementMNodes(
-          new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
       insertRowsPlan.addOneInsertRowPlan(insertPlan, i - 1);
     }
 

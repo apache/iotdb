@@ -83,10 +83,17 @@ public abstract class Cases {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
-      writeStatement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
+      try {
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
+      } catch (Exception e) {
+        if (timeSeries.equals("root.sg1.aa.bb")) {
+          e.printStackTrace();
+          fail();
+        }
+      }
     }
     ResultSet resultSet = null;
     // try to read data on each node.
@@ -96,10 +103,10 @@ public abstract class Cases {
       while (resultSet.next()) {
         result.add(resultSet.getString(1));
       }
-      Assert.assertEquals(3, result.size());
-      for (String timeseries : timeSeriesArray) {
-        Assert.assertTrue(result.contains(timeseries));
-      }
+      Assert.assertEquals(1, result.size());
+      Assert.assertTrue(result.contains("root.sg1.aa.bb"));
+      Assert.assertFalse(result.contains("root.sg1.aa.bb.cc"));
+      Assert.assertFalse(result.contains("root.sg1.aa"));
       resultSet.close();
     }
 

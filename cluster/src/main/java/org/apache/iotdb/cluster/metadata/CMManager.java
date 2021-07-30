@@ -45,6 +45,7 @@ import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -205,7 +206,7 @@ public class CMManager extends MManager {
     // try remote cache first
     try {
       cacheLock.readLock().lock();
-      MeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
       if (measurementMNode != null) {
         return measurementMNode.getDataType(path.getMeasurement());
       }
@@ -223,7 +224,7 @@ public class CMManager extends MManager {
           metaPuller.pullMeasurementSchemas(Collections.singletonList(path));
       if (!schemas.isEmpty()) {
         IMeasurementSchema measurementSchema = schemas.get(0);
-        MeasurementMNode measurementMNode =
+        IMeasurementMNode measurementMNode =
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
@@ -252,7 +253,7 @@ public class CMManager extends MManager {
     Map<IMNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
-      MeasurementMNode node = getMeasurementMNode(path);
+      IMeasurementMNode node = getMeasurementMNode(path);
       super.getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
     }
     return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
@@ -269,7 +270,7 @@ public class CMManager extends MManager {
    */
   @Override
   public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
-    MeasurementMNode node = getMeasurementMNode(partialPath);
+    IMeasurementMNode node = getMeasurementMNode(partialPath);
     if (node.getSchema() instanceof MeasurementSchema) {
       return partialPath;
     } else {
@@ -277,12 +278,12 @@ public class CMManager extends MManager {
     }
   }
 
-  private MeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
-    MeasurementMNode node = null;
+  private IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    IMeasurementMNode node = null;
     // try remote cache first
     try {
       cacheLock.readLock().lock();
-      MeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(fullPath);
       if (measurementMNode != null) {
         node = measurementMNode;
       }
@@ -293,14 +294,14 @@ public class CMManager extends MManager {
     if (node == null) {
       // try local MTree
       try {
-        node = (MeasurementMNode) super.getNodeByPath(fullPath);
+        node = (IMeasurementMNode) super.getNodeByPath(fullPath);
       } catch (PathNotExistException e) {
         // pull from remote node
         List<IMeasurementSchema> schemas =
             metaPuller.pullMeasurementSchemas(Collections.singletonList(fullPath));
         if (!schemas.isEmpty()) {
           IMeasurementSchema measurementSchema = schemas.get(0);
-          MeasurementMNode measurementMNode =
+          IMeasurementMNode measurementMNode =
               new MeasurementMNode(
                   null, measurementSchema.getMeasurementId(), measurementSchema, null);
           cacheMeta(fullPath, measurementMNode, true);
@@ -321,14 +322,14 @@ public class CMManager extends MManager {
    * @param measurements the measurements.
    */
   @Override
-  public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
+  public IMeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     try {
       return super.getMNodes(deviceId, measurements);
     } catch (MetadataException e) {
       // some measurements not exist in local
       // try cache
-      MeasurementMNode[] measurementMNodes = new MeasurementMNode[measurements.length];
+      IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[measurements.length];
       int failedMeasurementIndex = getMNodesLocally(deviceId, measurements, measurementMNodes);
       if (failedMeasurementIndex == -1) {
         return measurementMNodes;
@@ -352,12 +353,12 @@ public class CMManager extends MManager {
 
   /** @return -1 if all schemas are found, or the first index of the non-exist schema */
   private int getMNodesLocally(
-      PartialPath deviceId, String[] measurements, MeasurementMNode[] measurementMNodes) {
+      PartialPath deviceId, String[] measurements, IMeasurementMNode[] measurementMNodes) {
     int failedMeasurementIndex = -1;
     cacheLock.readLock().lock();
     try {
       for (int i = 0; i < measurements.length && failedMeasurementIndex == -1; i++) {
-        MeasurementMNode measurementMNode =
+        IMeasurementMNode measurementMNode =
             mRemoteMetaCache.get(deviceId.concatNode(measurements[i]));
         if (measurementMNode == null) {
           failedMeasurementIndex = i;
@@ -381,7 +382,7 @@ public class CMManager extends MManager {
     for (IMeasurementSchema schema : schemas) {
       // TODO-Cluster: also pull alias?
       // take care, the pulled schema's measurement Id is only series name
-      MeasurementMNode measurementMNode =
+      IMeasurementMNode measurementMNode =
           new MeasurementMNode(null, schema.getMeasurementId(), schema, null);
       cacheMeta(deviceId.concatNode(schema.getMeasurementId()), measurementMNode, true);
     }
@@ -393,7 +394,7 @@ public class CMManager extends MManager {
    */
   @Override
   public void cacheMeta(
-      PartialPath seriesPath, MeasurementMNode measurementMNode, boolean needSetFullPath) {
+      PartialPath seriesPath, IMeasurementMNode measurementMNode, boolean needSetFullPath) {
     if (needSetFullPath) {
       measurementMNode.setFullPath(seriesPath.getFullPath());
     }
@@ -408,10 +409,10 @@ public class CMManager extends MManager {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime,
-      MeasurementMNode node) {
+      IMeasurementMNode node) {
     cacheLock.writeLock().lock();
     try {
-      MeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
       if (measurementMNode != null) {
         measurementMNode.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       }
@@ -424,7 +425,7 @@ public class CMManager extends MManager {
 
   @Override
   public TimeValuePair getLastCache(PartialPath seriesPath) {
-    MeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
+    IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
       return measurementMNode.getCachedLast();
     }
@@ -435,7 +436,7 @@ public class CMManager extends MManager {
   @Override
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
         getMNodesLocally(plan.getPrefixPath(), plan.getMeasurements(), measurementMNodes);
     if (nonExistSchemaIndex == -1) {
@@ -462,7 +463,7 @@ public class CMManager extends MManager {
     // try cache
     cacheLock.readLock().lock();
     try {
-      MeasurementMNode measurementMNode = mRemoteMetaCache.get(device.concatNode(measurement));
+      IMeasurementMNode measurementMNode = mRemoteMetaCache.get(device.concatNode(measurement));
       if (measurementMNode != null) {
         return measurementMNode.getSchema();
       }
@@ -476,7 +477,7 @@ public class CMManager extends MManager {
     // try again
     cacheLock.readLock().lock();
     try {
-      MeasurementMNode measurementMeta = mRemoteMetaCache.get(device.concatNode(measurement));
+      IMeasurementMNode measurementMeta = mRemoteMetaCache.get(device.concatNode(measurement));
       if (measurementMeta != null) {
         return measurementMeta.getSchema();
       }
@@ -517,14 +518,14 @@ public class CMManager extends MManager {
         config.getDefaultStorageGroupLevel());
   }
 
-  private static class RemoteMetaCache extends LRUCache<PartialPath, MeasurementMNode> {
+  private static class RemoteMetaCache extends LRUCache<PartialPath, IMeasurementMNode> {
 
     RemoteMetaCache(int cacheSize) {
       super(cacheSize);
     }
 
     @Override
-    protected MeasurementMNode loadObjectByKey(PartialPath key) {
+    protected IMeasurementMNode loadObjectByKey(PartialPath key) {
       return null;
     }
 
@@ -534,7 +535,7 @@ public class CMManager extends MManager {
     }
 
     @Override
-    public synchronized MeasurementMNode get(PartialPath key) {
+    public synchronized IMeasurementMNode get(PartialPath key) {
       try {
         return super.get(key);
       } catch (IOException e) {

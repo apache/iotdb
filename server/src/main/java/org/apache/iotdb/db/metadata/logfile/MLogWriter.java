@@ -25,8 +25,8 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
@@ -194,7 +194,7 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void serializeMeasurementMNode(MeasurementMNode node) throws IOException {
+  public void serializeMeasurementMNode(IMeasurementMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();
@@ -205,7 +205,7 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void serializeStorageGroupMNode(StorageGroupMNode node) throws IOException {
+  public void serializeStorageGroupMNode(IStorageGroupMNode node) throws IOException {
     int childSize = 0;
     if (node.getChildren() != null) {
       childSize = node.getChildren().size();

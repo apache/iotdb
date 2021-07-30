@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -141,7 +141,7 @@ public class MManagerImproveTest {
       IMNode node = mManager.getDeviceNodeWithAutoCreate(new PartialPath(deviceId)).left;
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
-        MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
+        IMeasurementMNode measurementNode = (IMeasurementMNode) node.getChild(s);
         TSDataType dataType = measurementNode.getSchema().getType();
         assertEquals(TSDataType.TEXT, dataType);
       }

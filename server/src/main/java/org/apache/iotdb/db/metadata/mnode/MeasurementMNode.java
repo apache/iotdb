@@ -39,7 +39,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /** Represents an MNode which has a Measurement or Sensor attached to it. */
-public class MeasurementMNode extends MNode {
+public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   private static final Logger logger = LoggerFactory.getLogger(MeasurementMNode.class);
 
@@ -86,14 +86,17 @@ public class MeasurementMNode extends MNode {
     return 1;
   }
 
+  @Override
   public int getMeasurementCount() {
     return schema.getMeasurementCount();
   }
 
+  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }
 
+  @Override
   public TimeValuePair getCachedLast() {
     return cachedLastValuePair;
   }
@@ -105,6 +108,7 @@ public class MeasurementMNode extends MNode {
    * @param highPriorityUpdate whether it's a high priority update
    * @param latestFlushedTime latest flushed time
    */
+  @Override
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -131,34 +135,42 @@ public class MeasurementMNode extends MNode {
     return concatFullPath();
   }
 
+  @Override
   public void resetCache() {
     cachedLastValuePair = null;
   }
 
+  @Override
   public long getOffset() {
     return offset;
   }
 
+  @Override
   public void setOffset(long offset) {
     this.offset = offset;
   }
 
+  @Override
   public String getAlias() {
     return alias;
   }
 
+  @Override
   public TriggerExecutor getTriggerExecutor() {
     return triggerExecutor;
   }
 
+  @Override
   public void setAlias(String alias) {
     this.alias = alias;
   }
 
+  @Override
   public void setSchema(IMeasurementSchema schema) {
     this.schema = schema;
   }
 
+  @Override
   public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
     this.triggerExecutor = triggerExecutor;
   }
@@ -176,7 +188,7 @@ public class MeasurementMNode extends MNode {
    *     [3] TSDataType.ordinal() [4] TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props
    *     [7] offset [8] children size
    */
-  public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
+  public static IMeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
     String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
     Map<String, String> props = new HashMap<>();
@@ -192,14 +204,14 @@ public class MeasurementMNode extends MNode {
             Byte.parseByte(nodeInfo[4]),
             Byte.parseByte(nodeInfo[5]),
             props);
-    MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
+    IMeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
     return node;
   }
 
   /** deserialize MeasuremetMNode from MeasurementNodePlan */
-  public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
-    MeasurementMNode node =
+  public static IMeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
+    IMeasurementMNode node =
         new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
 
@@ -212,6 +224,7 @@ public class MeasurementMNode extends MNode {
    * @param measurementId if it's a vector schema, we need sensor name of it
    * @return measurement data type
    */
+  @Override
   public TSDataType getDataType(String measurementId) {
     if (schema instanceof MeasurementSchema) {
       return schema.getType();

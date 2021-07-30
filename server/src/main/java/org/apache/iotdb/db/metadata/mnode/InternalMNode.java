@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class InternalMNode extends MNode implements IMNode {
+public class InternalMNode extends MNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 

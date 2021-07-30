@@ -29,7 +29,7 @@ import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.TagLogFile;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -59,7 +59,7 @@ public class TagManager {
 
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
-  private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
+  private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
   private static class TagManagerHolder {
 
@@ -85,14 +85,14 @@ public class TagManager {
     tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
   }
 
-  public void addIndex(String tagKey, String tagValue, MeasurementMNode measurementMNode) {
+  public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(tagValue, v -> new CopyOnWriteArraySet<>())
         .add(measurementMNode);
   }
 
-  public void addIndex(Map<String, String> tagsMap, MeasurementMNode measurementMNode) {
+  public void addIndex(Map<String, String> tagsMap, IMeasurementMNode measurementMNode) {
     if (tagsMap != null && measurementMNode != null) {
       for (Map.Entry<String, String> entry : tagsMap.entrySet()) {
         addIndex(entry.getKey(), entry.getValue(), measurementMNode);
@@ -100,26 +100,26 @@ public class TagManager {
     }
   }
 
-  public void removeIndex(String tagKey, String tagValue, MeasurementMNode measurementMNode) {
+  public void removeIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
     tagIndex.get(tagKey).get(tagValue).remove(measurementMNode);
     if (tagIndex.get(tagKey).get(tagValue).isEmpty()) {
       tagIndex.get(tagKey).remove(tagValue);
     }
   }
 
-  public List<MeasurementMNode> getMatchedTimeseriesInIndex(
+  public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
-    Map<String, Set<MeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
+    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
     }
 
-    List<MeasurementMNode> allMatchedNodes = new ArrayList<>();
+    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {
-      for (Map.Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
         if (entry.getKey() == null || entry.getValue() == null) {
           continue;
         }
@@ -129,7 +129,7 @@ public class TagManager {
         }
       }
     } else {
-      for (Map.Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
         if (entry.getKey() == null || entry.getValue() == null) {
           continue;
         }
@@ -153,7 +153,7 @@ public class TagManager {
               allMatchedNodes.stream()
                   .sorted(
                       Comparator.comparingLong(
-                              (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                              (IMeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
                           .reversed()
                           .thenComparing(IMNode::getFullPath))
                   .collect(toList());
@@ -175,7 +175,7 @@ public class TagManager {
   }
 
   /** remove the node from the tag inverted index */
-  public void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
+  public void removeFromTagInvertedIndex(IMeasurementMNode node) throws IOException {
     if (node.getOffset() < 0) {
       return;
     }
@@ -220,7 +220,7 @@ public class TagManager {
    * new value to update it.
    */
   public void updateTagsAndAttributes(
-      Map<String, String> tagsMap, Map<String, String> attributesMap, MeasurementMNode leafMNode)
+      Map<String, String> tagsMap, Map<String, String> attributesMap, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -283,7 +283,7 @@ public class TagManager {
    * @param attributesMap newly added attributes map
    */
   public void addAttributes(
-      Map<String, String> attributesMap, PartialPath fullPath, MeasurementMNode leafMNode)
+      Map<String, String> attributesMap, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -309,7 +309,8 @@ public class TagManager {
    * @param tagsMap newly added tags map
    * @param fullPath timeseries
    */
-  public void addTags(Map<String, String> tagsMap, PartialPath fullPath, MeasurementMNode leafMNode)
+  public void addTags(
+      Map<String, String> tagsMap, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
 
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -338,7 +339,7 @@ public class TagManager {
    * @param keySet tags key or attributes key
    */
   public void dropTagsOrAttributes(
-      Set<String> keySet, PartialPath fullPath, MeasurementMNode leafMNode)
+      Set<String> keySet, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
     Pair<Map<String, String>, Map<String, String>> pair =
         tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
@@ -361,8 +362,8 @@ public class TagManager {
     // persist the change to disk
     tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-    Map<String, Set<MeasurementMNode>> tagVal2LeafMNodeSet;
-    Set<MeasurementMNode> MMNodes;
+    Map<String, Set<IMeasurementMNode>> tagVal2LeafMNodeSet;
+    Set<IMeasurementMNode> MMNodes;
     for (Map.Entry<String, String> entry : deleteTag.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
@@ -408,7 +409,7 @@ public class TagManager {
    * @param alterMap the new tags or attributes key-value
    */
   public void setTagsOrAttributesValue(
-      Map<String, String> alterMap, PartialPath fullPath, MeasurementMNode leafMNode)
+      Map<String, String> alterMap, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =
@@ -476,7 +477,7 @@ public class TagManager {
    * @param newKey new key of tag or attribute
    */
   public void renameTagOrAttributeKey(
-      String oldKey, String newKey, PartialPath fullPath, MeasurementMNode leafMNode)
+      String oldKey, String newKey, PartialPath fullPath, IMeasurementMNode leafMNode)
       throws MetadataException, IOException {
     // tags, attributes
     Pair<Map<String, String>, Map<String, String>> pair =

@@ -56,7 +56,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -1063,7 +1063,7 @@ public class StorageGroupProcessor {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       // Don't update cached last value for vector type
@@ -1130,9 +1130,9 @@ public class StorageGroupProcessor {
     if (!IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled()) {
       return;
     }
-    MeasurementMNode[] mNodes = plan.getMeasurementMNodes();
+    IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (MeasurementMNode mNode : mNodes) {
+    for (IMeasurementMNode mNode : mNodes) {
       // Don't update cached last value for vector type
       if (!plan.isAligned()) {
         if (plan.getValues()[columnIndex] == null) {
@@ -1938,11 +1938,11 @@ public class StorageGroupProcessor {
       for (IMNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null
             && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-          TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+          TimeValuePair lastPair = ((IMeasurementMNode) measurementNode).getCachedLast();
           if (lastPair != null
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
-            ((MeasurementMNode) measurementNode).resetCache();
+            ((IMeasurementMNode) measurementNode).resetCache();
             logger.info(
                 "[tryToDeleteLastCache] Last cache for path: {} is set to null",
                 measurementNode.getFullPath());
@@ -2282,7 +2282,7 @@ public class StorageGroupProcessor {
 
       for (IMNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null) {
-          ((MeasurementMNode) measurementNode).resetCache();
+          ((IMeasurementMNode) measurementNode).resetCache();
           logger.debug(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
               measurementNode.getFullPath());
