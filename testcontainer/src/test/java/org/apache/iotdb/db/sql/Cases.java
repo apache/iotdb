@@ -90,10 +90,11 @@ public abstract class Cases {
                 timeSeries));
       } catch (Exception e) {
         if (timeSeries.equals("root.sg1.aa.bb.cc")) {
-          Assert.assertEquals(
-              "current node bb is a MeasurementMNode, can not get child cc", e.getMessage());
+          Assert.assertTrue(
+              e.getMessage()
+                  .contains("current node bb is a MeasurementMNode, can not get child cc"));
         } else if (timeSeries.equals("root.sg1.aa")) {
-          Assert.assertEquals("Path root.sg1.aa already exist", e.getMessage());
+          Assert.assertTrue(e.getMessage().contains("Path root.sg1.aa already exist"));
         } else {
           fail();
         }
