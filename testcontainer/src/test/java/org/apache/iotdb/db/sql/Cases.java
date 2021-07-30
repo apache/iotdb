@@ -85,20 +85,17 @@ public abstract class Cases {
     for (String timeSeries : timeSeriesArray) {
       try {
         writeStatement.execute(
-                String.format(
-                        "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                        timeSeries));
-      }catch (Exception e){
-        if(timeSeries.equals("root.sg1.aa.bb.cc")){
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
+      } catch (Exception e) {
+        if (timeSeries.equals("root.sg1.aa.bb.cc")) {
           Assert.assertEquals(
-                  "current node bb is a MeasurementMNode, can not get child cc",
-                  e.getMessage());
-        }else if(timeSeries.equals("root.sg1.aa")){
-          Assert.assertEquals(
-                  "Path root.sg1.aa already exist",
-                  e.getMessage());
-        }else {
-         fail();
+              "current node bb is a MeasurementMNode, can not get child cc", e.getMessage());
+        } else if (timeSeries.equals("root.sg1.aa")) {
+          Assert.assertEquals("Path root.sg1.aa already exist", e.getMessage());
+        } else {
+          fail();
         }
       }
     }
