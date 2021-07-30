@@ -37,6 +37,7 @@ import static org.apache.iotdb.db.index.common.IndexConstant.BLOCK_SIZE;
 import static org.apache.iotdb.db.index.common.IndexConstant.PAA_DIM;
 import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
 import static org.apache.iotdb.db.index.common.IndexConstant.THRESHOLD;
+import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 
 public class IndexLogicalPlanTest {
 
@@ -95,6 +96,30 @@ public class IndexLogicalPlanTest {
     Assert.assertNotNull(dropIndexOperator.getPaths());
     Assert.assertEquals("root.Wind.AZQ02.Speed", dropIndexOperator.getPaths().get(0).toString());
     Assert.assertEquals(IndexType.ELB_INDEX, dropIndexOperator.getIndexType());
+  }
+
+  @Test
+  public void testParseQueryIndexWholeMatching() {
+    String sqlStr =
+        "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
+    Assert.assertEquals(
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "Glu",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.Ery.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
+    Assert.assertEquals(IndexType.RTREE_PAA, queryOperator.getIndexType());
+    Assert.assertEquals(2, queryOperator.getProps().size());
+    Assert.assertEquals(2, (int) queryOperator.getProps().get(TOP_K));
+    Assert.assertEquals(
+        "[0.0, 120.0, 20.0, 80.0, 120.0, 100.0, 80.0, 0.0]",
+        Arrays.toString((double[]) queryOperator.getProps().get(PATTERN)));
   }
 
   @Test

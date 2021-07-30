@@ -1506,7 +1506,25 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     } else {
       path = parseFullPath(ctx.fullPath());
     }
-    if (ctx.CONTAIN() != null) {
+    if (ctx.LIKE() != null) {
+      // whole matching case
+      if (queryOp.getSelectComponent().getResultColumns().size() != 1) {
+        throw new SQLParserException("Index query statement allows only one select path");
+      }
+      if (!path.equals(
+          queryOp.getSelectComponent().getResultColumns().get(0).getExpression().toString())) {
+        throw new SQLParserException(
+            "In the index query statement, "
+                + "the path in select element and the index predicate should be same");
+      }
+      if (queryOp.getProps() != null) {
+        props = queryOp.getProps();
+      } else {
+        props = new HashMap<>();
+      }
+      props.put(PATTERN, parseSequence(ctx.sequenceClause(0)));
+      queryOp.setIndexType(IndexType.RTREE_PAA);
+    } else if (ctx.CONTAIN() != null) {
       // subsequence matching case
       List<double[]> compositePattern = new ArrayList<>();
       List<Double> thresholds = new ArrayList<>();

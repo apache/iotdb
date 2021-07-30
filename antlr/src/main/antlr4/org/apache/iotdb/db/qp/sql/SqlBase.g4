@@ -327,7 +327,8 @@ topClause
     ;
 
 indexPredicateClause
-    : (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
+    : (suffixPath | fullPath) LIKE sequenceClause
+    | (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
     ;
 
 

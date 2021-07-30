@@ -21,9 +21,12 @@ package org.apache.iotdb.db.qp.physical;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -32,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,7 +43,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
+import static org.apache.iotdb.db.index.common.IndexConstant.PATTERN;
+import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 import static org.junit.Assert.assertEquals;
 
 /** refer to org.apache.iotdb.db.qp.plan.PhysicalPlanTest */
@@ -98,6 +105,24 @@ public class IndexWholeMatchingPhysicalPlanTest {
     Planner processor = new Planner();
     DropIndexPlan plan = (DropIndexPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals("paths: [root.Ery.*.Glu], index type: RTREE_PAA", plan.toString());
+  }
+
+  @Test
+  public void testQueryIndex() throws QueryProcessException {
+    String sqlStr =
+        "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    Assert.assertEquals(QueryIndexPlan.class, plan.getClass());
+    QueryIndexPlan queryIndexPlan = (QueryIndexPlan) plan;
+    Assert.assertEquals(Operator.OperatorType.QUERY_INDEX, queryIndexPlan.getOperatorType());
+    Assert.assertEquals(IndexType.RTREE_PAA, queryIndexPlan.getIndexType());
+    Assert.assertEquals(1, queryIndexPlan.getPaths().size());
+    Assert.assertEquals("root.Ery.*.Glu", queryIndexPlan.getPaths().get(0).getFullPath());
+    Assert.assertEquals(2, queryIndexPlan.getProps().size());
+    Assert.assertEquals(2, (int) queryIndexPlan.getProps().get(TOP_K));
+    Assert.assertEquals(
+        "[0.0, 120.0, 20.0, 80.0, 120.0, 100.0, 80.0, 0.0]",
+        Arrays.toString((double[]) queryIndexPlan.getProps().get(PATTERN)));
   }
 
   @Test
