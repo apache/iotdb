@@ -202,7 +202,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
-    | suffixPath LIKE constant
+    | (suffixPath | fullPath) LIKE stringLiteral
     ;
 
 inClause

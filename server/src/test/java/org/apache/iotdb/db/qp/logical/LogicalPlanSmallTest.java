@@ -344,4 +344,18 @@ public class LogicalPlanSmallTest {
     }
     Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
   }
+
+  @Test
+  public void testLikeQuery() {
+    String sqlStr = "SELECT a FROM root.sg.* WHERE a LIKE 'string'";
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(Operator.OperatorType.QUERY, queryOperator.getType());
+    Assert.assertEquals(
+        "a",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.sg.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
+  }
 }

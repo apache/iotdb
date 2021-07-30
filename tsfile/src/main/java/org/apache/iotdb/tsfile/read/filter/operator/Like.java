@@ -59,7 +59,7 @@ public class Like<T extends Comparable<T>> implements Filter {
   public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
 
-    Pattern pattern = null;
+    Pattern pattern;
     try {
       pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {

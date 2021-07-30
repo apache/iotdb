@@ -1998,7 +1998,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       if (path == null) {
         throw new SQLParserException("Path is null, please check the sql.");
       }
-      return new LikeOperator(FilterType.LIKE, path, ctx.constant().getText());
+      return new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
     } else {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
