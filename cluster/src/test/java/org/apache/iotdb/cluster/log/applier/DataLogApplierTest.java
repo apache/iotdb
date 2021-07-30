@@ -323,7 +323,7 @@ public class DataLogApplierTest extends IoTDBTest {
       insertPlan.setValues(new Object[] {"1.0"});
       insertPlan.setNeedInferType(true);
       insertPlan.setMeasurementMNodes(
-          new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
       insertRowsPlan.addOneInsertRowPlan(insertPlan, i - 1);
     }
 
