@@ -437,16 +437,24 @@ public class TsFileResource {
     return readOnlyMemChunk;
   }
 
-  public synchronized ModificationFile getModFile() {
+  public ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = ModificationFile.getNormalMods(this);
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getNormalMods(this);
+        }
+      }
     }
     return modFile;
   }
 
-  public synchronized ModificationFile getCompactionModFile() {
+  public ModificationFile getCompactionModFile() {
     if (modFile == null) {
-      modFile = ModificationFile.getCompactionMods(this);
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getCompactionMods(this);
+        }
+      }
     }
     return modFile;
   }
@@ -813,9 +821,9 @@ public class TsFileResource {
     }
   }
 
-  public static int getCompactionCount(String fileName) throws IOException {
+  public static int getInnerCompactionCount(String fileName) throws IOException {
     TsFileName tsFileName = getTsFileName(fileName);
-    return tsFileName.getMergeCnt();
+    return tsFileName.getInnerCompactionCnt();
   }
 
   /** For merge, the index range of the new file should be the union of all files' in this merge. */

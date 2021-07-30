@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFacto
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -94,7 +94,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         new CrossSpaceMergeResource(seqFileList, unSeqFileList, timeLowerBound);
 
     ICrossSpaceMergeFileSelector fileSelector =
-        CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
+        InnerCompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {

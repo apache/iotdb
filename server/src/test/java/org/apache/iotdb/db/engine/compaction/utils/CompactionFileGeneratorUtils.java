@@ -57,9 +57,9 @@ public class CompactionFileGeneratorUtils {
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + tsFileName.getVersion()
                     + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + (tsFileName.getMergeCnt() + 1)
+                    + (tsFileName.getInnerCompactionCnt() + 1)
                     + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + tsFileName.getUnSeqMergeCnt()
+                    + tsFileName.getCrossCompactionCnt()
                     + ".tsfile")));
   }
 

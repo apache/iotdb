@@ -116,8 +116,8 @@ public class TsFileResourceManager {
   }
 
   /**
-   * insert tsFileResource to a target pos(targetPos = insertPos + 1) e.g. if insertPos = 0, then to
-   * the first, if insert Pos = 1, then to the second.
+   * insert tsFileResource to a target pos(targetPos = insertPos) e.g. if insertPos = 0, then to the
+   * first, if insert Pos = 1, then to the second.
    */
   public void insertToPartitionFileList(
       TsFileResource tsFileResource, boolean sequence, int insertPos) {

@@ -94,7 +94,7 @@ public class TsFileNameGenerator {
       long version,
       int innerSpaceCompactionCount,
       int crossSpaceCompactionCount)
-      throws DiskSpaceInsufficientException, IOException {
+      throws DiskSpaceInsufficientException {
     String tsFileDir =
         generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
     fsFactory.getFile(tsFileDir).mkdirs();
@@ -156,12 +156,12 @@ public class TsFileNameGenerator {
     }
   }
 
-  public static TsFileResource modifyTsFileNameUnseqMergCnt(TsFileResource tsFileResource)
+  public static TsFileResource increaseCrossCompactionCnt(TsFileResource tsFileResource)
       throws IOException {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
+    tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
     tsFileResource.setFile(
         new File(
             path,
@@ -169,42 +169,26 @@ public class TsFileNameGenerator {
                 + FILE_NAME_SEPARATOR
                 + tsFileName.version
                 + FILE_NAME_SEPARATOR
-                + tsFileName.mergeCnt
+                + tsFileName.innerCompactionCnt
                 + FILE_NAME_SEPARATOR
-                + tsFileName.unSeqMergeCnt
+                + tsFileName.crossCompactionCnt
                 + TSFILE_SUFFIX));
     return tsFileResource;
   }
 
-  public static File modifyTsFileNameUnseqMergCnt(File tsFile) throws IOException {
+  public static File increaseCrossCompactionCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setUnSeqMergeCnt(tsFileName.getUnSeqMergeCnt() + 1);
+    tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
     return new File(
         path,
         tsFileName.time
             + FILE_NAME_SEPARATOR
             + tsFileName.version
             + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
+            + tsFileName.innerCompactionCnt
             + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
-            + TSFILE_SUFFIX);
-  }
-
-  public static File modifyTsFileNameMergeCnt(File tsFile) throws IOException {
-    String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFile.getName());
-    tsFileName.setMergeCnt(tsFileName.getMergeCnt() + 1);
-    return new File(
-        path,
-        tsFileName.time
-            + FILE_NAME_SEPARATOR
-            + tsFileName.version
-            + FILE_NAME_SEPARATOR
-            + tsFileName.mergeCnt
-            + FILE_NAME_SEPARATOR
-            + tsFileName.unSeqMergeCnt
+            + tsFileName.crossCompactionCnt
             + TSFILE_SUFFIX);
   }
 
@@ -218,8 +202,8 @@ public class TsFileNameGenerator {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       minTime = Math.min(tsFileName.time, minTime);
       minVersion = Math.min(tsFileName.version, minVersion);
-      maxInnerMergeCount = Math.max(tsFileName.mergeCnt, maxInnerMergeCount);
-      maxCrossMergeCount = Math.max(tsFileName.unSeqMergeCnt, maxCrossMergeCount);
+      maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
     return new File(
         tsFileResources.get(0).getTsFile().getParent(),
@@ -237,14 +221,14 @@ public class TsFileNameGenerator {
 
     private long time;
     private long version;
-    private int mergeCnt;
-    private int unSeqMergeCnt;
+    private int innerCompactionCnt;
+    private int crossCompactionCnt;
 
-    public TsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
+    public TsFileName(long time, long version, int innerCompactionCnt, int crossCompactionCnt) {
       this.time = time;
       this.version = version;
-      this.mergeCnt = mergeCnt;
-      this.unSeqMergeCnt = unSeqMergeCnt;
+      this.innerCompactionCnt = innerCompactionCnt;
+      this.crossCompactionCnt = crossCompactionCnt;
     }
 
     public long getTime() {
@@ -255,12 +239,12 @@ public class TsFileNameGenerator {
       return version;
     }
 
-    public int getMergeCnt() {
-      return mergeCnt;
+    public int getInnerCompactionCnt() {
+      return innerCompactionCnt;
     }
 
-    public int getUnSeqMergeCnt() {
-      return unSeqMergeCnt;
+    public int getCrossCompactionCnt() {
+      return crossCompactionCnt;
     }
 
     public void setTime(long time) {
@@ -271,12 +255,12 @@ public class TsFileNameGenerator {
       this.version = version;
     }
 
-    public void setMergeCnt(int mergeCnt) {
-      this.mergeCnt = mergeCnt;
+    public void setInnerCompactionCnt(int innerCompactionCnt) {
+      this.innerCompactionCnt = innerCompactionCnt;
     }
 
-    public void setUnSeqMergeCnt(int unSeqMergeCnt) {
-      this.unSeqMergeCnt = unSeqMergeCnt;
+    public void setCrossCompactionCnt(int crossCompactionCnt) {
+      this.crossCompactionCnt = crossCompactionCnt;
     }
   }
 }

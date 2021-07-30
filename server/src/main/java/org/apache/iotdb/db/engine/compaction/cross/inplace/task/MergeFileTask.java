@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.modifyTsFileNameUnseqMergCnt;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.increaseCrossCompactionCnt;
 
 /**
  * MergeFileTask merges the merge temporary files with the seqFiles, either move the merged chunks
@@ -212,7 +212,7 @@ public class MergeFileTask {
         logger.warn("Delete file {} failed", newFileWriter.getFile());
       }
       // change tsFile name
-      File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
+      File nextMergeVersionFile = increaseCrossCompactionCnt(seqFile.getTsFile());
       fsFactory.moveFile(seqFile.getTsFile(), nextMergeVersionFile);
       fsFactory.moveFile(
           fsFactory.getFile(seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
@@ -364,7 +364,7 @@ public class MergeFileTask {
       if (!seqFile.getTsFile().delete()) {
         logger.warn("Delete file {} failed", seqFile.getTsFile());
       }
-      File nextMergeVersionFile = modifyTsFileNameUnseqMergCnt(seqFile.getTsFile());
+      File nextMergeVersionFile = increaseCrossCompactionCnt(seqFile.getTsFile());
       fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
       fsFactory.moveFile(
           fsFactory.getFile(seqFile.getTsFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),

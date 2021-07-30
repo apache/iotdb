@@ -1260,8 +1260,8 @@ public class StorageGroupProcessor {
     return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
-  private String getNewTsFileName(long time, long version, int mergeCnt, int unseqMergeCnt) {
-    return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqMergeCnt);
+  private String getNewTsFileName(long time, long version, int mergeCnt, int unseqCompactionCnt) {
+    return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqCompactionCnt);
   }
 
   /**
@@ -1402,10 +1402,6 @@ public class StorageGroupProcessor {
       syncCloseAllWorkingTsFileProcessors();
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
-      //      if (this.tsFileResourceManager.mergingModification != null) {
-      //        this.tsFileResourceManager.mergingModification.close();
-      //      }
-
       closeAllResources();
       List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
       folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());

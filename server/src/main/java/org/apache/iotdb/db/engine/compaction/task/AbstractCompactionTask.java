@@ -51,7 +51,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     try {
       doCompaction();
     } catch (Exception e) {
-      LOGGER.warn(e.getMessage(), e);
+      LOGGER.error(e.getMessage(), e);
     } finally {
       CompactionScheduler.currentTaskNum.decrementAndGet();
       LOGGER.info("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());

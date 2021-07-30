@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -128,7 +128,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       // carry out the compaction
-      CompactionUtils.compact(
+      InnerCompactionUtils.compact(
           targetTsFileResource,
           selectedTsFileResourceList,
           fullStorageGroupName,
@@ -171,7 +171,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
+      InnerCompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);

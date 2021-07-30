@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -120,7 +120,7 @@ public class InnerCompactionChunkTest extends InnerCompactionTest {
       }
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
-        CompactionUtils.writeByAppendPageMerge(
+        InnerCompactionUtils.writeByAppendPageMerge(
             device, compactionWriteRateLimiter, entry, targetTsfileResource, writer);
       }
       reader.close();
@@ -199,7 +199,7 @@ public class InnerCompactionChunkTest extends InnerCompactionTest {
       }
       for (Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry :
           measurementChunkMetadataMap.entrySet()) {
-        CompactionUtils.writeByDeserializePageMerge(
+        InnerCompactionUtils.writeByDeserializePageMerge(
             device,
             compactionWriteRateLimiter,
             entry,
