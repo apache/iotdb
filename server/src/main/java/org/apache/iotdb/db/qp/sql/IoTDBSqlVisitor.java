@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
@@ -1505,25 +1506,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     } else {
       path = parseFullPath(ctx.fullPath());
     }
-    if (ctx.LIKE() != null) {
-      // whole matching case
-      if (queryOp.getSelectComponent().getResultColumns().size() != 1) {
-        throw new SQLParserException("Index query statement allows only one select path");
-      }
-      if (!path.equals(
-          queryOp.getSelectComponent().getResultColumns().get(0).getExpression().toString())) {
-        throw new SQLParserException(
-            "In the index query statement, "
-                + "the path in select element and the index predicate should be same");
-      }
-      if (queryOp.getProps() != null) {
-        props = queryOp.getProps();
-      } else {
-        props = new HashMap<>();
-      }
-      props.put(PATTERN, parseSequence(ctx.sequenceClause(0)));
-      queryOp.setIndexType(IndexType.RTREE_PAA);
-    } else if (ctx.CONTAIN() != null) {
+    if (ctx.CONTAIN() != null) {
       // subsequence matching case
       List<double[]> compositePattern = new ArrayList<>();
       List<Double> thresholds = new ArrayList<>();
@@ -1998,14 +1981,25 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private FilterOperator parsePredicate(PredicateContext ctx) {
+    PartialPath path = null;
     if (ctx.OPERATOR_NOT() != null) {
       FilterOperator notOp = new FilterOperator(FilterType.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
       return parseOrExpression(ctx.orExpression());
+    } else if (ctx.LIKE() != null) {
+      if (ctx.suffixPath() != null) {
+        path = parseSuffixPath(ctx.suffixPath());
+      }
+      if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
+      }
+      if (path == null) {
+        throw new SQLParserException("Path is null, please check the sql.");
+      }
+      return new LikeOperator(FilterType.LIKE, path, ctx.constant().getText());
     } else {
-      PartialPath path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
       }

@@ -202,6 +202,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
+    | suffixPath LIKE constant
     ;
 
 inClause
@@ -326,8 +327,7 @@ topClause
     ;
 
 indexPredicateClause
-    : (suffixPath | fullPath) LIKE sequenceClause
-    | (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
+    : (suffixPath | fullPath) CONTAIN sequenceClause WITH TOLERANCE constant (CONCAT sequenceClause WITH TOLERANCE constant)*
     ;
 
 
