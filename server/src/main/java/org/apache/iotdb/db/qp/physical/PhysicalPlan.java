@@ -377,10 +377,10 @@ public abstract class PhysicalPlan {
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
-        case SET_DEVICE_TEMPLATE:
+        case SET_SCHEMA_TEMPLATE:
           plan = new SetSchemaTemplatePlan();
           break;
-        case SET_USING_DEVICE_TEMPLATE:
+        case SET_USING_SCHEMA_TEMPLATE:
           plan = new SetUsingSchemaTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
@@ -458,8 +458,8 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
     CREATE_TEMPLATE,
-    SET_DEVICE_TEMPLATE,
-    SET_USING_DEVICE_TEMPLATE,
+    SET_SCHEMA_TEMPLATE,
+    SET_USING_SCHEMA_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_ALIGNED_TIMESERIES,
     CLUSTER_LOG,

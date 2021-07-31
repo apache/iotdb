@@ -386,11 +386,11 @@ public class MManager {
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
         break;
-      case SET_DEVICE_TEMPLATE:
+      case SET_SCHEMA_TEMPLATE:
         SetSchemaTemplatePlan setSchemaTemplatePlan = (SetSchemaTemplatePlan) plan;
         setSchemaTemplate(setSchemaTemplatePlan);
         break;
-      case SET_USING_DEVICE_TEMPLATE:
+      case SET_USING_SCHEMA_TEMPLATE:
         SetUsingSchemaTemplatePlan setUsingSchemaTemplatePlan = (SetUsingSchemaTemplatePlan) plan;
         setUsingSchemaTemplate(setUsingSchemaTemplatePlan);
         break;
