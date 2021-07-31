@@ -33,16 +33,16 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SetUsingDeviceTemplatePlan extends PhysicalPlan {
+public class SetUsingSchemaTemplatePlan extends PhysicalPlan {
 
-  private static final Logger logger = LoggerFactory.getLogger(SetUsingDeviceTemplatePlan.class);
+  private static final Logger logger = LoggerFactory.getLogger(SetUsingSchemaTemplatePlan.class);
   PartialPath prefixPath;
 
-  public SetUsingDeviceTemplatePlan() {
+  public SetUsingSchemaTemplatePlan() {
     super(false, OperatorType.SET_USING_DEVICE_TEMPLATE);
   }
 
-  public SetUsingDeviceTemplatePlan(PartialPath prefixPath) {
+  public SetUsingSchemaTemplatePlan(PartialPath prefixPath) {
     super(false, OperatorType.SET_USING_DEVICE_TEMPLATE);
     this.prefixPath = prefixPath;
   }

@@ -50,8 +50,8 @@ public class InternalMNode extends MNode {
   @SuppressWarnings("squid:S3077")
   protected transient volatile Map<String, IMNode> children = null;
 
-  // device template
-  protected Template deviceTemplate = null;
+  // schema template
+  protected Template schemaTemplate = null;
 
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
@@ -168,7 +168,7 @@ public class InternalMNode extends MNode {
       ((IEntityMNode) newChildNode).setUseTemplate(oldChildNode.isUseTemplate());
     }
 
-    newChildNode.setDeviceTemplate(oldChildNode.getDeviceTemplate());
+    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
 
     newChildNode.setParent(this);
 
@@ -217,8 +217,8 @@ public class InternalMNode extends MNode {
   public Template getUpperTemplate() {
     IMNode cur = this;
     while (cur != null) {
-      if (cur.getDeviceTemplate() != null) {
-        return cur.getDeviceTemplate();
+      if (cur.getSchemaTemplate() != null) {
+        return cur.getSchemaTemplate();
       }
       cur = cur.getParent();
     }
@@ -227,13 +227,13 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public Template getDeviceTemplate() {
-    return deviceTemplate;
+  public Template getSchemaTemplate() {
+    return schemaTemplate;
   }
 
   @Override
-  public void setDeviceTemplate(Template deviceTemplate) {
-    this.deviceTemplate = deviceTemplate;
+  public void setSchemaTemplate(Template schemaTemplate) {
+    this.schemaTemplate = schemaTemplate;
   }
 
   /** get the count of all MeasurementMNode whose ancestor is current node */

@@ -66,9 +66,9 @@ public interface IMNode extends Serializable {
 
   Template getUpperTemplate();
 
-  Template getDeviceTemplate();
+  Template getSchemaTemplate();
 
-  void setDeviceTemplate(Template deviceTemplate);
+  void setSchemaTemplate(Template schemaTemplate);
 
   int getMeasurementMNodeCount();
 

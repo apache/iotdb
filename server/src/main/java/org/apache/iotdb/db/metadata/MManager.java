@@ -46,7 +46,7 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -58,7 +58,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -384,15 +384,15 @@ public class MManager {
         break;
       case CREATE_TEMPLATE:
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
-        createDeviceTemplate(createTemplatePlan);
+        createSchemaTemplate(createTemplatePlan);
         break;
       case SET_DEVICE_TEMPLATE:
-        SetDeviceTemplatePlan setDeviceTemplatePlan = (SetDeviceTemplatePlan) plan;
-        setDeviceTemplate(setDeviceTemplatePlan);
+        SetSchemaTemplatePlan setSchemaTemplatePlan = (SetSchemaTemplatePlan) plan;
+        setSchemaTemplate(setSchemaTemplatePlan);
         break;
       case SET_USING_DEVICE_TEMPLATE:
-        SetUsingDeviceTemplatePlan setUsingDeviceTemplatePlan = (SetUsingDeviceTemplatePlan) plan;
-        setUsingDeviceTemplate(setUsingDeviceTemplatePlan);
+        SetUsingSchemaTemplatePlan setUsingSchemaTemplatePlan = (SetUsingSchemaTemplatePlan) plan;
+        setUsingSchemaTemplate(setUsingSchemaTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
@@ -1279,8 +1279,8 @@ public class MManager {
     Set<IMeasurementSchema> res = new HashSet<>();
     try {
       Pair<IMNode, Template> mNodeTemplatePair = mNodeCache.get(path);
-      if (mNodeTemplatePair.left.getDeviceTemplate() != null) {
-        mNodeTemplatePair.right = mNodeTemplatePair.left.getDeviceTemplate();
+      if (mNodeTemplatePair.left.getSchemaTemplate() != null) {
+        mNodeTemplatePair.right = mNodeTemplatePair.left.getSchemaTemplate();
       }
 
       for (IMNode IMNode : mNodeTemplatePair.left.getChildren().values()) {
@@ -1709,8 +1709,8 @@ public class MManager {
 
     // 1. get device node
     Pair<IMNode, Template> deviceMNode = getDeviceNodeWithAutoCreate(deviceId);
-    if (!(deviceMNode.left.isMeasurement()) && deviceMNode.left.getDeviceTemplate() != null) {
-      deviceMNode.right = deviceMNode.left.getDeviceTemplate();
+    if (!(deviceMNode.left.isMeasurement()) && deviceMNode.left.getSchemaTemplate() != null) {
+      deviceMNode.right = deviceMNode.left.getSchemaTemplate();
     }
 
     // check insert non-aligned InsertPlan for aligned timeseries
@@ -1885,9 +1885,9 @@ public class MManager {
       String schemaName = vectorId != null ? vectorId : measurement;
       IMeasurementSchema schema = curTemplateMap.get(schemaName);
       if (!deviceMNode.left.isUseTemplate()) {
-        deviceMNode.left = setUsingDeviceTemplate(deviceMNode.left);
+        deviceMNode.left = setUsingSchemaTemplate(deviceMNode.left);
         try {
-          logWriter.setUsingDeviceTemplate(deviceMNode.left.getPartialPath());
+          logWriter.setUsingSchemaTemplate(deviceMNode.left.getPartialPath());
         } catch (IOException e) {
           throw new MetadataException(e);
         }
@@ -1942,19 +1942,19 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
-  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
-      templateManager.createDeviceTemplate(plan);
+      templateManager.createSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
-        logWriter.createDeviceTemplate(plan);
+        logWriter.createSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
     }
   }
 
-  public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
+  public void setSchemaTemplate(SetSchemaTemplatePlan plan) throws MetadataException {
     try {
       Template template = templateManager.getTemplate(plan.getTemplateName());
 
@@ -1962,12 +1962,12 @@ public class MManager {
       synchronized (this) {
         Pair<IMNode, Template> node =
             getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
-        templateManager.setDeviceTemplate(template, node);
+        templateManager.setSchemaTemplate(template, node);
       }
 
       // write wal
       if (!isRecovering) {
-        logWriter.setDeviceTemplate(plan);
+        logWriter.setSchemaTemplate(plan);
       }
     } catch (IOException e) {
       throw new MetadataException(e);
@@ -1982,19 +1982,19 @@ public class MManager {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 
-  private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
+  private void setUsingSchemaTemplate(SetUsingSchemaTemplatePlan plan) throws MetadataException {
     try {
-      setUsingDeviceTemplate(getDeviceNode(plan.getPrefixPath()));
+      setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {
-      // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
+      // the order of SetUsingSchemaTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
       // when writing concurrently, so we need a auto-create mechanism here
       mtree.getDeviceNodeWithAutoCreating(
           plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
-      setUsingDeviceTemplate(getDeviceNode(plan.getPrefixPath()));
+      setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     }
   }
 
-  IEntityMNode setUsingDeviceTemplate(IMNode node) {
+  IEntityMNode setUsingSchemaTemplate(IMNode node) {
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
     IEntityMNode entityMNode = mtree.setToEntity(node);

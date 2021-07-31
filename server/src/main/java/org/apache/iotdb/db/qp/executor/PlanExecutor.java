@@ -78,7 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -360,9 +360,9 @@ public class PlanExecutor implements IPlanExecutor {
         }
         return true;
       case CREATE_TEMPLATE:
-        return createDeviceTemplate((CreateTemplatePlan) plan);
+        return createSchemaTemplate((CreateTemplatePlan) plan);
       case SET_DEVICE_TEMPLATE:
-        return setDeviceTemplate((SetDeviceTemplatePlan) plan);
+        return setSchemaTemplate((SetSchemaTemplatePlan) plan);
       case CREATE_CONTINUOUS_QUERY:
         return operateCreateContinuousQuery((CreateContinuousQueryPlan) plan);
       case DROP_CONTINUOUS_QUERY:
@@ -373,20 +373,20 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean createDeviceTemplate(CreateTemplatePlan createTemplatePlan)
+  private boolean createSchemaTemplate(CreateTemplatePlan createTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.createDeviceTemplate(createTemplatePlan);
+      IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     return true;
   }
 
-  private boolean setDeviceTemplate(SetDeviceTemplatePlan setDeviceTemplatePlan)
+  private boolean setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.setDeviceTemplate(setDeviceTemplatePlan);
+      IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

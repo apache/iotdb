@@ -288,7 +288,7 @@ public class MTree implements Serializable {
     checkTimeseries(path.getFullPath());
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
-    Template upperTemplate = cur.getDeviceTemplate();
+    Template upperTemplate = cur.getSchemaTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
       if (cur.isMeasurement()) {
@@ -310,8 +310,8 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(childName);
 
-      if (cur.getDeviceTemplate() != null) {
-        upperTemplate = cur.getDeviceTemplate();
+      if (cur.getSchemaTemplate() != null) {
+        upperTemplate = cur.getSchemaTemplate();
       }
     }
 
@@ -499,7 +499,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(deviceId.getFullPath());
     }
     IMNode cur = root;
-    Template upperTemplate = cur.getDeviceTemplate();
+    Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
@@ -517,7 +517,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeNames[i]);
       // update upper template
-      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
 
     return new Pair<>(cur, upperTemplate);
@@ -534,7 +534,7 @@ public class MTree implements Serializable {
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
-    Template upperTemplate = cur.getDeviceTemplate();
+    Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         return cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i]);
@@ -551,7 +551,7 @@ public class MTree implements Serializable {
           return false;
         }
       }
-      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
     return true;
   }
@@ -568,7 +568,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
-    Template upperTemplate = cur.getDeviceTemplate();
+    Template upperTemplate = cur.getSchemaTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
@@ -584,7 +584,7 @@ public class MTree implements Serializable {
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
-      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       i++;
     }
 
@@ -743,7 +743,7 @@ public class MTree implements Serializable {
     Template upperTemplate = null;
 
     for (int i = 1; i < nodes.length; i++) {
-      upperTemplate = cur.getDeviceTemplate() == null ? upperTemplate : cur.getDeviceTemplate();
+      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
         // not find
@@ -813,7 +813,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
-    Template upperTemplate = cur.getDeviceTemplate();
+    Template upperTemplate = cur.getSchemaTemplate();
 
     for (int i = 1; i < nodes.length; i++) {
       if (cur.isMeasurement()) {
@@ -824,8 +824,8 @@ public class MTree implements Serializable {
           throw new PathNotExistException(path.getFullPath(), true);
         }
       }
-      if (cur.getDeviceTemplate() != null) {
-        upperTemplate = cur.getDeviceTemplate();
+      if (cur.getSchemaTemplate() != null) {
+        upperTemplate = cur.getSchemaTemplate();
       }
       IMNode next = cur.getChild(nodes[i]);
       if (next == null) {
@@ -1380,8 +1380,8 @@ public class MTree implements Serializable {
     }
 
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (node.getDeviceTemplate() != null) {
-      upperTemplate = node.getDeviceTemplate();
+    if (node.getSchemaTemplate() != null) {
+      upperTemplate = node.getSchemaTemplate();
     }
 
     // we should use template when all child is measurement or this node has no child
@@ -1741,7 +1741,7 @@ public class MTree implements Serializable {
       Set<PartialPath> res,
       boolean hasLimit,
       Template upperTemplate) {
-    upperTemplate = node.getDeviceTemplate() == null ? upperTemplate : node.getDeviceTemplate();
+    upperTemplate = node.getSchemaTemplate() == null ? upperTemplate : node.getSchemaTemplate();
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {

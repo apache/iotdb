@@ -28,7 +28,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -853,24 +853,24 @@ public class MManagerBasicTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     MManager manager = IoTDB.metaManager;
-    manager.createDeviceTemplate(plan);
+    manager.createSchemaTemplate(plan);
 
     // set device template
-    SetDeviceTemplatePlan setDeviceTemplatePlan =
-        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+    SetSchemaTemplatePlan setSchemaTemplatePlan =
+        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setDeviceTemplate(setDeviceTemplatePlan);
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
-    node = manager.setUsingDeviceTemplate(node);
+    node = manager.setUsingSchemaTemplate(node);
 
     MeasurementSchema s11 =
         new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
-    assertNotNull(node.getDeviceTemplate());
-    assertEquals(node.getDeviceTemplate().getSchemaMap().get("s11"), s11);
+    assertNotNull(node.getSchemaTemplate());
+    assertEquals(node.getSchemaTemplate().getSchemaMap().get("s11"), s11);
 
     Set<IMeasurementSchema> allSchema =
-        new HashSet<>(node.getDeviceTemplate().getSchemaMap().values());
+        new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
     for (IMeasurementSchema schema :
         manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
       allSchema.remove(schema);
@@ -1028,32 +1028,32 @@ public class MManagerBasicTest {
     assertFalse(manager.isTemplateCompatible(new Template(plan1), new Template(plan4)));
 
     // test manager
-    manager.createDeviceTemplate(plan1);
-    manager.createDeviceTemplate(plan2);
-    manager.createDeviceTemplate(plan4);
+    manager.createSchemaTemplate(plan1);
+    manager.createSchemaTemplate(plan2);
+    manager.createSchemaTemplate(plan4);
 
-    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.sg1.d1"));
+    manager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.sg1.d1"));
     try {
-      manager.setDeviceTemplate(new SetDeviceTemplatePlan("template4", "root.sg1.d1.d2"));
+      manager.setSchemaTemplate(new SetSchemaTemplatePlan("template4", "root.sg1.d1.d2"));
       fail("These two templates are incompatible");
     } catch (MetadataException e) {
       assertEquals("Incompatible template", e.getMessage());
     }
 
-    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template2", "root.sg1.d1.d2"));
+    manager.setSchemaTemplate(new SetSchemaTemplatePlan("template2", "root.sg1.d1.d2"));
   }
 
   @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     MManager manager = IoTDB.metaManager;
-    manager.createDeviceTemplate(plan);
+    manager.createSchemaTemplate(plan);
 
     // set device template
-    SetDeviceTemplatePlan setDeviceTemplatePlan =
-        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+    SetSchemaTemplatePlan setSchemaTemplatePlan =
+        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setDeviceTemplate(setDeviceTemplatePlan);
+    manager.setSchemaTemplate(setSchemaTemplatePlan);
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1093,11 +1093,11 @@ public class MManagerBasicTest {
   public void testTemplateAndNodePathCompatibility() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     CreateTemplatePlan plan = getCreateTemplatePlan();
-    manager.createDeviceTemplate(plan);
+    manager.createSchemaTemplate(plan);
 
     // set device template
-    SetDeviceTemplatePlan setDeviceTemplatePlan =
-        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+    SetSchemaTemplatePlan setSchemaTemplatePlan =
+        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1113,7 +1113,7 @@ public class MManagerBasicTest {
     manager.createTimeseries(createTimeSeriesPlan);
 
     try {
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
       fail();
     } catch (PathAlreadyExistException e) {
       assertEquals("Path [root.sg1.d1.s11] already exist", e.getMessage());
@@ -1134,7 +1134,7 @@ public class MManagerBasicTest {
     manager.createTimeseries(createTimeSeriesPlan2);
 
     try {
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
       fail();
     } catch (PathAlreadyExistException e) {
       assertEquals("Path [root.sg1.d1.vector] already exist", e.getMessage());
@@ -1258,13 +1258,13 @@ public class MManagerBasicTest {
             compressionTypes);
     MManager manager = IoTDB.metaManager;
     try {
-      manager.createDeviceTemplate(plan);
+      manager.createSchemaTemplate(plan);
 
       // set device template
-      SetDeviceTemplatePlan setDeviceTemplatePlan =
-          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
+      SetSchemaTemplatePlan setSchemaTemplatePlan =
+          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -1351,13 +1351,13 @@ public class MManagerBasicTest {
             compressionTypes);
     MManager manager = IoTDB.metaManager;
     try {
-      manager.createDeviceTemplate(plan);
+      manager.createSchemaTemplate(plan);
 
       // set device template
-      SetDeviceTemplatePlan setDeviceTemplatePlan =
-          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
+      SetSchemaTemplatePlan setSchemaTemplatePlan =
+          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
           new PartialPath("root.computer.d1.s2"),
@@ -1366,9 +1366,9 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      setDeviceTemplatePlan = new SetDeviceTemplatePlan("template1", "root.computer");
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
+      setSchemaTemplatePlan = new SetSchemaTemplatePlan("template1", "root.computer");
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
 
       Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
@@ -1418,12 +1418,12 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     try {
-      manager.createDeviceTemplate(plan);
+      manager.createSchemaTemplate(plan);
       // set device template
-      SetDeviceTemplatePlan setDeviceTemplatePlan =
-          new SetDeviceTemplatePlan("template1", "root.laptop.d1");
-      manager.setDeviceTemplate(setDeviceTemplatePlan);
-      manager.setUsingDeviceTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
+      SetSchemaTemplatePlan setSchemaTemplatePlan =
+          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),

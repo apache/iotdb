@@ -57,7 +57,7 @@ public class TemplateManager {
 
   private TemplateManager() {}
 
-  public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     Template template = new Template(plan);
     if (templateMap.putIfAbsent(plan.getName(), template) != null) {
       // already have template
@@ -73,11 +73,11 @@ public class TemplateManager {
     return template;
   }
 
-  public void setDeviceTemplate(Template template, Pair<IMNode, Template> node)
+  public void setSchemaTemplate(Template template, Pair<IMNode, Template> node)
       throws MetadataException {
 
-    if (node.left.getDeviceTemplate() != null) {
-      if (node.left.getDeviceTemplate().equals(template)) {
+    if (node.left.getSchemaTemplate() != null) {
+      if (node.left.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
       } else {
         throw new MetadataException("Specified node already has template");
@@ -90,7 +90,7 @@ public class TemplateManager {
 
     checkIsTemplateAndMNodeCompatible(template, node.left);
 
-    node.left.setDeviceTemplate(template);
+    node.left.setSchemaTemplate(template);
   }
 
   public boolean isTemplateCompatible(Template upper, Template current) {
