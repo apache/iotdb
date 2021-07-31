@@ -19,21 +19,17 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import java.io.IOException;
 
-public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
-
-  private static final long serialVersionUID = 7999036474525817732L;
-
+public class StorageGroupEntityMNode extends EntityMNode implements IStorageGroupMNode {
   /**
    * when the data file in a storage group is older than dataTTL, it is considered invalid and will
    * be eventually deleted.
    */
   private long dataTTL;
 
-  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
+  public StorageGroupEntityMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }
@@ -58,13 +54,5 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
     serializeChildren(logWriter);
 
     logWriter.serializeStorageGroupMNode(this);
-  }
-
-  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
-    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
-  }
-
-  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

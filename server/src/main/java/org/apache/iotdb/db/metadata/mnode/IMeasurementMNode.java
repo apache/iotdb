@@ -25,9 +25,29 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 /** This interface defines a MeasurementMNode's operation interfaces. */
 public interface IMeasurementMNode extends IMNode {
-  int getMeasurementCount();
+
+  @Override
+  IEntityMNode getParent();
 
   IMeasurementSchema getSchema();
+
+  void setSchema(IMeasurementSchema schema);
+
+  TSDataType getDataType(String measurementId);
+
+  int getMeasurementCount();
+
+  String getAlias();
+
+  void setAlias(String alias);
+
+  long getOffset();
+
+  void setOffset(long offset);
+
+  TriggerExecutor getTriggerExecutor();
+
+  void setTriggerExecutor(TriggerExecutor triggerExecutor);
 
   TimeValuePair getCachedLast();
 
@@ -35,20 +55,4 @@ public interface IMeasurementMNode extends IMNode {
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
   void resetCache();
-
-  long getOffset();
-
-  void setOffset(long offset);
-
-  String getAlias();
-
-  TriggerExecutor getTriggerExecutor();
-
-  void setAlias(String alias);
-
-  void setSchema(IMeasurementSchema schema);
-
-  void setTriggerExecutor(TriggerExecutor triggerExecutor);
-
-  TSDataType getDataType(String measurementId);
 }
