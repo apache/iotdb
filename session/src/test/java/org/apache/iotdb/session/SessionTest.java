@@ -206,7 +206,7 @@ public class SessionTest {
   }
 
   @Test
-  public void createDeviceTemplate() throws IoTDBConnectionException, StatementExecutionException {
+  public void createSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 

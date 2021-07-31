@@ -29,15 +29,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SetDeviceTemplatePlan extends PhysicalPlan {
+public class SetSchemaTemplatePlan extends PhysicalPlan {
   String templateName;
   String prefixPath;
 
-  public SetDeviceTemplatePlan() {
+  public SetSchemaTemplatePlan() {
     super(false, OperatorType.SET_DEVICE_TEMPLATE);
   }
 
-  public SetDeviceTemplatePlan(String templateName, String prefixPath) {
+  public SetSchemaTemplatePlan(String templateName, String prefixPath) {
     super(false, OperatorType.SET_DEVICE_TEMPLATE);
     this.templateName = templateName;
     this.prefixPath = prefixPath;
