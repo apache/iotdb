@@ -34,11 +34,11 @@ public class SetSchemaTemplatePlan extends PhysicalPlan {
   String prefixPath;
 
   public SetSchemaTemplatePlan() {
-    super(false, OperatorType.SET_DEVICE_TEMPLATE);
+    super(false, OperatorType.SET_SCHEMA_TEMPLATE);
   }
 
   public SetSchemaTemplatePlan(String templateName, String prefixPath) {
-    super(false, OperatorType.SET_DEVICE_TEMPLATE);
+    super(false, OperatorType.SET_SCHEMA_TEMPLATE);
     this.templateName = templateName;
     this.prefixPath = prefixPath;
   }
@@ -66,7 +66,7 @@ public class SetSchemaTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_DEVICE_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(templateName, buffer);
     ReadWriteIOUtils.write(prefixPath, buffer);
@@ -84,7 +84,7 @@ public class SetSchemaTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.SET_DEVICE_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(prefixPath, stream);

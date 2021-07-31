@@ -217,10 +217,10 @@ public class MLogParser {
           case CREATE_TEMPLATE:
             mLogTxtWriter.createTemplate((CreateTemplatePlan) plan);
             break;
-          case SET_DEVICE_TEMPLATE:
+          case SET_SCHEMA_TEMPLATE:
             mLogTxtWriter.setTemplate((SetSchemaTemplatePlan) plan);
             break;
-          case SET_USING_DEVICE_TEMPLATE:
+          case SET_USING_SCHEMA_TEMPLATE:
             mLogTxtWriter.setUsingTemplate((SetUsingSchemaTemplatePlan) plan);
             break;
           case AUTO_CREATE_DEVICE_MNODE:
