@@ -25,7 +25,6 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashMap;
@@ -73,24 +72,23 @@ public class TemplateManager {
     return template;
   }
 
-  public void setSchemaTemplate(Template template, Pair<IMNode, Template> node)
-      throws MetadataException {
+  public void setSchemaTemplate(Template template, IMNode node) throws MetadataException {
 
-    if (node.left.getSchemaTemplate() != null) {
-      if (node.left.getSchemaTemplate().equals(template)) {
+    if (node.getSchemaTemplate() != null) {
+      if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
       } else {
         throw new MetadataException("Specified node already has template");
       }
     }
 
-    if (!isTemplateCompatible(node.right, template)) {
+    if (!isTemplateCompatible(node.getUpperTemplate(), template)) {
       throw new MetadataException("Incompatible template");
     }
 
-    checkIsTemplateAndMNodeCompatible(template, node.left);
+    checkIsTemplateAndMNodeCompatible(template, node);
 
-    node.left.setSchemaTemplate(template);
+    node.setSchemaTemplate(template);
   }
 
   public boolean isTemplateCompatible(Template upper, Template current) {

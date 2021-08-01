@@ -492,8 +492,7 @@ public class MTree implements Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  Pair<IMNode, Template> getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
-      throws MetadataException {
+  IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(deviceId.getFullPath());
@@ -520,7 +519,7 @@ public class MTree implements Serializable {
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
 
-    return new Pair<>(cur, upperTemplate);
+    return cur;
   }
 
   /**
@@ -731,8 +730,7 @@ public class MTree implements Serializable {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  Pair<IMNode, Template> getNodeByPathWithStorageGroupCheck(PartialPath path)
-      throws MetadataException {
+  IMNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
@@ -740,10 +738,8 @@ public class MTree implements Serializable {
     }
 
     IMNode cur = root;
-    Template upperTemplate = null;
 
     for (int i = 1; i < nodes.length; i++) {
-      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
         // not find
@@ -761,7 +757,7 @@ public class MTree implements Serializable {
     if (!storageGroupChecked) {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
-    return new Pair<>(cur, upperTemplate);
+    return cur;
   }
 
   /**
