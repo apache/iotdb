@@ -1964,10 +1964,10 @@ public class MTree implements Serializable {
     }
 
     while (!nodeStack.isEmpty()) {
-      IMNode IMNode = nodeStack.removeFirst();
+      IMNode node = nodeStack.removeFirst();
       int depth = depthStack.removeFirst();
 
-      determineStorageGroup(depth + 1, nodes, IMNode, paths, nodeStack, depthStack);
+      determineStorageGroup(depth + 1, nodes, node, paths, nodeStack, depthStack);
     }
     return paths;
   }
@@ -1980,12 +1980,12 @@ public class MTree implements Serializable {
   private void determineStorageGroup(
       int depth,
       String[] nodes,
-      IMNode IMNode,
+      IMNode node,
       Map<String, String> paths,
       Deque<IMNode> nodeStack,
       Deque<Integer> depthStack) {
     String currNode = depth >= nodes.length ? PATH_WILDCARD : nodes[depth];
-    for (Entry<String, IMNode> entry : IMNode.getChildren().entrySet()) {
+    for (Entry<String, IMNode> entry : node.getChildren().entrySet()) {
       if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
         continue;
       }
@@ -2018,6 +2018,51 @@ public class MTree implements Serializable {
     // only write on mtree will be synchronized
     synchronized (this) {
       return IEntityMNode.setToEntity(node);
+    }
+  }
+
+  /**
+   * check whether there is template on given path and the subTree has template return true,
+   * otherwise false
+   */
+  void checkTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return;
+    }
+    if (cur.getSchemaTemplate() != null) {
+      throw new MetadataException("Template already exists on " + cur.getFullPath());
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (cur.isMeasurement()) {
+        return;
+      }
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.getSchemaTemplate() != null) {
+        throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+    }
+
+    checkTemplateOnSubtree(cur);
+  }
+
+  // traverse  all the  descendant of the given path node
+  private void checkTemplateOnSubtree(IMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      return;
+    }
+    for (IMNode child : node.getChildren().values()) {
+      if (child.isMeasurement()) {
+        continue;
+      }
+      if (child.getSchemaTemplate() != null) {
+        throw new MetadataException("Template already exists on " + child.getFullPath());
+      }
+      checkTemplateOnSubtree(child);
     }
   }
 }

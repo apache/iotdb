@@ -20,14 +20,11 @@ package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -72,8 +69,8 @@ public class TemplateManager {
     return template;
   }
 
-  public void setSchemaTemplate(Template template, IMNode node) throws MetadataException {
-
+  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode node)
+      throws MetadataException {
     if (node.getSchemaTemplate() != null) {
       if (node.getSchemaTemplate().equals(template)) {
         throw new DuplicatedTemplateException(template.getName());
@@ -82,53 +79,13 @@ public class TemplateManager {
       }
     }
 
-    if (!isTemplateCompatible(node.getUpperTemplate(), template)) {
-      throw new MetadataException("Incompatible template");
-    }
-
-    checkIsTemplateAndMNodeCompatible(template, node);
-
-    node.setSchemaTemplate(template);
-  }
-
-  public boolean isTemplateCompatible(Template upper, Template current) {
-    if (upper == null) {
-      return true;
-    }
-
-    Map<String, IMeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-    Map<String, IMeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-    // for identical vector schema, we should just compare once
-    Map<IMeasurementSchema, IMeasurementSchema> sameSchema = new HashMap<>();
-
-    for (String name : currentMap.keySet()) {
-      IMeasurementSchema upperSchema = upperMap.remove(name);
-      if (upperSchema != null) {
-        IMeasurementSchema currentSchema = currentMap.get(name);
-        // use "==" to compare actual address space
-        if (upperSchema == sameSchema.get(currentSchema)) {
-          continue;
-        }
-
-        if (!upperSchema.equals(currentSchema)) {
-          return false;
-        }
-
-        sameSchema.put(currentSchema, upperSchema);
-      }
-    }
-
-    // current template must contains all measurements of upper template
-    return upperMap.isEmpty();
-  }
-
-  public void checkIsTemplateAndMNodeCompatible(Template template, IMNode IMNode)
-      throws PathAlreadyExistException {
     for (String schemaName : template.getSchemaMap().keySet()) {
-      if (IMNode.hasChild(schemaName)) {
-        throw new PathAlreadyExistException(
-            IMNode.getPartialPath().concatNode(schemaName).getFullPath());
+      if (node.hasChild(schemaName)) {
+        throw new MetadataException(
+            "Schema name "
+                + schemaName
+                + " in template has conflict with node's child "
+                + (node.getFullPath() + "." + schemaName));
       }
     }
   }
