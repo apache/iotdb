@@ -278,19 +278,17 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // Note that,
       // two fork tree has to be maintained while removing stars in paths for DnfFilterOptimizer
       // requirement.
-      return constructBinaryFilterTree(noStarPaths, operator);
+      return constructBinaryFilterTreeWithAnd(noStarPaths, operator);
     }
   }
 
-  private FilterOperator constructBinaryFilterTree(
+  private FilterOperator constructBinaryFilterTreeWithAnd(
       List<PartialPath> noStarPaths, FilterOperator operator) throws LogicalOptimizeException {
-    int tokenType = operator instanceof InOperator ? SQLConstant.KW_OR : SQLConstant.KW_AND;
-
-    FilterOperator filterBinaryTree = new FilterOperator(tokenType);
+    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_AND);
     FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
       if (i > 0 && i < noStarPaths.size() - 1) {
-        FilterOperator newInnerNode = new FilterOperator(tokenType);
+        FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
         currentNode.addChildOperator(newInnerNode);
         currentNode = newInnerNode;
       }
