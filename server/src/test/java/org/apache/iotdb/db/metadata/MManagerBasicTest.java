@@ -1061,13 +1061,13 @@ public class MManagerBasicTest {
     schemaNames.add("test_vector");
 
     CreateTemplatePlan plan1 =
-            new CreateTemplatePlan(
-                    "template1",
-                    new ArrayList<>(schemaNames),
-                    new ArrayList<>(measurementList),
-                    new ArrayList<>(dataTypeList),
-                    new ArrayList<>(encodingList),
-                    new ArrayList<>(compressionTypes));
+        new CreateTemplatePlan(
+            "template1",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
 
     measurementList.add(Collections.singletonList("s12"));
     schemaNames.add("s12");
@@ -1076,13 +1076,13 @@ public class MManagerBasicTest {
     compressionTypes.add(CompressionType.SNAPPY);
 
     CreateTemplatePlan plan2 =
-            new CreateTemplatePlan(
-                    "template2",
-                    new ArrayList<>(schemaNames),
-                    new ArrayList<>(measurementList),
-                    new ArrayList<>(dataTypeList),
-                    new ArrayList<>(encodingList),
-                    new ArrayList<>(compressionTypes));
+        new CreateTemplatePlan(
+            "template2",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
 
     measurementList.get(1).add("s13");
     dataTypeList.get(1).add(TSDataType.INT64);
