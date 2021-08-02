@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -135,6 +136,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -777,9 +779,16 @@ public class PhysicalGenerator {
       List<PartialPath> devices, FilterOperator operator) throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     Set<PartialPath> filterPaths = new HashSet<>();
-    for (PartialPath device : devices) {
+    Iterator<PartialPath> deviceIterator = devices.iterator();
+    while (deviceIterator.hasNext()) {
+      PartialPath device = deviceIterator.next();
       FilterOperator newOperator = operator.copy();
-      concatFilterPath(device, newOperator, filterPaths);
+      try {
+        concatFilterPath(device, newOperator, filterPaths);
+      } catch (PathNotExistException e) {
+        deviceIterator.remove();
+        continue;
+      }
       // transform to a list so it can be indexed
       List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
       try {
@@ -816,7 +825,8 @@ public class PhysicalGenerator {
   }
 
   private void concatFilterPath(
-      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths)
+      throws PathNotExistException {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
@@ -834,8 +844,12 @@ public class PhysicalGenerator {
     }
 
     PartialPath concatPath = prefix.concatPath(filterPath);
-    filterPaths.add(concatPath);
-    basicOperator.setSinglePath(concatPath);
+    if (IoTDB.metaManager.isPathExist(concatPath)) {
+      filterPaths.add(concatPath);
+      basicOperator.setSinglePath(concatPath);
+    } else {
+      throw new PathNotExistException(concatPath.getFullPath());
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
