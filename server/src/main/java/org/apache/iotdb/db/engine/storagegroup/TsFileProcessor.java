@@ -267,9 +267,9 @@ public class TsFileProcessor {
         insertTabletPlan.setEnd(end);
         getLogNode().write(insertTabletPlan);
       }
-    } catch (IOException e) {
+    } catch (Exception e) {
       for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       throw new WriteProcessException(e);
     }
