@@ -70,6 +70,7 @@ public class IoTDBCompressTypeIT {
 
       Assert.assertEquals("zhang", r1.getString(2));
       Assert.assertEquals(10, r1.getInt(3));
+      r1.close();
 
       statement.execute("insert into root.ln.wf01.wt01(timestamp,name,age) values(2000,'wang',20)");
       statement.execute("flush");
@@ -78,16 +79,19 @@ public class IoTDBCompressTypeIT {
       ResultSet r2 = statement.executeQuery("select * from root.ln.wf01.wt01 where name = 'wang'");
       r2.next();
       Assert.assertEquals(20, r2.getInt(3));
+      r2.close();
 
       ResultSet r3 = statement.executeQuery("select * from root.ln.wf01.wt01 where name = 'li'");
       r3.next();
       Assert.assertEquals(30, r3.getInt(3));
+      r3.close();
 
       ResultSet r4 = statement.executeQuery("select sum(age) from root.ln.wf01.wt01");
       r4.next();
       double d = r4.getDouble(1);
 
       Assert.assertTrue(60.0 == d);
+      r4.close();
 
       // now we try to insert more values
       for (int i = 1; i <= 1000; i++) {
@@ -104,6 +108,7 @@ public class IoTDBCompressTypeIT {
           statement.executeQuery("select * from root.ln.wf01.wt01 where timestamp = 100000");
       r5.next();
       Assert.assertEquals(10000, r5.getInt(3));
+      r5.close();
     }
   }
 }
