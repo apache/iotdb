@@ -24,7 +24,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -132,7 +132,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -237,7 +237,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -348,7 +348,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -464,7 +464,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -671,7 +671,7 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + 0
                         + ".tsfile")));
     compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,

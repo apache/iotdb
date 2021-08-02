@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -217,7 +217,7 @@ public class InnerSeqCompactionTest {
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
             CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
-            InnerCompactionUtils.compact(
+            InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 toMergeResources,
                 COMPACTION_TEST_SG,
@@ -446,7 +446,7 @@ public class InnerSeqCompactionTest {
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
             CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
-            InnerCompactionUtils.compact(
+            InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 toMergeResources,
                 COMPACTION_TEST_SG,
@@ -711,7 +711,7 @@ public class InnerSeqCompactionTest {
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
             CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
-            InnerCompactionUtils.compact(
+            InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 toMergeResources,
                 COMPACTION_TEST_SG,

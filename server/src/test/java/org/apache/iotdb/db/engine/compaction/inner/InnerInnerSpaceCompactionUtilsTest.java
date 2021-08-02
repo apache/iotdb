@@ -22,7 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -48,7 +48,7 @@ import java.util.HashSet;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
 
-public class InnerInnerCompactionUtilsTest extends InnerCompactionTest {
+public class InnerInnerSpaceCompactionUtilsTest extends InnerCompactionTest {
 
   File tempSGDir;
 
@@ -87,7 +87,7 @@ public class InnerInnerCompactionUtilsTest extends InnerCompactionTest {
       compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }
     compactionLogger.logSequence(true);
-    InnerCompactionUtils.compact(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         seqResources,
         COMPACTION_TEST_SG,

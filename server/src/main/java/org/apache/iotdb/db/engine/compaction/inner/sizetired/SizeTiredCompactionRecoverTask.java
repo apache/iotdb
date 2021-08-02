@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -119,7 +119,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             writer.close();
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, fullStorageGroupName);
-            InnerCompactionUtils.compact(
+            InnerSpaceCompactionUtils.compact(
                 targetResource,
                 sourceTsFileResources,
                 fullStorageGroupName,
@@ -140,7 +140,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             } finally {
               tsFileResourceList.writeUnlock();
             }
-            InnerCompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, fullStorageGroupName);
+            InnerSpaceCompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, fullStorageGroupName);
             renameLevelFilesMods(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {

@@ -72,12 +72,12 @@ import java.util.TreeMap;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 
-public class InnerCompactionUtils {
+public class InnerSpaceCompactionUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(InnerCompactionUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(InnerSpaceCompactionUtils.class);
   public static final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
-  private InnerCompactionUtils() {
+  private InnerSpaceCompactionUtils() {
     throw new IllegalStateException("Utility class");
   }
 
