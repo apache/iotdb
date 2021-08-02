@@ -339,6 +339,7 @@ void SessionDataSet::closeOperationHandle()
 {
     shared_ptr<TSCloseOperationReq> closeReq(new TSCloseOperationReq());
     closeReq->__set_sessionId(sessionId);
+    closeReq->__set_statementId(statementId);
     closeReq->__set_queryId(queryId);
     shared_ptr<TSStatus> closeResp(new TSStatus());
     try
@@ -576,7 +577,7 @@ void Session::close()
     }
     shared_ptr<TSCloseSessionReq> req(new TSCloseSessionReq());
     req->__set_sessionId(sessionId);
-    try 
+    try
     {
         shared_ptr<TSStatus> resp(new TSStatus());
         client->closeSession(*resp,*req);
@@ -1146,7 +1147,7 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(string sql)
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
     return unique_ptr<SessionDataSet>(new SessionDataSet(
-        sql, resp->columns, resp->dataTypeList, resp->queryId, client, sessionId, queryDataSet));
+        sql, resp->columns, resp->dataTypeList, resp->queryId, statementId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(string sql)

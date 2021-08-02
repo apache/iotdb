@@ -505,6 +505,7 @@ private:
     bool hasCachedRecord = false;
     std::string sql;
     int64_t queryId;
+    int64_t statementId;
     int64_t sessionId;
 	  std::shared_ptr<TSIServiceIf> client;
     int batchSize = 1024;
@@ -528,12 +529,13 @@ private:
 
 public:
     SessionDataSet(){}
-    SessionDataSet(std::string sql, std::vector<std::string>& columnNameList, std::vector<std::string>& columnTypeList, int64_t queryId,
+    SessionDataSet(std::string sql, std::vector<std::string>& columnNameList, std::vector<std::string>& columnTypeList, int64_t queryId, int64_t statementId,
         std::shared_ptr<TSIServiceIf> client, int64_t sessionId, std::shared_ptr<TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time)
     {
         this->sessionId = sessionId;
         this->sql = sql;
         this->queryId = queryId;
+        this->statementId = statementId;
         this->client = client;
         this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
