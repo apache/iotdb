@@ -209,10 +209,6 @@ public class TsFileProcessor {
       }
     }
 
-    if (enableMemControl) {
-      checkMemCostAndAddToTspInfo(insertRowPlan);
-    }
-
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
@@ -223,6 +219,10 @@ public class TsFileProcessor {
                 storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
             e);
       }
+    }
+
+    if (enableMemControl) {
+      checkMemCostAndAddToTspInfo(insertRowPlan);
     }
 
     workMemTable.insert(insertRowPlan);
@@ -262,6 +262,19 @@ public class TsFileProcessor {
     }
 
     try {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
+        insertTabletPlan.setStart(start);
+        insertTabletPlan.setEnd(end);
+        getLogNode().write(insertTabletPlan);
+      }
+    } catch (IOException e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
+    try {
       if (enableMemControl) {
         checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
       }
@@ -271,19 +284,16 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
+
     try {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        insertTabletPlan.setStart(start);
-        insertTabletPlan.setEnd(end);
-        getLogNode().write(insertTabletPlan);
-      }
       workMemTable.insertTablet(insertTabletPlan, start, end);
-    } catch (Exception e) {
+    } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       throw new WriteProcessException(e);
     }
+
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
