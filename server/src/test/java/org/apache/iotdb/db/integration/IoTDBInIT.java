@@ -39,21 +39,21 @@ public class IoTDBInIT {
   private static String[] sqls =
       new String[] {
         "set storage group to root.ln",
-        "create timeseries root.ln.a.sg1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.ln.a.sg1(timestamp,qrcode) values(1509465600000,\"qrcode001\")",
-        "insert into root.ln.a.sg1(timestamp,qrcode) values(1509465660000,\"qrcode002\")",
-        "insert into root.ln.a.sg1(timestamp,qrcode) values(1509465720000,\"qrcode003\")",
-        "insert into root.ln.a.sg1(timestamp,qrcode) values(1509465780000,\"qrcode004\")",
-        "create timeseries root.ln.a.sg2.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.ln.a.sg2(timestamp,qrcode) values(1509465720000,\"qrcode002\")",
-        "insert into root.ln.a.sg2(timestamp,qrcode) values(1509465780000,\"qrcode003\")",
-        "insert into root.ln.a.sg2(timestamp,qrcode) values(1509465840000,\"qrcode004\")",
-        "insert into root.ln.a.sg2(timestamp,qrcode) values(1509465900000,\"qrcode005\")",
-        "create timeseries root.ln.b.sg1.qrcode with datatype=TEXT,encoding=PLAIN",
-        "insert into root.ln.b.sg1(timestamp,qrcode) values(1509465780000,\"qrcode002\")",
-        "insert into root.ln.b.sg1(timestamp,qrcode) values(1509465840000,\"qrcode003\")",
-        "insert into root.ln.b.sg1(timestamp,qrcode) values(1509465900000,\"qrcode004\")",
-        "insert into root.ln.b.sg1(timestamp,qrcode) values(1509465960000,\"qrcode005\")"
+        "create timeseries root.sg.d1.s1.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465600000,\"qrcode001\")",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465660000,\"qrcode002\")",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465720000,\"qrcode003\")",
+        "insert into root.sg.d1.s1(timestamp,qrcode) values(1509465780000,\"qrcode004\")",
+        "create timeseries root.sg.d1.s2.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465720000,\"qrcode002\")",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465780000,\"qrcode003\")",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465840000,\"qrcode004\")",
+        "insert into root.sg.d1.s2(timestamp,qrcode) values(1509465900000,\"qrcode005\")",
+        "create timeseries root.sg.d2.s1.qrcode with datatype=TEXT,encoding=PLAIN",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465780000,\"qrcode002\")",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465840000,\"qrcode003\")",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465900000,\"qrcode004\")",
+        "insert into root.sg.d2.s1(timestamp,qrcode) values(1509465960000,\"qrcode005\")"
       };
 
   @BeforeClass
@@ -96,7 +96,7 @@ public class IoTDBInIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select qrcode from root.ln.a.* where qrcode in ('qrcode002', 'qrcode003')");
+              "select qrcode from root.sg.d1.* where qrcode in ('qrcode002', 'qrcode003')");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -104,7 +104,7 @@ public class IoTDBInIT {
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.ln.a.sg1.qrcode,root.ln.a.sg2.qrcode,",
+                "Time,root.sg.d1.s1.qrcode,root.sg.d1.s2.qrcode,",
                 new int[] {
                   Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR,
                 });
@@ -142,7 +142,7 @@ public class IoTDBInIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select qrcode from root.ln.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')");
+              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode003', 'qrcode004')");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -150,7 +150,7 @@ public class IoTDBInIT {
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,root.ln.a.sg1.qrcode,root.ln.a.sg2.qrcode,root.ln.b.sg1.qrcode,",
+                "Time,root.sg.d1.s1.qrcode,root.sg.d1.s2.qrcode,root.sg.d2.s1.qrcode,",
                 new int[] {
                   Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR, Types.VARCHAR,
                 });
@@ -181,12 +181,12 @@ public class IoTDBInIT {
   public void selectWithAlignByDeviceTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
-          "1509465660000,root.ln.a.sg1,qrcode002,",
-          "1509465780000,root.ln.a.sg1,qrcode004,",
-          "1509465720000,root.ln.a.sg2,qrcode002,",
-          "1509465840000,root.ln.a.sg2,qrcode004,",
-          "1509465780000,root.ln.b.sg1,qrcode002,",
-          "1509465900000,root.ln.b.sg1,qrcode004,",
+          "1509465660000,root.sg.d1.s1,qrcode002,",
+          "1509465780000,root.sg.d1.s1,qrcode004,",
+          "1509465720000,root.sg.d1.s2,qrcode002,",
+          "1509465840000,root.sg.d1.s2,qrcode004,",
+          "1509465780000,root.sg.d2.s1,qrcode002,",
+          "1509465900000,root.sg.d2.s1,qrcode004,",
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -196,7 +196,7 @@ public class IoTDBInIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select qrcode from root.ln.*.* where qrcode in ('qrcode002', 'qrcode004') align by device");
+              "select qrcode from root.sg.*.* where qrcode in ('qrcode002', 'qrcode004') align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
