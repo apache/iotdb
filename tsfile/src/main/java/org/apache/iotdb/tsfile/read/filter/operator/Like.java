@@ -43,7 +43,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected FilterType filterType;
 
-  public Like() {}
+  private Like() {}
 
   public Like(String value, FilterType filterType) {
     this.value = value;
@@ -57,15 +57,16 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public boolean satisfy(long time, Object value) {
-    Object v = filterType == FilterType.TIME_FILTER ? time : value;
-
+    if (filterType != FilterType.VALUE_FILTER) {
+      return false;
+    }
     Pattern pattern;
     try {
       pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {
-      throw new PatternSyntaxException("Regular expression error", v.toString(), e.getIndex());
+      throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
     }
-    return pattern.matcher(v.toString()).find();
+    return pattern.matcher(value.toString()).find();
   }
 
   @Override

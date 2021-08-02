@@ -531,17 +531,96 @@ public class IoTDBQueryDemoIT {
         Assert.assertEquals(3, cnt);
       }
 
+      retArray =
+          new String[] {
+            "1509465600000,v2,true,",
+            "1509465660000,v2,true,",
+            "1509465720000,v1,false,",
+            "1509465780000,v1,false,",
+            "1509465840000,v1,false,",
+            "1509465900000,v1,false,",
+            "1509465960000,v1,false,",
+            "1509466020000,v1,false,",
+            "1509466080000,v1,false,",
+            "1509466140000,v1,false,",
+          };
       hasResultSet =
           statement.execute(
               "select hardware,status from root.ln.wf02.wt02 where hardware like 'v*' ");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
+                new int[] {
+                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
+                });
+
         int cnt = 0;
         while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
         Assert.assertEquals(10, cnt);
       }
+
+      // Match nonexistent string.'s.' is indicates that the starting with s and the last is any
+      // single character
+      retArray =
+          new String[] {
+            "1509465600000,v2,true,",
+            "1509465660000,v2,true,",
+            "1509465720000,v1,false,",
+            "1509465780000,v1,false,",
+            "1509465840000,v1,false,",
+            "1509465900000,v1,false,",
+            "1509465960000,v1,false,",
+            "1509466020000,v1,false,",
+            "1509466080000,v1,false,",
+            "1509466140000,v1,false,",
+          };
+      hasResultSet =
+          statement.execute(
+              "select hardware,status from root.ln.wf02.wt02 where hardware like 's.' ");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time," + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,",
+                new int[] {
+                  Types.TIMESTAMP, Types.VARCHAR, Types.BOOLEAN,
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
