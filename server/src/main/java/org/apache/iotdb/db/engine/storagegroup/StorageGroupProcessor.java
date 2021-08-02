@@ -1766,10 +1766,6 @@ public class StorageGroupProcessor {
       logDeletion(startTime, endTime, path);
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
-      //      if (tsFileResourceManager.mergingModification != null) {
-      //        tsFileResourceManager.mergingModification.write(deletion);
-      //        updatedModFiles.add(tsFileResourceManager.mergingModification);
-      //      }
 
       deleteDataInFiles(
           tsFileResourceManager.getTsFileList(true),
