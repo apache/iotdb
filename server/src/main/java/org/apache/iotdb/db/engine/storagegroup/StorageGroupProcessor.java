@@ -689,7 +689,7 @@ public class StorageGroupProcessor {
       RestorableTsFileIOWriter writer;
       try {
         // this tsfile is not zero level, no need to perform redo wal
-        if (TsFileResource.getCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
+        if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           if (writer.hasCrashed()) {
@@ -1200,7 +1200,7 @@ public class StorageGroupProcessor {
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
     String filePath =
-        TsFileNameGenerator.generateNewTsFilePatWithMkdir(
+        TsFileNameGenerator.generateNewTsFilePathWithMkdir(
             sequence,
             logicalStorageGroupName,
             virtualStorageGroupId,
@@ -2041,10 +2041,12 @@ public class StorageGroupProcessor {
   /** upgrade all files belongs to this storage group */
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
+      seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       seqTsFileResource.doUpgrade();
     }
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
+      unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
     }
