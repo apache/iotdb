@@ -43,36 +43,6 @@ public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  /**
-   * @param sequence whether the file is sequence
-   * @param logicalStorageGroup eg. "root.sg"
-   * @param virtualStorageGroup eg. "0"
-   * @param timePartitionId eg. 0
-   * @param time eg. 1623895965058
-   * @param version eg. 0
-   * @param innerSpaceCompactionCount the times of inner space compaction of this file
-   * @param crossSpaceCompactionCount the times of cross space compaction of this file
-   * @return a relative path of new tsfile, eg.
-   *     "data/data/sequence/root.sg/0/0/1623895965058-0-0-0.tsfile"
-   */
-  public static String generateNewTsFilePath(
-      boolean sequence,
-      String logicalStorageGroup,
-      String virtualStorageGroup,
-      long timePartitionId,
-      long time,
-      long version,
-      int innerSpaceCompactionCount,
-      int crossSpaceCompactionCount)
-      throws DiskSpaceInsufficientException {
-    String tsFileDir =
-        generateTsFileDir(sequence, logicalStorageGroup, virtualStorageGroup, timePartitionId);
-    return tsFileDir
-        + File.separator
-        + generateNewTsFileName(
-            time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
-  }
-
   public static String generateNewTsFilePath(
       String tsFileDir,
       long time,
