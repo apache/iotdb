@@ -41,7 +41,7 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 /** fuzzy query structure LikeOperator. */
 public class LikeOperator extends FunctionOperator {
 
-  private Logger logger = LoggerFactory.getLogger(LikeOperator.class);
+  private static final Logger logger = LoggerFactory.getLogger(LikeOperator.class);
 
   protected String value;
 
