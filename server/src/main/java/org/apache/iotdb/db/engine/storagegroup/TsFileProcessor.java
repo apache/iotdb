@@ -184,10 +184,6 @@ public class TsFileProcessor {
       }
     }
 
-    if (enableMemControl) {
-      checkMemCostAndAddToTspInfo(insertRowPlan);
-    }
-
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
@@ -198,6 +194,10 @@ public class TsFileProcessor {
                 storageGroupName, tsFileResource.getTsFile().getAbsolutePath()),
             e);
       }
+    }
+
+    if (enableMemControl) {
+      checkMemCostAndAddToTspInfo(insertRowPlan);
     }
 
     workMemTable.insert(insertRowPlan);
@@ -237,16 +237,6 @@ public class TsFileProcessor {
     }
 
     try {
-      if (enableMemControl) {
-        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
-      }
-    } catch (WriteProcessException e) {
-      for (int i = start; i < end; i++) {
-        results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
-      }
-      throw new WriteProcessException(e);
-    }
-    try {
       long startTime = System.currentTimeMillis();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
@@ -257,14 +247,33 @@ public class TsFileProcessor {
       if (elapsed > 5000) {
         logger.error("write wal slowly : cost {}ms", elapsed);
       }
-
-      workMemTable.insertTablet(insertTabletPlan, start, end);
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       throw new WriteProcessException(e);
     }
+
+    try {
+      if (enableMemControl) {
+        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+      }
+    } catch (WriteProcessException e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
+    try {
+      workMemTable.insertTablet(insertTabletPlan, start, end);
+    } catch (WriteProcessException e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
