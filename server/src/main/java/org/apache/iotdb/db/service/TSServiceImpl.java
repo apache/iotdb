@@ -310,10 +310,10 @@ public class TSServiceImpl implements TSIService.Iface {
         } else {
           sessionManager.closeStatement(req.sessionId, req.statementId);
         }
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else {
         return RpcUtils.getStatus(
             TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
-      } else {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
