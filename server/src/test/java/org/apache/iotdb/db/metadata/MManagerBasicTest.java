@@ -21,11 +21,9 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
@@ -926,124 +924,6 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTemplateCompatibility() throws MetadataException {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s11"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
-
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      dataTypes.add(TSDataType.INT64);
-    }
-    dataTypeList.add(dataTypes);
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    List<TSEncoding> encodings = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
-    }
-
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
-    schemaNames.add("test_vector");
-
-    CreateTemplatePlan plan1 =
-        new CreateTemplatePlan(
-            "template1",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
-
-    measurementList.add(Collections.singletonList("s12"));
-    schemaNames.add("s12");
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    compressionTypes.add(CompressionType.SNAPPY);
-
-    CreateTemplatePlan plan2 =
-        new CreateTemplatePlan(
-            "template2",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
-
-    MManager manager = IoTDB.metaManager;
-
-    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan2)));
-    assertFalse(manager.isTemplateCompatible(new Template(plan2), new Template(plan1)));
-
-    System.out.println(measurementList);
-    measurementList.get(1).add("s13");
-    dataTypeList.get(1).add(TSDataType.INT64);
-    encodingList.get(1).add(TSEncoding.RLE);
-
-    CreateTemplatePlan plan3 =
-        new CreateTemplatePlan(
-            "template3",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
-
-    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan3)));
-
-    List<String> vectorList = new ArrayList<>(measurementList.get(1));
-    vectorList.remove(0);
-    List<TSDataType> vectorDataTypesList = new ArrayList<>(dataTypeList.get(1));
-    vectorDataTypesList.remove(0);
-    List<TSEncoding> vectorEncodingsList = new ArrayList<>(encodingList.get(1));
-    vectorEncodingsList.remove(0);
-
-    measurementList.set(1, vectorList);
-    dataTypeList.set(1, vectorDataTypesList);
-    encodingList.set(1, vectorEncodingsList);
-
-    CreateTemplatePlan plan4 =
-        new CreateTemplatePlan(
-            "template4",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
-
-    assertFalse(manager.isTemplateCompatible(new Template(plan1), new Template(plan4)));
-
-    // test manager
-    manager.createSchemaTemplate(plan1);
-    manager.createSchemaTemplate(plan2);
-    manager.createSchemaTemplate(plan4);
-
-    manager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.sg1.d1"));
-    try {
-      manager.setSchemaTemplate(new SetSchemaTemplatePlan("template4", "root.sg1.d1.d2"));
-      fail("These two templates are incompatible");
-    } catch (MetadataException e) {
-      assertEquals("Incompatible template", e.getMessage());
-    }
-
-    manager.setSchemaTemplate(new SetSchemaTemplatePlan("template2", "root.sg1.d1.d2"));
-  }
-
-  @Test
   public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     MManager manager = IoTDB.metaManager;
@@ -1115,8 +995,10 @@ public class MManagerBasicTest {
     try {
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       fail();
-    } catch (PathAlreadyExistException e) {
-      assertEquals("Path [root.sg1.d1.s11] already exist", e.getMessage());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Schema name s11 in template has conflict with node's child root.sg1.d1.s11",
+          e.getMessage());
     }
 
     manager.deleteTimeseries(new PartialPath("root.sg1.d1.s11"));
@@ -1136,8 +1018,119 @@ public class MManagerBasicTest {
     try {
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       fail();
-    } catch (PathAlreadyExistException e) {
-      assertEquals("Path [root.sg1.d1.vector] already exist", e.getMessage());
+    } catch (MetadataException e) {
+      assertEquals(
+          "Schema name vector in template has conflict with node's child root.sg1.d1.vector",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSetDeviceTemplate() throws MetadataException {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s11"));
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      measurements.add("s" + i);
+    }
+    measurementList.add(measurements);
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      dataTypes.add(TSDataType.INT64);
+    }
+    dataTypeList.add(dataTypes);
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    List<TSEncoding> encodings = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      encodings.add(TSEncoding.RLE);
+    }
+    encodingList.add(encodings);
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 11; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s11");
+    schemaNames.add("test_vector");
+
+    CreateTemplatePlan plan1 =
+        new CreateTemplatePlan(
+            "template1",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    measurementList.add(Collections.singletonList("s12"));
+    schemaNames.add("s12");
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    CreateTemplatePlan plan2 =
+        new CreateTemplatePlan(
+            "template2",
+            new ArrayList<>(schemaNames),
+            new ArrayList<>(measurementList),
+            new ArrayList<>(dataTypeList),
+            new ArrayList<>(encodingList),
+            new ArrayList<>(compressionTypes));
+
+    measurementList.get(1).add("s13");
+    dataTypeList.get(1).add(TSDataType.INT64);
+    encodingList.get(1).add(TSEncoding.RLE);
+
+    SetSchemaTemplatePlan setPlan1 = new SetSchemaTemplatePlan("template1", "root.sg1");
+    SetSchemaTemplatePlan setPlan2 = new SetSchemaTemplatePlan("template2", "root.sg2.d1");
+
+    SetSchemaTemplatePlan setPlan3 = new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetSchemaTemplatePlan setPlan4 = new SetSchemaTemplatePlan("template2", "root.sg2");
+
+    SetSchemaTemplatePlan setPlan5 = new SetSchemaTemplatePlan("template2", "root.sg1.d1");
+
+    MManager manager = IoTDB.metaManager;
+
+    manager.createSchemaTemplate(plan1);
+    manager.createSchemaTemplate(plan2);
+
+    manager.setStorageGroup(new PartialPath("root.sg1"));
+    manager.setStorageGroup(new PartialPath("root.sg2"));
+    manager.setStorageGroup(new PartialPath("root.sg3"));
+
+    try {
+      manager.setSchemaTemplate(setPlan1);
+      manager.setSchemaTemplate(setPlan2);
+    } catch (MetadataException e) {
+      fail();
+    }
+
+    try {
+      manager.setSchemaTemplate(setPlan3);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
+    }
+
+    try {
+      manager.setSchemaTemplate(setPlan4);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg2.d1", e.getMessage());
+    }
+
+    try {
+      manager.setSchemaTemplate(setPlan5);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
     }
   }
 
@@ -1553,9 +1546,9 @@ public class MManagerBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(IMNode.getPartialPath()));
-      assertEquals(1, IMNode.getMeasurementMNodeCount());
+      IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath()));
+      assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);
       assertNull(insertRowPlan.getMeasurementMNodes()[2]);
@@ -1640,8 +1633,8 @@ public class MManagerBasicTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IMNode IMNode = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(1, IMNode.getMeasurementMNodeCount());
+      IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
