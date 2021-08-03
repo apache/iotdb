@@ -445,8 +445,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
           TsFileResource targetTsFileResource = getRecoverTsFileResource(targetFile, isSeq);
           if (targetTsFileResource == null) {
-            logger.warn("get null targetTsFileResource");
-            return;
+            targetTsFileResource = getTsFileResource(targetFile, isSeq);
+            if (targetTsFileResource == null) {
+              logger.warn("get null targetTsFileResource");
+              return;
+            }
           }
           long timePartition = targetTsFileResource.getTimePartition();
           RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
