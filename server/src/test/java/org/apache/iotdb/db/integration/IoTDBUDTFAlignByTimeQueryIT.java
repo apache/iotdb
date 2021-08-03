@@ -220,6 +220,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -244,6 +245,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -276,6 +278,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -314,6 +317,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -340,6 +344,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
           assertEquals(i * 2 * 5, Integer.parseInt(resultSet.getString(2)));
         }
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -371,6 +376,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       assertEquals(3 * (ITERATION_TIMES - 1), Integer.parseInt(resultSet.getString(columnS1)));
       assertNull(resultSet.getString(columnS2));
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -409,6 +415,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       assertNull(resultSet.getString(columnS2));
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -497,6 +504,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -537,6 +545,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.5 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -587,6 +596,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -624,6 +634,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -652,6 +663,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -681,6 +693,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals(LIMIT, index - ((int) (0.3 * ITERATION_TIMES) + OFFSET));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -711,6 +724,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -743,6 +757,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
               || columnS2.equals(resultSet.getMetaData().getColumnName(3)));
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -779,6 +794,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
           (int) (0.7 * ITERATION_TIMES) - 1, Integer.parseInt(resultSet.getString(columnS1)));
       assertNull(resultSet.getString(columnS2));
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -823,6 +839,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
       assertNull(resultSet.getString(columnS2));
 
       assertFalse(resultSet.next());
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

@@ -146,6 +146,7 @@ public class IoTDBUDFWindowQueryIT {
         assertEquals(count++, (int) (Double.parseDouble(resultSet.getString(1))));
       }
       assertEquals(ITERATION_TIMES, count);
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -218,6 +219,7 @@ public class IoTDBUDFWindowQueryIT {
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
         ++count;
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       if (0 < windowSize || !throwable.getMessage().contains(String.valueOf(windowSize))) {
         fail(throwable.getMessage());
@@ -350,6 +352,7 @@ public class IoTDBUDFWindowQueryIT {
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
         ++count;
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       if (slidingStep > 0 && timeInterval > 0 && displayWindowEnd >= displayWindowBegin) {
         fail(throwable.getMessage());
@@ -417,6 +420,7 @@ public class IoTDBUDFWindowQueryIT {
         assertEquals(expectedAccumulation, (int) (Double.parseDouble(resultSet.getString(2))));
         ++count;
       }
+      resultSet.close();
     } catch (SQLException throwable) {
       if (timeInterval > 0) {
         fail(throwable.getMessage());
@@ -548,6 +552,7 @@ public class IoTDBUDFWindowQueryIT {
         }
       }
       assertEquals((int) Math.ceil(ITERATION_TIMES / (double) slidingStep), count);
+      resultSet.close();
     } catch (SQLException throwable) {
       if (windowSize > 0) {
         fail(throwable.getMessage());
