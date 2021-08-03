@@ -216,7 +216,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void remove(TsFileResource tsFileResource, boolean sequence) {
+    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
+    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       if (sequence) {
         for (SortedSet<TsFileResource> sequenceTsFileResource :
@@ -230,13 +232,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     } finally {
+      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
+      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
   }
 
   @Override
   public void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
+    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
+    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       if (sequence) {
         for (List<SortedSet<TsFileResource>> partitionSequenceTsFileResource :
@@ -254,13 +260,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     } finally {
+      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
+      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
   }
 
   @Override
   public void add(TsFileResource tsFileResource, boolean sequence) throws IOException {
+    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
+    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       long timePartitionId = tsFileResource.getTimePartition();
       int level = TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName());
@@ -294,7 +304,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     } finally {
+      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
+      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
   }
 
@@ -309,13 +321,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) throws IOException {
+    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
+    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       for (TsFileResource tsFileResource : tsFileResourceList) {
         add(tsFileResource, sequence);
       }
     } finally {
+      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
+      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
   }
 
@@ -348,12 +364,16 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void clear() {
+    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
+    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       sequenceTsFileResources.clear();
       unSequenceTsFileResources.clear();
     } finally {
+      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
+      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
   }
 
@@ -530,7 +550,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             writer.close();
           }
           // complete compaction, delete source files
+          logger.warn("Acquiring write lock in TsFileManagement");
           writeLock();
+          logger.warn("Acquired write lock in TsFileManagement successfully");
           try {
             if (Thread.currentThread().isInterrupted()) {
               throw new InterruptedException(
@@ -538,7 +560,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             }
             deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
           } finally {
+            logger.warn("Release write lock in TsFileManagement");
             writeUnlock();
+            logger.warn("Release write lock in TsFileManagementSuccessfully");
           }
           for (TsFileResource tsFileResource : sourceTsFileResources) {
             logger.warn(
@@ -723,7 +747,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 storageGroupName,
                 i,
                 toMergeTsFiles.size());
+            logger.warn("Acquiring write lock in TsFileManagement");
             writeLock();
+            logger.warn("Acquired write lock in TsFileManagement successfully");
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(
@@ -740,7 +766,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 mergeResources.get(i + 1).add(newResource);
               }
             } finally {
+              logger.warn("Release write lock in TsFileManagement");
               writeUnlock();
+              logger.warn("Release write lock in TsFileManagementSuccessfully");
             }
             deleteLevelFilesInDisk(toMergeTsFiles);
             renameLevelFilesMods(modifications, toMergeTsFiles, newResource);
