@@ -29,7 +29,9 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542457-5f511d00-d77c-11eb-8006-562d83069baa.png">
 
-IoTDB 模型结构涉及如下基本概念：
+IoTDB 模型结构涉及的基本概念在下文将做详细叙述。
+
+### 物理量、实体、存储组、路径
 
 * 物理量（Measurement，也称工况、字段 field）
 
@@ -60,38 +62,6 @@ IoTDB 模型结构涉及如下基本概念：
 一个存储组设定后，其对应的前缀路径的祖先层级与孩子及后裔层级也不允许再设置存储组（如，`root.ln`设置存储组后，root 层级与`root.ln.wf01`不允许被设置为存储组）。
 
 存储组节点名只支持中英文字符、数字、下划线和中划线的组合。例如`root. 存储组_1-组1` 。
-
-* 数据点（Data point）
-
-**一个“时间-值”对**。
-
-* 时间序列（一个实体的某个物理量对应一个时间序列，Timeseries，也称测点 meter、时间线 timeline，实时数据库中常被称作标签 tag、参数 parameter）
-
-**一个物理实体的某个物理量在时间轴上的记录**，是数据点的序列。
-
-例如，ln 电力集团、wf01 风电场的实体 wt01 有名为 status 的物理量，则它的时间序列可以表示为：`root.ln.wf01.wt01.status`。 
-
-* 一元时间序列（single-variable timeseries 或 timeseries，v0.1 起支持）
-
-一个实体的一个一元物理量对应一个一元时间序列。实体+物理量=时间序列
-
-* 多元时间序列（Multi-variable timeseries 或 Aligned timeseries，v0.13 起支持）
-
-一个实体的一个多元物理量对应一个多元时间序列。这些时间序列称为**多元时间序列**，也叫**对齐时间序列**。
-
-多元时间序列需要被同时创建、同时插入值，删除时也必须同时删除。不过在查询的时候，可以对于每一个分量单独查询。
-
-通过使用对齐的时间序列，在插入数据时，一组对齐序列的时间戳列在内存和磁盘中仅需存储一次，而不是每个时间序列存储一次：
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542458-62e4a400-d77c-11eb-8c45-ca516f1b7eba.png">
-
-在后续数据定义语言、数据操作语言和 Java 原生接口章节，将对涉及到对齐时间序列的各种操作进行逐一介绍。
-
-* 物理量模板（Measurement template，v0.13 起支持）
-
-实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**物理量模板**来定义可采集的物理量集合。将物理量模版挂在树形数据模式的任意节点上，表示该节点下的所有实体具有相同的物理量集合。
-
-目前每一个路径节点仅允许挂载一个物理量模板，实体将使用其自身或最近祖先的物理量模板作为有效模板。
 
 * 路径
 
@@ -125,7 +95,7 @@ LayerName: Identifier | STAR
 前缀路径是指一个时间序列的前缀所在的路径，一个前缀路径包含以该路径为前缀的所有时间序列。例如当前我们有`root.vehicle.device1.sensor1`, `root.vehicle.device1.sensor2`, `root.vehicle.device2.sensor1`三个传感器，则`root.vehicle.device1`前缀路径包含`root.vehicle.device1.sensor1`、`root.vehicle.device1.sensor2`两个时间序列，而不包含`root.vehicle.device2.sensor1`。
 
 * 带`*`路径
-为了使得在表达多个时间序列或表达前缀路径的时候更加方便快捷，IoTDB 为用户提供带`*`路径。`*`可以出现在路径中的任何层。按照`*`出现的位置，带`*`路径可以分为两种：
+  为了使得在表达多个时间序列或表达前缀路径的时候更加方便快捷，IoTDB 为用户提供带`*`路径。`*`可以出现在路径中的任何层。按照`*`出现的位置，带`*`路径可以分为两种：
 
 `*`出现在路径的结尾；
 
@@ -141,118 +111,45 @@ LayerName: Identifier | STAR
 
 > 注意：`*`create 创建时，后面的路径同时不能含有`*`。 
 
-* 时间戳
 
-时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳。
 
-* 绝对时间戳
+### 一元、多元时间序列
 
-IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIME 类型（包含 DATETIME-INPUT, DATETIME-DISPLAY 两个小类）。
+* 数据点（Data point）
 
-在用户在输入时间戳时，可以使用 LONG 类型的时间戳或 DATETIME-INPUT 类型的时间戳，其中 DATETIME-INPUT 类型的时间戳支持格式如表所示：
+**一个“时间-值”对**。
 
-<center>**DATETIME-INPUT 类型支持格式**
+* 时间序列（一个实体的某个物理量对应一个时间序列，Timeseries，也称测点 meter、时间线 timeline，实时数据库中常被称作标签 tag、参数 parameter）
 
-|format|
-|:---|
-|yyyy-MM-dd HH:mm:ss|
-|yyyy/MM/dd HH:mm:ss|
-|yyyy.MM.dd HH:mm:ss|
-|yyyy-MM-dd'T'HH:mm:ss|
-|yyyy/MM/dd'T'HH:mm:ss|
-|yyyy.MM.dd'T'HH:mm:ss|
-|yyyy-MM-dd HH:mm:ssZZ|
-|yyyy/MM/dd HH:mm:ssZZ|
-|yyyy.MM.dd HH:mm:ssZZ|
-|yyyy-MM-dd'T'HH:mm:ssZZ|
-|yyyy/MM/dd'T'HH:mm:ssZZ|
-|yyyy.MM.dd'T'HH:mm:ssZZ|
-|yyyy/MM/dd HH:mm:ss.SSS|
-|yyyy-MM-dd HH:mm:ss.SSS|
-|yyyy.MM.dd HH:mm:ss.SSS|
-|yyyy/MM/dd'T'HH:mm:ss.SSS|
-|yyyy-MM-dd'T'HH:mm:ss.SSS|
-|yyyy.MM.dd'T'HH:mm:ss.SSS|
-|yyyy-MM-dd HH:mm:ss.SSSZZ|
-|yyyy/MM/dd HH:mm:ss.SSSZZ|
-|yyyy.MM.dd HH:mm:ss.SSSZZ|
-|yyyy-MM-dd'T'HH:mm:ss.SSSZZ|
-|yyyy/MM/dd'T'HH:mm:ss.SSSZZ|
-|yyyy.MM.dd'T'HH:mm:ss.SSSZZ|
-|ISO8601 standard time format|
+**一个物理实体的某个物理量在时间轴上的记录**，是数据点的序列。
 
-</center>
+例如，ln 电力集团、wf01 风电场的实体 wt01 有名为 status 的物理量，则它的时间序列可以表示为：`root.ln.wf01.wt01.status`。 
 
-IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类型，其中 DATETIME-DISPLAY 类型可以支持用户自定义时间格式。自定义时间格式的语法如表所示：
+* 一元时间序列（single-variable timeseries 或 timeseries，v0.1 起支持）
 
-<center>**DATETIME-DISPLAY 自定义时间格式的语法**
+一个实体的一个一元物理量对应一个一元时间序列。实体+物理量=时间序列
 
-|Symbol|Meaning|Presentation|Examples|
-|:---:|:---:|:---:|:---:|
-|G|era|era|era|
-|C|century of era (>=0)|	number|	20|
-| Y	|year of era (>=0)|	year|	1996|
-|||||
-| x	|weekyear|	year|	1996|
-| w	|week of weekyear|	number	|27|
-| e	|day of week	|number|	2|
-| E	|day of week	|text	|Tuesday; Tue|
-|||||
-| y|	year|	year|	1996|
-| D	|day of year	|number|	189|
-| M	|month of year	|month|	July; Jul; 07|
-| d	|day of month	|number|	10|
-|||||
-| a	|halfday of day	|text	|PM|
-| K	|hour of halfday (0~11)	|number|	0|
-| h	|clockhour of halfday (1~12)	|number|	12|
-|||||
-| H	|hour of day (0~23)|	number|	0|
-| k	|clockhour of day (1~24)	|number|	24|
-| m	|minute of hour|	number|	30|
-| s	|second of minute|	number|	55|
-| S	|fraction of second	|millis|	978|
-|||||
-| z	|time zone	|text	|Pacific Standard Time; PST|
-| Z	|time zone offset/id|	zone|	-0800; -08:00; America/Los_Angeles|
-|||||
-| '|	escape for text	|delimiter|	　|
-| ''|	single quote|	literal	|'|
+* 多元时间序列（Multi-variable timeseries 或 Aligned timeseries，v0.13 起支持）
 
-</center>
+一个实体的一个多元物理量对应一个多元时间序列。这些时间序列称为**多元时间序列**，也叫**对齐时间序列**。
 
-* 相对时间戳
+多元时间序列需要被同时创建、同时插入值，删除时也必须同时删除。不过在查询的时候，可以对于每一个分量单独查询。
 
-  相对时间是指与服务器时间```now()```和```DATETIME```类型时间相差一定时间间隔的时间。
-  形式化定义为：
+通过使用对齐的时间序列，在插入数据时，一组对齐序列的时间戳列在内存和磁盘中仅需存储一次，而不是每个时间序列存储一次：
 
-  ```
-  Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
-  RelativeTime = (now() | DATETIME) ((+|-) Duration)+
-  ```
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/123542458-62e4a400-d77c-11eb-8c45-ca516f1b7eba.png">
 
-  <center>**The syntax of the duration unit**
+在后续数据定义语言、数据操作语言和 Java 原生接口章节，将对涉及到对齐时间序列的各种操作进行逐一介绍。
 
-  |Symbol|Meaning|Presentation|Examples|
-  |:---:|:---:|:---:|:---:|
-  |y|year|1y=365 days|1y|
-  |mo|month|1mo=30 days|1mo|
-  |w|week|1w=7 days|1w|
-  |d|day|1d=1 day|1d|
-  |||||
-  |h|hour|1h=3600 seconds|1h|
-  |m|minute|1m=60 seconds|1m|
-  |s|second|1s=1 second|1s|
-  |||||
-  |ms|millisecond|1ms=1000_000 nanoseconds|1ms|
-  |us|microsecond|1us=1000 nanoseconds|1us|
-  |ns|nanosecond|1ns=1 nanosecond|1ns|
+* 时间戳类型
 
-  </center>
+时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳，详细描述参见数据类型文档。
 
-  例子：
-  ```
-  now() - 1d2h //比服务器时间早 1 天 2 小时的时间
-  now() - 1w //比服务器时间早 1 周的时间
-  ```
-  > 注意：'+'和'-'的左右两边必须有空格 
+
+### 物理量模板
+
+* 物理量模板（Measurement template，v0.13 起支持）
+
+实际应用中有许多实体所采集的物理量相同，即具有相同的工况名称和类型，可以声明一个**物理量模板**来定义可采集的物理量集合。将物理量模版挂在树形数据模式的任意节点上，表示该节点下的所有实体具有相同的物理量集合。
+
+目前每一条路径节点仅允许挂载一个物理量模板，即当一个节点被挂载物理量模板后，它的祖先节点和后代节点都不能再挂载物理量模板。实体将使用其自身或祖先的物理量模板作为有效模板。

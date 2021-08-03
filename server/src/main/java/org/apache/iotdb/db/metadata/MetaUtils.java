@@ -127,8 +127,8 @@ public class MetaUtils {
     collectLastNode(node, lastNodeList);
 
     List<String> result = new ArrayList<>();
-    for (IMNode IMNode : lastNodeList) {
-      result.add(IMNode.getFullPath());
+    for (IMNode lastNode : lastNodeList) {
+      result.add(lastNode.getFullPath());
     }
 
     return result;
