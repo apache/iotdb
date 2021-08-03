@@ -182,8 +182,7 @@ public class InsertTabletPlanGenerator {
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format(
-                  "data type %s is not supported when convert data at client", dataTypes[i]));
+              String.format("Data type %s is not supported.", dataTypes[i]));
       }
     }
   }
@@ -198,7 +197,6 @@ public class InsertTabletPlanGenerator {
       }
 
       nonEmptyColumnNames.add(targetMeasurementIds.get(i));
-      times[countOfNonEmptyColumns] = times[i];
       columns[countOfNonEmptyColumns] = columns[i];
       bitMaps[countOfNonEmptyColumns] = bitMaps[i];
       dataTypes[countOfNonEmptyColumns] = dataTypes[i];
@@ -208,21 +206,48 @@ public class InsertTabletPlanGenerator {
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(targetDevice), nonEmptyColumnNames);
-
     insertTabletPlan.setAligned(false);
     insertTabletPlan.setRowCount(rowCount);
 
-    if (countOfNonEmptyColumns == columns.length) {
-      insertTabletPlan.setTimes(times);
-      insertTabletPlan.setColumns(columns);
-      insertTabletPlan.setBitMaps(bitMaps);
-      insertTabletPlan.setDataTypes(dataTypes);
-    } else {
-      insertTabletPlan.setTimes(Arrays.copyOf(times, countOfNonEmptyColumns));
-      insertTabletPlan.setColumns(Arrays.copyOf(columns, countOfNonEmptyColumns));
-      insertTabletPlan.setBitMaps(Arrays.copyOf(bitMaps, countOfNonEmptyColumns));
-      insertTabletPlan.setDataTypes(Arrays.copyOf(dataTypes, countOfNonEmptyColumns));
+    if (countOfNonEmptyColumns != columns.length) {
+      columns = Arrays.copyOf(columns, countOfNonEmptyColumns);
+      bitMaps = Arrays.copyOf(bitMaps, countOfNonEmptyColumns);
+      dataTypes = Arrays.copyOf(dataTypes, countOfNonEmptyColumns);
     }
+
+    if (rowCount != tabletRowLimit) {
+      times = Arrays.copyOf(times, rowCount);
+      for (int i = 0; i < columns.length; ++i) {
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            columns[i] = Arrays.copyOf((boolean[]) columns[i], rowCount);
+            break;
+          case INT32:
+            columns[i] = Arrays.copyOf((int[]) columns[i], rowCount);
+            break;
+          case INT64:
+            columns[i] = Arrays.copyOf((long[]) columns[i], rowCount);
+            break;
+          case FLOAT:
+            columns[i] = Arrays.copyOf((float[]) columns[i], rowCount);
+            break;
+          case DOUBLE:
+            columns[i] = Arrays.copyOf((double[]) columns[i], rowCount);
+            break;
+          case TEXT:
+            columns[i] = Arrays.copyOf((Binary[]) columns[i], rowCount);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", dataTypes[i]));
+        }
+      }
+    }
+
+    insertTabletPlan.setTimes(times);
+    insertTabletPlan.setColumns(columns);
+    insertTabletPlan.setBitMaps(bitMaps);
+    insertTabletPlan.setDataTypes(dataTypes);
 
     return insertTabletPlan;
   }

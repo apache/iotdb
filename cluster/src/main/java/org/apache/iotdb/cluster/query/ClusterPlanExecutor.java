@@ -41,7 +41,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -600,7 +600,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+  protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
     try {
       metaGroupMember.syncLeader(null);
     } catch (CheckConsistencyException e) {

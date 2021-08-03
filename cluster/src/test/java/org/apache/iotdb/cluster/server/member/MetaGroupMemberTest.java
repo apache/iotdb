@@ -88,7 +88,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -588,7 +588,7 @@ public class MetaGroupMemberTest extends BaseMember {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[] {String.valueOf(i)});
       insertPlan.setMeasurementMNodes(
-          new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
@@ -913,7 +913,7 @@ public class MetaGroupMemberTest extends BaseMember {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -979,7 +979,7 @@ public class MetaGroupMemberTest extends BaseMember {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[] {String.valueOf(j)});
         insertPlan.setMeasurementMNodes(
-            new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+            new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }

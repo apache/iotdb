@@ -38,6 +38,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -210,7 +211,7 @@ public class TestUtils {
         Collections.emptyMap());
   }
 
-  public static MeasurementMNode getTestMeasurementMNode(int seriesNum) {
+  public static IMeasurementMNode getTestMeasurementMNode(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     IMeasurementSchema measurementSchema =
@@ -301,7 +302,7 @@ public class TestUtils {
     for (int j = 0; j < 10; j++) {
       insertPlan.setPrefixPath(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
-      MeasurementMNode[] mNodes = new MeasurementMNode[10];
+      IMeasurementMNode[] mNodes = new IMeasurementMNode[10];
       // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
@@ -354,7 +355,7 @@ public class TestUtils {
     // data for fill
     insertPlan.setPrefixPath(new PartialPath(getTestSg(0)));
     String[] measurements = new String[] {getTestMeasurement(10)};
-    MeasurementMNode[] schemas = new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
+    IMeasurementMNode[] schemas = new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);

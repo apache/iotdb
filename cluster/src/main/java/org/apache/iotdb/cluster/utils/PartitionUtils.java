@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
@@ -110,7 +110,7 @@ public class PartitionUtils {
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
         || plan instanceof FlushPlan
-        || plan instanceof SetDeviceTemplatePlan
+        || plan instanceof SetSchemaTemplatePlan
         || plan instanceof ClearCachePlan;
   }
 

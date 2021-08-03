@@ -172,7 +172,7 @@ public class SeriesReaderTestUtil {
     for (MeasurementSchema measurementSchema : measurementSchemas) {
       template.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
-    fileWriter.registerDeviceTemplate("template0", template);
+    fileWriter.registerSchemaTemplate("template0", template);
     for (String deviceId : deviceIds) {
       fileWriter.registerDevice(deviceId, "template0");
     }
