@@ -92,7 +92,7 @@ public class CompactionTaskManager implements IService {
       while (CompactionScheduler.currentTaskNum.get() > 0) {
         // wait
         try {
-          wait(200);
+          Thread.sleep(200);
         } catch (InterruptedException e) {
           logger.error("thread interrupted while waiting for compaction to end", e);
           return;
