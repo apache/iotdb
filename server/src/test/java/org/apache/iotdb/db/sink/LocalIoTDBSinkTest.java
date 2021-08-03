@@ -204,7 +204,7 @@ public class LocalIoTDBSinkTest {
     localIoTDBHandler.close();
   }
 
-  @Test(expected = QueryProcessException.class)
+  @Test(expected = ClassCastException.class)
   public void onEventWithWrongType2() throws Exception {
     LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
     localIoTDBHandler.open(
