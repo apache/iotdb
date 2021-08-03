@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.utils.TestOnly;
 
 public class ClusterConstant {
@@ -66,5 +67,56 @@ public class ClusterConstant {
   @TestOnly
   public static void setElectionRandomTimeOutMs(long electionRandomTimeOutMs) {
     ClusterConstant.electionRandomTimeOutMs = electionRandomTimeOutMs;
+  }
+
+  private static int connectionTimeoutInMS =
+      ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+  private static int readOperationTimeoutMS =
+      ClusterDescriptor.getInstance().getConfig().getReadOperationTimeoutMS();
+  private static int writeOperationTimeoutMS =
+      ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS();
+  private static int syncLeaderMaxWaitMs = 20 * 1000;
+  private static long heartBeatIntervalMs = 1000L;
+
+  public static int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public static void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    ClusterConstant.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public static int getReadOperationTimeoutMS() {
+    return readOperationTimeoutMS;
+  }
+
+  public static int getWriteOperationTimeoutMS() {
+    return writeOperationTimeoutMS;
+  }
+
+  public static int getSyncLeaderMaxWaitMs() {
+    return syncLeaderMaxWaitMs;
+  }
+
+  public static void setSyncLeaderMaxWaitMs(int syncLeaderMaxWaitMs) {
+    ClusterConstant.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
+  }
+
+  public static long getHeartBeatIntervalMs() {
+    return heartBeatIntervalMs;
+  }
+
+  public static void setHeartBeatIntervalMs(long heartBeatIntervalMs) {
+    ClusterConstant.heartBeatIntervalMs = heartBeatIntervalMs;
+  }
+
+  @TestOnly
+  public static void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
+    RaftServer.readOperationTimeoutMS = readOperationTimeoutMS;
+  }
+
+  @TestOnly
+  public static void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
+    RaftServer.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 }

@@ -65,11 +65,9 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -87,20 +85,22 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -145,7 +145,7 @@ import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TI
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
 @SuppressWarnings("java:S1135")
-public class MetaGroupMember extends RaftMember {
+public class MetaGroupMember extends RaftMember implements IService {
 
   /** the file that contains the identifier of this node */
   static final String NODE_IDENTIFIER_FILE_NAME =
@@ -209,12 +209,6 @@ public class MetaGroupMember extends RaftMember {
   /** each node starts a data heartbeat server to transfer heartbeat requests */
   private DataHeartbeatServer dataHeartbeatServer;
 
-  /**
-   * an override of TSServiceImpl, which redirect JDBC and Session requests to the MetaGroupMember
-   * so they can be processed cluster-wide
-   */
-  private ClusterTSServiceImpl clusterTSServiceImpl;
-
   private DataClientProvider dataClientProvider;
 
   /**
@@ -276,7 +270,6 @@ public class MetaGroupMember extends RaftMember {
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
     dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
-    clusterTSServiceImpl = new ClusterTSServiceImpl(this);
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
@@ -333,8 +326,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Stop the heartbeat and catch-up thread pool, DataClusterServer, ClusterTSServiceImpl and reportThread.
-   * Calling the method twice does not induce side effects.
+   * Stop the heartbeat and catch-up thread pool, DataClusterServer, ClusterTSServiceImpl and
+   * reportThread. Calling the method twice does not induce side effects.
    */
   @Override
   public void stop() {
@@ -344,9 +337,6 @@ public class MetaGroupMember extends RaftMember {
     }
     if (getDataHeartbeatServer() != null) {
       getDataHeartbeatServer().stop();
-    }
-    if (clusterTSServiceImpl != null) {
-      clusterTSServiceImpl.stop();
     }
     if (reportThread != null) {
       reportThread.shutdownNow();
@@ -370,21 +360,34 @@ public class MetaGroupMember extends RaftMember {
     logger.info("{}: stopped", name);
   }
 
+  @Override
+  public void waitAndStop(long milliseconds) {
+    IService.super.waitAndStop(milliseconds);
+  }
+
+  @Override
+  public void shutdown(long milliseconds) throws ShutdownException {
+    IService.super.shutdown(milliseconds);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.CLUSTER_META_ENGINE;
+  }
+
   /**
-   * Start DataClusterServer and ClusterTSServiceImpl so this node will be able to respond to other nodes
-   * and clients.
+   * Start DataClusterServer and ClusterTSServiceImpl so this node will be able to respond to other
+   * nodes and clients.
    */
   protected void initSubServers() throws TTransportException, StartupException {
     getDataClusterServer().start();
     getDataHeartbeatServer().start();
-    clusterTSServiceImpl.setCoordinator(this.coordinator);
-    clusterTSServiceImpl.start();
+    // TODO FIXME
   }
 
   /**
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
-   * seedUrl should be like "{hostName}:{metaPort}:{dataPort}:{clientPort}" Ignore bad-formatted
-   * seedUrls.
+   * seedUrl should be like "{hostName}:{metaPort}" Ignore bad-formatted seedUrls.
    */
   protected void addSeedNodes() {
     if (allNodes.size() > 1) {
@@ -715,9 +718,9 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Process a HeartBeatResponse from a follower. If the follower has provided its identifier, try
    * registering for it and if all nodes have registered and there is no available partition table,
-   * initialize a new one and start the ClusterTSServiceImpl and DataClusterServer. If the follower requires
-   * a partition table, add it to the blind node list so that at the next heartbeat this node will
-   * send it a partition table
+   * initialize a new one and start the ClusterTSServiceImpl and DataClusterServer. If the follower
+   * requires a partition table, add it to the blind node list so that at the next heartbeat this
+   * node will send it a partition table
    */
   @Override
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
@@ -800,8 +803,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   /**
-   * Start the DataClusterServer and ClusterTSServiceImpl` so this node can serve other nodes and clients.
-   * Also build DataGroupMembers using the partition table.
+   * Start the DataClusterServer and ClusterTSServiceImpl` so this node can serve other nodes and
+   * clients. Also build DataGroupMembers using the partition table.
    */
   protected synchronized void startSubServers() {
     logger.info("Starting sub-servers...");
@@ -1452,7 +1455,8 @@ public class MetaGroupMember extends RaftMember {
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     RaftService.AsyncClient client =
-        getClientProvider().getAsyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+        getClientProvider()
+            .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     return forwardPlanAsync(plan, receiver, header, client);
   }
 
@@ -1461,7 +1465,8 @@ public class MetaGroupMember extends RaftMember {
     Client client;
     try {
       client =
-          getClientProvider().getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+          getClientProvider()
+              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     } catch (TException e) {
       throw new IOException(e);
     }
@@ -1630,7 +1635,7 @@ public class MetaGroupMember extends RaftMember {
     client.collectMigrationStatus(migrationStatusHandler);
     synchronized (resultRef) {
       if (resultRef.get() == null) {
-        resultRef.wait(RaftServer.getConnectionTimeoutInMS());
+        resultRef.wait(ClusterConstant.getConnectionTimeoutInMS());
       }
     }
     return ClusterUtils.deserializeMigrationStatus(resultRef.get());
@@ -1814,9 +1819,10 @@ public class MetaGroupMember extends RaftMember {
                     // ignore
                   }
                   super.stop();
-                  if (clusterTSServiceImpl != null) {
-                    clusterTSServiceImpl.stop();
-                  }
+                  // TODO FIXME
+                  //                  if (clusterTSServiceImpl != null) {
+                  //                    clusterTSServiceImpl.stop();
+                  //                  }
                   logger.info("{} has been removed from the cluster", name);
                 })
             .start();

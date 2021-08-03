@@ -27,6 +27,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /** This class is used to create thread pool which must contain the pool name. */
 public class IoTDBThreadPoolFactory {
@@ -126,6 +127,23 @@ public class IoTDBThreadPoolFactory {
         args.maxWorkerThreads,
         args.stopTimeoutVal,
         args.stopTimeoutUnit,
+        executorQueue,
+        new IoTThreadFactory(poolName));
+  }
+
+  /** function for creating thrift rpc client thread pool. */
+  public static ExecutorService createThriftRpcClientThreadPool(
+      int minWorkerThreads,
+      int maxWorkerThreads,
+      int stopTimeoutVal,
+      TimeUnit stopTimeoutUnit,
+      String poolName) {
+    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
+    return new ThreadPoolExecutor(
+        minWorkerThreads,
+        maxWorkerThreads,
+        stopTimeoutVal,
+        stopTimeoutUnit,
         executorQueue,
         new IoTThreadFactory(poolName));
   }

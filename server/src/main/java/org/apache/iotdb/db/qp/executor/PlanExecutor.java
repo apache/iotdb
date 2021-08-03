@@ -50,9 +50,10 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -77,7 +78,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -140,6 +141,7 @@ import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -358,9 +360,9 @@ public class PlanExecutor implements IPlanExecutor {
         }
         return true;
       case CREATE_TEMPLATE:
-        return createDeviceTemplate((CreateTemplatePlan) plan);
-      case SET_DEVICE_TEMPLATE:
-        return setDeviceTemplate((SetDeviceTemplatePlan) plan);
+        return createSchemaTemplate((CreateTemplatePlan) plan);
+      case SET_SCHEMA_TEMPLATE:
+        return setSchemaTemplate((SetSchemaTemplatePlan) plan);
       case CREATE_CONTINUOUS_QUERY:
         return operateCreateContinuousQuery((CreateContinuousQueryPlan) plan);
       case DROP_CONTINUOUS_QUERY:
@@ -371,20 +373,20 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private boolean createDeviceTemplate(CreateTemplatePlan createTemplatePlan)
+  private boolean createSchemaTemplate(CreateTemplatePlan createTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.createDeviceTemplate(createTemplatePlan);
+      IoTDB.metaManager.createSchemaTemplate(createTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     return true;
   }
 
-  private boolean setDeviceTemplate(SetDeviceTemplatePlan setDeviceTemplatePlan)
+  private boolean setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan)
       throws QueryProcessException {
     try {
-      IoTDB.metaManager.setDeviceTemplate(setDeviceTemplatePlan);
+      IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -837,7 +839,7 @@ public class PlanExecutor implements IPlanExecutor {
     return new ShowTimeseriesDataSet(showTimeSeriesPlan, context);
   }
 
-  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+  protected List<IStorageGroupMNode> getAllStorageGroupNodes() {
     return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
@@ -849,9 +851,9 @@ public class PlanExecutor implements IPlanExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<PartialPath> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<StorageGroupMNode> storageGroups = getAllStorageGroupNodes();
+    List<IStorageGroupMNode> storageGroups = getAllStorageGroupNodes();
     int timestamp = 0;
-    for (StorageGroupMNode mNode : storageGroups) {
+    for (IStorageGroupMNode mNode : storageGroups) {
       PartialPath sgName = mNode.getPartialPath();
       if (!selectedSgs.isEmpty() && !selectedSgs.contains(sgName)) {
         continue;
@@ -1095,6 +1097,12 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+        if (plan.getVerifyMetadata()) {
+          loadNewTsFileVerifyMetadata(reader);
+        }
+      } catch (IOException e) {
+        logger.warn("can not get timeseries metadata from {}.", file.getAbsoluteFile());
+        throw new QueryProcessException(e.getMessage());
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -1133,6 +1141,35 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  private void loadNewTsFileVerifyMetadata(TsFileSequenceReader tsFileSequenceReader)
+      throws MetadataException, QueryProcessException, IOException {
+    Map<String, List<TimeseriesMetadata>> metadataSet =
+        tsFileSequenceReader.getAllTimeseriesMetadata();
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
+      String deviceId = entry.getKey();
+      PartialPath devicePath = new PartialPath(deviceId);
+      if (!IoTDB.metaManager.isPathExist(devicePath)) {
+        continue;
+      }
+      for (TimeseriesMetadata metadata : entry.getValue()) {
+        PartialPath fullPath =
+            new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
+        if (IoTDB.metaManager.isPathExist(fullPath)) {
+          TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
+          if (dataType != metadata.getTSDataType()) {
+            throw new QueryProcessException(
+                fullPath.getFullPath()
+                    + " is "
+                    + metadata.getTSDataType().name()
+                    + " in the loading TsFile but is "
+                    + dataType.name()
+                    + " in IoTDB.");
+          }
+        }
+      }
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void createSchemaAutomatically(
       List<ChunkGroupMetadata> chunkGroupMetadataList,
@@ -1146,7 +1183,7 @@ public class PlanExecutor implements IPlanExecutor {
     Set<PartialPath> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
-      MNode node =
+      IMNode node =
           IoTDB.metaManager.getDeviceNodeWithAutoCreate(
                   new PartialPath(device), true, true, sgLevel)
               .left;
@@ -1243,7 +1280,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+  protected IMNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
     try {
       return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
     } catch (IOException e) {
@@ -1285,7 +1322,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     try {
       for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-        plan.setMeasurementMNodes(new MeasurementMNode[plan.getMeasurements().length]);
+        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
         // check whether types are match
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
@@ -1364,7 +1401,7 @@ public class PlanExecutor implements IPlanExecutor {
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
       insertRowPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertRowPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
       // When insert data with sql statement, the data types will be null here.
       // We need to predicted the data types first
       if (insertRowPlan.getDataTypes()[0] == null) {
@@ -1418,7 +1455,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     try {
       insertTabletPlan.setMeasurementMNodes(
-          new MeasurementMNode[insertTabletPlan.getMeasurements().length]);
+          new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
       getSeriesSchemas(insertTabletPlan);
       if (insertTabletPlan.isAligned()) {
         insertTabletPlan.setPrefixPath(insertTabletPlan.getPrefixPath().getDevicePath());

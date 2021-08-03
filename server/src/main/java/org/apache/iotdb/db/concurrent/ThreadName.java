@@ -48,7 +48,10 @@ public enum ThreadName {
   CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),
-  CLUSTER_RPC_CLIENT("Cluster-RPC-Client");
+  CLUSTER_RPC_CLIENT("Cluster-RPC-Client"),
+  CLUSTER_META_SERVICE("ClusterMetaService"),
+  CLUSTER_META_HEARTBEAT_SERVICE("ClusterMetaHeartbeatService"),
+  CLUSTER_DATA_SERVICE("ClusterDataService");
 
   private final String name;
 

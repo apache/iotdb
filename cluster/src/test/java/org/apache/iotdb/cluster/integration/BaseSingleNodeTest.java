@@ -20,12 +20,11 @@
 package org.apache.iotdb.cluster.integration;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.server.RaftTSMetaServiceImpl;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
-
 import org.junit.After;
 import org.junit.Before;
 
@@ -34,7 +33,7 @@ import java.util.List;
 
 public abstract class BaseSingleNodeTest {
 
-  private MetaClusterServer metaServer;
+  private RaftTSMetaServiceImpl metaServer;
 
   private boolean useAsyncServer;
   private List<String> seedNodeUrls;
@@ -44,14 +43,14 @@ public abstract class BaseSingleNodeTest {
   @Before
   public void setUp() throws Exception {
     initConfigs();
-    metaServer = new MetaClusterServer();
+    metaServer = new RaftTSMetaServiceImpl();
     metaServer.start();
     metaServer.buildCluster();
   }
 
   @After
   public void tearDown() throws Exception {
-    //TODO fixme
+    // TODO fixme
     metaServer.stop();
     recoverConfigs();
     EnvironmentUtils.cleanEnv();

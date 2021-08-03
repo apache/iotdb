@@ -47,6 +47,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
         (TSServiceImpl)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .newInstance();
+    initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
 

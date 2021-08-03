@@ -22,15 +22,23 @@ import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.ClusterRPCService;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.server.RaftTSMetaServiceImpl;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.raft.MetaRaftHeartBeatService;
+import org.apache.iotdb.cluster.server.raft.MetaRaftService;
+import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
@@ -41,14 +49,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
+import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,12 +65,13 @@ import java.util.Set;
 
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
 
-//we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
+// we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
 public class ClusterIoTDB {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterIoTDB.class);
   private final String mbeanName =
-      String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
+      String.format(
+          "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
   // establish the cluster as a seed
   private static final String MODE_START = "-s";
@@ -73,12 +81,26 @@ public class ClusterIoTDB {
   // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
 
-  private MetaClusterServer metaServer;
+  private MetaGroupMember metaGroupEngine;
+  private Node thisNode;
+  private Coordinator coordinator;
 
   private IoTDB iotdb = IoTDB.getInstance();
 
   // Cluster IoTDB uses a individual registerManager with its parent.
   private RegisterManager registerManager = new RegisterManager();
+
+  private ClusterIoTDB() {
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    thisNode = new Node();
+    // set internal rpc ip and ports
+    thisNode.setInternalIp(config.getInternalIp());
+    thisNode.setMetaPort(config.getInternalMetaPort());
+    thisNode.setDataPort(config.getInternalDataPort());
+    // set client rpc ip and ports
+    thisNode.setClientPort(config.getClusterRpcPort());
+    thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
+  }
 
   public static void main(String[] args) {
     if (args.length < 1) {
@@ -116,10 +138,10 @@ public class ClusterIoTDB {
     logger.info("Running mode {}", mode);
 
     ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
-    //we start IoTDB kernel first.
-    cluster.iotdb.active();
+    // we start IoTDB kernel first.
+    // cluster.iotdb.active();
 
-    //then we start the cluster module.
+    // then we start the cluster module.
     if (MODE_START.equals(mode)) {
       cluster.activeStartNodeMode();
     } else if (MODE_ADD.equals(mode)) {
@@ -137,11 +159,46 @@ public class ClusterIoTDB {
 
   public void activeStartNodeMode() {
     try {
-      metaServer = new MetaClusterServer();
       startServerCheck();
       preStartCustomize();
-      metaServer.start();
-      metaServer.buildCluster();
+
+      coordinator = new Coordinator();
+      // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
+      // cluster moduel.
+      // TODO fixme it is better to remove coordinator out of metaGroupEngine
+
+      // local engine
+      metaGroupEngine =
+          new MetaGroupMember(
+              ThriftServiceThread.getProtocolFactory(
+                  IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()),
+              thisNode,
+              coordinator);
+      IoTDB.setMetaManager(CMManager.getInstance());
+      ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupEngine);
+      ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
+      MetaPuller.getInstance().init(metaGroupEngine);
+      iotdb.active();
+
+      registerManager.register(metaGroupEngine);
+
+      metaGroupEngine.buildCluster();
+
+      // rpc service
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupEngine);
+        MetaRaftHeartBeatService.getInstance().initAsyncedServiceImpl(metaAsyncService);
+        MetaRaftService.getInstance().initAsyncedServiceImpl(metaAsyncService);
+      } else {
+        MetaSyncService syncService = new MetaSyncService(metaGroupEngine);
+        MetaRaftHeartBeatService.getInstance().initSyncedServiceImpl(syncService);
+        MetaRaftService.getInstance().initSyncedServiceImpl(syncService);
+      }
+
+      // meta group heart beat rpc
+      registerManager.register(MetaRaftHeartBeatService.getInstance());
+      registerManager.register(MetaRaftService.getInstance());
+
       // Currently, we do not register ClusterInfoService as a JMX Bean,
       // so we use startService() rather than start()
       ClusterInfoServer.getInstance().startService();
@@ -150,8 +207,7 @@ public class ClusterIoTDB {
       // we must wait until the metaGroup established.
       // So that the ClusterRPCService can work.
       registerManager.register(ClusterRPCService.getInstance());
-    } catch (TTransportException
-        | StartupException
+    } catch (StartupException
         | QueryProcessException
         | StartUpCheckFailureException
         | ConfigInconsistentException e) {
@@ -161,33 +217,32 @@ public class ClusterIoTDB {
   }
 
   public void activeAddNodeMode() {
-    try {
-      long startTime = System.currentTimeMillis();
-      metaServer = new MetaClusterServer();
-      preStartCustomize();
-      metaServer.start();
-      metaServer.joinCluster();
-      // Currently, we do not register ClusterInfoService as a JMX Bean,
-      // so we use startService() rather than start()
-      ClusterInfoServer.getInstance().startService();
-      // JMX based DBA API
-      registerManager.register(ClusterMonitor.INSTANCE);
-      //finally, we start the RPC service
-      registerManager.register(ClusterRPCService.getInstance());
-      logger.info(
-          "Adding this node {} to cluster costs {} ms",
-          metaServer.getMember().getThisNode(),
-          (System.currentTimeMillis() - startTime));
-    } catch (TTransportException
-        | StartupException
-        | QueryProcessException
-        | StartUpCheckFailureException
-        | ConfigInconsistentException e) {
-      stop();
-      logger.error("Fail to join cluster", e);
-    }
+    //    try {
+    //      long startTime = System.currentTimeMillis();
+    //      metaServer = new RaftTSMetaServiceImpl();
+    //      preStartCustomize();
+    //      metaServer.start();
+    //      metaServer.joinCluster();
+    //      // Currently, we do not register ClusterInfoService as a JMX Bean,
+    //      // so we use startService() rather than start()
+    //      ClusterInfoServer.getInstance().startService();
+    //      // JMX based DBA API
+    //      registerManager.register(ClusterMonitor.INSTANCE);
+    //      // finally, we start the RPC service
+    //      registerManager.register(ClusterRPCService.getInstance());
+    //      logger.info(
+    //          "Adding this node {} to cluster costs {} ms",
+    //          metaServer.getMember().getThisNode(),
+    //          (System.currentTimeMillis() - startTime));
+    //    } catch (TTransportException
+    //        | StartupException
+    //        | QueryProcessException
+    //        | StartUpCheckFailureException
+    //        | ConfigInconsistentException e) {
+    //      stop();
+    //      logger.error("Fail to join cluster", e);
+    //    }
   }
-
 
   private void startServerCheck() throws StartupException {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -236,18 +291,12 @@ public class ClusterIoTDB {
     }
 
     // assert this node is in seed nodes list
-    Node localNode = new Node();
-    localNode
-        .setInternalIp(config.getInternalIp())
-        .setMetaPort(config.getInternalMetaPort())
-        .setDataPort(config.getInternalDataPort())
-        .setClientPort(config.getClusterRpcPort())
-        .setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
-    if (!seedNodes.contains(localNode)) {
+
+    if (!seedNodes.contains(thisNode)) {
       String message =
           String.format(
               "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",
-              localNode.toString(), config.getSeedNodeUrls());
+              thisNode.toString(), config.getSeedNodeUrls());
       throw new StartupException(metaServer.getMember().getName(), message);
     }
   }
@@ -307,7 +356,7 @@ public class ClusterIoTDB {
     }
   }
 
-  public MetaClusterServer getMetaServer() {
+  public RaftTSMetaServiceImpl getMetaServer() {
     return metaServer;
   }
 
@@ -358,11 +407,9 @@ public class ClusterIoTDB {
         });
   }
 
-
-
   @TestOnly
-  public void setMetaClusterServer(MetaClusterServer metaClusterServer) {
-    metaServer = metaClusterServer;
+  public void setMetaClusterServer(RaftTSMetaServiceImpl RaftTSMetaServiceImpl) {
+    metaServer = RaftTSMetaServiceImpl;
   }
 
   public void stop() {
@@ -375,14 +422,14 @@ public class ClusterIoTDB {
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("ClusterIoTDB is deactivated.");
-    //stop the iotdb kernel
+    // stop the iotdb kernel
     iotdb.stop();
   }
-
 
   public static ClusterIoTDB getInstance() {
     return ClusterIoTDBHolder.INSTANCE;
   }
+
   private static class ClusterIoTDBHolder {
 
     private static final ClusterIoTDB INSTANCE = new ClusterIoTDB();

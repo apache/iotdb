@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.cluster.utils.nodetool;
 
+import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -26,8 +27,8 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.RaftTSMetaServiceImpl;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -40,8 +41,6 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.apache.commons.collections4.map.MultiKeyMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -201,11 +200,11 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   private MetaGroupMember getMetaGroupMember() {
-    MetaClusterServer metaClusterServer = ClusterIoTDB.getInstance().getMetaServer();
-    if (metaClusterServer == null) {
+    RaftTSMetaServiceImpl RaftTSMetaServiceImpl = ClusterIoTDB.getInstance().getMetaServer();
+    if (RaftTSMetaServiceImpl == null) {
       return null;
     }
-    return metaClusterServer.getMember();
+    return RaftTSMetaServiceImpl.getMember();
   }
 
   private PartitionTable getPartitionTable() {

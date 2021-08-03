@@ -152,8 +152,8 @@ public class IoTDB implements IoTDBMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");
-    //some user may call Tracing on but do not close tracing.
-    //so, when remove the system, we have to close the tracing
+    // some user may call Tracing on but do not close tracing.
+    // so, when remove the system, we have to close the tracing
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
       TracingManager.getInstance().close();
     }

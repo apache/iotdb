@@ -23,9 +23,8 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Processor;
-import org.apache.iotdb.cluster.server.MetaClusterServer;
+import org.apache.iotdb.cluster.server.RaftTSMetaServiceImpl;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TServerSocket;
@@ -39,22 +38,22 @@ import java.net.InetSocketAddress;
 public class MetaHeartbeatServer extends HeartbeatServer {
   private static Logger logger = LoggerFactory.getLogger(MetaHeartbeatServer.class);
 
-  private MetaClusterServer metaClusterServer;
+  private RaftTSMetaServiceImpl RaftTSMetaServiceImpl;
 
   /** Do not use this method for initialization */
   private MetaHeartbeatServer() {}
 
-  public MetaHeartbeatServer(Node thisNode, MetaClusterServer metaClusterServer) {
+  public MetaHeartbeatServer(Node thisNode, RaftTSMetaServiceImpl RaftTSMetaServiceImpl) {
     super(thisNode);
-    this.metaClusterServer = metaClusterServer;
+    this.RaftTSMetaServiceImpl = RaftTSMetaServiceImpl;
   }
 
   @Override
   TProcessor getProcessor() {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor<>(metaClusterServer);
+      return new AsyncProcessor<>(RaftTSMetaServiceImpl);
     } else {
-      return new Processor<>(metaClusterServer);
+      return new Processor<>(RaftTSMetaServiceImpl);
     }
   }
 

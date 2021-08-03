@@ -33,7 +33,7 @@ import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
-public class ClusterRPCService  extends ThriftService implements ClusterRPCServiceMBean {
+public class ClusterRPCService extends ThriftService implements ClusterRPCServiceMBean {
 
   private ClusterTSServiceImpl impl;
 
@@ -50,9 +50,13 @@ public class ClusterRPCService  extends ThriftService implements ClusterRPCServi
   }
 
   @Override
-  public void initTProcessor()
-      throws IllegalAccessException, InstantiationException {
-    impl = new ClusterTSServiceImpl();
+  public void initTProcessor() throws IllegalAccessException, InstantiationException {
+    try {
+      impl = new ClusterTSServiceImpl();
+      initSyncedServiceImpl(null);
+    } catch (QueryProcessException e) {
+      throw new InstantiationException(e.getMessage());
+    }
     processor = new Processor<>(impl);
   }
 
@@ -65,8 +69,8 @@ public class ClusterRPCService  extends ThriftService implements ClusterRPCServi
               processor,
               getID().getName(),
               ThreadName.CLUSTER_RPC_CLIENT.getName(),
-              config.getRpcAddress(),
-              config.getRpcPort(),
+              getBindIP(),
+              getBindPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new RPCServiceThriftHandler(impl),
@@ -103,7 +107,6 @@ public class ClusterRPCService  extends ThriftService implements ClusterRPCServi
   public void assignCoordinator(Coordinator coordinator) {
     this.impl.setCoordinator(coordinator);
   }
-
 
   private static class ClusterRPCServiceHolder {
 
