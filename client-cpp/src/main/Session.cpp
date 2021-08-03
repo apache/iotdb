@@ -39,18 +39,14 @@ void RpcUtils::verifySuccess(TSStatus &status) {
         return;
     }
     if (status.code != TSStatusCode::SUCCESS_STATUS) {
-        char buf[111];
-        sprintf(buf, "%d: %s", status.code, status.message.c_str());
-        throw IoTDBConnectionException(buf);
+        throw IoTDBConnectionException(to_string(status.code) + ": " + status.message.c_str());
     }
 }
 
 void RpcUtils::verifySuccess(vector <TSStatus> &statuses) {
     for (TSStatus status : statuses) {
         if (status.code != TSStatusCode::SUCCESS_STATUS) {
-            char buf[111];
-            sprintf(buf, "%s", status.message.c_str());
-            throw BatchExecutionException(statuses, buf);
+            throw BatchExecutionException(statuses, status.message);
         }
     }
 }
@@ -148,9 +144,8 @@ int Tablet::getValueByteSize() {
                 }
                 break;
             default:
-                char buf[111];
-                sprintf(buf, "Data type %d is not supported.", schemas[i].second);
-                throw UnSupportedDataTypeException(buf);
+                throw UnSupportedDataTypeException(
+                        string("Data type ") + to_string(schemas[i].second) + " is not supported.");
         }
     }
     return valueOccupation;
@@ -171,7 +166,7 @@ string SessionUtils::getValue(Tablet &tablet) {
         switch (dataType) {
             case TSDataType::BOOLEAN:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putBool(tablet.values[i][index] == "true" ? true : false);
+                    valueBuffer.putBool(tablet.values[i][index] == "true");
                 }
                 break;
             case TSDataType::INT32:
@@ -200,10 +195,7 @@ string SessionUtils::getValue(Tablet &tablet) {
                 }
                 break;
             default:
-                char buf[111];
-                sprintf(buf, "Data type %d is not supported.", dataType);
-                throw UnSupportedDataTypeException(buf);
-                break;
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
     }
     return valueBuffer.str;
@@ -244,9 +236,8 @@ bool SessionDataSet::hasNext() {
             }
         }
         catch (IoTDBConnectionException e) {
-            char buf[111];
-            sprintf(buf, "Cannot fetch result from server, because of network connection: %s", e.what());
-            throw IoTDBConnectionException(buf);
+            throw IoTDBConnectionException(
+                    string("Cannot fetch result from server, because of network connection: ") + e.what());
         }
     }
 
@@ -305,9 +296,8 @@ void SessionDataSet::constructOneRow() {
                         break;
                     }
                     default: {
-                        char buf[111];
-                        sprintf(buf, "Data type %s is not supported.", columnTypeDeduplicatedList[i].c_str());
-                        throw UnSupportedDataTypeException(buf);
+                        throw UnSupportedDataTypeException(
+                                string("Data type ") + columnTypeDeduplicatedList[i].c_str() + " is not supported.");
                     }
                 }
             } else {
@@ -349,9 +339,8 @@ void SessionDataSet::closeOperationHandle() {
         RpcUtils::verifySuccess(*closeResp);
     }
     catch (IoTDBConnectionException e) {
-        char buf[111];
-        sprintf(buf, "Error occurs when connecting to server for close operation, because: %s", e.what());
-        throw IoTDBConnectionException(buf);
+        throw IoTDBConnectionException(
+                string("Error occurs when connecting to server for close operation, because: ") + e.what());
     }
 }
 
@@ -530,11 +519,8 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         RpcUtils::verifySuccess(openResp->status);
         if (protocolVersion != openResp->serverProtocolVersion) {
             if (openResp->serverProtocolVersion == 0) {// less than 0.10
-                char buf[111];
-                sprintf(buf, "Protocol not supported, Client version is %d, but Server version is %d", protocolVersion,
-                        openResp->serverProtocolVersion);
-                logic_error e(buf);
-                throw exception(e);
+                throw logic_error(string("Protocol not supported, Client version is ") + to_string(protocolVersion) +
+                                  ", but Server version is " + to_string(openResp->serverProtocolVersion));
             }
         }
 
@@ -566,9 +552,8 @@ void Session::close() {
         client->closeSession(*resp, *req);
     }
     catch (exception e) {
-        char buf[111];
-        sprintf(buf, "Error occurs when closing session at server. Maybe server is down. %s", e.what());
-        throw IoTDBConnectionException(buf);
+        throw IoTDBConnectionException(
+                string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
     isClosed = true;
     if (transport != NULL) {

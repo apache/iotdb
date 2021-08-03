@@ -242,11 +242,6 @@ public:
         this->pos = 0;
     }
 
-    //byte get() {
-    //    char tmpChar = getChar();
-    //    return (byte)tmpChar;
-    //}
-
     int getInt() {
         char *data = getchar(4);
         int ret = *(int *) data;
@@ -283,8 +278,7 @@ public:
     }
 
     bool getBool() {
-        char bo = getChar();
-        return bo == 1;
+        return getChar() == 1;
     }
 
     std::string getString() {
@@ -452,40 +446,30 @@ public:
     }
 
     std::string toString() {
-        char buf[111];
-        sprintf(buf, "%lld", timestamp);
-        std::string ret = buf;
+        std::string ret = std::to_string(timestamp);
         for (int i = 0; i < fields.size(); i++) {
             ret.append("\t");
             TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType) {
                 case TSDataType::BOOLEAN: {
-                    if (fields[i].boolV) ret.append("true");
-                    else ret.append("false");
+                    std::string field = fields[i].boolV ? "true" : "false";
+                    ret.append(field);
                     break;
                 }
                 case TSDataType::INT32: {
-                    char buf[111];
-                    sprintf(buf, "%d", fields[i].intV);
-                    ret.append(buf);
+                    ret.append(std::to_string(fields[i].intV));
                     break;
                 }
                 case TSDataType::INT64: {
-                    char buf[111];
-                    sprintf(buf, "%lld", fields[i].longV);
-                    ret.append(buf);
+                    ret.append(std::to_string(fields[i].longV));
                     break;
                 }
                 case TSDataType::FLOAT: {
-                    char buf[111];
-                    sprintf(buf, "%f", fields[i].floatV);
-                    ret.append(buf);
+                    ret.append(std::to_string(fields[i].floatV));
                     break;
                 }
                 case TSDataType::DOUBLE: {
-                    char buf[111];
-                    sprintf(buf, "%lf", fields[i].doubleV);
-                    ret.append(buf);
+                    ret.append(std::to_string(fields[i].doubleV));
                     break;
                 }
                 case TSDataType::TEXT: {
