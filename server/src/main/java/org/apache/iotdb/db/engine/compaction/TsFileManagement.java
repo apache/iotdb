@@ -209,9 +209,7 @@ public abstract class TsFileManagement {
       }
     }
     isUnseqMerging = true;
-    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
-    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       if (seqMergeList.isEmpty()) {
         logger.info("{} no seq files to be merged", storageGroupName);
@@ -287,9 +285,7 @@ public abstract class TsFileManagement {
         return false;
       }
     } finally {
-      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
-      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
     // wait until unseq merge has finished
     while (isUnseqMerging) {
@@ -329,9 +325,7 @@ public abstract class TsFileManagement {
       } else {
         // did not get all of them, release the gotten one and retry
         if (compactionLockGot) {
-          logger.warn("Release write lock in TsFileManagement");
           writeUnlock();
-          logger.warn("Release write lock in TsFileManagementSuccessfully");
         }
         if (fileLockGot) {
           seqFile.writeUnlock();
@@ -342,16 +336,12 @@ public abstract class TsFileManagement {
 
   /** release the write locks of the resource , the merge lock and the compaction lock */
   private void doubleWriteUnlock(TsFileResource seqFile) {
-    logger.warn("Release write lock in TsFileManagement");
     writeUnlock();
-    logger.warn("Release write lock in TsFileManagementSuccessfully");
     seqFile.writeUnlock();
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    logger.warn("Acquiring write lock in TsFileManagement");
     writeLock();
-    logger.warn("Acquired write lock in TsFileManagement successfully");
     try {
       removeAll(unseqFiles, false);
       // clean cache
@@ -360,9 +350,7 @@ public abstract class TsFileManagement {
         TimeSeriesMetadataCache.getInstance().clear();
       }
     } finally {
-      logger.warn("Release write lock in TsFileManagement");
       writeUnlock();
-      logger.warn("Release write lock in TsFileManagementSuccessfully");
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
