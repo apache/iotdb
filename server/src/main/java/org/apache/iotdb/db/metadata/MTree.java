@@ -1712,4 +1712,40 @@ public class MTree implements Serializable {
       }
     }
   }
+
+  /**
+   * check whether there is template on given path and the subTree has template return true,
+   * otherwise false
+   */
+  void checkTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    MNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return;
+    }
+    if (cur.getDeviceTemplate() != null) {
+      throw new MetadataException("Template already exists on " + cur.getFullPath());
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+    }
+
+    checkTemplateOnSubtree(cur);
+  }
+
+  // traverse  all the  descendant of the given path node
+  private void checkTemplateOnSubtree(MNode node) throws MetadataException {
+    for (MNode child : node.getChildren().values()) {
+      if (child.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + child.getFullPath());
+      }
+      checkTemplateOnSubtree(child);
+    }
+  }
 }
