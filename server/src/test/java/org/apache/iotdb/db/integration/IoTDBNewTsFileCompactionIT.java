@@ -1091,13 +1091,13 @@ public class IoTDBNewTsFileCompactionIT {
         break;
       }
       if ((System.nanoTime() - intervalTime) >= 60L * 1000L * 1000L * 1000L) {
+        intervalTime = System.nanoTime();
         LOGGER.warn(
             "The number of tsfile level: {}",
             tsFileManagement.getSequenceTsFileResources().get(0L).size());
         LOGGER.warn(
             "The number of tsfile in level 1: {}",
             tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size());
-        intervalTime = System.nanoTime();
       }
     }
     return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;
