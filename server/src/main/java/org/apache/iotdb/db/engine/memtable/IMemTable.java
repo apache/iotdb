@@ -65,6 +65,9 @@ public interface IMemTable {
   void addTVListRamCost(long cost);
 
   /** only used when mem control enabled */
+  void releaseTVListRamCost(long cost);
+
+  /** only used when mem control enabled */
   long getTVListsRamCost();
 
   /**
@@ -133,6 +136,9 @@ public interface IMemTable {
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);
+
+  /** only used when mem control enabled */
+  void releaseTextDataSize(long textDataDecrement);
 
   long getMaxPlanIndex();
 
