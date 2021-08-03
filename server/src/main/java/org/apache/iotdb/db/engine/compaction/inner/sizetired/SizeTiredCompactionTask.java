@@ -171,7 +171,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileResourceList.remove(resource);
       }
       // delete the old files
-      InnerSpaceCompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
+      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+          selectedTsFileResourceList, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);

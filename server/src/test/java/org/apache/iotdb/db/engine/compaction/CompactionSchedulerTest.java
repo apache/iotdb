@@ -1005,7 +1005,6 @@ public class CompactionSchedulerTest {
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
         Thread.sleep(10);
-        LOGGER.warn("{}", tsFileResourceManager.getTsFileList(false).size());
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

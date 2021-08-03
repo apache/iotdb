@@ -140,7 +140,8 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             } finally {
               tsFileResourceList.writeUnlock();
             }
-            InnerSpaceCompactionUtils.deleteTsFilesInDisk(sourceTsFileResources, fullStorageGroupName);
+            InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+                sourceTsFileResources, fullStorageGroupName);
             renameLevelFilesMods(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {

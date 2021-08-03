@@ -88,7 +88,8 @@ public class CompactionRecoverTask implements Callable<Void> {
           dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
       for (Long timePartition : timePartitions) {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
-        File[] compactionLogs = InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
+        File[] compactionLogs =
+            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
           IoTDBDescriptor.getInstance()
               .getConfig()
