@@ -1079,6 +1079,7 @@ public class IoTDBNewTsFileCompactionIT {
         (LevelCompactionTsFileManagement) storageGroupProcessor.getTsFileManagement();
 
     long startTime = System.nanoTime();
+    long intervalTime = startTime;
     // get the size of level 1's tsfile list to judge whether merge is finished
     while (tsFileManagement.getSequenceTsFileResources().get(0L).size() < 2
         || tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() != 1) {
@@ -1088,6 +1089,15 @@ public class IoTDBNewTsFileCompactionIT {
         LOGGER.error("Unable to wait for compaction finish");
         assertTrue(false);
         break;
+      }
+      if ((System.nanoTime() - intervalTime) >= 60L * 1000L * 1000L * 1000L) {
+        LOGGER.warn(
+            "The number of tsfile level: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).size());
+        LOGGER.warn(
+            "The number of tsfile in level 1: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size());
+        intervalTime = System.nanoTime();
       }
     }
     return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;
