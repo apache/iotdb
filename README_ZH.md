@@ -79,7 +79,7 @@ IoTDB的主要特点如下:
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 环境准备
 
@@ -98,7 +98,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
-在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 从源码构建
 
