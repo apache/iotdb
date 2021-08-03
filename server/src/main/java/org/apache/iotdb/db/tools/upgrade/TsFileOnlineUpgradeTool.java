@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -96,11 +97,8 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
         TSFileConfig.MAGIC_STRING.getBytes().length
             + TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);
-    List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
-    List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
-    List<List<Boolean>> needToDecodeInfoInChunkGroup = new ArrayList<>();
     byte marker;
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
+    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
@@ -112,7 +110,6 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                     header.getDataType(),
                     header.getEncodingType(),
                     header.getCompressionType());
-            measurementSchemaList.add(measurementSchema);
             TSDataType dataType = header.getDataType();
             TSEncoding encoding = header.getEncodingType();
             List<PageHeader> pageHeadersInChunk = new ArrayList<>();
@@ -141,25 +138,20 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
                       // page data bytes
                       + pageHeader.getCompressedSize());
             }
-            pageHeadersInChunkGroup.add(pageHeadersInChunk);
-            pageDataInChunkGroup.add(dataInChunk);
-            needToDecodeInfoInChunkGroup.add(needToDecodeInfo);
+            reEncodeChunk(
+                measurementSchema,
+                pageHeadersInChunk,
+                dataInChunk,
+                needToDecodeInfo,
+                chunkWritersInChunkGroup);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             // this is the footer of a ChunkGroup in TsFileV2.
             ChunkGroupHeader chunkGroupFooter =
                 ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
-            rewrite(
-                deviceID,
-                measurementSchemaList,
-                pageHeadersInChunkGroup,
-                pageDataInChunkGroup,
-                needToDecodeInfoInChunkGroup);
-            pageHeadersInChunkGroup.clear();
-            pageDataInChunkGroup.clear();
-            measurementSchemaList.clear();
-            needToDecodeInfoInChunkGroup.clear();
+            reWriteChunkGroupToFile(deviceID, chunkWritersInChunkGroup);
+            chunkWritersInChunkGroup.clear();
             break;
           case MetaMarker.VERSION:
             long version = ((TsFileSequenceReaderForV2) reader).readVersion();
@@ -216,7 +208,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
           currentMod = null;
         }
       }
-    } catch (IOException e2) {
+    } catch (Exception e2) {
       throw new IOException(
           "TsFile upgrade process cannot proceed at position "
               + reader.position()
@@ -252,7 +244,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   }
 
   @Override
-  protected void decodeAndWritePageInToFiles(
+  protected void decodeAndWritePage(
       MeasurementSchema schema,
       ByteBuffer pageData,
       Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
