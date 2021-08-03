@@ -189,6 +189,7 @@ public abstract class TsFileManagement {
       recover();
       // in recover logic, the param time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
+      CompactionMergeTaskPoolManager.getInstance().finishTask(this);
       return null;
     }
   }

@@ -524,6 +524,7 @@ public class StorageGroupProcessor {
             timePartitionId, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       }
       clearCompactionStatus();
+      CompactionMergeTaskPoolManager.getInstance().finishTask(this);
       return null;
     }
   }
@@ -1972,6 +1973,7 @@ public class StorageGroupProcessor {
       syncCompactOnePartition(
           partition, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       clearCompactionStatus();
+      CompactionMergeTaskPoolManager.getInstance().finishTask(this);
       return null;
     }
   }
