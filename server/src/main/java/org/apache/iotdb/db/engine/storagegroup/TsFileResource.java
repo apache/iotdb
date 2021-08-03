@@ -135,12 +135,6 @@ public class TsFileResource {
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
   /**
-   * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
-   * v0.9.x/v1 -> 0.10/v2
-   */
-  private boolean isSeq;
-
-  /**
    * If it is not null, it indicates that the current tsfile resource is a snapshot of the
    * originTsFileResource, and if so, when we want to used the lock, we should try to acquire the
    * lock of originTsFileResource
@@ -846,14 +840,6 @@ public class TsFileResource {
 
   public void setMinPlanIndex(long minPlanIndex) {
     this.minPlanIndex = minPlanIndex;
-  }
-
-  public boolean isSeq() {
-    return isSeq;
-  }
-
-  public void setSeq(boolean seq) {
-    isSeq = seq;
   }
 
   public void setVersion(long version) {

@@ -2041,12 +2041,10 @@ public class StorageGroupProcessor {
   /** upgrade all files belongs to this storage group */
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
-      seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       seqTsFileResource.doUpgrade();
     }
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
-      unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
     }
@@ -2254,13 +2252,11 @@ public class StorageGroupProcessor {
                 0);
         renameInfo = IoTDBConstant.UNSEQUENCE_FLODER_NAME;
         tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
-        newTsFileResource.setSeq(false);
       } else {
         // check whether the file name needs to be renamed.
         newFileName = getFileNameForSequenceLoadingFile(insertPos, newTsFileResource, sequenceList);
         renameInfo = IoTDBConstant.SEQUENCE_FLODER_NAME;
         tsFileType = LoadTsFileType.LOAD_SEQUENCE;
-        newTsFileResource.setSeq(true);
       }
 
       if (!newFileName.equals(tsfileToBeInserted.getName())) {
