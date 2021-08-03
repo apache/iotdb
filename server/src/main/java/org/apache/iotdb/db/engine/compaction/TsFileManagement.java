@@ -271,7 +271,6 @@ public abstract class TsFileManagement {
         mergingModification =
             new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
-        logger.warn("Submit a merge task");
         if (logger.isInfoEnabled()) {
           logger.info(
               "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
