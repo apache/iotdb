@@ -508,10 +508,6 @@ public class InnerSpaceCompactionUtils {
                 new ModificationFile(fileName + ModificationFile.FILE_SUFFIX).getModifications()));
   }
 
-  public static ModificationFile getModificationByPath(String filePath) {
-    return new ModificationFile(filePath);
-  }
-
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
