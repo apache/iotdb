@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -57,7 +58,7 @@ public class IoTDBNewTsFileCompactionIT {
   private CompactionStrategy preCompactionStrategy;
   private PartialPath storageGroupPath;
   // the unit is ns
-  private static final long MAX_WAIT_TIME_FOR_MERGE = 5L * 60L * 1000L * 1000L * 1000L;
+  private static final long MAX_WAIT_TIME_FOR_MERGE = 3L * 60L * 1000L * 1000L * 1000L;
   private static final float FLOAT_DELTA = 0.00001f;
 
   @Before
@@ -1096,8 +1097,14 @@ public class IoTDBNewTsFileCompactionIT {
             "The number of tsfile level: {}",
             tsFileManagement.getSequenceTsFileResources().get(0L).size());
         LOGGER.warn(
+            "The number of tsfile in level 0: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).get(0).size());
+        LOGGER.warn(
             "The number of tsfile in level 1: {}",
             tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size());
+        LOGGER.warn(
+            "The number of current compaction task num {}",
+            CompactionMergeTaskPoolManager.getInstance().getCompactionTaskNum("root.sg1"));
       }
     }
     return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;

@@ -643,6 +643,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   protected void merge(long timePartition) {
+    // compacting sequence file in one time partition
     isMergeExecutedInCurrentTask =
         merge(
             forkedSequenceTsFileResources, true, timePartition, seqLevelNum, seqFileNumInEachLevel);
@@ -676,6 +677,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       int currMaxLevel,
       int currMaxFileNumInEachLevel) {
     // wait until unseq merge has finished
+    logger.warn(
+        "Level Compaction in {} waiting for unsequence compaction finish",
+        sequence ? "sequence" : "unsequence");
     while (isUnseqMerging) {
       try {
         wait(200);
@@ -685,6 +689,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         return false;
       }
     }
+    logger.warn(
+        "Level Compaction in {} begins to select files", sequence ? "sequence" : "unsequence");
     isSeqMerging = true;
     long startTimeMillis = System.currentTimeMillis();
     // whether execute merge chunk in the loop below
@@ -712,6 +718,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             List<TsFileResource> toMergeTsFiles =
                 mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
+            logger.warn("The size of TsFile to be compacted is {}", toMergeTsFiles.size());
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
               mergeResource.setMerging(true);
@@ -721,13 +728,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 TsFileResource.modifyTsFileNameMergeCnt(mergeResources.get(i).get(0).getTsFile());
             compactionLogger.logSequence(sequence);
             compactionLogger.logFile(TARGET_NAME, newLevelFile);
-            logger.info(
+            logger.warn(
                 "{} [Compaction] merge level-{}'s {} TsFiles to next level",
                 storageGroupName,
                 i,
                 toMergeTsFiles.size());
             for (TsFileResource toMergeTsFile : toMergeTsFiles) {
-              logger.info(
+              logger.warn(
                   "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
             }
 
@@ -742,7 +749,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 new HashSet<>(),
                 sequence,
                 modifications);
-            logger.info(
+            logger.warn(
                 "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
                 storageGroupName,
                 i,

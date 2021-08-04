@@ -238,6 +238,15 @@ public class CompactionMergeTaskPoolManager implements IService {
         || storageGroupTasks.get(storageGroupName).size() == 0;
   }
 
+  @TestOnly
+  public synchronized int getCompactionTaskNum(String storageGroupName) {
+    if (!storageGroupTasks.containsKey(storageGroupName)) {
+      return 0;
+    } else {
+      return storageGroupTasks.get(storageGroupName).size();
+    }
+  }
+
   public boolean isTerminated() {
     return pool == null || pool.isTerminated();
   }
