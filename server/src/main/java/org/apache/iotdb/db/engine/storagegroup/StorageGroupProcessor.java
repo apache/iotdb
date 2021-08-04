@@ -1952,11 +1952,11 @@ public class StorageGroupProcessor {
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
 
-    logger.warn("submit an one time partition compaction task");
     CompactionMergeTaskPoolManager.getInstance()
         .submitTask(
             new CompactionOnePartitionTask(
                 logicalStorageGroupName, tsFileProcessor.getTimeRangeId()));
+    logger.warn("submit an one time partition compaction task");
   }
 
   public class CompactionOnePartitionTask extends StorageGroupCompactionTask {
