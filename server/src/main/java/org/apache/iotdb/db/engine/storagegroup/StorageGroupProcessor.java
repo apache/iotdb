@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.StorageGroupCompactionTask;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -1952,10 +1953,12 @@ public class StorageGroupProcessor {
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
 
-    CompactionMergeTaskPoolManager.getInstance()
-        .submitTask(
-            new CompactionOnePartitionTask(
-                logicalStorageGroupName, tsFileProcessor.getTimeRangeId()));
+    if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
+      CompactionMergeTaskPoolManager.getInstance()
+          .submitTask(
+              new CompactionOnePartitionTask(
+                  logicalStorageGroupName, tsFileProcessor.getTimeRangeId()));
+    }
   }
 
   public class CompactionOnePartitionTask extends StorageGroupCompactionTask {
