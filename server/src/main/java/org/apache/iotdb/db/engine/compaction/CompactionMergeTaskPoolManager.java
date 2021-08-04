@@ -213,6 +213,11 @@ public class CompactionMergeTaskPoolManager implements IService {
           storageGroupTasks
               .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
               .size());
+      if (pool == null) {
+        logger.error("pool is null!!!!");
+      } else if (storageGroupCompactionTask == null) {
+        logger.error("task is null!!!!!");
+      }
       Future<Void> future = pool.submit(storageGroupCompactionTask);
       storageGroupTasks
           .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())

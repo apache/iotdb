@@ -199,6 +199,7 @@ public abstract class TsFileManagement {
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
       long dataTTL) {
+    logger.warn("cross space compaction waiting for sequence compaction ends");
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
@@ -274,7 +275,7 @@ public abstract class TsFileManagement {
         mergingModification =
             new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
-        logger.warn("Submit a merge task");
+        logger.warn("Submit a cross space merge task to execute");
         if (logger.isInfoEnabled()) {
           logger.info(
               "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
