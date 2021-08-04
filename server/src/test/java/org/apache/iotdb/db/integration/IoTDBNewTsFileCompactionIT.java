@@ -1091,7 +1091,7 @@ public class IoTDBNewTsFileCompactionIT {
         fail();
         break;
       }
-      if ((System.nanoTime() - intervalTime) >= 60L * 1000L * 1000L * 1000L) {
+      if ((System.nanoTime() - intervalTime) >= 20L * 1000L * 1000L * 1000L) {
         intervalTime = System.nanoTime();
         LOGGER.warn(
             "The number of tsfile level: {}",

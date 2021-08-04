@@ -25,7 +25,6 @@ public abstract class StorageGroupCompactionTask implements Callable<Void> {
 
   private String storageGroupName;
   private ConcurrentHashMap<String, Boolean> sgCompactionStatus;
-  private int compactionTaskIndex;
 
   public StorageGroupCompactionTask(String storageGroupName) {
     this.storageGroupName = storageGroupName;
@@ -33,14 +32,6 @@ public abstract class StorageGroupCompactionTask implements Callable<Void> {
 
   void setSgCompactionStatus(ConcurrentHashMap<String, Boolean> sgCompactionStatus) {
     this.sgCompactionStatus = sgCompactionStatus;
-  }
-
-  public void setCompactionTaskIndex(int compactionTaskIndex) {
-    this.compactionTaskIndex = compactionTaskIndex;
-  }
-
-  public int getCompactionTaskIndex() {
-    return compactionTaskIndex;
   }
 
   public String getStorageGroupName() {

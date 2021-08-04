@@ -129,7 +129,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     }
   }
 
-  private synchronized void waitTermination() {
+  private void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!pool.isTerminated()) {
       int timeMillis = 0;
@@ -209,31 +209,15 @@ public class CompactionMergeTaskPoolManager implements IService {
       }
       storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
       sgCompactionStatus.put(storageGroup, true);
-      storageGroupCompactionTask.setCompactionTaskIndex(
-          storageGroupTasks
-              .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
-              .size());
-      if (pool == null) {
-        logger.warn("pool is null, uable to submit a task");
-        return;
-      }
       Future<Void> future = pool.submit(storageGroupCompactionTask);
       storageGroupTasks
           .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
           .add(future);
+      return;
     }
-  }
-
-  public synchronized void finishTask(StorageGroupCompactionTask storageGroupCompactionTask) {
-    if (pool != null && !pool.isTerminated()) {
-      String storageGroupName = storageGroupCompactionTask.getStorageGroupName();
-      if (!storageGroupTasks.containsKey(storageGroupName)) {
-        return;
-      }
-      storageGroupTasks
-          .get(storageGroupName)
-          .remove(storageGroupCompactionTask.getCompactionTaskIndex());
-    }
+    logger.warn(
+        "failed to submit compaction task because {}",
+        pool == null ? "pool is null" : "pool is terminated");
   }
 
   @TestOnly
