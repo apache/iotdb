@@ -1971,6 +1971,7 @@ public class StorageGroupProcessor {
 
     @Override
     public Void call() {
+      logger.warn("CompactionOnePartitionTask start to execute");
       syncCompactOnePartition(
           partition, IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
       clearCompactionStatus();
@@ -1982,8 +1983,10 @@ public class StorageGroupProcessor {
   private void syncCompactOnePartition(long timePartition, boolean fullMerge) {
     try {
       // fork and filter current tsfile, then commit then to compaction merge
+      logger.warn("trying to fork tsfile list");
       tsFileManagement.forkCurrentFileList(timePartition);
       tsFileManagement.setForceFullMerge(fullMerge);
+      logger.warn("start to execute compaction selection");
       tsFileManagement.new CompactionMergeTask(this::closeCompactionMergeCallBack, timePartition)
           .call();
     } catch (IOException e) {

@@ -608,13 +608,17 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
 
   @Override
   public void forkCurrentFileList(long timePartition) {
+    logger.warn("try getting read lock");
     readLock();
+    logger.warn("get read lock");
     try {
+      logger.warn("forking sequence tsfile list");
       forkTsFileList(
           forkedSequenceTsFileResources,
           sequenceTsFileResources.computeIfAbsent(timePartition, this::newSequenceTsFileResources),
           seqLevelNum);
       // we have to copy all unseq file
+      logger.warn("forking unsequence tsfile list");
       forkTsFileList(
           forkedUnSequenceTsFileResources,
           unSequenceTsFileResources.computeIfAbsent(
@@ -622,6 +626,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           unseqLevelNum + 1);
     } finally {
       readUnLock();
+      logger.warn("release the read lock");
     }
   }
 

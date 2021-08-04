@@ -58,7 +58,7 @@ public class IoTDBNewTsFileCompactionIT {
   private CompactionStrategy preCompactionStrategy;
   private PartialPath storageGroupPath;
   // the unit is ns
-  private static final long MAX_WAIT_TIME_FOR_MERGE = 3L * 60L * 1000L * 1000L * 1000L;
+  private static final long MAX_WAIT_TIME_FOR_MERGE = 1L * 60L * 1000L * 1000L * 1000L;
   private static final float FLOAT_DELTA = 0.00001f;
 
   @Before
