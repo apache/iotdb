@@ -324,6 +324,44 @@ public class TsFileRewriteTool implements AutoCloseable {
   //    }
   //  }
 
+  protected void reWriteChunk(
+      String deviceId,
+      boolean firstChunkInChunkGroup,
+      MeasurementSchema schema,
+      List<PageHeader> pageHeadersInChunk,
+      List<ByteBuffer> pageDataInChunk,
+      List<Boolean> needToDecodeInfoInChunk)
+      throws IOException, PageException {
+    valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
+    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
+    for (int i = 0; i < pageDataInChunk.size(); i++) {
+      if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
+        decodeAndWritePage(schema, pageDataInChunk.get(i), chunkWritersInChunkGroup);
+      } else {
+        writePage(
+            schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), chunkWritersInChunkGroup);
+      }
+    }
+    for (Entry<Long, Map<MeasurementSchema, ChunkWriterImpl>> entry :
+        chunkWritersInChunkGroup.entrySet()) {
+      long partitionId = entry.getKey();
+      TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
+      if (firstChunkInChunkGroup) {
+        tsFileIOWriter.startChunkGroup(deviceId);
+      }
+      // write chunks to their own upgraded tsFiles
+      for (IChunkWriter chunkWriter : entry.getValue().values()) {
+        chunkWriter.writeToFileWriter(tsFileIOWriter);
+      }
+    }
+  }
+
+  protected void endChunkGroup() throws IOException, PageException {
+    for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
+      tsFileIOWriter.endChunkGroup();
+    }
+  }
+
   protected void reEncodeChunk(
       MeasurementSchema schema,
       List<PageHeader> pageHeadersInChunk,

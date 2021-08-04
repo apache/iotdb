@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -93,65 +92,103 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
       return;
     }
 
-    int headerLength =
+    long headerLength =
         TSFileConfig.MAGIC_STRING.getBytes().length
             + TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);
     byte marker;
-    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
+    long firstChunkPositionInChunkGroup = headerLength;
+    boolean firstChunkInChunkGroup = true;
+    String deviceId = null;
+    boolean skipReadingChunk = true;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
-            ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                    header.getMeasurementID(),
-                    header.getDataType(),
-                    header.getEncodingType(),
-                    header.getCompressionType());
-            TSDataType dataType = header.getDataType();
-            TSEncoding encoding = header.getEncodingType();
-            List<PageHeader> pageHeadersInChunk = new ArrayList<>();
-            List<ByteBuffer> dataInChunk = new ArrayList<>();
-            List<Boolean> needToDecodeInfo = new ArrayList<>();
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              // a new Page
-              PageHeader pageHeader = ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
-              boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
-              needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData =
-                  !needToDecode
-                      ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
-                      : reader.readPage(pageHeader, header.getCompressionType());
-              pageHeadersInChunk.add(pageHeader);
-              dataInChunk.add(pageData);
-              dataSize -=
-                  (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
-                      // count, startTime, endTime bytes size in old statistics
-                      + 24
-                      // statistics bytes size
-                      // new boolean StatsSize is 8 bytes larger than old one
-                      + (pageHeader.getStatistics().getStatsSize()
-                          - (dataType == TSDataType.BOOLEAN ? 8 : 0))
-                      // page data bytes
-                      + pageHeader.getCompressedSize());
+            if (skipReadingChunk || deviceId == null) {
+              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                // a new Page
+                PageHeader pageHeader =
+                    ((TsFileSequenceReaderForV2) reader).readPageHeader(header.getDataType());
+                ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader);
+                dataSize -=
+                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                        // count, startTime, endTime bytes size in old statistics
+                        + 24
+                        // statistics bytes size
+                        // new boolean StatsSize is 8 bytes larger than old one
+                        + (pageHeader.getStatistics().getStatsSize()
+                            - (header.getDataType() == TSDataType.BOOLEAN ? 8 : 0))
+                        // page data bytes
+                        + pageHeader.getCompressedSize());
+              }
+            } else {
+              ChunkHeader header = ((TsFileSequenceReaderForV2) reader).readChunkHeader();
+              MeasurementSchema measurementSchema =
+                  new MeasurementSchema(
+                      header.getMeasurementID(),
+                      header.getDataType(),
+                      header.getEncodingType(),
+                      header.getCompressionType());
+              TSDataType dataType = header.getDataType();
+              TSEncoding encoding = header.getEncodingType();
+              List<PageHeader> pageHeadersInChunk = new ArrayList<>();
+              List<ByteBuffer> dataInChunk = new ArrayList<>();
+              List<Boolean> needToDecodeInfo = new ArrayList<>();
+              int dataSize = header.getDataSize();
+              while (dataSize > 0) {
+                // a new Page
+                PageHeader pageHeader =
+                    ((TsFileSequenceReaderForV2) reader).readPageHeader(dataType);
+                boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
+                needToDecodeInfo.add(needToDecode);
+                ByteBuffer pageData =
+                    !needToDecode
+                        ? ((TsFileSequenceReaderForV2) reader).readCompressedPage(pageHeader)
+                        : reader.readPage(pageHeader, header.getCompressionType());
+                pageHeadersInChunk.add(pageHeader);
+                dataInChunk.add(pageData);
+                dataSize -=
+                    (Integer.BYTES * 2 // the bytes size of uncompressedSize and compressedSize
+                        // count, startTime, endTime bytes size in old statistics
+                        + 24
+                        // statistics bytes size
+                        // new boolean StatsSize is 8 bytes larger than old one
+                        + (pageHeader.getStatistics().getStatsSize()
+                            - (dataType == TSDataType.BOOLEAN ? 8 : 0))
+                        // page data bytes
+                        + pageHeader.getCompressedSize());
+              }
+              reWriteChunk(
+                  deviceId,
+                  firstChunkInChunkGroup,
+                  measurementSchema,
+                  pageHeadersInChunk,
+                  dataInChunk,
+                  needToDecodeInfo);
+              if (firstChunkInChunkGroup) {
+                firstChunkInChunkGroup = false;
+              }
             }
-            reEncodeChunk(
-                measurementSchema,
-                pageHeadersInChunk,
-                dataInChunk,
-                needToDecodeInfo,
-                chunkWritersInChunkGroup);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             // this is the footer of a ChunkGroup in TsFileV2.
-            ChunkGroupHeader chunkGroupFooter =
-                ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
-            String deviceID = chunkGroupFooter.getDeviceID();
-            reWriteChunkGroupToFile(deviceID, chunkWritersInChunkGroup);
-            chunkWritersInChunkGroup.clear();
+            if (skipReadingChunk) {
+              skipReadingChunk = false;
+              ChunkGroupHeader chunkGroupFooter =
+                  ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+              deviceId = chunkGroupFooter.getDeviceID();
+              reader.position(firstChunkPositionInChunkGroup);
+            } else {
+              endChunkGroup();
+              skipReadingChunk = true;
+              ((TsFileSequenceReaderForV2) reader).readChunkGroupFooter();
+              deviceId = null;
+              firstChunkPositionInChunkGroup = reader.position();
+              firstChunkInChunkGroup = true;
+            }
             break;
           case MetaMarker.VERSION:
             long version = ((TsFileSequenceReaderForV2) reader).readVersion();
@@ -179,6 +216,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
             for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
               tsFileIOWriter.writePlanIndices();
             }
+            firstChunkPositionInChunkGroup = reader.position();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous
