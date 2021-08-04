@@ -285,13 +285,13 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
   protected void decodeAndWritePage(
       MeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {
     valueDecoder.reset();
     PageReaderV2 pageReader =
         new PageReaderV2(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
-    rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
+    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
   /** check if the file to be upgraded has correct magic strings and version number */

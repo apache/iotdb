@@ -294,26 +294,24 @@ public class TsFileRewriteTool implements AutoCloseable {
       List<Boolean> needToDecodeInfoInChunk)
       throws IOException, PageException {
     valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
-    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
+    Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(schema, pageDataInChunk.get(i), chunkWritersInChunkGroup);
+        decodeAndWritePage(schema, pageDataInChunk.get(i), partitionChunkWriterMap);
       } else {
         writePage(
-            schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), chunkWritersInChunkGroup);
+            schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
       }
     }
-    for (Entry<Long, Map<MeasurementSchema, ChunkWriterImpl>> entry :
-        chunkWritersInChunkGroup.entrySet()) {
+    for (Entry<Long, ChunkWriterImpl> entry : partitionChunkWriterMap.entrySet()) {
       long partitionId = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
       if (firstChunkInChunkGroup) {
         tsFileIOWriter.startChunkGroup(deviceId);
       }
       // write chunks to their own upgraded tsFiles
-      for (IChunkWriter chunkWriter : entry.getValue().values()) {
-        chunkWriter.writeToFileWriter(tsFileIOWriter);
-      }
+      IChunkWriter chunkWriter = entry.getValue();
+      chunkWriter.writeToFileWriter(tsFileIOWriter);
     }
   }
 
@@ -365,42 +363,38 @@ public class TsFileRewriteTool implements AutoCloseable {
       MeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws PageException {
     long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
-    Map<MeasurementSchema, ChunkWriterImpl> chunkWriters =
-        chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
-    ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
+    ChunkWriterImpl chunkWriter =
+        partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
     chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
-    chunkWriters.put(schema, chunkWriter);
-    chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
 
   protected void decodeAndWritePage(
       MeasurementSchema schema,
       ByteBuffer pageData,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap)
       throws IOException {
     valueDecoder.reset();
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder, null);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
-    rewritePageIntoFiles(batchData, schema, chunkWritersInChunkGroup);
+    rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
   protected void rewritePageIntoFiles(
       BatchData batchData,
       MeasurementSchema schema,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup) {
+      Map<Long, ChunkWriterImpl> partitionChunkWriterMap) {
     while (batchData.hasCurrent()) {
       long time = batchData.currentTime();
       Object value = batchData.currentValue();
       long partitionId = StorageEngine.getTimePartition(time);
 
-      Map<MeasurementSchema, ChunkWriterImpl> chunkWriters =
-          chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
-      ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
+      ChunkWriterImpl chunkWriter =
+          partitionChunkWriterMap.computeIfAbsent(partitionId, v -> new ChunkWriterImpl(schema));
       getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       switch (schema.getType()) {
         case INT32:
@@ -426,8 +420,6 @@ public class TsFileRewriteTool implements AutoCloseable {
               String.format("Data type %s is not supported.", schema.getType()));
       }
       batchData.next();
-      chunkWriters.put(schema, chunkWriter);
-      chunkWritersInChunkGroup.put(partitionId, chunkWriters);
     }
   }
 
