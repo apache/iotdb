@@ -79,7 +79,7 @@ public class IoTDBNewTsFileCompactionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadNum(10);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadNum(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
