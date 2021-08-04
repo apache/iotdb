@@ -1949,10 +1949,11 @@ public class StorageGroupProcessor {
     synchronized (closeStorageGroupCondition) {
       closeStorageGroupCondition.notifyAll();
     }
-    logger.info(
+    logger.warn(
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
 
+    logger.warn("submit an one time partition compaction task");
     CompactionMergeTaskPoolManager.getInstance()
         .submitTask(
             new CompactionOnePartitionTask(

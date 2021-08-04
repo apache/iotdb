@@ -1088,7 +1088,7 @@ public class IoTDBNewTsFileCompactionIT {
       // wait too long, just break
       if ((System.nanoTime() - startTime) >= MAX_WAIT_TIME_FOR_MERGE) {
         LOGGER.error("Unable to wait for compaction finish");
-        assertTrue(false);
+        fail();
         break;
       }
       if ((System.nanoTime() - intervalTime) >= 60L * 1000L * 1000L * 1000L) {
