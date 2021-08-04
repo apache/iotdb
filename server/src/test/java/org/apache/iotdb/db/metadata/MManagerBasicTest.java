@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -800,7 +799,53 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testTemplateCompatibility() throws MetadataException {
+  public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+    MManager manager = IoTDB.metaManager;
+    manager.createDeviceTemplate(plan);
+
+    // set device template
+    SetDeviceTemplatePlan setDeviceTemplatePlan =
+        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+
+    manager.setDeviceTemplate(setDeviceTemplatePlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s20"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    manager.createTimeseries(createTimeSeriesPlan);
+
+    CreateTimeSeriesPlan createTimeSeriesPlan2 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.sg1.d1.s11"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    try {
+      manager.createTimeseries(createTimeSeriesPlan2);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSetDeviceTemplate() throws MetadataException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     List<String> measurements = new ArrayList<>();
@@ -858,108 +903,53 @@ public class MManagerBasicTest {
             new ArrayList<>(encodingList),
             new ArrayList<>(compressionTypes));
 
-    MManager manager = IoTDB.metaManager;
-
-    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan2)));
-    assertFalse(manager.isTemplateCompatible(new Template(plan2), new Template(plan1)));
-
-    System.out.println(measurementList);
     measurementList.get(1).add("s13");
     dataTypeList.get(1).add(TSDataType.INT64);
     encodingList.get(1).add(TSEncoding.RLE);
 
-    CreateTemplatePlan plan3 =
-        new CreateTemplatePlan(
-            "template3",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
+    SetDeviceTemplatePlan setPlan1 = new SetDeviceTemplatePlan("template1", "root.sg1");
+    SetDeviceTemplatePlan setPlan2 = new SetDeviceTemplatePlan("template2", "root.sg2.d1");
 
-    assertTrue(manager.isTemplateCompatible(new Template(plan1), new Template(plan3)));
+    SetDeviceTemplatePlan setPlan3 = new SetDeviceTemplatePlan("template1", "root.sg1.d1");
+    SetDeviceTemplatePlan setPlan4 = new SetDeviceTemplatePlan("template2", "root.sg2");
 
-    List<String> vectorList = new ArrayList<>(measurementList.get(1));
-    vectorList.remove(0);
-    List<TSDataType> vectorDataTypesList = new ArrayList<>(dataTypeList.get(1));
-    vectorDataTypesList.remove(0);
-    List<TSEncoding> vectorEncodingsList = new ArrayList<>(encodingList.get(1));
-    vectorEncodingsList.remove(0);
+    SetDeviceTemplatePlan setPlan5 = new SetDeviceTemplatePlan("template2", "root.sg1.d1");
 
-    measurementList.set(1, vectorList);
-    dataTypeList.set(1, vectorDataTypesList);
-    encodingList.set(1, vectorEncodingsList);
+    MManager manager = IoTDB.metaManager;
 
-    CreateTemplatePlan plan4 =
-        new CreateTemplatePlan(
-            "template4",
-            new ArrayList<>(schemaNames),
-            new ArrayList<>(measurementList),
-            new ArrayList<>(dataTypeList),
-            new ArrayList<>(encodingList),
-            new ArrayList<>(compressionTypes));
-
-    assertFalse(manager.isTemplateCompatible(new Template(plan1), new Template(plan4)));
-
-    // test manager
     manager.createDeviceTemplate(plan1);
     manager.createDeviceTemplate(plan2);
-    manager.createDeviceTemplate(plan4);
 
-    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.sg1.d1"));
+    manager.setStorageGroup(new PartialPath("root.sg1"));
+    manager.setStorageGroup(new PartialPath("root.sg2"));
+    manager.setStorageGroup(new PartialPath("root.sg3"));
+
     try {
-      manager.setDeviceTemplate(new SetDeviceTemplatePlan("template4", "root.sg1.d1.d2"));
-      fail("These two templates are incompatible");
+      manager.setDeviceTemplate(setPlan1);
+      manager.setDeviceTemplate(setPlan2);
     } catch (MetadataException e) {
-      assertEquals("Incompatible template", e.getMessage());
+      fail();
     }
 
-    manager.setDeviceTemplate(new SetDeviceTemplatePlan("template2", "root.sg1.d1.d2"));
-  }
-
-  @Test
-  public void testTemplateAndTimeSeriesCompatibility() throws MetadataException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
-    MManager manager = IoTDB.metaManager;
-    manager.createDeviceTemplate(plan);
-
-    // set device template
-    SetDeviceTemplatePlan setDeviceTemplatePlan =
-        new SetDeviceTemplatePlan("template1", "root.sg1.d1");
-
-    manager.setDeviceTemplate(setDeviceTemplatePlan);
-
-    CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.s20"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.GZIP,
-            null,
-            null,
-            null,
-            null);
-
-    manager.createTimeseries(createTimeSeriesPlan);
-
-    CreateTimeSeriesPlan createTimeSeriesPlan2 =
-        new CreateTimeSeriesPlan(
-            new PartialPath("root.sg1.d1.s11"),
-            TSDataType.INT32,
-            TSEncoding.PLAIN,
-            CompressionType.GZIP,
-            null,
-            null,
-            null,
-            null);
+    try {
+      manager.setDeviceTemplate(setPlan3);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
+    }
 
     try {
-      manager.createTimeseries(createTimeSeriesPlan2);
+      manager.setDeviceTemplate(setPlan4);
       fail();
-    } catch (Exception e) {
-      assertEquals(
-          "Path [root.sg1.d1.s11 ( which is incompatible with template )] already exist",
-          e.getMessage());
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg2.d1", e.getMessage());
+    }
+
+    try {
+      manager.setDeviceTemplate(setPlan5);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals("Template already exists on root.sg1", e.getMessage());
     }
   }
 
