@@ -156,16 +156,22 @@ public class TsFileRewriteTool implements AutoCloseable {
     if (!fileCheck()) {
       return;
     }
-    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
+    long headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
     reader.position(headerLength);
     // start to scan chunks and chunkGroups
     byte marker;
 
-    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new HashMap<>();
-    String lastChunkGroupDeviceId = null;
+    String deviceId = null;
+    boolean firstChunkInChunkGroup = true;
     try {
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
+          case MetaMarker.CHUNK_GROUP_HEADER:
+            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
+            deviceId = chunkGroupHeader.getDeviceID();
+            firstChunkInChunkGroup = true;
+            endChunkGroup();
+            break;
           case MetaMarker.CHUNK_HEADER:
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
             ChunkHeader header = reader.readChunkHeader(marker);
@@ -192,21 +198,14 @@ public class TsFileRewriteTool implements AutoCloseable {
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
             }
-            reEncodeChunk(
+            reWriteChunk(
+                deviceId,
+                firstChunkInChunkGroup,
                 measurementSchema,
                 pageHeadersInChunk,
                 dataInChunk,
-                needToDecodeInfo,
-                chunkWritersInChunkGroup);
-            break;
-          case MetaMarker.CHUNK_GROUP_HEADER:
-            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            String deviceId = chunkGroupHeader.getDeviceID();
-            if (lastChunkGroupDeviceId != null && !chunkWritersInChunkGroup.isEmpty()) {
-              reWriteChunkGroupToFile(lastChunkGroupDeviceId, chunkWritersInChunkGroup);
-              chunkWritersInChunkGroup.clear();
-            }
-            lastChunkGroupDeviceId = deviceId;
+                needToDecodeInfo);
+            firstChunkInChunkGroup = false;
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -231,11 +230,7 @@ public class TsFileRewriteTool implements AutoCloseable {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
-
-      if (!chunkWritersInChunkGroup.isEmpty()) {
-        reWriteChunkGroupToFile(lastChunkGroupDeviceId, chunkWritersInChunkGroup);
-        chunkWritersInChunkGroup.clear();
-      }
+      endChunkGroup();
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         rewrittenResources.add(endFileAndGenerateResource(tsFileIOWriter));
@@ -286,44 +281,10 @@ public class TsFileRewriteTool implements AutoCloseable {
   }
 
   /**
-   * This method is for rewriting the ChunkGroup which data is in the different time partitions. In
-   * this case, we have to decode the data to points, and then rewrite the data points to different
+   * This method is for rewriting the Chunk which data is in the different time partitions. In this
+   * case, we have to decode the data to points, and then rewrite the data points to different
    * chunkWriters, finally write chunks to their own upgraded TsFiles.
    */
-  //  protected void rewrite(String deviceId, List<MeasurementSchema> schemas,
-  //      List<List<PageHeader>> pageHeadersInChunkGroup, List<List<ByteBuffer>> dataInChunkGroup,
-  //      List<List<Boolean>> needToDecodeInfoInChunkGroup) throws IOException, PageException {
-  //    Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup = new
-  // HashMap<>();
-  //    for (int i = 0; i < schemas.size(); i++) {
-  //      MeasurementSchema schema = schemas.get(i);
-  //      List<ByteBuffer> pageDataInChunk = dataInChunkGroup.get(i);
-  //      List<PageHeader> pageHeadersInChunk = pageHeadersInChunkGroup.get(i);
-  //      List<Boolean> needToDecodeInfoInChunk = needToDecodeInfoInChunkGroup.get(i);
-  //      valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
-  //      for (int j = 0; j < pageDataInChunk.size(); j++) {
-  //        if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
-  //          decodeAndWritePage(schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
-  //        } else {
-  //          writePage(schema, pageHeadersInChunk.get(j), pageDataInChunk.get(j),
-  //              chunkWritersInChunkGroup);
-  //        }
-  //      }
-  //    }
-  //
-  //    for (Entry<Long, Map<MeasurementSchema, ChunkWriterImpl>> entry : chunkWritersInChunkGroup
-  //        .entrySet()) {
-  //      long partitionId = entry.getKey();
-  //      TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
-  //      tsFileIOWriter.startChunkGroup(deviceId);
-  //      // write chunks to their own upgraded tsFiles
-  //      for (IChunkWriter chunkWriter : entry.getValue().values()) {
-  //        chunkWriter.writeToFileWriter(tsFileIOWriter);
-  //      }
-  //      tsFileIOWriter.endChunkGroup();
-  //    }
-  //  }
-
   protected void reWriteChunk(
       String deviceId,
       boolean firstChunkInChunkGroup,
@@ -358,40 +319,6 @@ public class TsFileRewriteTool implements AutoCloseable {
 
   protected void endChunkGroup() throws IOException, PageException {
     for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-      tsFileIOWriter.endChunkGroup();
-    }
-  }
-
-  protected void reEncodeChunk(
-      MeasurementSchema schema,
-      List<PageHeader> pageHeadersInChunk,
-      List<ByteBuffer> pageDataInChunk,
-      List<Boolean> needToDecodeInfoInChunk,
-      Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
-      throws IOException, PageException {
-    valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
-    for (int i = 0; i < pageDataInChunk.size(); i++) {
-      if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(schema, pageDataInChunk.get(i), chunkWritersInChunkGroup);
-      } else {
-        writePage(
-            schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), chunkWritersInChunkGroup);
-      }
-    }
-  }
-
-  protected void reWriteChunkGroupToFile(
-      String deviceId, Map<Long, Map<MeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
-      throws IOException {
-    for (Entry<Long, Map<MeasurementSchema, ChunkWriterImpl>> entry :
-        chunkWritersInChunkGroup.entrySet()) {
-      long partitionId = entry.getKey();
-      TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
-      tsFileIOWriter.startChunkGroup(deviceId);
-      // write chunks to their own upgraded tsFiles
-      for (IChunkWriter chunkWriter : entry.getValue().values()) {
-        chunkWriter.writeToFileWriter(tsFileIOWriter);
-      }
       tsFileIOWriter.endChunkGroup();
     }
   }
