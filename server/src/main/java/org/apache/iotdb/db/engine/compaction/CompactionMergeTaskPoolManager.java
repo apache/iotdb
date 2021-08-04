@@ -129,7 +129,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     }
   }
 
-  private void waitTermination() {
+  private synchronized void waitTermination() {
     long startTime = System.currentTimeMillis();
     while (!pool.isTerminated()) {
       int timeMillis = 0;
