@@ -26,9 +26,6 @@ import org.apache.iotdb.openapi.gen.handler.PingApiService;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-@javax.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
-    date = "2021-01-14T20:28:23.313+08:00[Asia/Shanghai]")
 public class PingApiServiceImpl extends PingApiService {
   @Override
   public Response tryPing(SecurityContext securityContext) throws NotFoundException {

@@ -83,9 +83,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@javax.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
-    date = "2021-01-13T21:45:03.765+08:00[Asia/Shanghai]")
 public class V1ApiServiceImpl extends V1ApiService {
   private static final long MS_TO_MONTH = 30 * 86400_000L;
   private ConcurrentHashMap<String, ConcurrentHashMap> bigmap =

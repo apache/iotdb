@@ -22,9 +22,6 @@ package org.apache.iotdb.openapi.gen.handler.factories;
 import org.apache.iotdb.openapi.gen.handler.V1ApiService;
 import org.apache.iotdb.openapi.gen.handler.impl.V1ApiServiceImpl;
 
-@javax.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
-    date = "2021-01-13T21:45:03.765+08:00[Asia/Shanghai]")
 public class V1ApiServiceFactory {
   private static final V1ApiService service = new V1ApiServiceImpl();
 

@@ -22,9 +22,6 @@ package org.apache.iotdb.openapi.gen.handler.factories;
 import org.apache.iotdb.openapi.gen.handler.PingApiService;
 import org.apache.iotdb.openapi.gen.handler.impl.PingApiServiceImpl;
 
-@javax.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
-    date = "2021-01-14T20:28:23.313+08:00[Asia/Shanghai]")
 public class PingApiServiceFactory {
   private static final PingApiService service = new PingApiServiceImpl();
 

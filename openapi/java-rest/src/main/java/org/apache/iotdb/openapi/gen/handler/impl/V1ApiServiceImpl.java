@@ -30,14 +30,10 @@ import javax.ws.rs.core.SecurityContext;
 
 import java.util.List;
 
-@javax.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaJerseyServerCodegen",
-    date = "2021-01-13T21:45:03.765+08:00[Asia/Shanghai]")
 public class V1ApiServiceImpl extends V1ApiService {
   @Override
   public Response postV1GrafanaData(
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
-    // do some magic!
     return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK, "magic!")).build();
   }
 

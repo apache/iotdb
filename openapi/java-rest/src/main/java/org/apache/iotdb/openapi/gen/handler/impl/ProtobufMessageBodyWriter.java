@@ -41,7 +41,6 @@ public class ProtobufMessageBodyWriter implements MessageBodyWriter<Message> {
   public boolean isWriteable(
       Class<?> aClass, Type type, Annotation[] annotations, MediaType mediaType) {
     return Message.class.isAssignableFrom(aClass);
-    // return false;
   }
 
   private Map<Object, byte[]> buffer = new WeakHashMap<Object, byte[]>();
@@ -58,7 +57,6 @@ public class ProtobufMessageBodyWriter implements MessageBodyWriter<Message> {
     byte[] bytes = baos.toByteArray();
     buffer.put(message, bytes);
     return bytes.length;
-    // return 0;
   }
 
   @Override

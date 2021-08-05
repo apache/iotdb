@@ -222,13 +222,6 @@
                     <artifactId>protobuf-java</artifactId>
                     <version>3.5.1</version>
                 </dependency>
-                <!-- Bean Validation API support -->
-                <!--             <dependency>
-                    <groupId>javax.validation</groupId>
-                    <artifactId>validation-api</artifactId>
-                    <version>${beanvalidation-version}</version>
-                    <scope>provided</scope>
-                </dependency>-->
             </dependencies>
         </profile>
         <profile>
@@ -403,13 +396,6 @@
                     <artifactId>protobuf-java</artifactId>
                     <version>3.5.1</version>
                 </dependency>
-                <!-- Bean Validation API support -->
-                <!--             <dependency>
-                    <groupId>javax.validation</groupId>
-                    <artifactId>validation-api</artifactId>
-                    <version>${beanvalidation-version}</version>
-                    <scope>provided</scope>
-                </dependency>-->
             </dependencies>
         </profile>
         <profile>
@@ -584,13 +570,6 @@
                     <artifactId>protobuf-java</artifactId>
                     <version>3.5.1</version>
                 </dependency>
-                <!-- Bean Validation API support -->
-                <!--             <dependency>
-                    <groupId>javax.validation</groupId>
-                    <artifactId>validation-api</artifactId>
-                    <version>${beanvalidation-version}</version>
-                    <scope>provided</scope>
-                </dependency>-->
             </dependencies>
         </profile>
     </profiles>

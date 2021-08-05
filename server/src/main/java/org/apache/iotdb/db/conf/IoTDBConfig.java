@@ -730,7 +730,7 @@ public class IoTDBConfig {
   private String adminPassword = "root";
 
   /** if the startOpenApi is true, we will start OpenApi */
-  private boolean startOpenApi = true;
+  private boolean startOpenApi = false;
 
   /** set the OpenApi reset port. */
   private int OpenApiPort = 18080;
@@ -740,14 +740,19 @@ public class IoTDBConfig {
 
   /** enable the OpenApi ssl. */
   private boolean enable_https = false;
+
   /** openapi ssl key Store Path */
   private String keyStorePath = "";
+
   /** openapi ssl trust Store Path */
   private String trustStorePath = "";
+
   /** openapi ssl key Store password */
   private String keyStorePwd = "";
+
   /** openapi ssl trust Store password */
   private String trustStorePwd = "";
+
   /** OpenApi ssl timeout */
   private int idleTimeout = 50000;
 
