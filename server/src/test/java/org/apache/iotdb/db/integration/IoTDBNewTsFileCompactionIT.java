@@ -79,7 +79,7 @@ public class IoTDBNewTsFileCompactionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadNum(1);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadNum(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -1105,7 +1105,7 @@ public class IoTDBNewTsFileCompactionIT {
             tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size());
         LOGGER.warn(
             "The number of current compaction task num {}",
-            CompactionMergeTaskPoolManager.getInstance().getCompactionTaskNum("root.sg1"));
+            CompactionMergeTaskPoolManager.getInstance().getCompactionTaskNum());
       }
     }
     return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;
