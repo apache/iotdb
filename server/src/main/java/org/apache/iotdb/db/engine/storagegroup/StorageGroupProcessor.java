@@ -541,7 +541,7 @@ public class StorageGroupProcessor {
           virtualStorageGroupId);
       try {
         CompactionMergeTaskPoolManager.getInstance()
-            .submitTask(
+            .submitRecoverTask(
                 tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
       } catch (RejectedExecutionException e) {
         this.closeCompactionRecoverCallBack(false, 0);

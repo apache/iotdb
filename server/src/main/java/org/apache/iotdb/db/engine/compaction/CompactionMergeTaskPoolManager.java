@@ -42,7 +42,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
 
@@ -54,7 +56,9 @@ public class CompactionMergeTaskPoolManager implements IService {
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
   private ScheduledExecutorService scheduledPool;
-  private ExecutorService pool;
+  private ThreadPoolExecutor recoverPool;
+  private ThreadPoolExecutor pool;
+  private volatile AtomicInteger totalTaskNum = new AtomicInteger(0);
   private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -68,13 +72,19 @@ public class CompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
+          (ThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+                  ThreadName.COMPACTION_SERVICE.getName());
       this.scheduledPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
               ThreadName.COMPACTION_SERVICE.getName());
+      this.recoverPool =
+          (ThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+                  ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
@@ -213,6 +223,41 @@ public class CompactionMergeTaskPoolManager implements IService {
       storageGroupTasks
           .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
           .add(future);
+      logger.warn(
+          "Submit a StorageGroupCompactionTask, current running task num: {}, "
+              + "completed task num: {}, blocked task num: {}, total task num: {}"
+              + ",approximate total task num: {}",
+          pool.getActiveCount(),
+          pool.getCompletedTaskCount(),
+          pool.getQueue().size(),
+          totalTaskNum.incrementAndGet(),
+          pool.getTaskCount());
+    }
+  }
+
+  public synchronized void submitRecoverTask(StorageGroupCompactionTask storageGroupCompactionTask)
+      throws RejectedExecutionException {
+    if (recoverPool != null && !recoverPool.isTerminated()) {
+      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
+      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
+      if (isCompacting) {
+        return;
+      }
+      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
+      sgCompactionStatus.put(storageGroup, true);
+      Future<Void> future = recoverPool.submit(storageGroupCompactionTask);
+      storageGroupTasks
+          .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
+          .add(future);
+      logger.warn(
+          "Submit a recover StorageGroupCompactionTask, current running task num: {}, "
+              + "completed  task num: {}, blocked task num: {}, total task num: {}"
+              + ",approximate total task num: {}",
+          recoverPool.getActiveCount(),
+          recoverPool.getCompletedTaskCount(),
+          recoverPool.getQueue().size(),
+          totalTaskNum.incrementAndGet(),
+          recoverPool.getTaskCount());
     }
   }
 
