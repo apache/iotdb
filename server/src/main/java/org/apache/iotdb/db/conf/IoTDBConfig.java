@@ -325,19 +325,19 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** LEVEL_COMPACTION, NO_COMPACTION */
-  private CompactionStrategy compactionStrategy = CompactionStrategy.NO_COMPACTION;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
    * files or not.
    */
-  private boolean enableUnseqCompaction = false;
+  private boolean enableUnseqCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
    * automatically after finish one compaction task
    */
-  private boolean enableContinuousCompaction = false;
+  private boolean enableContinuousCompaction = true;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
