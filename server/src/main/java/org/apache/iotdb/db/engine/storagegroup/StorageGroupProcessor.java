@@ -2119,8 +2119,10 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    CompactionMergeTaskPoolManager.getInstance()
-        .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+    if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
+      CompactionMergeTaskPoolManager.getInstance()
+          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+    }
   }
 
   /**
