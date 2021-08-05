@@ -24,41 +24,38 @@ import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 import org.apache.iotdb.openapi.gen.model.*;
 import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
 
-import javax.validation.constraints.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.util.List;
 
-public class V1ApiServiceImpl extends V1ApiService {
+public class RestApiServiceImpl extends RestApiService {
   @Override
-  public Response postV1GrafanaData(
+  public Response postRestGrafanaData(
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK, "magic!")).build();
   }
 
   @Override
-  public Response postV1GrafanaDataSimplejson(
+  public Response postRestGrafanaDataSimplejson(
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
-    // do some magic!
     return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK, "magic!")).build();
   }
 
   @Override
-  public Response postV1GrafanaNode(List<String> requestBody, SecurityContext securityContext)
+  public Response postRestGrafanaNode(List<String> requestBody, SecurityContext securityContext)
       throws NotFoundException {
-    // do some magic!
     return Response.ok().entity(new ApiResponseMessage(ApiResponseMessage.OK, "magic!")).build();
   }
 
   @Override
-  public Response postV1NonQuery(ReadData readData, SecurityContext securityContext)
+  public Response postRestNonQuery(ReadData readData, SecurityContext securityContext)
       throws NotFoundException {
     return null;
   }
 
   @Override
-  public Response postV1PrometheusQuery(
+  public Response postRestPrometheusQuery(
       String userAgent,
       String xPrometheusRemoteReadVersion,
       byte[] body,
@@ -68,7 +65,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1PrometheusReceive(
+  public Response postRestPrometheusReceive(
       String userAgent,
       String xPrometheusRemoteWriteVersion,
       byte[] body,
@@ -78,13 +75,13 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1RestDataRead(ReadData readData, SecurityContext securityContext)
+  public Response postRestDataRead(ReadData readData, SecurityContext securityContext)
       throws NotFoundException {
     return null;
   }
 
   @Override
-  public Response postV1RestDataWrite(WriteData writeData, SecurityContext securityContext)
+  public Response postRestDataWrite(WriteData writeData, SecurityContext securityContext)
       throws NotFoundException {
     return null;
   }

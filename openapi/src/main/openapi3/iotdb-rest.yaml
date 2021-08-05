@@ -25,7 +25,7 @@ info:
     name: Apache 2.0
   version: 1.0.0
 servers:
-- url: http://localhost:8080/
+- url: http://localhost:18080/
   description: api
 security:
 - basic: []
@@ -48,11 +48,11 @@ paths:
                   value: OK
       operationId: tryPing
       description: Just for checking whether the server works
-  /v1/grafana/query/frame:
+  /rest/grafana/query/frame:
     post:
       summary: Serve for queries from Grafana
       description: Auto Downsampling data query for Grafana
-      operationId: post-v1-grafana-data
+      operationId: post-rest-grafana-data
       parameters: []
       requestBody:
         description: Group By Fill Plan
@@ -93,11 +93,11 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/grafana/query/json:
+  /rest/grafana/query/json:
     post:
       summary: Serve for queries from Grafana with simpleJson plugin
       description: Auto Downsampling data query for Grafana with SimpleJson Plugin
-      operationId: post-v1-grafana-data-simplejson
+      operationId: post-rest-grafana-data-simplejson
       parameters: []
       requestBody:
         description: Group By Fill Plan
@@ -138,11 +138,11 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/rest/write:
+  /rest/write:
     post:
       summary: Serve for writing data by OpenApi
       description:
-      operationId: post-v1-rest-data-write
+      operationId: post-rest-data-write
       parameters: []
       requestBody:
         description: Insert Plan
@@ -172,11 +172,11 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/rest/nonQuery:
+  /rest/nonQuery:
     post:
       summary: Serve for non query by OpenApi
       description:
-      operationId: post-v1-non-query
+      operationId: post-rest-non-query
       parameters: [ ]
       requestBody:
         description: non query Plan
@@ -207,11 +207,11 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/rest/read:
+  /rest/read:
     post:
       summary: Serve for read data by OpenApi
       description:
-      operationId: post-v1-rest-data-read
+      operationId: post-rest-data-read
       parameters: []
       requestBody:
         description: Read Plan
@@ -238,10 +238,10 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/prometheus/write:
+  /rest/prometheus/write:
     post:
       summary: Serve for writing data by Prometheus
-      operationId: post-v1-prometheus-receive
+      operationId: post-rest-prometheus-receive
       parameters:
       - name: User-Agent
         in: header
@@ -315,11 +315,11 @@ paths:
               examples:
                 example-1:
                   value: passowrd is incorrect;
-  /v1/prometheus/query:
+  /rest/prometheus/query:
     post:
       summary: Serve for queries from Prometheus
       description: Serve reading data by Prometheus
-      operationId: post-v1-prometheus-query
+      operationId: post-rest-prometheus-query
       parameters:
       - name: User-Agent
         in: header
@@ -395,11 +395,11 @@ paths:
                         - value1:
                             Timestamp: 16100105235
                             Value: 0.1
-  /v1/grafana/node:
+  /rest/grafana/node:
     post:
       summary: Serve for getting time series name level by level by Grafana
       description: Get Children nodes that the node has
-      operationId: post-v1-grafana-node
+      operationId: post-rest-grafana-node
       requestBody:
         content:
           application/json:

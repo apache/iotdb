@@ -39,7 +39,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
-import org.apache.iotdb.openapi.gen.handler.V1ApiService;
+import org.apache.iotdb.openapi.gen.handler.RestApiService;
 import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
 import org.apache.iotdb.openapi.gen.model.ReadData;
 import org.apache.iotdb.openapi.gen.model.WriteData;
@@ -83,7 +83,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class V1ApiServiceImpl extends V1ApiService {
+public class RestApiServiceImpl extends RestApiService {
   private static final long MS_TO_MONTH = 30 * 86400_000L;
   private ConcurrentHashMap<String, ConcurrentHashMap> bigmap =
       new ConcurrentHashMap<String, ConcurrentHashMap>();
@@ -93,7 +93,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   private float timePrecision = 1; // the timestamp Precision is default ms
   private String NOPERMSSION = "No permissions for this operation ";
 
-  public V1ApiServiceImpl() {
+  public RestApiServiceImpl() {
     sgcount = IoTDBDescriptor.getInstance().getConfig().getSgCount();
     timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     if (timestampPrecision.equals("ns")) {
@@ -224,7 +224,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1GrafanaData(
+  public Response postRestGrafanaData(
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     Gson result = new Gson();
     Map timemap = new HashMap();
@@ -319,7 +319,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1GrafanaDataSimplejson(
+  public Response postRestGrafanaDataSimplejson(
       GroupByFillPlan groupByFillPlan, SecurityContext securityContext) throws NotFoundException {
     Gson result = new Gson();
     List<Map> resultList = new ArrayList<Map>();
@@ -386,7 +386,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1GrafanaNode(List<String> requestBody, SecurityContext securityContext)
+  public Response postRestGrafanaNode(List<String> requestBody, SecurityContext securityContext)
       throws NotFoundException {
     Gson result = new Gson();
     PartialPath path = null;
@@ -428,7 +428,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1NonQuery(ReadData readData, SecurityContext securityContext)
+  public Response postRestNonQuery(ReadData readData, SecurityContext securityContext)
       throws NotFoundException {
     boolean b = false;
     try {
@@ -457,7 +457,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1PrometheusQuery(
+  public Response postRestPrometheusQuery(
       String userAgent,
       String xPrometheusRemoteReadVersion,
       byte[] body,
@@ -706,7 +706,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1PrometheusReceive(
+  public Response postRestPrometheusReceive(
       String userAgent,
       String xPrometheusRemoteWriteVersion,
       byte[] body,
@@ -778,7 +778,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1RestDataRead(ReadData readData, SecurityContext securityContext)
+  public Response postRestDataRead(ReadData readData, SecurityContext securityContext)
       throws NotFoundException {
     Gson result = new Gson();
     Map timemap = new HashMap();
@@ -849,7 +849,7 @@ public class V1ApiServiceImpl extends V1ApiService {
   }
 
   @Override
-  public Response postV1RestDataWrite(WriteData writeData, SecurityContext securityContext)
+  public Response postRestDataWrite(WriteData writeData, SecurityContext securityContext)
       throws NotFoundException {
     Map resultMap = new HashMap<String, Object>();
     List<String> listParam = writeData.getParams();

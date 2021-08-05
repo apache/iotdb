@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.openapi.gen.handler.factories;
 
-import org.apache.iotdb.openapi.gen.handler.V1ApiService;
-import org.apache.iotdb.openapi.gen.handler.impl.V1ApiServiceImpl;
+import org.apache.iotdb.openapi.gen.handler.RestApiService;
+import org.apache.iotdb.openapi.gen.handler.impl.RestApiServiceImpl;
 
-public class V1ApiServiceFactory {
-  private static final V1ApiService service = new V1ApiServiceImpl();
+public class RestApiServiceFactory {
+  private static final RestApiService service = new RestApiServiceImpl();
 
-  public static V1ApiService getV1Api() {
+  public static RestApiService getRestApi() {
     return service;
   }
 }

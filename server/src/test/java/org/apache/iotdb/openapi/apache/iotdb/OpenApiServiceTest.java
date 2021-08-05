@@ -21,7 +21,7 @@ package org.apache.iotdb.openapi.apache.iotdb;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.openapi.gen.handler.NotFoundException;
 import org.apache.iotdb.openapi.gen.handler.filter.BasicSecurityContext;
-import org.apache.iotdb.openapi.gen.handler.impl.V1ApiServiceImpl;
+import org.apache.iotdb.openapi.gen.handler.impl.RestApiServiceImpl;
 import org.apache.iotdb.openapi.gen.handler.model.User;
 import org.apache.iotdb.openapi.gen.model.GroupByFillPlan;
 import org.apache.iotdb.openapi.gen.model.ReadData;
@@ -46,7 +46,7 @@ public class OpenApiServiceTest {
   GroupByFillPlan groupByFillPlan = new GroupByFillPlan();
   User user = new User();
   BasicSecurityContext basicSecurityContext = new BasicSecurityContext(user, false);
-  V1ApiServiceImpl v1ApiService = new V1ApiServiceImpl();
+  RestApiServiceImpl v1ApiService = new RestApiServiceImpl();
 
   @Before
   public void setUp() {
@@ -72,7 +72,7 @@ public class OpenApiServiceTest {
 
   @Test
   public void postV1GrafanaData() throws NotFoundException {
-    Response response = v1ApiService.postV1GrafanaData(groupByFillPlan, basicSecurityContext);
+    Response response = v1ApiService.postRestGrafanaData(groupByFillPlan, basicSecurityContext);
     assertNotNull(response.getEntity());
   }
 
@@ -87,7 +87,7 @@ public class OpenApiServiceTest {
   public void postV1RestDataRead() throws NotFoundException {
     ReadData readData = new ReadData();
     readData.setSql("select * from root.sg");
-    Response response = v1ApiService.postV1RestDataRead(readData, basicSecurityContext);
+    Response response = v1ApiService.postRestDataRead(readData, basicSecurityContext);
     assertNotNull(response);
     Gson json = new Gson();
     System.out.println(response.getEntity().toString());
@@ -98,7 +98,7 @@ public class OpenApiServiceTest {
   public void postV1NonQuery() throws NotFoundException {
     ReadData readData = new ReadData();
     readData.setSql("delete from root.sg");
-    Response result = v1ApiService.postV1NonQuery(readData, basicSecurityContext);
+    Response result = v1ApiService.postRestNonQuery(readData, basicSecurityContext);
     Gson json = new Gson();
     assertEquals(
         "execute sucessfully",
@@ -120,7 +120,7 @@ public class OpenApiServiceTest {
     writeData.setPaths(path);
     writeData.setParams(params);
     writeData.setValues(value);
-    Response result = v1ApiService.postV1RestDataWrite(writeData, basicSecurityContext);
+    Response result = v1ApiService.postRestDataWrite(writeData, basicSecurityContext);
     Gson json = new Gson();
     assertEquals(
         "write data success",
@@ -132,14 +132,14 @@ public class OpenApiServiceTest {
     List<String> requestBody = new ArrayList<String>();
     requestBody.add("root");
     requestBody.add("sg");
-    Response result = v1ApiService.postV1GrafanaNode(requestBody, basicSecurityContext);
+    Response result = v1ApiService.postRestGrafanaNode(requestBody, basicSecurityContext);
     assertNotNull(result.getEntity());
   }
 
   @Test
   public void postV1GrafanaDataSimplejson() throws NotFoundException {
     Response response =
-        v1ApiService.postV1GrafanaDataSimplejson(groupByFillPlan, basicSecurityContext);
+        v1ApiService.postRestGrafanaDataSimplejson(groupByFillPlan, basicSecurityContext);
     assertNotNull(response.getEntity());
   }
 }
