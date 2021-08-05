@@ -402,7 +402,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -445,7 +446,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -869,7 +871,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -981,7 +984,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1206,7 +1210,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1253,7 +1258,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1522,7 +1528,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1565,7 +1572,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1771,7 +1779,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -1810,7 +1819,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -2271,7 +2281,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnNameIndex.put(fields[i].getName(), i);
     }
     while (rs.next()) {
-      System.out.println(rs.getString(1) + "--" + rs.getString(3));
       List<Map> properties = new ArrayList<Map>();
       for (int i = 0; i < fields.length; i++) {
         Map<String, Object> m = new HashMap<>();
@@ -2566,7 +2575,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override
@@ -2618,7 +2628,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         0,
         sessionId,
         null,
-        (long) 60 * 1000);
+        (long) 60 * 1000,
+        true);
   }
 
   @Override

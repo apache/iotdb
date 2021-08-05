@@ -298,7 +298,8 @@ public class IoTDBStatement implements Statement {
                 queryId,
                 sessionId,
                 execResp.queryDataSet,
-                execReq.timeout);
+                execReq.timeout,
+                true);
       }
       return true;
     }

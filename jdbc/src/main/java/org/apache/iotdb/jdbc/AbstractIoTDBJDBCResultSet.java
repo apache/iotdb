@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.IoTDBJDBCDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 
@@ -55,40 +55,10 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
-  protected IoTDBRpcDataSet ioTDBRpcDataSet;
+  protected IoTDBJDBCDataSet ioTDBRpcDataSet;
   private boolean isRpcFetchResult = true;
   private List<String> sgColumns;
   private BitSet aliasColumnMap;
-
-  public AbstractIoTDBJDBCResultSet(
-      Statement statement,
-      List<String> columnNameList,
-      List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex,
-      boolean ignoreTimeStamp,
-      TSIService.Iface client,
-      String sql,
-      long queryId,
-      long sessionId,
-      long timeout)
-      throws SQLException {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            queryId,
-            ((IoTDBStatement) statement).getStmtId(),
-            client,
-            sessionId,
-            null,
-            statement.getFetchSize(),
-            timeout);
-    this.statement = statement;
-    this.columnTypeList = columnTypeList;
-  }
 
   public AbstractIoTDBJDBCResultSet(
       Statement statement,
@@ -105,7 +75,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       BitSet aliasColumnMap)
       throws SQLException {
     this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
+        new IoTDBJDBCDataSet(
             sql,
             columnNameList,
             columnTypeList,
@@ -139,7 +109,7 @@ public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
       boolean isRpcFetchResult)
       throws SQLException {
     this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
+        new IoTDBJDBCDataSet(
             sql,
             columnNameList,
             columnTypeList,
