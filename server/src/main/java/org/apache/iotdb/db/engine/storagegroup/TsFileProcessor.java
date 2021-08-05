@@ -218,7 +218,7 @@ public class TsFileProcessor {
       try {
         getLogNode().write(insertRowPlan);
       } catch (Exception e) {
-        if (memIncrements != null) {
+        if (enableMemControl && memIncrements != null) {
           rollbackMemoryInfo(memIncrements);
         }
         throw new WriteProcessException(
@@ -287,7 +287,7 @@ public class TsFileProcessor {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
-      if (memIncrements != null) {
+      if (enableMemControl && memIncrements != null) {
         rollbackMemoryInfo(memIncrements);
       }
       throw new WriteProcessException(e);
