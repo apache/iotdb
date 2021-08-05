@@ -65,4 +65,21 @@ nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluste
 nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluster/target/test-classes/node3conf/ >/dev/null 2>&1 &
 ```
 ### Use the official website release version:
-You can refer to the above example, but starting multiple instances on a single machine requires handling port and file directory conflicts.
+```
+curl -O https://mirrors.bfsu.edu.cn/apache/iotdb/0.12.0/apache-iotdb-0.12.0-cluster-bin.zip
+unzip apache-iotdb-0.12.0-cluster-bin.zip
+cd apache-iotdb-0.12.0-cluster-bin
+sed -i -e 's/^default_replica_num=3$/default_replica_num=1/g' conf/iotdb-cluster.properties
+cp -r conf node2_conf
+cp -r conf node3_conf
+sed -i -e 's/^internal_meta_port=9003$/internal_meta_port=9005/g' -e 's/^internal_data_port=40010$/internal_data_port=40012/g' node2_conf/iotdb-cluster.properties
+sed -i -e 's/^internal_meta_port=9003$/internal_meta_port=9007/g' -e 's/^internal_data_port=40010$/internal_data_port=40014/g' node3_conf/iotdb-cluster.properties
+sed -i -e 's/^rpc_port=6667$/rpc_port=6669/g' -e 's/^metrics_port=8181$/metrics_port=8182/g' -e 's/^sync_server_port=5555$/sync_server_port=5556/g' -e 's/^mqtt_port=1883$/mqtt_port=1884/g' node2_conf/iotdb-engine.properties
+sed -i -e 's/^rpc_port=6667$/rpc_port=6671/g' -e 's/^metrics_port=8181$/metrics_port=8183/g' -e 's/^sync_server_port=5555$/sync_server_port=5557/g' -e 's/^mqtt_port=1883$/mqtt_port=1885/g' node3_conf/iotdb-engine.properties
+sed -i -e 's/^# data_dirs=data\/data$/data_dirs=node2\/data/g' -e 's/^# wal_dir=data\/wal$/wal_dir=node2\/wal/g' -e 's/^# tracing_dir=data\/tracing$/tracing_dir=node2\/tracing/g' -e 's/^# system_dir=data\/system$/system_dir=node2\/system/g' -e 's/^# udf_root_dir=ext\/udf$/udf_root_dir=node2\/ext\/udf/g' -e 's/^# index_root_dir=data\/index$/index_root_dir=node2\/index/g' node2_conf/iotdb-engine.properties
+sed -i -e 's/^# data_dirs=data\/data$/data_dirs=node3\/data/g' -e 's/^# wal_dir=data\/wal$/wal_dir=node3\/wal/g' -e 's/^# tracing_dir=data\/tracing$/tracing_dir=node3\/tracing/g' -e 's/^# system_dir=data\/system$/system_dir=node3\/system/g' -e 's/^# udf_root_dir=ext\/udf$/udf_root_dir=node3\/ext\/udf/g' -e 's/^# index_root_dir=data\/index$/index_root_dir=node3\/index/g' node3_conf/iotdb-engine.properties
+nohup ./sbin/start-node.sh >/dev/null 2>&1 &
+nohup ./sbin/start-node.sh ./node2_conf/ >/dev/null 2>&1 &
+nohup ./sbin/start-node.sh ./node3_conf/ >/dev/null 2>&1 &
+```
+
