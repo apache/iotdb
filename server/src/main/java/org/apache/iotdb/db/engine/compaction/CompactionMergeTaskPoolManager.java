@@ -56,6 +56,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       new CompactionMergeTaskPoolManager();
   private ScheduledExecutorService scheduledPool;
   private ThreadPoolExecutor pool;
+  private ThreadPoolExecutor recoverPool;
   private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -73,6 +74,11 @@ public class CompactionMergeTaskPoolManager implements IService {
               IoTDBThreadPoolFactory.newFixedThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      this.recoverPool =
+          (ThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+                  ThreadName.COMPACTION_SERVICE.getName());
       this.scheduledPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
@@ -86,6 +92,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     if (pool != null) {
       pool.shutdownNow();
       scheduledPool.shutdownNow();
+      recoverPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -97,6 +104,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     if (pool != null) {
       awaitTermination(scheduledPool, milliseconds);
       awaitTermination(pool, milliseconds);
+      awaitTermination(recoverPool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -152,6 +160,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     }
     pool = null;
     scheduledPool = null;
+    recoverPool = null;
     storageGroupTasks.clear();
     logger.warn("CompactionManager stopped");
   }
@@ -222,6 +231,34 @@ public class CompactionMergeTaskPoolManager implements IService {
           pool.getCompletedTaskCount(),
           pool.getTaskCount(),
           pool.getQueue().size());
+      return;
+    }
+    logger.warn(
+        "failed to submit compaction task because {}",
+        pool == null ? "pool is null" : "pool is terminated");
+  }
+
+  public synchronized void submitRecoverTask(StorageGroupCompactionTask storageGroupCompactionTask)
+      throws RejectedExecutionException {
+    if (recoverPool != null && !recoverPool.isTerminated()) {
+      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
+      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
+      if (isCompacting) {
+        return;
+      }
+      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
+      sgCompactionStatus.put(storageGroup, true);
+      Future<Void> future = recoverPool.submit(storageGroupCompactionTask);
+      storageGroupTasks
+          .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
+          .add(future);
+      logger.warn(
+          "Submit a recover StorageGroupCompactionTask, current active task num: {}, "
+              + "completed task num: {}, total task num: {}, block queue size: {}",
+          recoverPool.getActiveCount(),
+          recoverPool.getCompletedTaskCount(),
+          recoverPool.getTaskCount(),
+          recoverPool.getQueue().size());
       return;
     }
     logger.warn(
