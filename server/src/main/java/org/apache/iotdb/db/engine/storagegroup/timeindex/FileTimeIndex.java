@@ -81,7 +81,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath) {
+  public Set<String> getDevices(String tsFilePath) throws RuntimeException{
     try {
       TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
@@ -176,6 +176,11 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long getMinStartTime() {
+    return startTime;
+  }
+
+  @Override
   public long getEndTime(String deviceId) {
     return endTime;
   }
@@ -183,5 +188,24 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public boolean checkDeviceIdExist(String deviceId) {
     return true;
+  }
+
+  @Override
+  public int compareDegradePriority(ITimeIndex timeIndex) {
+    if(timeIndex instanceof DeviceTimeIndex) {
+      return 1;
+    }
+    else if(timeIndex instanceof FileTimeIndex) {
+      if(startTime < timeIndex.getMinStartTime())
+        return -1;
+      else if(startTime > timeIndex.getMinStartTime())
+        return 1;
+      else
+        return 0;
+    }
+    else {
+      logger.error("Can't get timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("type of timeIndex is wrong.");
+    }
   }
 }

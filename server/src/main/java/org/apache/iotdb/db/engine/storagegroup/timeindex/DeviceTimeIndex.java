@@ -26,6 +26,8 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,6 +40,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeviceTimeIndex implements ITimeIndex {
+
+  private static final Logger logger = LoggerFactory.getLogger(DeviceTimeIndex.class);
 
   public static final int INIT_ARRAY_SIZE = 64;
 
@@ -305,5 +309,34 @@ public class DeviceTimeIndex implements ITimeIndex {
   @Override
   public boolean checkDeviceIdExist(String deviceId) {
     return deviceToIndex.containsKey(deviceId);
+  }
+
+  @Override
+  public long getMinStartTime() {
+    long minStartTime = Long.MAX_VALUE;
+    for (int i = 0; i < deviceToIndex.size(); i++){
+      minStartTime = Math.min(minStartTime, startTimes[i]);
+    }
+    return minStartTime;
+  }
+
+  @Override
+  public int compareDegradePriority(ITimeIndex timeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
+      if (getMinStartTime() < timeIndex.getMinStartTime())
+        return -1;
+      else if (getMinStartTime() > timeIndex.getMinStartTime())
+        return 1;
+      else
+        return 0;
+    }
+    else if(timeIndex instanceof FileTimeIndex) {
+      return -1;
+    }
+
+    else {
+      logger.error("Can't get timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("type of timeIndex is wrong.");
+    }
   }
 }

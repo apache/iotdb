@@ -24,10 +24,12 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -126,6 +128,10 @@ public class TsFileResource {
 
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
+
+  /** manage TsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+
 
   /**
    * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
@@ -359,6 +365,8 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
+      // ?????????????????//
+      tsFileResourceManager.registerSealedTsFileResource();
     }
   }
 
@@ -489,6 +497,7 @@ public class TsFileResource {
     processor = null;
     chunkMetadataList = null;
     timeIndex.close();
+    tsFileResourceManager.registerSealedTsFileResource();
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -847,6 +856,26 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
+  public byte getTimeIndexType() { return timeIndexType; }
+
+  public int compareIndexDegradePriority(TsFileResource tsFileResource) {
+    return timeIndex.compareDegradePriority(tsFileResource.timeIndex);
+  }
+
+
+  public void degradeTimeIndexTo(TimeIndexLevel targetLevel) {
+    if (TimeIndexLevel.valueOf(timeIndexType) == TimeIndexLevel.FILE_TIME_INDEX )
+      return;
+    long startTime = timeIndex.getMinStartTime();
+    long endTime = Long.MIN_VALUE;
+    for (String devicesId : timeIndex.getDevices(file.getPath())) {
+      endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
+    }
+    long previousMemory = calculateRamSize();
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    long memoryReduce = previousMemory - timeIndex.calculateRamSize();
+    tsFileResourceManager.releaseTimeIndexMemCost(memoryReduce);
+  }
   // change tsFile name
 
   public static String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {

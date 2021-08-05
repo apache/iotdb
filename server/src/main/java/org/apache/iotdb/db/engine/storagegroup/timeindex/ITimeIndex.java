@@ -155,4 +155,22 @@ public interface ITimeIndex {
    * @return true if the deviceId may exist in TsFile, otherwise false.
    */
   boolean checkDeviceIdExist(String deviceId);
+
+  /**
+   * get min start time of device
+   *
+   * @return min start time
+   */
+  long getMinStartTime();
+
+  /**
+   * compare the priority of two ITimeIndex
+   *
+   * @param timeIndex another timeIndex
+   * @return true if the priority of this timeIndex is higher than the argument
+   */
+  int compareDegradePriority(ITimeIndex timeIndex);
+
+
+
 }
