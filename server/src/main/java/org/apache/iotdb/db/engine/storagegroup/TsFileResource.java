@@ -365,8 +365,7 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
-      // ?????????????????//
-      tsFileResourceManager.registerSealedTsFileResource();
+      tsFileResourceManager.registerSealedTsFileResource(this);
     }
   }
 
@@ -497,7 +496,7 @@ public class TsFileResource {
     processor = null;
     chunkMetadataList = null;
     timeIndex.close();
-    tsFileResourceManager.registerSealedTsFileResource();
+    tsFileResourceManager.registerSealedTsFileResource(this);
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
