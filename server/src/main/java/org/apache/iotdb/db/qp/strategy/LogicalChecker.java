@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.strategy;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 
 public class LogicalChecker {
 
@@ -31,6 +32,10 @@ public class LogicalChecker {
   public static void check(Operator operator) throws LogicalOperatorException {
     if (operator instanceof QueryOperator) {
       ((QueryOperator) operator).check();
+    }
+
+    if (operator instanceof SelectIntoOperator) {
+      ((SelectIntoOperator) operator).check();
     }
   }
 }
