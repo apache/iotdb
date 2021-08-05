@@ -308,12 +308,17 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      if (req.isSetStatementId() && req.isSetQueryId()) {
-        sessionManager.closeDataset(req.statementId, req.queryId);
+      if (req.isSetStatementId()) {
+        if (req.isSetQueryId()) {
+          sessionManager.closeDataset(req.statementId, req.queryId);
+        } else {
+          sessionManager.closeStatement(req.sessionId, req.statementId);
+        }
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        sessionManager.closeStatement(req.sessionId, req.statementId);
+        return RpcUtils.getStatus(
+            TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "executing closeOperation", TSStatusCode.CLOSE_OPERATION_ERROR);
