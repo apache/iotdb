@@ -270,6 +270,8 @@ org.ops4j.pax.jdbc:pax-jdbc-common:1.4.5
 org.xerial.snappy:snappy-java:1.1.8.4
 io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
+io.swagger:1.5.18
+com.fasterxml.jackson.jaxrs:2.11.0
 
 BSD 2-Clause
 ------------
@@ -281,6 +283,7 @@ BSD 3-Clause
 org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
 org.jline:jline:3.10.0
+com.google.protobuf:protobuf-java:3.5.1
 
 
 MIT License
