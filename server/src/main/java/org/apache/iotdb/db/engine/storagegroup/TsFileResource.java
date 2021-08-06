@@ -468,7 +468,7 @@ public class TsFileResource {
     return timeIndex.getEndTime(deviceId);
   }
 
-  public Set<String> getDevices() {
+  public Set<String> getDevices() throws IOException {
     return timeIndex.getDevices(file.getPath());
   }
 

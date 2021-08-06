@@ -294,7 +294,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
               removeRemoteHardLink(resource);
             }
           }
-        } catch (IllegalPathException e) {
+        } catch (IllegalPathException | IOException e) {
           throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
         }
       }
@@ -313,7 +313,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      * @param resource
      * @return
      */
-    private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException {
+    private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException, IOException {
       Pair<String, Long> sgNameAndTimePartitionIdPair =
           FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(resource);
       return StorageEngine.getInstance()

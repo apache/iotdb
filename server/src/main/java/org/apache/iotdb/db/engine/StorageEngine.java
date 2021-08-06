@@ -789,7 +789,7 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws LoadFileException, StorageEngineException, MetadataException {
+          throws LoadFileException, StorageEngineException, MetadataException, IOException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
@@ -843,7 +843,7 @@ public class StorageEngine implements IService {
   }
 
   public boolean isFileAlreadyExist(
-      TsFileResource tsFileResource, PartialPath storageGroup, long partitionNum) {
+      TsFileResource tsFileResource, PartialPath storageGroup, long partitionNum) throws IOException {
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroup);
     if (virtualStorageGroupManager == null) {
       return false;
