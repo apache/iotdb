@@ -288,12 +288,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
     }
-    String[] nodeNames = timeseries.getNodes();
-    for (String name : nodeNames) {
-      // check measurementId syntax
-      if (name.contains(".") && !(name.startsWith("\"") && name.endsWith("\""))) {
-        throw new MetadataException(String.format("%s is an illegal measurementId", name));
-      }
+    String measurementId = timeseries.getMeasurement();
+    // check measurementId syntax
+    // only measurementId may be named separately from fullPath by user via API
+    if (measurementId.contains(".")
+        && !(measurementId.startsWith("\"") && measurementId.endsWith("\""))) {
+      throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
     }
   }
 
