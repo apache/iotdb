@@ -1020,8 +1020,10 @@ void Session::createMultiTimeseries(vector <string> paths, vector <TSDataType::T
 
 bool Session::checkTimeseriesExists(string path) {
     try {
-        string sql = "SHOW TIMESERIES " + path;
-        return executeQueryStatement(sql)->hasNext();
+        std::unique_ptr <SessionDataSet> dataset = executeQueryStatement("SHOW TIMESERIES " + path);
+        bool isExisted = dataset->hasNext();
+        dataset->closeOperationHandle();
+        return isExisted;
     }
     catch (exception e) {
         throw IoTDBConnectionException(e.what());
