@@ -182,7 +182,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return Types.TIMESTAMP;
     }
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     String columnType = columnTypeList.get(column - 1);
 
     switch (columnType.toUpperCase()) {
@@ -210,7 +209,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return "TIME";
     }
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     String columnType;
     if (!ignoreTimestamp) {
       columnType = columnTypeList.get(column - 2);
@@ -235,7 +233,6 @@ public class IoTDBResultMetadata implements ResultSetMetaData {
     if (column == 1 && !ignoreTimestamp) {
       return 13;
     }
-    // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT,
     String columnType;
     if (!ignoreTimestamp) {
       columnType = columnTypeList.get(column - 2);
