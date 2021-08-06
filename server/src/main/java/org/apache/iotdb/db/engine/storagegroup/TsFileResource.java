@@ -863,15 +863,27 @@ public class TsFileResource {
 
 
   public void degradeTimeIndexTo(TimeIndexLevel targetLevel) {
-    if (TimeIndexLevel.valueOf(timeIndexType) == TimeIndexLevel.FILE_TIME_INDEX )
+    TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
+    if ( timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX)
       return;
-    long startTime = timeIndex.getMinStartTime();
-    long endTime = Long.MIN_VALUE;
-    for (String devicesId : timeIndex.getDevices(file.getPath())) {
-      endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
+    if (!resourceFileExists() && timeIndexLevel == TimeIndexLevel.DEVICE_TIME_INDEX
+            && targetLevel == TimeIndexLevel.FILE_TIME_INDEX) {
+      try {
+        serialize();
+      } catch (IOException e) {
+        logger.error("");
+      }
+
     }
     long previousMemory = calculateRamSize();
-    timeIndex = new FileTimeIndex(startTime, endTime);
+    if (targetLevel == TimeIndexLevel.FILE_TIME_INDEX) {
+      long startTime = timeIndex.getMinStartTime();
+      long endTime = Long.MIN_VALUE;
+      for (String devicesId : timeIndex.getDevices(file.getPath())) {
+        endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
+      }
+      timeIndex = new FileTimeIndex(startTime, endTime);
+    }
     long memoryReduce = previousMemory - timeIndex.calculateRamSize();
     tsFileResourceManager.releaseTimeIndexMemCost(memoryReduce);
   }
