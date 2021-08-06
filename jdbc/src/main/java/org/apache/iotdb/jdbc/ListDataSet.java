@@ -43,7 +43,7 @@ public class ListDataSet extends QueryDataSet {
     records.add(newRecord);
   }
 
-  public void sortByTime() {
+  public void sortByTimeDesc() {
     records.sort((o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp()));
   }
 
