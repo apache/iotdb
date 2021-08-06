@@ -41,6 +41,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.v2.read.TsFileSequenceReaderForV2;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -99,6 +100,23 @@ public class TsFileRewriteTool implements AutoCloseable {
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
+    partitionWriterMap = new HashMap<>();
+    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
+      oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
+      modsIterator = oldModification.iterator();
+      fileModificationMap = new HashMap<>();
+    }
+  }
+
+  public TsFileRewriteTool(TsFileResource resourceToBeRewritten, boolean needReaderForV2)
+      throws IOException {
+    oldTsFile = resourceToBeRewritten.getTsFile();
+    String file = oldTsFile.getAbsolutePath();
+    if (needReaderForV2) {
+      reader = new TsFileSequenceReaderForV2(file);
+    } else {
+      reader = new TsFileSequenceReader(file);
+    }
     partitionWriterMap = new HashMap<>();
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
       oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
@@ -302,17 +320,12 @@ public class TsFileRewriteTool implements AutoCloseable {
       List<PageHeader> pageHeadersInChunk = pageHeadersInChunkGroup.get(i);
       List<Boolean> needToDecodeInfoInChunk = needToDecodeInfoInChunkGroup.get(i);
       valueDecoder = Decoder.getDecoderByType(schema.getEncodingType(), schema.getType());
-      boolean isOnlyOnePageChunk = pageDataInChunk.size() == 1;
       for (int j = 0; j < pageDataInChunk.size(); j++) {
         if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(j))) {
           decodeAndWritePageInToFiles(schema, pageDataInChunk.get(j), chunkWritersInChunkGroup);
         } else {
           writePageInToFile(
-              schema,
-              pageHeadersInChunk.get(j),
-              pageDataInChunk.get(j),
-              chunkWritersInChunkGroup,
-              isOnlyOnePageChunk);
+              schema, pageHeadersInChunk.get(j), pageDataInChunk.get(j), chunkWritersInChunkGroup);
         }
       }
     }
@@ -372,15 +385,14 @@ public class TsFileRewriteTool implements AutoCloseable {
       IMeasurementSchema schema,
       PageHeader pageHeader,
       ByteBuffer pageData,
-      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup,
-      boolean isOnlyOnePageChunk)
+      Map<Long, Map<IMeasurementSchema, ChunkWriterImpl>> chunkWritersInChunkGroup)
       throws PageException {
     long partitionId = StorageEngine.getTimePartition(pageHeader.getStartTime());
     getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
     Map<IMeasurementSchema, ChunkWriterImpl> chunkWriters =
         chunkWritersInChunkGroup.getOrDefault(partitionId, new HashMap<>());
     ChunkWriterImpl chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
-    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader, isOnlyOnePageChunk);
+    chunkWriter.writePageHeaderAndDataIntoBuff(pageData, pageHeader);
     chunkWriters.put(schema, chunkWriter);
     chunkWritersInChunkGroup.put(partitionId, chunkWriters);
   }
