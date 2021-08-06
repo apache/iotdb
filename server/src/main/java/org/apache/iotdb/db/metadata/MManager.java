@@ -1889,13 +1889,6 @@ public class MManager {
     MeasurementMNode measurementMNode;
     TSDataType dataType;
     for (int i = 0; i < measurementList.length; i++) {
-      // check measurementId syntax
-      if (measurementList[i].contains(".")
-          && !(measurementList[i].startsWith("\"") && measurementList[i].endsWith("\""))) {
-        throw new MetadataException(
-            String.format("%s is an illegal measurementId", measurementList[i]));
-      }
-
       try {
         MNode child = getMNode(deviceMNode.left, measurementList[i]);
         if (child instanceof MeasurementMNode) {
@@ -1908,6 +1901,12 @@ public class MManager {
           if (!config.isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurementList[i]);
           } else {
+            // check measurementId syntax
+            if (measurementList[i].contains(".")
+                && !(measurementList[i].startsWith("\"") && measurementList[i].endsWith("\""))) {
+              throw new MetadataException(
+                  String.format("%s is an illegal measurementId", measurementList[i]));
+            }
             // child is null or child is type of MNode
             dataType = getTypeInLoc(plan, i);
             // create it, may concurrent created by multiple thread
