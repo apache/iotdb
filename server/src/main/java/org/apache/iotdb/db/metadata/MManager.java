@@ -2060,11 +2060,12 @@ public class MManager {
       if (template == null) {
         throw new UndefinedTemplateException(plan.getTemplateName());
       }
-
+      PartialPath path = new PartialPath(plan.getPrefixPath());
       // get mnode and update template should be atomic
       synchronized (this) {
-        Pair<MNode, Template> node =
-            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
+        mtree.checkTemplateOnPath(path);
+
+        Pair<MNode, Template> node = getDeviceNodeWithAutoCreate(path);
 
         if (node.left.getDeviceTemplate() != null) {
           if (node.left.getDeviceTemplate().equals(template)) {
@@ -2072,10 +2073,6 @@ public class MManager {
           } else {
             throw new MetadataException("Specified node already has template");
           }
-        }
-
-        if (!isTemplateCompatible(node.right, template)) {
-          throw new MetadataException("Incompatible template");
         }
 
         node.left.setDeviceTemplate(template);
@@ -2088,28 +2085,6 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
-  }
-
-  public boolean isTemplateCompatible(Template upper, Template current) {
-    if (upper == null) {
-      return true;
-    }
-
-    Map<String, MeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-    Map<String, MeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-    for (String name : currentMap.keySet()) {
-      MeasurementSchema upperSchema = upperMap.remove(name);
-      if (upperSchema != null) {
-        MeasurementSchema currentSchema = currentMap.get(name);
-        if (!upperSchema.equals(currentSchema)) {
-          return false;
-        }
-      }
-    }
-
-    // current template must contains all measurements of upper template
-    return upperMap.isEmpty();
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
