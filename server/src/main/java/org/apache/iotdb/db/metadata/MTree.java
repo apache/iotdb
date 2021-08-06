@@ -216,7 +216,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    checkTimeseries(path);
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();
@@ -283,10 +283,17 @@ public class MTree implements Serializable {
     }
   }
 
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+  private void checkTimeseries(PartialPath timeseries) throws MetadataException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries.getFullPath()).matches()) {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
+    }
+    String[] nodeNames = timeseries.getNodes();
+    for (String name : nodeNames) {
+      // check measurementId syntax
+      if (name.contains(".") && !(name.startsWith("\"") && name.endsWith("\""))) {
+        throw new MetadataException(String.format("%s is an illegal measurementId", name));
+      }
     }
   }
 
