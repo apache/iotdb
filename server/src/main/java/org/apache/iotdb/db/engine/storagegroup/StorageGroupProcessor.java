@@ -1963,6 +1963,7 @@ public class StorageGroupProcessor {
           .submitTask(
               new CompactionOnePartitionTask(
                   logicalStorageGroupName, tsFileProcessor.getTimeRangeId()));
+      logger.warn("submit an compaction task");
     }
   }
 
