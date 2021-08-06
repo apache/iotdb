@@ -1277,12 +1277,14 @@ public class MManagerBasicTest {
 
     try {
       manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-      fail();
+      assertFalse(manager.isPathExist(deviceId.concatNode("a.b")));
     } catch (MetadataException e) {
       Assert.assertEquals("a.b is an illegal measurementId", e.getMessage());
     }
 
     measurementList[1] = "a";
+    insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
     for (String measurementId : measurementList) {
       assertTrue(manager.isPathExist(deviceId.concatNode(measurementId)));
