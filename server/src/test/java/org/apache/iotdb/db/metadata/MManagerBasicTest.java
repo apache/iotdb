@@ -23,7 +23,11 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -1258,6 +1262,31 @@ public class MManagerBasicTest {
           e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMeasurementIdWhileInsert() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    String[] measurementList = {"s", "a.b", "\"a.b\""};
+    String[] values = {"1", "1.0", "1.0"};
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[3];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+
+    try {
+      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+      fail();
+    } catch (MetadataException e) {
+      Assert.assertEquals("a.b is an illegal measurementId", e.getMessage());
+    }
+
+    measurementList[1] = "a";
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    for (String measurementId : measurementList) {
+      assertTrue(manager.isPathExist(deviceId.concatNode(measurementId)));
     }
   }
 }
