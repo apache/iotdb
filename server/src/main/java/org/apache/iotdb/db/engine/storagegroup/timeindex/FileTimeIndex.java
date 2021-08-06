@@ -86,7 +86,7 @@ public class FileTimeIndex implements ITimeIndex {
       return new HashSet<>(fileReader.getAllDevices());
     } catch (IOException e) {
       logger.error("Can't read file {} from disk ", tsFilePath, e);
-      throw new RuntimeException("Can't read file" + tsFilePath + "from disk");
+      throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
     }
   }
 
@@ -145,7 +145,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
-
     if (this.startTime > time) {
       this.startTime = time;
     }
