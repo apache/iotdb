@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -87,7 +86,7 @@ public class FileTimeIndex implements ITimeIndex {
       return new HashSet<>(fileReader.getAllDevices());
     } catch (IOException e) {
       logger.error("Can't read file {} from disk ", tsFilePath, e);
-      throw new RuntimeException("Can't read file" + tsFilePath + "from disk" );
+      throw new RuntimeException("Can't read file" + tsFilePath + "from disk");
     }
   }
 
