@@ -1027,12 +1027,10 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
-    } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(queryId);
-      throw e;
     } finally {
+      sessionManager.releaseQueryResourceNoExceptions(queryId);
       queryTimeManager.unRegisterQuery(queryId, queryPlan);
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
