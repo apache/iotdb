@@ -226,7 +226,7 @@ public class CompactionMergeTaskPoolManager implements IService {
           .add(future);
       logger.warn(
           "Submit a StorageGroupCompactionTask, current active task num: {}, "
-              + "completed task num: {}, total task num: {}, block queue size: {}",
+              + "completed task num: {}, total   task num: {}, block queue size: {}",
           pool.getActiveCount(),
           pool.getCompletedTaskCount(),
           pool.getTaskCount(),
