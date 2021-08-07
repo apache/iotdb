@@ -3,19 +3,17 @@ package org.apache.iotdb.db.rescon;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.flush.pool.AbstractPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel.DEVICE_TIME_INDEX;
+import static org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel.FILE_TIME_INDEX;
 
 public class TsFileResourceManager {
     private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
@@ -48,7 +46,7 @@ public class TsFileResourceManager {
     public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
         sealedTsFileResources.add(tsFileResource);
         totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-        chooseTimeIndexToDegrade();
+        chooseTsFileResourceToDegrade();
     }
 
     /** once degradation is triggered, the total memory for timeIndex should reduce */
@@ -60,7 +58,7 @@ public class TsFileResourceManager {
      * choose the top TsFileResource in priorityQueue to degrade until the
      * memory is smaller than threshold.
      */
-    private void chooseTimeIndexToDegrade() {
+    private void chooseTsFileResourceToDegrade() {
         while(BigDecimal.valueOf(totalTimeIndexMemCost)
                 .compareTo(BigDecimal.valueOf(TIME_INDEX_MEMORY_THRESHOLD)) > 0 ) {
             TsFileResource tsFileResource =  sealedTsFileResources.poll();
@@ -69,9 +67,8 @@ public class TsFileResourceManager {
                 logger.error("Can't degrade any more");
                 throw new RuntimeException("Can't degrade any more");
             }
-            degradeThreadPool.submit( () -> {
-                tsFileResource.degradeTimeIndexTo(DEVICE_TIME_INDEX);
-            });
+            long memoryReduce = tsFileResource.releaseMemory();
+            releaseTimeIndexMemCost(memoryReduce);
         }
     }
 

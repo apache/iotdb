@@ -129,9 +129,6 @@ public class TsFileResource {
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
 
-  /** manage TsFileResource degrade */
-  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-
 
   /**
    * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
@@ -862,30 +859,18 @@ public class TsFileResource {
   }
 
 
-  public void degradeTimeIndexTo(TimeIndexLevel targetLevel) {
+  public long releaseMemory() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
     if ( timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX)
-      return;
-    if (!resourceFileExists() && timeIndexLevel == TimeIndexLevel.DEVICE_TIME_INDEX
-            && targetLevel == TimeIndexLevel.FILE_TIME_INDEX) {
-      try {
-        serialize();
-      } catch (IOException e) {
-        logger.error("");
-      }
-
-    }
+      return 0;
     long previousMemory = calculateRamSize();
-    if (targetLevel == TimeIndexLevel.FILE_TIME_INDEX) {
-      long startTime = timeIndex.getMinStartTime();
-      long endTime = Long.MIN_VALUE;
-      for (String devicesId : timeIndex.getDevices(file.getPath())) {
-        endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
-      }
-      timeIndex = new FileTimeIndex(startTime, endTime);
+    long startTime = timeIndex.getMinStartTime();
+    long endTime = Long.MIN_VALUE;
+    for (String devicesId : timeIndex.getDevices(file.getPath())) {
+      endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
     }
-    long memoryReduce = previousMemory - timeIndex.calculateRamSize();
-    tsFileResourceManager.releaseTimeIndexMemCost(memoryReduce);
+    timeIndex = new FileTimeIndex(startTime, endTime);
+    return previousMemory - timeIndex.calculateRamSize();
   }
   // change tsFile name
 
