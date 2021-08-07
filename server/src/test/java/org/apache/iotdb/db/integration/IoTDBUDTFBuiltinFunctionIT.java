@@ -168,7 +168,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
           assertEquals(expected, actual, E);
         }
       }
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -198,7 +197,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
           assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
         }
       }
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -221,7 +219,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
           assertEquals(i, Double.parseDouble(resultSet.getString(2 + j)), E);
         }
       }
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -248,7 +245,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
         }
         assertTrue(Boolean.parseBoolean(resultSet.getString(2 + 1)));
       }
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -282,7 +278,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
           assertEquals(expected, Double.parseDouble(resultSet.getString(2 + j)), E);
         }
       }
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

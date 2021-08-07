@@ -64,7 +64,6 @@ public class PrecisionTest {
       while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
-      resultSet.close();
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -89,7 +88,6 @@ public class PrecisionTest {
       while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
-      resultSet.close();
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -114,7 +112,6 @@ public class PrecisionTest {
       while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
-      resultSet.close();
     } catch (SQLException e) {
       e.printStackTrace();
     }
@@ -139,7 +136,6 @@ public class PrecisionTest {
       while (resultSet.next()) {
         assertEquals(str, resultSet.getString("root.turbine1.d1.s1"));
       }
-      resultSet.close();
     } catch (SQLException e) {
       e.printStackTrace();
     }

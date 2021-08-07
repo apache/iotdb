@@ -162,7 +162,7 @@ public class CompactionMergeTaskPoolManager implements IService {
     scheduledPool = null;
     recoverPool = null;
     storageGroupTasks.clear();
-    logger.warn("CompactionManager stopped");
+    logger.info("CompactionManager stopped");
   }
 
   private void awaitTermination(ExecutorService service, long milliseconds) {

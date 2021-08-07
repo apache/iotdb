@@ -174,7 +174,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -212,7 +211,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++count;
       }
       assertEquals(ITERATION_TIMES, count);
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -256,7 +254,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++index;
       }
       assertEquals((int) (0.25 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -289,7 +286,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++index;
       }
       assertEquals((int) (0.4 * ITERATION_TIMES), index - (int) (0.3 * ITERATION_TIMES));
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -333,7 +329,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++index;
       }
       assertEquals((int) (0.25 * ITERATION_TIMES), index - (int) (0.25 * ITERATION_TIMES));
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -366,7 +361,6 @@ public class IoTDBUDTFNonAlignQueryIT {
         ++index;
       }
       assertEquals(LIMIT, index - ((int) (0.3 * ITERATION_TIMES) + OFFSET));
-      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

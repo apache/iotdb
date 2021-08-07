@@ -655,7 +655,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     // wait until unseq merge has finished
     while (isUnseqMerging) {
       try {
-        wait(200);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();

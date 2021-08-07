@@ -685,7 +685,6 @@ public class IoTDBSessionComplexIT {
       while (resultSet.next()) {
         fail();
       }
-      resultSet.close();
     }
   }
 
@@ -720,7 +719,6 @@ public class IoTDBSessionComplexIT {
       while (resultSet.next()) {
         fail();
       }
-      resultSet.close();
       List<String> storageGroups = new ArrayList<>();
       storageGroups.add("root.sg1.d1");
       storageGroups.add("root.sg2");
@@ -800,7 +798,6 @@ public class IoTDBSessionComplexIT {
         }
       }
       Assert.assertEquals(700, count);
-      resultSet.close();
     }
   }
 
