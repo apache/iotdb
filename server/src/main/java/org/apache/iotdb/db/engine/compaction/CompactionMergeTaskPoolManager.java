@@ -224,7 +224,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       storageGroupTasks
           .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
           .add(future);
-      logger.warn(
+      logger.info(
           "Submit a StorageGroupCompactionTask, current active task num: {}, "
               + "completed task num: {}, total   task num: {}, block queue size: {}",
           pool.getActiveCount(),
@@ -233,7 +233,7 @@ public class CompactionMergeTaskPoolManager implements IService {
           pool.getQueue().size());
       return;
     }
-    logger.warn(
+    logger.info(
         "failed to submit compaction task because {}",
         pool == null ? "pool is null" : "pool is terminated");
   }
@@ -252,7 +252,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       storageGroupTasks
           .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
           .add(future);
-      logger.warn(
+      logger.info(
           "Submit a recover StorageGroupCompactionTask, current active task num: {}, "
               + "completed task num: {}, total task num: {}, block queue size: {}",
           recoverPool.getActiveCount(),
@@ -261,15 +261,9 @@ public class CompactionMergeTaskPoolManager implements IService {
           recoverPool.getQueue().size());
       return;
     }
-    logger.warn(
+    logger.info(
         "failed to submit compaction task because {}",
         pool == null ? "pool is null" : "pool is terminated");
-  }
-
-  @TestOnly
-  public synchronized boolean isCompactionFinish(String storageGroupName) {
-    return !storageGroupTasks.containsKey(storageGroupName)
-        || storageGroupTasks.get(storageGroupName).size() == 0;
   }
 
   @TestOnly
