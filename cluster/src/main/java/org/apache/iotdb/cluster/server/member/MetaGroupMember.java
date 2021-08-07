@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient;
@@ -59,25 +59,20 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.DataClusterServer;
-import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
-import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatServer;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
-import org.apache.iotdb.cluster.server.monitor.NodeReport;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.server.service.DataGroupServiceImpls;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -89,7 +84,6 @@ import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IService;
@@ -101,6 +95,7 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -133,14 +128,11 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
@@ -168,18 +160,6 @@ public class MetaGroupMember extends RaftMember implements IService {
   private static final int DEFAULT_JOIN_RETRY = 10;
 
   /**
-   * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
-   * members in this node
-   */
-  private static final int REPORT_INTERVAL_SEC = 10;
-
-  /**
-   * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
-   * checked every hour by default to see if they have expired, and will be cleaned if so.
-   */
-  private static final long CLEAN_HARDLINK_INTERVAL_SEC = 3600;
-
-  /**
    * blind nodes are nodes that do not have the partition table, and if this node is the leader, the
    * partition table should be sent to them at the next heartbeat
    */
@@ -200,22 +180,13 @@ public class MetaGroupMember extends RaftMember implements IService {
   private PartitionTable partitionTable;
   /** router calculates the partition groups that a partitioned plan should be sent to */
   private ClusterPlanRouter router;
-  /**
-   * each node contains multiple DataGroupMembers and they are managed by a DataClusterServer acting
-   * as a broker
-   */
-  private DataClusterServer dataClusterServer;
 
-  /** each node starts a data heartbeat server to transfer heartbeat requests */
-  private DataHeartbeatServer dataHeartbeatServer;
-
-  private DataClientProvider dataClientProvider;
-
-  /**
-   * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
-   * of all raft members in this node
-   */
-  private ScheduledExecutorService reportThread;
+  //  /**
+  //   * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the
+  // status
+  //   * of all raft members in this node
+  //   */
+  //  private ScheduledExecutorService reportThread;
 
   /**
    * containing configurations that should be kept the same cluster-wide, and must be checked before
@@ -223,8 +194,8 @@ public class MetaGroupMember extends RaftMember implements IService {
    */
   private StartUpStatus startUpStatus;
 
-  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
-  private ScheduledExecutorService hardLinkCleanerThread;
+  //  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
+  //  private ScheduledExecutorService hardLinkCleanerThread;
 
   private Coordinator coordinator;
 
@@ -243,8 +214,7 @@ public class MetaGroupMember extends RaftMember implements IService {
   @TestOnly
   public MetaGroupMember() {}
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator)
-      throws QueryProcessException {
+  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) {
     super(
         "Meta",
         new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
@@ -253,8 +223,6 @@ public class MetaGroupMember extends RaftMember implements IService {
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
     allNodes = new PartitionGroup();
     initPeerMap();
-
-    dataClientProvider = new DataClientProvider(factory);
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
@@ -268,8 +236,7 @@ public class MetaGroupMember extends RaftMember implements IService {
     allNodes.add(thisNode);
 
     Factory dataMemberFactory = new Factory(factory, this);
-    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
-    dataHeartbeatServer = new DataHeartbeatServer(thisNode, dataClusterServer);
+
     startUpStatus = getNewStartUpStatus();
 
     // try loading the partition table if there was a previous cluster
@@ -293,12 +260,8 @@ public class MetaGroupMember extends RaftMember implements IService {
     return localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
-  public DataClusterServer getDataClusterServer() {
-    return dataClusterServer;
-  }
-
-  public DataHeartbeatServer getDataHeartbeatServer() {
-    return dataHeartbeatServer;
+  DataGroupServiceImpls getDataGroupEngine() {
+    return ClusterIoTDB.getInstance().getDataGroupEngine();
   }
 
   /**
@@ -319,10 +282,6 @@ public class MetaGroupMember extends RaftMember implements IService {
   @Override
   void startBackGroundThreads() {
     super.startBackGroundThreads();
-    reportThread =
-        Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "NodeReportThread"));
-    hardLinkCleanerThread =
-        Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "HardLinkCleaner"));
   }
 
   /**
@@ -332,31 +291,6 @@ public class MetaGroupMember extends RaftMember implements IService {
   @Override
   public void stop() {
     super.stop();
-    if (getDataClusterServer() != null) {
-      getDataClusterServer().stop();
-    }
-    if (getDataHeartbeatServer() != null) {
-      getDataHeartbeatServer().stop();
-    }
-    if (reportThread != null) {
-      reportThread.shutdownNow();
-      try {
-        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for reportThread to end", e);
-      }
-    }
-    if (hardLinkCleanerThread != null) {
-      hardLinkCleanerThread.shutdownNow();
-      try {
-        hardLinkCleanerThread.awaitTermination(
-            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
-      }
-    }
     logger.info("{}: stopped", name);
   }
 
@@ -380,8 +314,8 @@ public class MetaGroupMember extends RaftMember implements IService {
    * nodes and clients.
    */
   protected void initSubServers() throws TTransportException, StartupException {
-    getDataClusterServer().start();
-    getDataHeartbeatServer().start();
+    //    getDataClusterServer().start();
+    //    getDataHeartbeatServer().start();
     // TODO FIXME
   }
 
@@ -432,7 +366,7 @@ public class MetaGroupMember extends RaftMember implements IService {
 
       // update local data members
       NodeAdditionResult result = partitionTable.getNodeAdditionResult(newNode);
-      getDataClusterServer().addNode(newNode, result);
+      getDataGroupEngine().addNode(newNode, result);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: success to add a new node {} into {}", name, newNode, allNodes);
       }
@@ -469,24 +403,6 @@ public class MetaGroupMember extends RaftMember implements IService {
 
   private void threadTaskInit() {
     heartBeatService.submit(new MetaHeartbeatThread(this));
-    reportThread.scheduleAtFixedRate(
-        this::generateNodeReport, REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
-    hardLinkCleanerThread.scheduleAtFixedRate(
-        new HardLinkCleaner(),
-        CLEAN_HARDLINK_INTERVAL_SEC,
-        CLEAN_HARDLINK_INTERVAL_SEC,
-        TimeUnit.SECONDS);
-  }
-
-  private void generateNodeReport() {
-    try {
-      if (logger.isDebugEnabled()) {
-        NodeReport report = genNodeReport();
-        logger.debug(report.toString());
-      }
-    } catch (Exception e) {
-      logger.error("{} exception occurred when generating node report", name, e);
-    }
   }
 
   /**
@@ -587,7 +503,7 @@ public class MetaGroupMember extends RaftMember implements IService {
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
       acceptPartitionTable(partitionTableBuffer, true);
-      getDataClusterServer().pullSnapshots();
+      getDataGroupEngine().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
       logger.info(
@@ -810,7 +726,7 @@ public class MetaGroupMember extends RaftMember implements IService {
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
-        getDataClusterServer().buildDataGroupMembers(partitionTable);
+        getDataGroupEngine().buildDataGroupMembers(partitionTable);
         initSubServers();
         sendHandshake();
       } catch (TTransportException | StartupException e) {
@@ -1164,6 +1080,14 @@ public class MetaGroupMember extends RaftMember implements IService {
     }
   }
 
+  // TODO rewrite this method.
+
+  /**
+   * check whether the nodes having consistent setting.
+   *
+   * @param consistentNum
+   * @param inconsistentNum
+   */
   private void checkSeedNodesStatusOnce(
       AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
     // use a thread pool to avoid being blocked by an unavailable node
@@ -1445,33 +1369,33 @@ public class MetaGroupMember extends RaftMember implements IService {
     return result;
   }
 
-  /**
-   * Forward a non-query plan to the data port of "receiver"
-   *
-   * @param plan a non-query plan
-   * @param header to determine which DataGroupMember of "receiver" will process the request.
-   * @return a TSStatus indicating if the forwarding is successful.
-   */
-  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
-    RaftService.AsyncClient client =
-        getClientProvider()
-            .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-    return forwardPlanAsync(plan, receiver, header, client);
-  }
-
-  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
-      throws IOException {
-    Client client;
-    try {
-      client =
-          getClientProvider()
-              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-    } catch (TException e) {
-      throw new IOException(e);
-    }
-    return forwardPlanSync(plan, receiver, header, client);
-  }
+  //  /**
+  //   * Forward a non-query plan to the data port of "receiver"
+  //   *
+  //   * @param plan a non-query plan
+  //   * @param header to determine which DataGroupMember of "receiver" will process the request.
+  //   * @return a TSStatus indicating if the forwarding is successful.
+  //   */
+  //  private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
+  //      throws IOException {
+  //    RaftService.AsyncClient client =
+  //        getClientProvider()
+  //            .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
+  //    return forwardPlanAsync(plan, receiver, header, client);
+  //  }
+  //
+  //  private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
+  //      throws IOException {
+  //    Client client;
+  //    try {
+  //      client =
+  //          getClientProvider()
+  //              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
+  //    } catch (TException e) {
+  //      throw new IOException(e);
+  //    }
+  //    return forwardPlanSync(plan, receiver, header, client);
+  //  }
 
   /**
    * Get the data groups that should be queried when querying "path" with "filter". First, the time
@@ -1654,7 +1578,7 @@ public class MetaGroupMember extends RaftMember implements IService {
     this.partitionTable = partitionTable;
     router = new ClusterPlanRouter(partitionTable);
     this.coordinator.setRouter(router);
-    DataClusterServer dClusterServer = getDataClusterServer();
+    DataGroupServiceImpls dClusterServer = getDataGroupEngine();
     if (dClusterServer != null) {
       dClusterServer.setPartitionTable(partitionTable);
     }
@@ -1794,7 +1718,7 @@ public class MetaGroupMember extends RaftMember implements IService {
       // update DataGroupMembers, as the node is removed, the members of some groups are
       // changed and there will also be one less group
       NodeRemovalResult result = partitionTable.getNodeRemovalResult();
-      getDataClusterServer().removeNode(oldNode, result);
+      getDataGroupEngine().removeNode(oldNode, result);
 
       // the leader is removed, start the next election ASAP
       if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {
@@ -1813,7 +1737,7 @@ public class MetaGroupMember extends RaftMember implements IService {
         new Thread(
                 () -> {
                   try {
-                    Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+                    Thread.sleep(ClusterConstant.getHeartBeatIntervalMs());
                   } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     // ignore
@@ -1876,7 +1800,7 @@ public class MetaGroupMember extends RaftMember implements IService {
    * Generate a report containing the character, leader, term, last log and read-only-status. This
    * will help to see if the node is in a consistent and right state during debugging.
    */
-  private MetaMemberReport genMemberReport() {
+  public MetaMemberReport genMemberReport() {
     long prevLastLogIndex = lastReportedLogIndex;
     lastReportedLogIndex = logManager.getLastLogIndex();
     return new MetaMemberReport(
@@ -1891,17 +1815,6 @@ public class MetaGroupMember extends RaftMember implements IService {
         lastHeartbeatReceivedTime,
         prevLastLogIndex,
         logManager.getMaxHaveAppliedCommitIndex());
-  }
-
-  /**
-   * Generate a report containing the status of both MetaGroupMember and DataGroupMembers of this
-   * node. This will help to see if the node is in a consistent and right state during debugging.
-   */
-  private NodeReport genNodeReport() {
-    NodeReport report = new NodeReport(thisNode);
-    report.setMetaMemberReport(genMemberReport());
-    report.setDataMemberReportList(dataClusterServer.genMemberReports());
-    return report;
   }
 
   /**
@@ -1944,7 +1857,7 @@ public class MetaGroupMember extends RaftMember implements IService {
     if (getPartitionTable() == null) {
       return groupSlotMap;
     }
-    Map<RaftNode, DataGroupMember> headerMap = getDataClusterServer().getHeaderGroupMap();
+    Map<RaftNode, DataGroupMember> headerMap = getDataGroupEngine().getHeaderGroupMap();
     syncLocalApply(getPartitionTable().getLastMetaLogIndex(), false);
     synchronized (headerMap) {
       for (DataGroupMember dataMember : headerMap.values()) {
@@ -1975,7 +1888,7 @@ public class MetaGroupMember extends RaftMember implements IService {
    *     only used in logs for tracing
    */
   public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
-    return dataClusterServer.getDataMember(header, null, request);
+    return getDataGroupEngine().getDataMember(header, null, request);
   }
 
   /**
@@ -1984,28 +1897,19 @@ public class MetaGroupMember extends RaftMember implements IService {
    * @param raftNode the header of the group which the local node is in
    */
   public DataGroupMember getLocalDataMember(RaftNode raftNode) {
-    return dataClusterServer.getDataMember(raftNode, null, "Internal call");
-  }
-
-  public DataClientProvider getClientProvider() {
-    return dataClientProvider;
+    return getDataGroupEngine().getDataMember(raftNode, null, "Internal call");
   }
 
   @Override
   public void closeLogManager() {
     super.closeLogManager();
-    if (dataClusterServer != null) {
-      dataClusterServer.closeLogManagers();
+    if (getDataGroupEngine() != null) {
+      getDataGroupEngine().closeLogManagers();
     }
   }
 
   public StartUpStatus getStartUpStatus() {
     return startUpStatus;
-  }
-
-  @TestOnly
-  public void setClientProvider(DataClientProvider dataClientProvider) {
-    this.dataClientProvider = dataClientProvider;
   }
 
   public void setRouter(ClusterPlanRouter router) {

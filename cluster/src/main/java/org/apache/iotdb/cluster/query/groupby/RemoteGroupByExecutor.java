@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
@@ -78,17 +79,17 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
-            metaGroupMember
+            ClusterIoTDB.getInstance()
                 .getClientProvider()
-                .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+                .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffers =
             SyncClientAdaptor.getGroupByResult(
                 client, header, executorId, curStartTime, curEndTime);
       } else {
         try (SyncDataClient syncDataClient =
-            metaGroupMember
+            ClusterIoTDB.getInstance()
                 .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
+                .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS())) {
           try {
             aggrBuffers =
                 syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
@@ -128,17 +129,17 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     try {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
-            metaGroupMember
+            ClusterIoTDB.getInstance()
                 .getClientProvider()
-                .getAsyncDataClient(source, RaftServer.getReadOperationTimeoutMS());
+                .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffer =
             SyncClientAdaptor.peekNextNotNullValue(
                 client, header, executorId, nextStartTime, nextEndTime);
       } else {
         try (SyncDataClient syncDataClient =
-            metaGroupMember
+            ClusterIoTDB.getInstance()
                 .getClientProvider()
-                .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
+                .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS())) {
           try {
             aggrBuffer =
                 syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);

@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -141,9 +142,9 @@ public class DataSourceInfo {
   private Long applyForReaderIdAsync(Node node, boolean byTimestamp, long timestamp)
       throws TException, InterruptedException, IOException {
     AsyncDataClient client =
-        this.metaGroupMember
+        ClusterIoTDB.getInstance()
             .getClientProvider()
-            .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     Long newReaderId;
     if (byTimestamp) {
       newReaderId = SyncClientAdaptor.querySingleSeriesByTimestamp(client, request);
@@ -158,9 +159,9 @@ public class DataSourceInfo {
 
     Long newReaderId;
     try (SyncDataClient client =
-        this.metaGroupMember
+        ClusterIoTDB.getInstance()
             .getClientProvider()
-            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
 
       try {
         if (byTimestamp) {
@@ -205,13 +206,15 @@ public class DataSourceInfo {
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance()
+            .getClientProvider()
+            .getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) throws TException {
     return isNoClient
         ? null
-        : metaGroupMember.getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

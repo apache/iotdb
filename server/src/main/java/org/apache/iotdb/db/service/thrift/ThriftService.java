@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
+
 import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,9 +110,9 @@ public abstract class ThriftService implements IService {
     try {
       reset();
       initTProcessor();
-      if (setSyncedImpl || setAsyncedImpl) {
+      if (!setSyncedImpl && !setAsyncedImpl) {
         throw new StartupException(
-            "At least one service implementataion of {} should be set.", this.getID().getName());
+            getID().getName(), "At least one service implementataion should be set.");
       }
       initThriftServiceThread();
       thriftServiceThread.setThreadStopLatch(stopLatch);

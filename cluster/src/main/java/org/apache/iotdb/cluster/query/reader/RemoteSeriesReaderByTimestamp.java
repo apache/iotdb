@@ -20,8 +20,8 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -77,10 +77,10 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       fetchResult.set(null);
       try {
         sourceInfo
-            .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .getCurAsyncClient(ClusterConstant.getReadOperationTimeoutMS())
             .fetchSingleSeriesByTimestamps(
                 sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList, handler);
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+        fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
       } catch (TException e) {
         // try other node
         if (!sourceInfo.switchNode(true, timestamps[0])) {
@@ -104,7 +104,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       timestampList.add(timestamps[i]);
     }
     try {
-      curSyncClient = sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS());
+      curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeriesByTimestamps(
           sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList);
     } catch (TException e) {

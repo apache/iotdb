@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -30,7 +32,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -227,15 +228,15 @@ public class MetaPuller {
     List<IMeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
       try (SyncDataClient syncDataClient =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
         try {
           // only need measurement name
           PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
@@ -414,15 +415,15 @@ public class MetaPuller {
     List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
       try (SyncDataClient syncDataClient =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
 
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;

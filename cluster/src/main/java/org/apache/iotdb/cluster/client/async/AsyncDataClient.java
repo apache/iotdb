@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.cluster.client.async;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.thrift.async.TAsyncClientManager;
@@ -67,7 +67,7 @@ public class AsyncDataClient extends AsyncClient {
         protocolFactory,
         clientManager,
         TNonblockingSocketWrapper.wrap(
-            node.getInternalIp(), node.getDataPort(), RaftServer.getConnectionTimeoutInMS()));
+            node.getInternalIp(), node.getDataPort(), ClusterConstant.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }

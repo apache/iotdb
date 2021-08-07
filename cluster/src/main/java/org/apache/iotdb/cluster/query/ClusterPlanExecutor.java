@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.query;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.metadata.CMManager;
@@ -31,7 +33,6 @@ import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -246,20 +247,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Integer count;
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
-          client.setTimeout(RaftServer.getReadOperationTimeoutMS());
+                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+          client.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
           count =
               SyncClientAdaptor.getPathCount(
                   client, partitionGroup.getHeader(), pathsToQuery, level);
         } else {
           try (SyncDataClient syncDataClient =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+                  .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
             try {
-              syncDataClient.setTimeout(RaftServer.getReadOperationTimeoutMS());
+              syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
               count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
             } catch (TException e) {
               // the connection may be broken, close it to avoid it being reused
@@ -357,17 +358,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
           paths =
               SyncClientAdaptor.getNodeList(
                   client, group.getHeader(), schemaPattern.getFullPath(), level);
         } else {
           try (SyncDataClient syncDataClient =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+                  .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
             try {
               paths =
                   syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
@@ -449,17 +450,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
           nextChildrenNodes =
               SyncClientAdaptor.getChildNodeInNextLevel(
                   client, group.getHeader(), path.getFullPath());
         } else {
           try (SyncDataClient syncDataClient =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+                  .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
             try {
               nextChildrenNodes =
                   syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
@@ -530,7 +531,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     pool.shutdown();
     try {
-      pool.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      pool.awaitTermination(ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for {}", methodName, e);
@@ -564,16 +565,16 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           AsyncDataClient client =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+                  .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
           nextChildren =
               SyncClientAdaptor.getNextChildren(client, group.getHeader(), path.getFullPath());
         } else {
           try (SyncDataClient syncDataClient =
-              metaGroupMember
+              ClusterIoTDB.getInstance()
                   .getClientProvider()
-                  .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+                  .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
             try {
               nextChildren =
                   syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());

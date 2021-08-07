@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.query.aggregate;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
@@ -32,7 +34,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -259,16 +260,16 @@ public class ClusterAggregator {
     List<ByteBuffer> resultBuffers;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       // each buffer is an AggregationResult
       resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
     } else {
       try (SyncDataClient syncDataClient =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
         try {
           resultBuffers = syncDataClient.getAggrResult(request);
         } catch (TException e) {

@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.cluster.server.service;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
@@ -31,51 +32,25 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
-import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Processor;
+import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.StoppedMemberManager;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
-import org.apache.iotdb.cluster.server.service.DataAsyncService;
-import org.apache.iotdb.cluster.server.service.DataSyncService;
 import org.apache.iotdb.cluster.utils.IOUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.transport.TNonblockingServerSocket;
-import org.apache.thrift.transport.TServerSocket;
-import org.apache.thrift.transport.TServerTransport;
+import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -86,10 +61,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DataClusterServer extends RaftServer
-    implements TSDataService.AsyncIface, TSDataService.Iface {
+public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataService.Iface {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataClusterServer.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataGroupServiceImpls.class);
 
   // key: the header of a data group, value: the member representing this node in this group and
   // it is currently at service
@@ -104,21 +78,28 @@ public class DataClusterServer extends RaftServer
   private DataGroupMember.Factory dataMemberFactory;
   private MetaGroupMember metaGroupMember;
 
-  public DataClusterServer(
-      Node thisNode, DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
-    super(thisNode);
-    this.dataMemberFactory = dataMemberFactory;
+  private Node thisNode = ClusterIoTDB.getInstance().getThisNode();
+
+  public DataGroupServiceImpls(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
+    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
     this.metaGroupMember = metaGroupMember;
-    this.stoppedMemberManager = new StoppedMemberManager(dataMemberFactory, thisNode);
+    stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
   }
 
-  @Override
+  @TestOnly
+  public DataGroupServiceImpls(
+      DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
+    this.metaGroupMember = metaGroupMember;
+    this.stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
+  }
+
+  //  @Override
+  // TODO
   public void stop() {
     closeLogManagers();
     for (DataGroupMember member : headerGroupMap.values()) {
       member.stop();
     }
-    super.stop();
   }
 
   /**
@@ -235,7 +216,7 @@ public class DataClusterServer extends RaftServer
       }
       if (partitionGroup != null && partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
-        member = dataMemberFactory.create(partitionGroup, thisNode);
+        member = dataMemberFactory.create(partitionGroup);
         headerGroupMap.put(header, member);
         stoppedMemberManager.remove(header);
         logger.info("Created a member for header {}, group is {}", header, partitionGroup);
@@ -559,42 +540,6 @@ public class DataClusterServer extends RaftServer
     }
   }
 
-  @Override
-  TProcessor getProcessor() {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new AsyncProcessor<>(this);
-    } else {
-      return new Processor<>(this);
-    }
-  }
-
-  @Override
-  TServerTransport getServerSocket() throws TTransportException {
-    logger.info(
-        "[{}] Cluster node will listen {}:{}",
-        getServerClientName(),
-        config.getInternalIp(),
-        config.getInternalDataPort());
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      return new TNonblockingServerSocket(
-          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()),
-          getConnectionTimeoutInMS());
-    } else {
-      return new TServerSocket(
-          new InetSocketAddress(config.getInternalIp(), thisNode.getDataPort()));
-    }
-  }
-
-  @Override
-  String getClientThreadPrefix() {
-    return "DataClientThread-";
-  }
-
-  @Override
-  String getServerClientName() {
-    return "DataServerThread-";
-  }
-
   public void preAddNodeForDataGroup(AddNodeLog log, DataGroupMember targetDataGroupMember) {
 
     // Make sure the previous add/remove node log has applied
@@ -644,7 +589,7 @@ public class DataClusterServer extends RaftServer
         if (newGroup.contains(thisNode)) {
           RaftNode header = newGroup.getHeader();
           logger.info("Adding this node into a new group {}", newGroup);
-          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup);
           dataGroupMember = addDataGroupMember(dataGroupMember, header);
           dataGroupMember.pullNodeAdditionSnapshots(
               ((SlotPartitionTable) partitionTable).getNodeSlots(header), node);
@@ -727,7 +672,7 @@ public class DataClusterServer extends RaftServer
       if (prevMember == null || !prevMember.getAllNodes().equals(partitionGroup)) {
         logger.info("Building member of data group: {}", partitionGroup);
         // no previous member or member changed
-        DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup, thisNode);
+        DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup);
         // the previous member will be replaced here
         addDataGroupMember(dataGroupMember, header);
         dataGroupMember.setUnchanged(true);
@@ -795,7 +740,7 @@ public class DataClusterServer extends RaftServer
         RaftNode header = group.getHeader();
         if (!headerGroupMap.containsKey(header)) {
           logger.info("{} should join a new group {}", thisNode, group);
-          DataGroupMember dataGroupMember = dataMemberFactory.create(group, thisNode);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(group);
           addDataGroupMember(dataGroupMember, header);
         }
         // pull new slots from the removed node

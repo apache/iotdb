@@ -58,9 +58,12 @@ public enum ServiceType {
 
   CLUSTER_RPC_SERVICE("Cluster RPC Service", "ClusterRPCService"),
   CLUSTER_META_RPC_SERVICE("Cluster Meta RPC Service", "ClusterMetaRPCService"),
+  CLUSTER_META_HEART_BEAT_RPC_SERVICE(
+      "Cluster Meta Heartbeat RPC Service", "ClusterMetaHeartbeatRPCService"),
   CLUSTER_DATA_RPC_SERVICE("Cluster Data RPC Service", "ClusterDataRPCService"),
+  CLUSTER_DATA_HEART_BEAT_RPC_SERVICE(
+      "Cluster Data Heartbeat RPC Service", "ClusterDataHeartbeatRPCService"),
   CLUSTER_META_ENGINE("Cluster Meta Engine", "ClusterMetaEngine"),
-  CLUSTER_META_HEART_BEAT("Cluster Meta Heartbeat Service", "ClusterMetaHeartbeat"),
   ;
 
   private final String name;

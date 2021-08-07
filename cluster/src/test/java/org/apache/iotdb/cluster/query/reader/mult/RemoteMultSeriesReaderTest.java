@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.cluster.query.reader.mult;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
@@ -38,9 +41,6 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -59,9 +59,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
+import static junit.framework.TestCase.*;
 
 public class RemoteMultSeriesReaderTest {
 
@@ -183,98 +181,100 @@ public class RemoteMultSeriesReaderTest {
   }
 
   private void setAsyncDataClient() {
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new AsyncDataClient(null, null, node, null) {
+    ClusterIoTDB.getInstance()
+        .setClientProvider(
+            new DataClientProvider(new Factory()) {
               @Override
-              public void fetchMultSeries(
-                  RaftNode header,
-                  long readerId,
-                  List<String> paths,
-                  AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+                return new AsyncDataClient(null, null, node, null) {
+                  @Override
+                  public void fetchMultSeries(
+                      RaftNode header,
+                      long readerId,
+                      List<String> paths,
+                      AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                new Thread(
-                        () -> {
-                          Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-                          if (batchUsed) {
-                            paths.forEach(
-                                path -> {
-                                  stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-                                });
-                          } else {
-                            batchUsed = true;
+                    new Thread(
+                            () -> {
+                              Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
+                              if (batchUsed) {
+                                paths.forEach(
+                                    path -> {
+                                      stringByteBufferMap.put(path, ByteBuffer.allocate(0));
+                                    });
+                              } else {
+                                batchUsed = true;
 
-                            for (int i = 0; i < batchData.size(); i++) {
-                              stringByteBufferMap.put(
-                                  paths.get(i), generateByteBuffer(batchData.get(i)));
-                            }
+                                for (int i = 0; i < batchData.size(); i++) {
+                                  stringByteBufferMap.put(
+                                      paths.get(i), generateByteBuffer(batchData.get(i)));
+                                }
 
-                            resultHandler.onComplete(stringByteBufferMap);
-                          }
-                        })
-                    .start();
+                                resultHandler.onComplete(stringByteBufferMap);
+                              }
+                            })
+                        .start();
+                  }
+
+                  @Override
+                  public void queryMultSeries(
+                      MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+                };
               }
-
-              @Override
-              public void queryMultSeries(
-                  MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                new Thread(() -> resultHandler.onComplete(1L)).start();
-              }
-            };
-          }
-        });
+            });
   }
 
   private void setSyncDataClient() {
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public SyncDataClient getSyncDataClient(Node node, int timeout) {
-            return new SyncDataClient(null) {
+    ClusterIoTDB.getInstance()
+        .setClientProvider(
+            new DataClientProvider(new Factory()) {
               @Override
-              public Map<String, ByteBuffer> fetchMultSeries(
-                  RaftNode header, long readerId, List<String> paths) throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public SyncDataClient getSyncDataClient(Node node, int timeout) {
+                return new SyncDataClient(null) {
+                  @Override
+                  public Map<String, ByteBuffer> fetchMultSeries(
+                      RaftNode header, long readerId, List<String> paths) throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
-                if (batchUsed) {
-                  paths.forEach(
-                      path -> {
-                        stringByteBufferMap.put(path, ByteBuffer.allocate(0));
-                      });
-                } else {
-                  batchUsed = true;
-                  for (int i = 0; i < batchData.size(); i++) {
-                    stringByteBufferMap.put(paths.get(i), generateByteBuffer(batchData.get(i)));
+                    Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
+                    if (batchUsed) {
+                      paths.forEach(
+                          path -> {
+                            stringByteBufferMap.put(path, ByteBuffer.allocate(0));
+                          });
+                    } else {
+                      batchUsed = true;
+                      for (int i = 0; i < batchData.size(); i++) {
+                        stringByteBufferMap.put(paths.get(i), generateByteBuffer(batchData.get(i)));
+                      }
+                    }
+                    return stringByteBufferMap;
                   }
-                }
-                return stringByteBufferMap;
-              }
 
-              @Override
-              public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+                  @Override
+                  public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                return 1L;
+                    return 1L;
+                  }
+                };
               }
-            };
-          }
-        });
+            });
   }
 
   private ByteBuffer generateByteBuffer(BatchData batchData) {

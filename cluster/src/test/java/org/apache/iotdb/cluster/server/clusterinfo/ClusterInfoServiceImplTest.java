@@ -22,11 +22,11 @@ package org.apache.iotdb.cluster.server.clusterinfo;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftTSMetaServiceImpl;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+
 import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
@@ -47,24 +47,23 @@ public class ClusterInfoServiceImplTest {
     metaGroupMemberTest.setUp();
     MetaGroupMember metaGroupMember = metaGroupMemberTest.getTestMetaGroupMember();
 
-    RaftTSMetaServiceImpl RaftTSMetaServiceImpl = new RaftTSMetaServiceImpl();
-    RaftTSMetaServiceImpl.getMember().stop();
-    RaftTSMetaServiceImpl.setMetaGroupMember(metaGroupMember);
+    ClusterIoTDB.getInstance().setMetaGroupEngine(metaGroupMember);
 
-    ClusterIoTDB.setMetaClusterServer(RaftTSMetaServiceImpl);
-
-    RaftTSMetaServiceImpl.getIoTDB().metaManager.setStorageGroup(new PartialPath("root", "sg"));
+    ClusterIoTDB.getInstance()
+        .getIotdb()
+        .metaManager
+        .setStorageGroup(new PartialPath("root", "sg"));
     // metaClusterServer.getMember()
     impl = new ClusterInfoServiceImpl();
   }
 
   @After
   public void tearDown() throws MetadataException {
-    ClusterIoTDB.getMetaServer()
-        .getIoTDB()
+    ClusterIoTDB.getInstance()
+        .getIotdb()
         .metaManager
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
-    ClusterIoTDB.getMetaServer().stop();
+    ClusterIoTDB.getInstance().getMetaGroupEngine().stop();
   }
 
   @Test

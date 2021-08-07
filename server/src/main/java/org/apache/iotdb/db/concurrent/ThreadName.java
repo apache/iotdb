@@ -49,9 +49,15 @@ public enum ThreadName {
   CLUSTER_INFO_SERVICE("ClusterInfoClient"),
   CLUSTER_RPC_SERVICE("ClusterRPC"),
   CLUSTER_RPC_CLIENT("Cluster-RPC-Client"),
-  CLUSTER_META_SERVICE("ClusterMetaService"),
-  CLUSTER_META_HEARTBEAT_SERVICE("ClusterMetaHeartbeatService"),
-  CLUSTER_DATA_SERVICE("ClusterDataService");
+  CLUSTER_META_RPC_SERVICE("ClusterMetaRPC"),
+  CLUSTER_META_RPC_CLIENT("ClusterMetaRPC-Client"),
+  CLUSTER_META_HEARTBEAT_RPC_SERVICE("ClusterMetaHeartbeatRPC"),
+  CLUSTER_META_HEARTBEAT_RPC_CLIENT("ClusterMetaHeartbeatRPC-Client"),
+  CLUSTER_DATA_RPC_SERVICE("ClusterDataRPC"),
+  CLUSTER_DATA_RPC_CLIENT("ClusterDataRPC-Client"),
+  CLUSTER_DATA_HEARTBEAT_RPC_SERVICE("ClusterDataHeartbeatRPC"),
+  CLUSTER_DATA_HEARTBEAT_RPC_CLIENT("ClusterDataHeartbeatRPC-Client"),
+  ;
 
   private final String name;
 

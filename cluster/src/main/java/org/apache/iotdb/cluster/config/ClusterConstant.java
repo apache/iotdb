@@ -19,7 +19,6 @@
 package org.apache.iotdb.cluster.config;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.utils.TestOnly;
 
 public class ClusterConstant {
@@ -40,6 +39,18 @@ public class ClusterConstant {
   public static final int RETRY_WAIT_TIME_MS = 10;
 
   public static final int THREAD_POLL_WAIT_TERMINATION_TIME_S = 10;
+
+  /**
+   * every "REPORT_INTERVAL_SEC" seconds, a reporter thread will print the status of all raft
+   * members in this node
+   */
+  public static final int REPORT_INTERVAL_SEC = 10;
+
+  /**
+   * during snapshot, hardlinks of data files are created to for downloading. hardlinks will be
+   * checked every hour by default to see if they have expired, and will be cleaned if so.
+   */
+  public static final long CLEAN_HARDLINK_INTERVAL_SEC = 3600L;
 
   public static final Node EMPTY_NODE = new Node();
 
@@ -112,11 +123,11 @@ public class ClusterConstant {
 
   @TestOnly
   public static void setReadOperationTimeoutMS(int readOperationTimeoutMS) {
-    RaftServer.readOperationTimeoutMS = readOperationTimeoutMS;
+    ClusterConstant.readOperationTimeoutMS = readOperationTimeoutMS;
   }
 
   @TestOnly
   public static void setWriteOperationTimeoutMS(int writeOperationTimeoutMS) {
-    RaftServer.writeOperationTimeoutMS = writeOperationTimeoutMS;
+    ClusterConstant.writeOperationTimeoutMS = writeOperationTimeoutMS;
   }
 }

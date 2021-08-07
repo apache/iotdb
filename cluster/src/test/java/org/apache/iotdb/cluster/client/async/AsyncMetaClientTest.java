@@ -7,9 +7,9 @@ package org.apache.iotdb.cluster.client.async;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient.FactoryAsync;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConfig;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -22,10 +22,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AsyncMetaClientTest {
 
@@ -53,7 +50,9 @@ public class AsyncMetaClientTest {
             new Factory(),
             new TAsyncClientManager(),
             new TNonblockingSocket(
-                node.getInternalIp(), node.getMetaPort(), RaftServer.getConnectionTimeoutInMS()));
+                node.getInternalIp(),
+                node.getMetaPort(),
+                ClusterConstant.getConnectionTimeoutInMS()));
     assertTrue(client.isReady());
 
     client = (AsyncMetaClient) asyncClientPool.getClient(TestUtils.getNode(0));

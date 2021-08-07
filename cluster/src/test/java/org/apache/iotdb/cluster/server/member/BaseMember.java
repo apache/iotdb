@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
@@ -45,7 +47,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -56,7 +57,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
@@ -110,11 +110,11 @@ public class BaseMember {
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
-    syncLeaderMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
-    heartBeatInterval = RaftServer.getHeartBeatIntervalMs();
+    syncLeaderMaxWait = ClusterConstant.getSyncLeaderMaxWaitMs();
+    heartBeatInterval = ClusterConstant.getHeartBeatIntervalMs();
 
-    RaftServer.setSyncLeaderMaxWaitMs(100);
-    RaftServer.setHeartBeatIntervalMs(100);
+    ClusterConstant.setSyncLeaderMaxWaitMs(100);
+    ClusterConstant.setHeartBeatIntervalMs(100);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -191,8 +191,8 @@ public class BaseMember {
     ClusterDescriptor.getInstance().getConfig().setUseAsyncApplier(prevUseAsyncApplier);
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(prevEnableWAL);
 
-    RaftServer.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
-    RaftServer.setHeartBeatIntervalMs(heartBeatInterval);
+    ClusterConstant.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
+    ClusterConstant.setHeartBeatIntervalMs(heartBeatInterval);
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -309,13 +309,15 @@ public class BaseMember {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    ret.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new TestAsyncDataClient(node, dataGroupMemberMap);
-          }
-        });
+    // TODO fixme : 恢复正常的provider
+    ClusterIoTDB.getInstance()
+        .setClientProvider(
+            new DataClientProvider(new Factory()) {
+              @Override
+              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+                return new TestAsyncDataClient(node, dataGroupMemberMap);
+              }
+            });
     return ret;
   }
 }

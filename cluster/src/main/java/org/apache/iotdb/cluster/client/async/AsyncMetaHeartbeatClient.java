@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.client.async;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
@@ -48,7 +48,7 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
         TNonblockingSocketWrapper.wrap(
             node.getInternalIp(),
             node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-            RaftServer.getConnectionTimeoutInMS()));
+            ClusterConstant.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }

@@ -35,7 +35,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -214,8 +213,8 @@ public class HeartbeatThreadTest {
 
   @Test
   public void testAsFollower() throws InterruptedException {
-    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
-    RaftServer.setConnectionTimeoutInMS(500);
+    int prevTimeOut = ClusterConstant.getConnectionTimeoutInMS();
+    ClusterConstant.setConnectionTimeoutInMS(500);
     member.setCharacter(NodeCharacter.FOLLOWER);
     member.setLastHeartbeatReceivedTime(System.currentTimeMillis());
     respondToElection = false;
@@ -226,7 +225,7 @@ public class HeartbeatThreadTest {
       testThread.interrupt();
       testThread.join();
     } finally {
-      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
+      ClusterConstant.setConnectionTimeoutInMS(prevTimeOut);
     }
   }
 

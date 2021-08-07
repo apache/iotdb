@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 
@@ -56,7 +56,7 @@ public class SyncMetaClient extends Client implements Closeable {
                     TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
                     node.getMetaPort(),
-                    RaftServer.getConnectionTimeoutInMS()))));
+                    ClusterConstant.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

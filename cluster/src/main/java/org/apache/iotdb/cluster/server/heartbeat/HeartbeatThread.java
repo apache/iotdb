@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -86,7 +85,7 @@ public class HeartbeatThread implements Runnable {
             // send heartbeats to the followers
             sendHeartbeats();
             synchronized (localMember.getHeartBeatWaitObject()) {
-              localMember.getHeartBeatWaitObject().wait(RaftServer.getHeartBeatIntervalMs());
+              localMember.getHeartBeatWaitObject().wait(ClusterConstant.getHeartBeatIntervalMs());
             }
             hasHadLeader = true;
             break;
@@ -94,7 +93,7 @@ public class HeartbeatThread implements Runnable {
             // check if heartbeat times out
             long heartBeatInterval =
                 System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
-            if (heartBeatInterval >= RaftServer.getConnectionTimeoutInMS()) {
+            if (heartBeatInterval >= ClusterConstant.getConnectionTimeoutInMS()) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
@@ -105,7 +104,9 @@ public class HeartbeatThread implements Runnable {
                   memberName,
                   localMember.getLeader());
               synchronized (localMember.getHeartBeatWaitObject()) {
-                localMember.getHeartBeatWaitObject().wait(RaftServer.getConnectionTimeoutInMS());
+                localMember
+                    .getHeartBeatWaitObject()
+                    .wait(ClusterConstant.getConnectionTimeoutInMS());
               }
             }
             hasHadLeader = true;
@@ -321,8 +322,8 @@ public class HeartbeatThread implements Runnable {
         logger.info(
             "{}: Wait for {}ms until election time out",
             memberName,
-            RaftServer.getConnectionTimeoutInMS());
-        localMember.getTerm().wait(RaftServer.getConnectionTimeoutInMS());
+            ClusterConstant.getConnectionTimeoutInMS());
+        localMember.getTerm().wait(ClusterConstant.getConnectionTimeoutInMS());
       } catch (InterruptedException e) {
         logger.info(
             "{}: Unexpected interruption when waiting the result of election {}",

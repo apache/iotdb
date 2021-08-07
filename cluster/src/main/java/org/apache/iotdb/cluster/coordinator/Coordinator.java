@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.coordinator;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -34,7 +35,6 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -785,9 +785,9 @@ public class Coordinator {
   private TSStatus forwardDataPlanAsync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
     RaftService.AsyncClient client =
-        metaGroupMember
+        ClusterIoTDB.getInstance()
             .getClientProvider()
-            .getAsyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+            .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
@@ -796,9 +796,9 @@ public class Coordinator {
     RaftService.Client client;
     try {
       client =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getSyncDataClient(receiver, RaftServer.getWriteOperationTimeoutMS());
+              .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     } catch (TException e) {
       throw new IOException(e);
     }
@@ -812,7 +812,7 @@ public class Coordinator {
    * @param timeout timeout threshold of connection
    */
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    return metaGroupMember.getClientProvider().getAsyncDataClient(node, timeout);
+    return ClusterIoTDB.getInstance().getClientProvider().getAsyncDataClient(node, timeout);
   }
 
   public Node getThisNode() {
@@ -826,6 +826,6 @@ public class Coordinator {
    * @param timeout timeout threshold of connection
    */
   public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
-    return metaGroupMember.getClientProvider().getSyncDataClient(node, timeout);
+    return ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(node, timeout);
   }
 }

@@ -19,16 +19,17 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -130,7 +131,8 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(RaftServer.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      fillService.awaitTermination(
+          ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);
@@ -218,9 +220,9 @@ public class ClusterPreviousFill extends PreviousFill {
     AsyncDataClient asyncDataClient;
     try {
       asyncDataClient =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     } catch (IOException e) {
       logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
       return null;
@@ -243,9 +245,9 @@ public class ClusterPreviousFill extends PreviousFill {
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
     try (SyncDataClient syncDataClient =
-        metaGroupMember
+        ClusterIoTDB.getInstance()
             .getClientProvider()
-            .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
       try {
         byteBuffer = syncDataClient.previousFill(request);
       } catch (TException e) {

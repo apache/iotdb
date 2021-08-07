@@ -20,8 +20,8 @@
 package org.apache.iotdb.cluster.query.reader.mult;
 
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -170,9 +170,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       fetchResult.set(null);
       try {
         sourceInfo
-            .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .getCurAsyncClient(ClusterConstant.getReadOperationTimeoutMS())
             .fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths, handler);
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+        fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
       } catch (TException | InterruptedException e) {
         logger.error("Failed to fetch result async, connect to {}", sourceInfo, e);
         return null;
@@ -184,7 +184,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
   private Map<String, ByteBuffer> fetchResultSync(List<String> paths) throws IOException {
 
     try (SyncDataClient curSyncClient =
-        sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS()); ) {
+        sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS()); ) {
       try {
         return curSyncClient.fetchMultSeries(
             sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);

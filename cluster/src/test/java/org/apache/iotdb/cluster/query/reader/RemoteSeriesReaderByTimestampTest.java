@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -63,64 +63,66 @@ public class RemoteSeriesReaderByTimestampTest {
   public void setUp() {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new AsyncDataClient(null, null, node, null) {
+    ClusterIoTDB.getInstance()
+        .setClientProvider(
+            new DataClientProvider(new Factory()) {
               @Override
-              public void fetchSingleSeriesByTimestamps(
-                  RaftNode header,
-                  long readerId,
-                  List<Long> timestamps,
-                  AsyncMethodCallback<ByteBuffer> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+                return new AsyncDataClient(null, null, node, null) {
+                  @Override
+                  public void fetchSingleSeriesByTimestamps(
+                      RaftNode header,
+                      long readerId,
+                      List<Long> timestamps,
+                      AsyncMethodCallback<ByteBuffer> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                new Thread(
-                        () -> {
-                          ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                          DataOutputStream dataOutputStream =
-                              new DataOutputStream(byteArrayOutputStream);
-                          Object[] results = new Object[timestamps.size()];
-                          for (int i = 0; i < timestamps.size(); i++) {
-                            while (batchData.hasCurrent()) {
-                              long currentTime = batchData.currentTime();
-                              if (currentTime == timestamps.get(i)) {
-                                results[i] = batchData.currentValue();
-                                batchData.next();
-                                break;
-                              } else if (currentTime > timestamps.get(i)) {
-                                results[i] = null;
-                                break;
+                    new Thread(
+                            () -> {
+                              ByteArrayOutputStream byteArrayOutputStream =
+                                  new ByteArrayOutputStream();
+                              DataOutputStream dataOutputStream =
+                                  new DataOutputStream(byteArrayOutputStream);
+                              Object[] results = new Object[timestamps.size()];
+                              for (int i = 0; i < timestamps.size(); i++) {
+                                while (batchData.hasCurrent()) {
+                                  long currentTime = batchData.currentTime();
+                                  if (currentTime == timestamps.get(i)) {
+                                    results[i] = batchData.currentValue();
+                                    batchData.next();
+                                    break;
+                                  } else if (currentTime > timestamps.get(i)) {
+                                    results[i] = null;
+                                    break;
+                                  }
+                                  // time < timestamp, continue
+                                  batchData.next();
+                                }
                               }
-                              // time < timestamp, continue
-                              batchData.next();
-                            }
-                          }
-                          SerializeUtils.serializeObjects(results, dataOutputStream);
+                              SerializeUtils.serializeObjects(results, dataOutputStream);
 
-                          resultHandler.onComplete(
-                              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-                        })
-                    .start();
+                              resultHandler.onComplete(
+                                  ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                            })
+                        .start();
+                  }
+
+                  @Override
+                  public void querySingleSeriesByTimestamp(
+                      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+                };
               }
-
-              @Override
-              public void querySingleSeriesByTimestamp(
-                  SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                new Thread(() -> resultHandler.onComplete(1L)).start();
-              }
-            };
-          }
-        });
+            });
   }
 
   @After

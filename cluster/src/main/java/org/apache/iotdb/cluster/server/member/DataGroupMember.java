@@ -172,11 +172,7 @@ public class DataGroupMember extends RaftMember {
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
   }
 
-  DataGroupMember(
-      TProtocolFactory factory,
-      PartitionGroup nodes,
-      Node thisNode,
-      MetaGroupMember metaGroupMember) {
+  DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
     super(
         "Data("
             + nodes.getHeader().getNode().getInternalIp()
@@ -190,7 +186,6 @@ public class DataGroupMember extends RaftMember {
         new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
         new AsyncClientPool(new SingleManagerFactory(factory)));
-    this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
@@ -293,13 +288,13 @@ public class DataGroupMember extends RaftMember {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
+    public Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, metaGroupMember);
+    public DataGroupMember create(PartitionGroup partitionGroup) {
+      return new DataGroupMember(protocolFactory, partitionGroup, metaGroupMember);
     }
   }
 

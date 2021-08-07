@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -52,9 +52,7 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
+import static junit.framework.TestCase.*;
 import static org.junit.Assert.fail;
 
 public class RemoteSimpleSeriesReaderTest {
@@ -73,50 +71,52 @@ public class RemoteSimpleSeriesReaderTest {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new AsyncDataClient(null, null, node, null) {
+    // TODO fixme : 恢复正常的provider
+    ClusterIoTDB.getInstance()
+        .setClientProvider(
+            new DataClientProvider(new Factory()) {
               @Override
-              public void fetchSingleSeries(
-                  RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
+                return new AsyncDataClient(null, null, node, null) {
+                  @Override
+                  public void fetchSingleSeries(
+                      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                new Thread(
-                        () -> {
-                          if (batchUsed) {
-                            resultHandler.onComplete(ByteBuffer.allocate(0));
-                          } else {
-                            ByteArrayOutputStream byteArrayOutputStream =
-                                new ByteArrayOutputStream();
-                            DataOutputStream dataOutputStream =
-                                new DataOutputStream(byteArrayOutputStream);
-                            SerializeUtils.serializeBatchData(batchData, dataOutputStream);
-                            batchUsed = true;
-                            resultHandler.onComplete(
-                                ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-                          }
-                        })
-                    .start();
+                    new Thread(
+                            () -> {
+                              if (batchUsed) {
+                                resultHandler.onComplete(ByteBuffer.allocate(0));
+                              } else {
+                                ByteArrayOutputStream byteArrayOutputStream =
+                                    new ByteArrayOutputStream();
+                                DataOutputStream dataOutputStream =
+                                    new DataOutputStream(byteArrayOutputStream);
+                                SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+                                batchUsed = true;
+                                resultHandler.onComplete(
+                                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                              }
+                            })
+                        .start();
+                  }
+
+                  @Override
+                  public void querySingleSeries(
+                      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+                };
               }
-
-              @Override
-              public void querySingleSeries(
-                  SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                new Thread(() -> resultHandler.onComplete(1L)).start();
-              }
-            };
-          }
-        });
+            });
   }
 
   @After

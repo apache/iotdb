@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -45,7 +45,7 @@ public class SyncMetaHeartbeatClient extends SyncMetaClient {
                     TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
                     node.getMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET,
-                    RaftServer.getConnectionTimeoutInMS()))));
+                    ClusterConstant.getConnectionTimeoutInMS()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

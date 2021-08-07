@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
@@ -51,7 +52,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -142,7 +142,7 @@ public abstract class RaftMember {
 
   private final Object heartBeatWaitObject = new Object();
 
-  protected Node thisNode = ClusterConstant.EMPTY_NODE;
+  protected Node thisNode = ClusterIoTDB.getInstance().getThisNode();
 
   /** the nodes that belong to the same raft group as thisNode. */
   protected PartitionGroup allNodes;
@@ -963,7 +963,7 @@ public abstract class RaftMember {
       }
     }
 
-    while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
+    while (waitedTime < ClusterConstant.getSyncLeaderMaxWaitMs()) {
       try {
         localAppliedId = logManager.getMaxHaveAppliedCommitIndex();
         logger.debug("{}: synchronizing commitIndex {}/{}", name, localAppliedId, leaderCommitId);
@@ -981,7 +981,7 @@ public abstract class RaftMember {
         // the node may have some inconsistent logs with the leader
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
-          syncLock.wait(RaftServer.getHeartBeatIntervalMs());
+          syncLock.wait(ClusterConstant.getHeartBeatIntervalMs());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -1159,7 +1159,7 @@ public abstract class RaftMember {
     }
     synchronized (commitIdResult) {
       client.requestCommitIndex(getHeader(), new GenericHandler<>(leader.get(), commitIdResult));
-      commitIdResult.wait(RaftServer.getReadOperationTimeoutMS());
+      commitIdResult.wait(ClusterConstant.getReadOperationTimeoutMS());
     }
     return commitIdResult.get();
   }
@@ -1489,10 +1489,10 @@ public abstract class RaftMember {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
       while (voteCounter.get() > 0
-          && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
+          && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
           && voteCounter.get() != Integer.MAX_VALUE) {
         try {
-          voteCounter.wait(RaftServer.getWriteOperationTimeoutMS());
+          voteCounter.wait(ClusterConstant.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
@@ -1839,10 +1839,10 @@ public abstract class RaftMember {
     // many client threads in the peer
     while (peer.getMatchIndex() < log.getCurrLogIndex() - maxLogDiff
         && character == NodeCharacter.LEADER
-        && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+        && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
       synchronized (peer) {
         try {
-          peer.wait(RaftServer.getWriteOperationTimeoutMS());
+          peer.wait(ClusterConstant.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Waiting for peer to catch up interrupted");
@@ -1851,7 +1851,7 @@ public abstract class RaftMember {
       }
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
-    return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
+    return alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS();
   }
 
   private void sendLogSync(
@@ -1943,7 +1943,8 @@ public abstract class RaftMember {
     long alreadyWait = 0;
     Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
     long lastLogIndex = logManager.getLastLogIndex();
-    while (lastLogIndex < prevLogIndex && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
+    while (lastLogIndex < prevLogIndex
+        && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
       try {
         // each time new logs are appended, this will be notified
         synchronized (logUpdateCondition) {
@@ -1960,7 +1961,7 @@ public abstract class RaftMember {
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
 
-    return alreadyWait <= RaftServer.getWriteOperationTimeoutMS();
+    return alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS();
   }
 
   private long checkPrevLogIndex(long prevLogIndex) {

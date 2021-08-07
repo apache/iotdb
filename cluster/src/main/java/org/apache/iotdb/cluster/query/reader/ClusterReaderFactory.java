@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
@@ -44,7 +46,6 @@ import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
@@ -943,15 +944,15 @@ public class ClusterReaderFactory {
     Long executorId;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
       try (SyncDataClient syncDataClient =
-          metaGroupMember
+          ClusterIoTDB.getInstance()
               .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
         try {
           executorId = syncDataClient.getGroupByExecutor(request);
         } catch (TException e) {
