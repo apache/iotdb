@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 import argparse
-import os
 import random
 import time
 import numpy as np
