@@ -99,7 +99,7 @@ public class TabletExample {
    * Read csv file and insert tablet to IoTDB
    *
    * @param args: arg(with default value): arg0: dataFileName(sample.csv), arg1: rowSize(10000),
-   * arg2: colSize(5000).
+   *     arg2: colSize(5000).
    */
   public static void main(String[] args) throws Exception {
 
@@ -163,16 +163,15 @@ public class TabletExample {
     session.executeNonQueryStatement("delete timeseries root.*");
     session.close();
 
-    System.out.println(String.format("load cost: %.3f",
-        ((float) loadCost / 1000_000_000)));
-    System.out.println(String.format("construct tablet cost: %.3f",
-        ((float) (allEnd - allStart - insertCost - loadCost) / 1000_000_000)));
-    System.out.println(String.format("insert tablet cost: %.3f",
-        ((float) insertCost / 1000_000_000)));
-    System.out.println(String.format("total cost: %.3f",
-        ((float) (allEnd - allStart) / 1000_000_000)));
-    System.out.println(String.format("%.3f",
-        ((float) loadCost / 1000_000_000)));
-
+    System.out.println(String.format("load cost: %.3f", ((float) loadCost / 1000_000_000)));
+    System.out.println(
+        String.format(
+            "construct tablet cost: %.3f",
+            ((float) (allEnd - allStart - insertCost - loadCost) / 1000_000_000)));
+    System.out.println(
+        String.format("insert tablet cost: %.3f", ((float) insertCost / 1000_000_000)));
+    System.out.println(
+        String.format("total cost: %.3f", ((float) (allEnd - allStart) / 1000_000_000)));
+    System.out.println(String.format("%.3f", ((float) loadCost / 1000_000_000)));
   }
 }
