@@ -88,7 +88,7 @@ public class TsFileOnlineUpgradeTool extends TsFileRewriteTool {
       return;
     }
 
-    long headerLength =
+    int headerLength =
         TSFileConfig.MAGIC_STRING.getBytes().length
             + TSFileConfig.VERSION_NUMBER_V2.getBytes().length;
     reader.position(headerLength);

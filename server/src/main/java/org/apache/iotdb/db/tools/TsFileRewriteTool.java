@@ -156,7 +156,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     if (!fileCheck()) {
       return;
     }
-    long headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
     reader.position(headerLength);
     // start to scan chunks and chunkGroups
     byte marker;
@@ -315,9 +315,9 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  protected void endChunkGroup() throws IOException, PageException {
-    for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-      tsFileIOWriter.endChunkGroup();
+  protected void endChunkGroup() throws IOException {
+    for (TsFileIOWriter tsFileIoWriter : partitionWriterMap.values()) {
+      tsFileIoWriter.endChunkGroup();
     }
   }
 
