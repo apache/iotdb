@@ -32,7 +32,7 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
-import org.apache.iotdb.db.engine.merge.task.RecoverMergeTask;
+import org.apache.iotdb.db.engine.merge.task.CompactionMergeRecoverTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -103,7 +103,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -487,27 +486,21 @@ public class StorageGroupProcessor {
         this.tsFileManagement.mergingModification = new ModificationFile(mergingMods.getPath());
       }
 
-      RecoverMergeTask recoverMergeTask =
-          new RecoverMergeTask(
+      CompactionMergeRecoverTask recoverTask =
+          new CompactionMergeRecoverTask(
+              tsFileManagement,
               new ArrayList<>(tsFileManagement.getTsFileList(true)),
               tsFileManagement.getTsFileList(false),
               storageGroupSysDir.getPath(),
               tsFileManagement::mergeEndAction,
               taskName,
               IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
-              logicalStorageGroupName);
-      logger.info(
-          "{} - {} a RecoverMergeTask {} starts...",
-          logicalStorageGroupName,
-          virtualStorageGroupId,
-          taskName);
-      recoverMergeTask.recoverMerge(
-          IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-        mergingMods.delete();
-      }
-      recoverCompaction();
-    } catch (IOException | MetadataException e) {
+              logicalStorageGroupName,
+              this::closeCompactionRecoverCallBack);
+
+      CompactionMergeTaskPoolManager.getInstance().submitRecoverTask(recoverTask);
+      logger.info("submit a compaction merge recover task");
+    } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
   }
@@ -526,35 +519,6 @@ public class StorageGroupProcessor {
       }
       clearCompactionStatus();
       return null;
-    }
-  }
-
-  private void recoverCompaction() {
-    if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-        == CompactionStrategy.NO_COMPACTION) {
-      return;
-    }
-    if (!CompactionMergeTaskPoolManager.getInstance().isTerminated()) {
-      logger.info(
-          "{} - {} submit a compaction recover merge task",
-          logicalStorageGroupName,
-          virtualStorageGroupId);
-      try {
-        CompactionMergeTaskPoolManager.getInstance()
-            .submitRecoverTask(
-                tsFileManagement.new CompactionRecoverTask(this::closeCompactionRecoverCallBack));
-      } catch (RejectedExecutionException e) {
-        this.closeCompactionRecoverCallBack(false, 0);
-        logger.error(
-            "{} - {} compaction submit task failed",
-            logicalStorageGroupName,
-            virtualStorageGroupId,
-            e);
-      }
-    } else {
-      logger.error(
-          "{} compaction pool not started ,recover failed",
-          logicalStorageGroupName + "-" + virtualStorageGroupId);
     }
   }
 
@@ -1956,15 +1920,6 @@ public class StorageGroupProcessor {
     logger.info(
         "signal closing storage group condition in {}",
         logicalStorageGroupName + "-" + virtualStorageGroupId);
-
-    if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-        == CompactionStrategy.LEVEL_COMPACTION) {
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(
-              new CompactionOnePartitionTask(
-                  logicalStorageGroupName, tsFileProcessor.getTimeRangeId()));
-      logger.info("submit an compaction task in close unsealed file call back");
-    }
   }
 
   public class CompactionOnePartitionTask extends StorageGroupCompactionTask {
@@ -2120,6 +2075,11 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
+    if (tsFileManagement.recovering) {
+      // doing recovering task
+      logger.info("[Compaction] Compact exits because running recover");
+      return;
+    }
     if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
       CompactionMergeTaskPoolManager.getInstance()
           .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));

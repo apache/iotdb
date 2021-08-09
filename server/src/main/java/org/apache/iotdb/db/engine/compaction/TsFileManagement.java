@@ -63,6 +63,7 @@ public abstract class TsFileManagement {
 
   public volatile boolean isUnseqMerging = false;
   public volatile boolean isSeqMerging = false;
+  public volatile boolean recovering = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
