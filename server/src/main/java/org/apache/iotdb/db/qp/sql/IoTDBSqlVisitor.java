@@ -2009,8 +2009,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     } else if (ctx.LIKE() != null) {
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());
-      }
-      if (ctx.fullPath() != null) {
+      } else if (ctx.fullPath() != null) {
         path = parseFullPath(ctx.fullPath());
       }
       if (path == null) {

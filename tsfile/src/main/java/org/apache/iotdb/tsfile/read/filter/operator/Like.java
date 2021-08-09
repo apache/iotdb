@@ -43,6 +43,8 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected FilterType filterType;
 
+  protected Pattern pattern;
+
   private Like() {}
 
   public Like(String value, FilterType filterType) {
@@ -60,7 +62,6 @@ public class Like<T extends Comparable<T>> implements Filter {
     if (filterType != FilterType.VALUE_FILTER) {
       return false;
     }
-    Pattern pattern;
     try {
       pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {

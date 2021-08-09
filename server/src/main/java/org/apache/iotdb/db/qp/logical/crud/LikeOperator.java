@@ -53,10 +53,6 @@ public class LikeOperator extends FunctionOperator {
     isSingle = true;
   }
 
-  public String getPatternMap() {
-    return value;
-  }
-
   @Override
   protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
       Map<PartialPath, TSDataType> pathTSDataTypeHashMap)
@@ -68,13 +64,14 @@ public class LikeOperator extends FunctionOperator {
     }
     IUnaryExpression ret;
     if (type != TEXT) {
-      throw new LogicalOperatorException(type.toString(), "");
+      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Like'");
+    } else if (value.startsWith("\"") && value.endsWith("\"")) {
+      throw new LogicalOperatorException(value, "Please use single quotation marks");
     } else {
       ret =
           Like.getUnaryExpression(
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
-                      || (value.startsWith("\"") && value.endsWith("\""))
                   ? value.substring(1, value.length() - 1)
                   : value);
     }

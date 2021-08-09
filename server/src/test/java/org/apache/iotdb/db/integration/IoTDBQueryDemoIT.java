@@ -575,22 +575,37 @@ public class IoTDBQueryDemoIT {
         Assert.assertEquals(10, cnt);
       }
 
-      // Match nonexistent string.'s.' is indicates that the starting with s and the last is any
-      // single character
-      retArray =
-          new String[] {
-            "1509465600000,v2,true,",
-            "1509465660000,v2,true,",
-            "1509465720000,v1,false,",
-            "1509465780000,v1,false,",
-            "1509465840000,v1,false,",
-            "1509465900000,v1,false,",
-            "1509465960000,v1,false,",
-            "1509466020000,v1,false,",
-            "1509466080000,v1,false,",
-            "1509466140000,v1,false,",
-          };
-      hasResultSet =
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void LikeNonExistTest() throws ClassNotFoundException {
+
+    // Match nonexistent string.'s.' is indicates that the starting with s and the last is any
+    // single character
+    String[] retArray =
+        new String[] {
+          "1509465600000,v2,true,",
+          "1509465660000,v2,true,",
+          "1509465720000,v1,false,",
+          "1509465780000,v1,false,",
+          "1509465840000,v1,false,",
+          "1509465900000,v1,false,",
+          "1509465960000,v1,false,",
+          "1509466020000,v1,false,",
+          "1509466080000,v1,false,",
+          "1509466140000,v1,false,",
+        };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
           statement.execute(
               "select hardware,status from root.ln.wf02.wt02 where hardware like 's.' ");
       Assert.assertTrue(hasResultSet);

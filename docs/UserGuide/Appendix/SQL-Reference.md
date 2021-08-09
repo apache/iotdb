@@ -730,8 +730,8 @@ stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
 
 Eg. select s1 from root.sg.d1 where s1 like 'Regex'
 Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like "Regex"
-Eg. select * from root.sg.d1 where s1 like "Regex" and time > 100
+Eg. select * from root.sg.d1 where s1 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
 ```
 
 ## Database Management Statement
