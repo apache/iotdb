@@ -81,8 +81,8 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<String> getDevices(String tsFilePath) throws IOException {
-      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
-      return new HashSet<>(fileReader.getAllDevices());
+    TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
+    return new HashSet<>(fileReader.getAllDevices());
   }
 
   @Override

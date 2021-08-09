@@ -294,7 +294,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
               removeRemoteHardLink(resource);
             }
           }
-        } catch (IllegalPathException) {
+        } catch (IllegalPathException e) {
           throw new PullFileException(resource.getTsFilePath(), resource.getSource(), e);
         }
       }

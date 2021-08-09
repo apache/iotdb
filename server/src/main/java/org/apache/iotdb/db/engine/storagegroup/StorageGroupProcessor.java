@@ -387,7 +387,7 @@ public class StorageGroupProcessor {
       String virtualStorageGroupId,
       TsFileFlushPolicy fileFlushPolicy,
       String logicalStorageGroupName)
-          throws StorageGroupProcessorException{
+      throws StorageGroupProcessorException {
     this.virtualStorageGroupId = virtualStorageGroupId;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
@@ -2267,7 +2267,7 @@ public class StorageGroupProcessor {
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
-          throws IllegalPathException {
+      throws IllegalPathException {
     for (String device : newTsFileResource.getDevices()) {
       tryToDeleteLastCacheByDevice(new PartialPath(device));
     }
