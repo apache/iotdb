@@ -123,7 +123,7 @@ public class TabletExample {
 
     Session session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    String dataFileName = "/Users/kangrong/code/github/iotdb-apache/client-py/sample.csv";
+    String dataFileName = "sample.csv";
     int rowSize = 10000;
     int colSize = 5000;
     if (args.length > 1) {
