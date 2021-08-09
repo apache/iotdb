@@ -19,29 +19,28 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.VotingLog;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class AppendNodeEntryHandlerTest {
 
@@ -68,26 +67,27 @@ public class AppendNodeEntryHandlerTest {
     int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     try {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
-      AtomicInteger quorum = new AtomicInteger(5);
+      VotingLog votingLog = new VotingLog(log, 10);
       Peer peer = new Peer(1);
-      synchronized (quorum) {
+      synchronized (votingLog) {
         for (int i = 0; i < 10; i++) {
           AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
           handler.setLeaderShipStale(leadershipStale);
-          handler.setVotedNodeIds(quorum);
-          handler.setLog(log);
+          handler.setLog(votingLog);
           handler.setMember(member);
           handler.setReceiverTerm(receiverTerm);
           handler.setReceiver(TestUtils.getNode(i));
           handler.setPeer(peer);
           long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
-          new Thread(() -> handler.onComplete(resp)).start();
+          AppendEntryResult result = new AppendEntryResult();
+          result.setStatus(resp);
+          new Thread(() -> handler.onComplete(result)).start();
         }
-        quorum.wait();
+        votingLog.wait();
       }
       assertEquals(-1, receiverTerm.get());
       assertFalse(leadershipStale.get());
-      assertEquals(0, quorum.get());
+      assertEquals(5, votingLog.getStronglyAcceptedNodeIds().size());
     } finally {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(replicationNum);
     }
@@ -98,24 +98,25 @@ public class AppendNodeEntryHandlerTest {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
-    AtomicInteger quorum = new AtomicInteger(5);
+    VotingLog votingLog = new VotingLog(log, 10);
     Peer peer = new Peer(1);
 
     for (int i = 0; i < 3; i++) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
-      handler.setVotedNodeIds(quorum);
-      handler.setLog(log);
+      handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(i));
       handler.setPeer(peer);
-      handler.onComplete(Response.RESPONSE_AGREE);
+      AppendEntryResult result = new AppendEntryResult();
+      result.setStatus(Response.RESPONSE_AGREE);
+      handler.onComplete(result);
     }
 
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
-    assertEquals(2, quorum.get());
+    assertEquals(3, votingLog.getStronglyAcceptedNodeIds().size());
   }
 
   @Test
@@ -123,24 +124,23 @@ public class AppendNodeEntryHandlerTest {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
-    AtomicInteger quorum = new AtomicInteger(5);
+    VotingLog votingLog = new VotingLog(log, 10);
     Peer peer = new Peer(1);
 
-    synchronized (quorum) {
+    synchronized (votingLog) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
-      handler.setVotedNodeIds(quorum);
-      handler.setLog(log);
+      handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
       handler.setPeer(peer);
-      new Thread(() -> handler.onComplete(100L)).start();
-      quorum.wait();
+      new Thread(() -> handler.onComplete(new AppendEntryResult(100L))).start();
+      votingLog.wait();
     }
     assertEquals(100, receiverTerm.get());
     assertTrue(leadershipStale.get());
-    assertEquals(5, quorum.get());
+    assertEquals(0, votingLog.getStronglyAcceptedNodeIds().size());
   }
 
   @Test
@@ -151,13 +151,12 @@ public class AppendNodeEntryHandlerTest {
     int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(10);
     try {
-      AtomicInteger quorum = new AtomicInteger(5);
+      VotingLog votingLog = new VotingLog(log, 10);
       Peer peer = new Peer(1);
 
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
-      handler.setVotedNodeIds(quorum);
-      handler.setLog(log);
+      handler.setLog(votingLog);
       handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
@@ -166,7 +165,7 @@ public class AppendNodeEntryHandlerTest {
 
       assertEquals(-1, receiverTerm.get());
       assertFalse(leadershipStale.get());
-      assertEquals(5, quorum.get());
+      assertEquals(0, votingLog.getStronglyAcceptedNodeIds().size());
     } finally {
       ClusterDescriptor.getInstance().getConfig().setReplicationNum(replicationNum);
     }

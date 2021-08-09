@@ -18,15 +18,13 @@
  */
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
 
 import java.net.ConnectException;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -47,14 +45,13 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
 
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
-  private RaftMember member;
-  private AtomicLong receiverTerm;
-  private Log log;
-  private Set<Integer> votedNodeIds;
-  private AtomicBoolean leaderShipStale;
-  private Node receiver;
-  private Peer peer;
-  private int quorumSize;
+  protected RaftMember member;
+  protected AtomicLong receiverTerm;
+  protected VotingLog log;
+  protected AtomicBoolean leaderShipStale;
+  protected Node receiver;
+  protected Peer peer;
+  protected int quorumSize;
   // initialized as the quorum size, and decrease by 1 each time when we receive a rejection or
   // an exception, upon decreased to zero, the request will be early-aborted
   private int failedDecreasingCounter;
@@ -74,7 +71,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     if (Timer.ENABLE_INSTRUMENTING) {
       Statistic.RAFT_SENDER_SEND_LOG_ASYNC.calOperationCostTimeFromStart(sendStart);
     }
-    if (votedNodeIds.contains(Integer.MAX_VALUE)) {
+    if (log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
       // the request already failed
       return;
     }
@@ -84,10 +81,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       return;
     }
     long resp = response.status;
-    synchronized (votedNodeIds) {
+    synchronized (log) {
       if (resp == RESPONSE_STRONG_ACCEPT) {
-        votedNodeIds.add(receiver.nodeIdentifier);
-        int remaining = quorumSize - votedNodeIds.size();
+        log.getStronglyAcceptedNodeIds().add(receiver.nodeIdentifier);
+        int remaining = quorumSize - log.getStronglyAcceptedNodeIds().size();
         logger.debug(
             "{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
             member.getName(),
@@ -98,11 +95,11 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           logger.debug(
               "{}: Log [{}] {} is accepted by the quorum",
               member.getName(),
-              log.getCurrLogIndex(),
+              log.getLog(),
               log);
-          votedNodeIds.notifyAll();
+          log.notifyAll();
         }
-        peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));
+        peer.setMatchIndex(Math.max(log.getLog().getCurrLogIndex(), peer.getMatchIndex()));
       } else if (resp > 0) {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
@@ -117,7 +114,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
           receiverTerm.set(resp);
         }
         leaderShipStale.set(true);
-        votedNodeIds.notifyAll();
+        log.notifyAll();
       } else {
         // e.g., Response.RESPONSE_LOG_MISMATCH
         logger.debug(
@@ -145,27 +142,22 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   }
 
   private void onFail() {
-    synchronized (votedNodeIds) {
+    synchronized (log) {
       failedDecreasingCounter--;
       if (failedDecreasingCounter <= 0) {
         // quorum members have failed, there is no need to wait for others
-        votedNodeIds.add(Integer.MAX_VALUE);
-        votedNodeIds.notifyAll();
+        log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
+        log.notifyAll();
       }
     }
   }
 
-  public void setLog(Log log) {
+  public void setLog(VotingLog log) {
     this.log = log;
   }
 
   public void setMember(RaftMember member) {
     this.member = member;
-  }
-
-  public void setVotedNodeIds(Set<Integer> votedNodeIds) {
-    this.votedNodeIds = votedNodeIds;
-
   }
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {

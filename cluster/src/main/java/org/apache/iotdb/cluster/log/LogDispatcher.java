@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -53,7 +52,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -97,14 +95,14 @@ public class LogDispatcher {
     executorService.awaitTermination(10, TimeUnit.SECONDS);
   }
 
-  public void offer(SendLogRequest log) {
+  public void offer(SendLogRequest request) {
     // do serialization here to avoid taking LogManager for too long
     if (!nodeLogQueues.isEmpty()) {
-      log.serializedLogFuture =
+      request.serializedLogFuture =
           serializationService.submit(
               () -> {
-                ByteBuffer byteBuffer = log.getLog().serialize();
-                log.getLog().setByteSize(byteBuffer.array().length);
+                ByteBuffer byteBuffer = request.getVotingLog().getLog().serialize();
+                request.getVotingLog().getLog().setByteSize(byteBuffer.array().length);
                 return byteBuffer;
               });
     }
@@ -115,22 +113,22 @@ public class LogDispatcher {
         if (ClusterDescriptor.getInstance().getConfig().isWaitForSlowNode()) {
           addSucceeded =
               nodeLogQueue.offer(
-                  log,
+                  request,
                   ClusterDescriptor.getInstance().getConfig().getWriteOperationTimeoutMS(),
                   TimeUnit.MILLISECONDS);
         } else {
-          addSucceeded = nodeLogQueue.add(log);
+          addSucceeded = nodeLogQueue.add(request);
         }
 
         if (!addSucceeded) {
           logger.debug(
-              "Log queue[{}] of {} is full, ignore the log to this node", i, member.getName());
+              "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
         } else {
-          log.setEnqueueTime(System.nanoTime());
+          request.setEnqueueTime(System.nanoTime());
         }
       } catch (IllegalStateException e) {
         logger.debug(
-            "Log queue[{}] of {} is full, ignore the log to this node", i, member.getName());
+            "Log queue[{}] of {} is full, ignore the request to this node", i, member.getName());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
@@ -153,8 +151,7 @@ public class LogDispatcher {
 
   public static class SendLogRequest {
 
-    private Log log;
-    private Set<Integer> votedNodeIds;
+    private VotingLog votingLog;
     private AtomicBoolean leaderShipStale;
     private AtomicLong newLeaderTerm;
     private AppendEntryRequest appendEntryRequest;
@@ -163,34 +160,24 @@ public class LogDispatcher {
     private int quorumSize;
 
     public SendLogRequest(
-        Log log,
-        Set<Integer> votedNodeIds,
+        VotingLog log,
         AtomicBoolean leaderShipStale,
         AtomicLong newLeaderTerm,
         AppendEntryRequest appendEntryRequest,
         int quorumSize) {
-      this.setLog(log);
-      this.setVotedNodeIds(votedNodeIds);
+      this.setVotingLog(log);
       this.setLeaderShipStale(leaderShipStale);
       this.setNewLeaderTerm(newLeaderTerm);
       this.setAppendEntryRequest(appendEntryRequest);
       this.setQuorumSize(quorumSize);
     }
 
-    public Set<Integer> getVotedNodeIds() {
-      return votedNodeIds;
+    public VotingLog getVotingLog() {
+      return votingLog;
     }
 
-    public void setVotedNodeIds(Set<Integer> votedNodeIds) {
-      this.votedNodeIds = votedNodeIds;
-    }
-
-    public Log getLog() {
-      return log;
-    }
-
-    public void setLog(Log log) {
-      this.log = log;
+    public void setVotingLog(VotingLog votingLog) {
+      this.votingLog = votingLog;
     }
 
     public long getEnqueueTime() {
@@ -235,7 +222,7 @@ public class LogDispatcher {
 
     @Override
     public String toString() {
-      return "SendLogRequest{" + "log=" + log + '}';
+      return "SendLogRequest{" + "log=" + votingLog + '}';
     }
   }
 
@@ -300,12 +287,12 @@ public class LogDispatcher {
         List<ByteBuffer> logList, AppendEntriesRequest request, List<SendLogRequest> currBatch) {
 
       long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-      if (!member.waitForPrevLog(peer, currBatch.get(0).getLog())) {
+      if (!member.waitForPrevLog(peer, currBatch.get(0).getVotingLog().getLog())) {
         logger.warn(
             "{}: node {} timed out when appending {}",
             member.getName(),
             receiver,
-            currBatch.get(0).getLog());
+            currBatch.get(0).getVotingLog());
         return;
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
@@ -346,7 +333,7 @@ public class LogDispatcher {
 
       request.setEntries(logList);
       // set index for raft
-      request.setPrevLogIndex(currBatch.get(firstIndex).getLog().getCurrLogIndex() - 1);
+      request.setPrevLogIndex(currBatch.get(firstIndex).getVotingLog().getLog().getCurrLogIndex() - 1);
       try {
         request.setPrevLogTerm(currBatch.get(firstIndex).getAppendEntryRequest().prevLogTerm);
       } catch (Exception e) {
@@ -359,8 +346,8 @@ public class LogDispatcher {
       int logIndex = 0;
       logger.debug(
           "send logs from index {} to {}",
-          currBatch.get(0).getLog().getCurrLogIndex(),
-          currBatch.get(currBatch.size() - 1).getLog().getCurrLogIndex());
+          currBatch.get(0).getVotingLog().getLog().getCurrLogIndex(),
+          currBatch.get(currBatch.size() - 1).getVotingLog().getLog().getCurrLogIndex());
       while (logIndex < currBatch.size()) {
         long logSize = IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize();
         List<ByteBuffer> logList = new ArrayList<>();
@@ -373,7 +360,7 @@ public class LogDispatcher {
           }
           logSize -= curSize;
           Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-              currBatch.get(logIndex).getLog().getCreateTime());
+              currBatch.get(logIndex).getVotingLog().getLog().getCreateTime());
           logList.add(currBatch.get(logIndex).getAppendEntryRequest().entry);
         }
 
@@ -385,7 +372,7 @@ public class LogDispatcher {
         }
         for (; prevIndex < logIndex; prevIndex++) {
           Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
-              currBatch.get(prevIndex).getLog().getCreateTime());
+              currBatch.get(prevIndex).getVotingLog().getLog().getCreateTime());
         }
       }
     }
@@ -406,17 +393,16 @@ public class LogDispatcher {
 
     void sendLog(SendLogRequest logRequest) {
       Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
+          logRequest.getVotingLog().getLog().getCreateTime());
       member.sendLogToFollower(
-          logRequest.getLog(),
-          logRequest.getVotedNodeIds(),
+          logRequest.getVotingLog(),
           receiver,
           logRequest.getLeaderShipStale(),
           logRequest.getNewLeaderTerm(),
           logRequest.getAppendEntryRequest(),
           logRequest.getQuorumSize());
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
+          logRequest.getVotingLog().getLog().getCreateTime());
     }
 
     class AppendEntriesHandler implements AsyncMethodCallback<AppendEntryResult> {
@@ -427,9 +413,8 @@ public class LogDispatcher {
         singleEntryHandlers = new ArrayList<>(batch.size());
         for (SendLogRequest sendLogRequest : batch) {
           AppendNodeEntryHandler handler =
-              getAppendNodeEntryHandler(
-                  sendLogRequest.getLog(),
-                  sendLogRequest.getVotedNodeIds(),
+              member.getAppendNodeEntryHandler(
+                  sendLogRequest.getVotingLog(),
                   receiver,
                   sendLogRequest.getLeaderShipStale(),
                   sendLogRequest.getNewLeaderTerm(),
@@ -451,26 +436,6 @@ public class LogDispatcher {
         for (AsyncMethodCallback<AppendEntryResult> singleEntryHandler : singleEntryHandlers) {
           singleEntryHandler.onError(e);
         }
-      }
-
-      private AppendNodeEntryHandler getAppendNodeEntryHandler(
-          Log log,
-          Set<Integer> voteCounter,
-          Node node,
-          AtomicBoolean leaderShipStale,
-          AtomicLong newLeaderTerm,
-          Peer peer,
-          int quorumSize) {
-        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-        handler.setReceiver(node);
-        handler.setVotedNodeIds(voteCounter);
-        handler.setLeaderShipStale(leaderShipStale);
-        handler.setLog(log);
-        handler.setMember(member);
-        handler.setPeer(peer);
-        handler.setReceiverTerm(newLeaderTerm);
-        handler.setQuorumSize(quorumSize);
-        return handler;
       }
     }
   }

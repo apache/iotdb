@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -74,7 +75,7 @@ public class LogCatchUpTaskTest {
           return new TestAsyncClient() {
             @Override
             public void appendEntry(
-                AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+                AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
               new Thread(
                       () -> {
                         try {
@@ -88,7 +89,7 @@ public class LogCatchUpTaskTest {
 
             @Override
             public void appendEntries(
-                AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+                AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
               new Thread(
                       () -> {
                         try {
@@ -106,7 +107,7 @@ public class LogCatchUpTaskTest {
         public Client getSyncClient(Node node) {
           return new TestSyncClient() {
             @Override
-            public long appendEntry(AppendEntryRequest request) throws TException {
+            public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
               try {
                 return dummyAppendEntry(request);
               } catch (UnknownLogTypeException e) {
@@ -115,7 +116,7 @@ public class LogCatchUpTaskTest {
             }
 
             @Override
-            public long appendEntries(AppendEntriesRequest request) throws TException {
+            public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
               try {
                 return dummyAppendEntries(request);
               } catch (UnknownLogTypeException e) {
@@ -131,17 +132,17 @@ public class LogCatchUpTaskTest {
         }
       };
 
-  private long dummyAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult dummyAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
     LogParser parser = LogParser.getINSTANCE();
     Log testLog = parser.parse(request.entry);
     receivedLogs.add(testLog);
     if (testLeadershipFlag && testLog.getCurrLogIndex() == 4) {
       sender.setCharacter(NodeCharacter.ELECTOR);
     }
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
-  private long dummyAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult dummyAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
     LogParser parser = LogParser.getINSTANCE();
     Log testLog;
     for (ByteBuffer byteBuffer : request.getEntries()) {
@@ -149,11 +150,11 @@ public class LogCatchUpTaskTest {
       receivedLogs.add(testLog);
       if (testLog != null && testLeadershipFlag && testLog.getCurrLogIndex() >= 1023) {
         // return a larger term to indicate that the leader has changed
-        return sender.getTerm().get() + 1;
+        return new AppendEntryResult(sender.getTerm().get() + 1);
       }
     }
 
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
   @Before

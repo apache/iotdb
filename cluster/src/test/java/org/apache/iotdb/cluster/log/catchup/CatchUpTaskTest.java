@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -76,12 +77,12 @@ public class CatchUpTaskTest {
         public Client getSyncClient(Node node) {
           return new TestSyncClient() {
             @Override
-            public long appendEntry(AppendEntryRequest request) {
+            public AppendEntryResult appendEntry(AppendEntryRequest request) {
               return dummyAppendEntry(request);
             }
 
             @Override
-            public long appendEntries(AppendEntriesRequest request) {
+            public AppendEntryResult appendEntries(AppendEntriesRequest request) {
               return dummyAppendEntries(request);
             }
 
@@ -107,13 +108,13 @@ public class CatchUpTaskTest {
           return new TestAsyncClient() {
             @Override
             public void appendEntry(
-                AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+                AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
               new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
             }
 
             @Override
             public void appendEntries(
-                AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+                AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
               new Thread(() -> resultHandler.onComplete(dummyAppendEntries(request))).start();
             }
 
@@ -137,38 +138,38 @@ public class CatchUpTaskTest {
         }
       };
 
-  private long dummyAppendEntry(AppendEntryRequest request) {
+  private AppendEntryResult dummyAppendEntry(AppendEntryRequest request) {
     Log log = receivedLogs.get(receivedLogs.size() - 1);
     Log testLog;
     try {
       testLog = LogParser.getINSTANCE().parse(request.entry);
     } catch (Exception e) {
-      return Response.RESPONSE_NULL;
+      return new AppendEntryResult(Response.RESPONSE_NULL);
     }
     if (testLog.getCurrLogIndex() == log.getCurrLogIndex() + 1) {
       leaderCommit = Math.max(request.leaderCommit, leaderCommit);
       receivedLogs.add(testLog);
-      return Response.RESPONSE_AGREE;
+      return new AppendEntryResult(Response.RESPONSE_AGREE);
     }
     if (testLog.getCurrLogIndex() == log.getCurrLogIndex()) {
       leaderCommit = Math.max(request.leaderCommit, leaderCommit);
-      return Response.RESPONSE_AGREE;
+      return new AppendEntryResult(Response.RESPONSE_AGREE);
     }
-    return Response.RESPONSE_LOG_MISMATCH;
+    return new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH);
   }
 
-  private long dummyAppendEntries(AppendEntriesRequest request) {
+  private AppendEntryResult dummyAppendEntries(AppendEntriesRequest request) {
     for (ByteBuffer byteBuffer : request.getEntries()) {
       Log testLog;
       try {
         testLog = LogParser.getINSTANCE().parse(byteBuffer);
       } catch (Exception e) {
-        return Response.RESPONSE_NULL;
+        return new AppendEntryResult(Response.RESPONSE_NULL);
       }
       receivedLogs.add(testLog);
     }
     leaderCommit = Math.max(request.leaderCommit, leaderCommit);
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
   private boolean dummyMatchTerm(long index, long term) {

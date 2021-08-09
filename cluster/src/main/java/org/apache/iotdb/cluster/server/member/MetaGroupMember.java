@@ -141,13 +141,19 @@ import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckRes
 @SuppressWarnings("java:S1135")
 public class MetaGroupMember extends RaftMember {
 
-  /** the file that contains the identifier of this node */
+  /**
+   * the file that contains the identifier of this node
+   */
   static final String NODE_IDENTIFIER_FILE_NAME =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "node_identifier";
-  /** the file that contains the serialized partition table */
+  /**
+   * the file that contains the serialized partition table
+   */
   static final String PARTITION_FILE_NAME =
       IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "partitions";
-  /** in case of data loss, some file changes would be made to a temporary file first */
+  /**
+   * in case of data loss, some file changes would be made to a temporary file first
+   */
   private static final String TEMP_SUFFIX = ".tmp";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
@@ -163,7 +169,9 @@ public class MetaGroupMember extends RaftMember {
    */
   private static final int REPORT_INTERVAL_SEC = 10;
 
-  /** how many times is a data record replicated, also the number of nodes in a data group */
+  /**
+   * how many times is a data record replicated, also the number of nodes in a data group
+   */
   private static final int REPLICATION_NUM =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
@@ -190,9 +198,13 @@ public class MetaGroupMember extends RaftMember {
    */
   private Map<Integer, Node> idNodeMap = null;
 
-  /** nodes in the cluster and data partitioning */
+  /**
+   * nodes in the cluster and data partitioning
+   */
   private PartitionTable partitionTable;
-  /** router calculates the partition groups that a partitioned plan should be sent to */
+  /**
+   * router calculates the partition groups that a partitioned plan should be sent to
+   */
   private ClusterPlanRouter router;
   /**
    * each node contains multiple DataGroupMembers and they are managed by a DataClusterServer acting
@@ -200,7 +212,9 @@ public class MetaGroupMember extends RaftMember {
    */
   private DataClusterServer dataClusterServer;
 
-  /** each node starts a data heartbeat server to transfer heartbeat requests */
+  /**
+   * each node starts a data heartbeat server to transfer heartbeat requests
+   */
   private DataHeartbeatServer dataHeartbeatServer;
 
   /**
@@ -223,7 +237,9 @@ public class MetaGroupMember extends RaftMember {
    */
   private StartUpStatus startUpStatus;
 
-  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
+  /**
+   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
+   */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   private Coordinator coordinator;
@@ -241,7 +257,8 @@ public class MetaGroupMember extends RaftMember {
   }
 
   @TestOnly
-  public MetaGroupMember() {}
+  public MetaGroupMember() {
+  }
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator)
       throws QueryProcessException {
@@ -394,7 +411,7 @@ public class MetaGroupMember extends RaftMember {
       Node node = ClusterUtils.parseNode(seedUrl);
       if (node != null
           && (!node.getInternalIp().equals(thisNode.internalIp)
-              || node.getMetaPort() != thisNode.getMetaPort())
+          || node.getMetaPort() != thisNode.getMetaPort())
           && !allNodes.contains(node)) {
         // do not add the local node since it is added in the constructor
         allNodes.add(node);
@@ -722,7 +739,9 @@ public class MetaGroupMember extends RaftMember {
     blindNodes.add(node);
   }
 
-  /** @return whether a node wants the partition table. */
+  /**
+   * @return whether a node wants the partition table.
+   */
   public boolean isNodeBlind(Node node) {
     return blindNodes.contains(node);
   }
@@ -735,7 +754,9 @@ public class MetaGroupMember extends RaftMember {
     blindNodes.remove(node);
   }
 
-  /** Register the identifier for the node if it does not conflict with other nodes. */
+  /**
+   * Register the identifier for the node if it does not conflict with other nodes.
+   */
   private void registerNodeIdentifier(Node node, int identifier) {
     synchronized (idNodeMap) {
       Node conflictNode = idNodeMap.get(identifier);
@@ -759,7 +780,9 @@ public class MetaGroupMember extends RaftMember {
     idNodeMap.put(thisNode.getNodeIdentifier(), thisNode);
   }
 
-  /** @return Whether all nodes' identifier is known. */
+  /**
+   * @return Whether all nodes' identifier is known.
+   */
   private boolean allNodesIdKnown() {
     return idNodeMap != null && idNodeMap.size() == allNodes.size();
   }
@@ -784,7 +807,9 @@ public class MetaGroupMember extends RaftMember {
     logger.info("Sub-servers started.");
   }
 
-  /** When the node restarts, it sends handshakes to all other nodes so they may know it is back. */
+  /**
+   * When the node restarts, it sends handshakes to all other nodes so they may know it is back.
+   */
   private void sendHandshake() {
     for (Node node : allNodes) {
       try {
@@ -838,9 +863,9 @@ public class MetaGroupMember extends RaftMember {
    * immediately. If the identifier of "node" conflicts with an existing node, the request will be
    * turned down.
    *
-   * @param node cannot be the local node
+   * @param node          cannot be the local node
    * @param startUpStatus the start up status of the new node
-   * @param response the response that will be sent to "node"
+   * @param response      the response that will be sent to "node"
    * @return true if the process is over, false if the request should be forwarded
    */
   private boolean processAddNodeLocally(
@@ -1098,12 +1123,15 @@ public class MetaGroupMember extends RaftMember {
     AppendEntryRequest request = buildAppendEntryRequest(log, true);
 
     // ask for votes from each node
-    int[] groupRemainings = askGroupVotes(nodeRing, request, leaderShipStale, log, newLeaderTerm);
+    // a group is considered successfully received the log if such members receive the log
+    int groupQuorum = REPLICATION_NUM / 2 + 1;
+    Set<Integer>[] groupRemainings = askGroupVotes(nodeRing, request, leaderShipStale, log,
+        newLeaderTerm, groupQuorum);
 
     if (!leaderShipStale.get()) {
       // if all quorums of all groups have received this log, it is considered succeeded.
-      for (int remaining : groupRemainings) {
-        if (remaining > 0) {
+      for (Set<Integer> remaining : groupRemainings) {
+        if (remaining.size() < groupQuorum) {
           return AppendLogResult.TIME_OUT;
         }
       }
@@ -1123,20 +1151,21 @@ public class MetaGroupMember extends RaftMember {
   @SuppressWarnings({"java:S2445", "java:S2274"})
   // groupRemaining is shared with the handlers,
   // and we do not wait infinitely to enable timeouts
-  private int[] askGroupVotes(
+  private Set<Integer>[] askGroupVotes(
       List<Node> nodeRing,
       AppendEntryRequest request,
       AtomicBoolean leaderShipStale,
       Log log,
-      AtomicLong newLeaderTerm) {
+      AtomicLong newLeaderTerm,
+      int quorumSize) {
     // each node will be the header of a group, we use the node to represent the group
     int nodeSize = nodeRing.size();
     // the decreasing counters of how many nodes in a group has received the log, each time a
     // node receive the log, the counters of all groups it is in will decrease by 1
-    int[] groupRemainings = new int[nodeSize];
-    // a group is considered successfully received the log if such members receive the log
-    int groupQuorum = REPLICATION_NUM / 2 + 1;
-    Arrays.fill(groupRemainings, groupQuorum);
+    Set<Integer>[] groupRemainings = new Set[nodeSize];
+    for (int i = 0; i < groupRemainings.length; i++) {
+      groupRemainings[i] = new HashSet<>();
+    }
 
     synchronized (groupRemainings) {
       // ask a vote from every node
@@ -1150,11 +1179,11 @@ public class MetaGroupMember extends RaftMember {
             if (groupIndex < 0) {
               groupIndex += groupRemainings.length;
             }
-            groupRemainings[groupIndex]--;
+            groupRemainings[groupIndex].add(thisNode.nodeIdentifier);
           }
         } else {
           askRemoteGroupVote(
-              node, groupRemainings, i, leaderShipStale, log, newLeaderTerm, request);
+              node, groupRemainings, i, leaderShipStale, log, newLeaderTerm, request, quorumSize);
         }
       }
 
@@ -1170,15 +1199,17 @@ public class MetaGroupMember extends RaftMember {
 
   private void askRemoteGroupVote(
       Node node,
-      int[] groupRemainings,
+      Set<Integer>[] groupRemainings,
       int nodeIndex,
       AtomicBoolean leaderShipStale,
       Log log,
       AtomicLong newLeaderTerm,
-      AppendEntryRequest request) {
+      AppendEntryRequest request,
+      int quorumSize) {
     AppendGroupEntryHandler handler =
         new AppendGroupEntryHandler(
-            groupRemainings, nodeIndex, node, leaderShipStale, log, newLeaderTerm, this);
+            groupRemainings, nodeIndex, node, leaderShipStale, log, newLeaderTerm, this,
+            quorumSize);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
       try {
@@ -1224,7 +1255,9 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  /** Load the partition table from a local file if it can be found. */
+  /**
+   * Load the partition table from a local file if it can be found.
+   */
   private void loadPartitionTable() {
     File partitionFile = new File(PARTITION_FILE_NAME);
     if (!partitionFile.exists() && !recoverPartitionTableFile()) {
@@ -1329,7 +1362,9 @@ public class MetaGroupMember extends RaftMember {
         thisNode.getInternalIp(), thisNode.getMetaPort(), System.currentTimeMillis());
   }
 
-  /** Set the node's identifier to "identifier", also save it to a local file in text format. */
+  /**
+   * Set the node's identifier to "identifier", also save it to a local file in text format.
+   */
   private void setNodeIdentifier(int identifier) {
     logger.info("The identifier of this node has been set to {}", identifier);
     thisNode.setNodeIdentifier(identifier);
@@ -1435,7 +1470,7 @@ public class MetaGroupMember extends RaftMember {
    * obtaining partition group based on path and intervals
    *
    * @param intervals time intervals, include minimum and maximum value
-   * @param path partial path
+   * @param path      partial path
    * @return data partition on which the current interval of the current path is stored
    * @throws StorageEngineException if Failed to get storage group path
    */
@@ -1634,7 +1669,7 @@ public class MetaGroupMember extends RaftMember {
           case TIME_OUT:
             logger.info("Removal request of {} timed out", target);
             break;
-            // retry
+          // retry
           case LEADERSHIP_STALE:
           default:
             return Response.RESPONSE_NULL;
@@ -1761,9 +1796,9 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Get a local DataGroupMember that is in the group of "header" and should process "request".
    *
-   * @param header the header of the group which the local node is in
+   * @param header  the header of the group which the local node is in
    * @param request the toString() of this parameter should explain what the request is and it is
-   *     only used in logs for tracing
+   *                only used in logs for tracing
    */
   public DataGroupMember getLocalDataMember(Node header, Object request) {
     return dataClusterServer.getDataMember(header, null, request);

@@ -19,9 +19,31 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ConcurrentModificationException;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
@@ -39,6 +61,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -81,38 +104,10 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.TException;
-import org.checkerframework.checker.units.qual.A;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.SocketTimeoutException;
-import java.nio.BufferUnderflowException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.ConcurrentModificationException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so
@@ -694,8 +689,7 @@ public abstract class RaftMember {
   }
 
   public void sendLogAsync(
-      Log log,
-      Set<Integer> votedNodeIds,
+      VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
@@ -706,7 +700,7 @@ public abstract class RaftMember {
     AsyncClient client = getSendLogAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, peer
+          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, peer
               , quorumSize);
       try {
         if (indirectReceivers == null || indirectReceivers.isEmpty()) {
@@ -1143,12 +1137,12 @@ public abstract class RaftMember {
     try {
       AppendLogResult appendLogResult =
           waitAppendResult(
-              sendLogRequest.getVotedNodeIds(),
+              sendLogRequest.getVotingLog(),
               sendLogRequest.getLeaderShipStale(),
               sendLogRequest.getNewLeaderTerm(),
               sendLogRequest.getQuorumSize());
       Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
-          sendLogRequest.getLog().getCreateTime());
+          sendLogRequest.getVotingLog().getLog().getCreateTime());
       switch (appendLogResult) {
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
@@ -1171,7 +1165,7 @@ public abstract class RaftMember {
   }
 
   public SendLogRequest buildSendLogRequest(Log log) {
-    Set<Integer> votedNodeIds = new HashSet<>(allNodes.size());
+    VotingLog votingLog = buildVotingLog(log);
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
@@ -1179,8 +1173,12 @@ public abstract class RaftMember {
     AppendEntryRequest appendEntryRequest = buildAppendEntryRequest(log, false);
     Statistic.RAFT_SENDER_BUILD_APPEND_REQUEST.calOperationCostTimeFromStart(startTime);
 
-    return new SendLogRequest(log, votedNodeIds, leaderShipStale, newLeaderTerm,
+    return new SendLogRequest(votingLog, leaderShipStale, newLeaderTerm,
         appendEntryRequest, allNodes.size() / 2);
+  }
+
+  protected VotingLog buildVotingLog(Log log) {
+    return new VotingLog(log, allNodes.size());
   }
 
   /**
@@ -1536,18 +1534,18 @@ public abstract class RaftMember {
    */
   @SuppressWarnings({"java:S2445"}) // safe synchronized
   private AppendLogResult waitAppendResult(
-      Set<Integer> votedNodeIds, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
+      VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm,
       int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
-    synchronized (votedNodeIds) {
+    synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (votedNodeIds.size() >= quorumSize
+      while (log.getStronglyAcceptedNodeIds().size() >= quorumSize
           && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
-          && !votedNodeIds.contains(Integer.MAX_VALUE)) {
+          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {
-          votedNodeIds.wait(RaftServer.getWriteOperationTimeoutMS());
+          log.wait(RaftServer.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
@@ -1568,7 +1566,7 @@ public abstract class RaftMember {
     }
 
     // cannot get enough agreements within a certain amount of time
-    if (votedNodeIds.size() < quorumSize) {
+    if (log.getStronglyAcceptedNodeIds().size() < quorumSize) {
       return AppendLogResult.TIME_OUT;
     }
 
@@ -1786,11 +1784,11 @@ public abstract class RaftMember {
   private AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum
-      return sendLogToFollowers(log, new HashSet<>(), allNodes.size() / 2);
+      return sendLogToFollowers(buildVotingLog(log), allNodes.size() / 2);
     } else {
       // make sure quorum does not exceed the number of members - 1
       return sendLogToFollowers(
-          log, new HashSet<>(), Math.min(requiredQuorum, allNodes.size() - 1));
+          buildVotingLog(log), Math.min(requiredQuorum, allNodes.size() - 1));
     }
   }
 
@@ -1800,10 +1798,10 @@ public abstract class RaftMember {
    * than the local term, retire from leader and return a LEADERSHIP_STALE. If "voteCounter" is
    * still positive after a certain time, return TIME_OUT.
    *
-   * @param votedNodeIds a set of voted nodes' identifiers
+   * @param log a entry that is to be voted for
    * @return an AppendLogResult indicating a success or a failure and why
    */
-  private AppendLogResult sendLogToFollowers(Log log, Set<Integer> votedNodeIds, int quorumSize) {
+  private AppendLogResult sendLogToFollowers(VotingLog log, int quorumSize) {
     if (allNodes.size() == 1) {
       // single node group, does not need the agreement of others
       return AppendLogResult.OK;
@@ -1815,7 +1813,7 @@ public abstract class RaftMember {
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
-    AppendEntryRequest request = buildAppendEntryRequest(log, true);
+    AppendEntryRequest request = buildAppendEntryRequest(log.getLog(), true);
 
     try {
       if (allNodes.size() > 2) {
@@ -1825,7 +1823,7 @@ public abstract class RaftMember {
           appendLogThreadPool.submit(
               () ->
                   sendLogToFollower(
-                      log, votedNodeIds, node, leaderShipStale, newLeaderTerm, request, quorumSize));
+                      log, node, leaderShipStale, newLeaderTerm, request, quorumSize));
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -1834,7 +1832,7 @@ public abstract class RaftMember {
         // there is only one member, send to it within this thread to reduce thread switching
         // overhead
         for (Node node : allNodes) {
-          sendLogToFollower(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, request, quorumSize);
+          sendLogToFollower(log, node, leaderShipStale, newLeaderTerm, request, quorumSize);
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -1846,18 +1844,17 @@ public abstract class RaftMember {
       return AppendLogResult.TIME_OUT;
     }
 
-    return waitAppendResult(votedNodeIds, leaderShipStale, newLeaderTerm, quorumSize);
+    return waitAppendResult(log, leaderShipStale, newLeaderTerm, quorumSize);
   }
 
   public void sendLogToFollower(
-      Log log,
-      Set<Integer> votedNodeIds,
+      VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
       AppendEntryRequest request,
       int quorumSize) {
-    sendLogToFollower(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, request,
+    sendLogToFollower(log, node, leaderShipStale, newLeaderTerm, request,
         quorumSize, Collections.emptyList());
   }
 
@@ -1865,8 +1862,7 @@ public abstract class RaftMember {
    * Send "log" to "node".
    */
   public void sendLogToFollower(
-      Log log,
-      Set<Integer> votedNodeIds,
+      VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
@@ -1882,7 +1878,7 @@ public abstract class RaftMember {
      */
     long startTime = Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.getOperationStartTime();
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    if (!waitForPrevLog(peer, log)) {
+    if (!waitForPrevLog(peer, log.getLog())) {
       logger.warn("{}: node {} timed out when appending {}", name, node, log);
       return;
     }
@@ -1893,10 +1889,10 @@ public abstract class RaftMember {
     }
 
     if (config.isUseAsyncServer()) {
-      sendLogAsync(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, request, peer,
+      sendLogAsync(log, node, leaderShipStale, newLeaderTerm, request, peer,
           quorumSize, indirectReceivers);
     } else {
-      sendLogSync(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, request, peer,
+      sendLogSync(log, node, leaderShipStale, newLeaderTerm, request, peer,
           quorumSize, indirectReceivers);
     }
   }
@@ -1930,8 +1926,7 @@ public abstract class RaftMember {
   }
 
   private void sendLogSync(
-      Log log,
-      Set<Integer> votedNodeIds,
+      VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
@@ -1940,7 +1935,7 @@ public abstract class RaftMember {
     Client client = getSyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler =
-          getAppendNodeEntryHandler(log, votedNodeIds, node, leaderShipStale, newLeaderTerm, peer
+          getAppendNodeEntryHandler(log, node, leaderShipStale, newLeaderTerm, peer
               , quorumSize);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
@@ -1964,8 +1959,7 @@ public abstract class RaftMember {
   }
 
   public AppendNodeEntryHandler getAppendNodeEntryHandler(
-      Log log,
-      Set<Integer> votedNodeIds,
+      VotingLog log,
       Node node,
       AtomicBoolean leaderShipStale,
       AtomicLong newLeaderTerm,
@@ -1973,7 +1967,6 @@ public abstract class RaftMember {
       int quorumSize) {
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
     handler.setReceiver(node);
-    handler.setVotedNodeIds(votedNodeIds);
     handler.setLeaderShipStale(leaderShipStale);
     handler.setLog(log);
     handler.setMember(this);

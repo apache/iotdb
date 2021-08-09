@@ -19,16 +19,20 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.checkerframework.checker.units.qual.A;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,9 +69,9 @@ public class AppendGroupEntryHandlerTest {
 
   @Test
   public void testAgreement() throws InterruptedException {
-    int[] groupReceivedCounter = new int[10];
+    Set<Integer>[] groupReceivedCounter = new Set[10];
     for (int i = 0; i < 10; i++) {
-      groupReceivedCounter[i] = REPLICATION_NUM / 2;
+      groupReceivedCounter[i] = new HashSet<>();
     }
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(-1);
@@ -82,8 +86,9 @@ public class AppendGroupEntryHandlerTest {
                 leadershipStale,
                 testLog,
                 newLeaderTerm,
-                member);
-        new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
+                member,
+                REPLICATION_NUM / 2);
+        new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_AGREE))).start();
       }
       groupReceivedCounter.wait();
     }
@@ -96,9 +101,9 @@ public class AppendGroupEntryHandlerTest {
 
   @Test
   public void testNoAgreement() throws InterruptedException {
-    int[] groupReceivedCounter = new int[10];
+    Set<Integer>[] groupReceivedCounter = new Set[10];
     for (int i = 0; i < 10; i++) {
-      groupReceivedCounter[i] = REPLICATION_NUM;
+      groupReceivedCounter[i] = new HashSet<>();
     }
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(-1);
@@ -113,8 +118,9 @@ public class AppendGroupEntryHandlerTest {
                 leadershipStale,
                 testLog,
                 newLeaderTerm,
-                member);
-        handler.onComplete(Response.RESPONSE_AGREE);
+                member,
+                REPLICATION_NUM / 2);
+        handler.onComplete(new AppendEntryResult(Response.RESPONSE_AGREE));
       }
     }
     for (int i = 0; i < 10; i++) {
@@ -130,9 +136,9 @@ public class AppendGroupEntryHandlerTest {
 
   @Test
   public void testLeadershipStale() throws InterruptedException {
-    int[] groupReceivedCounter = new int[10];
+    Set<Integer>[] groupReceivedCounter = new Set[10];
     for (int i = 0; i < 10; i++) {
-      groupReceivedCounter[i] = REPLICATION_NUM / 2;
+      groupReceivedCounter[i] = new HashSet<>();
     }
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(-1);
@@ -146,8 +152,9 @@ public class AppendGroupEntryHandlerTest {
               leadershipStale,
               testLog,
               newLeaderTerm,
-              member);
-      new Thread(() -> handler.onComplete(100L)).start();
+              member,
+              REPLICATION_NUM / 2);
+      new Thread(() -> handler.onComplete(new AppendEntryResult(100L))).start();
       groupReceivedCounter.wait();
     }
     for (int i = 0; i < 10; i++) {
@@ -159,9 +166,9 @@ public class AppendGroupEntryHandlerTest {
 
   @Test
   public void testError() throws InterruptedException {
-    int[] groupReceivedCounter = new int[10];
+    Set<Integer>[] groupReceivedCounter = new Set[10];
     for (int i = 0; i < 10; i++) {
-      groupReceivedCounter[i] = REPLICATION_NUM / 2;
+      groupReceivedCounter[i] = new HashSet<>();
     }
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(-1);
@@ -175,7 +182,8 @@ public class AppendGroupEntryHandlerTest {
             leadershipStale,
             testLog,
             newLeaderTerm,
-            member);
+            member,
+            REPLICATION_NUM / 2);
     handler.onError(new TestException());
 
     for (int i = 0; i < 10; i++) {

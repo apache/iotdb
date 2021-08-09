@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.common;
 
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
@@ -207,8 +208,8 @@ public class TestAsyncDataClient extends AsyncDataClient {
   public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {}
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> resultHandler.onComplete(BaseMember.dummyResponse.get())).start();
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
+    new Thread(() -> resultHandler.onComplete(new AppendEntryResult(BaseMember.dummyResponse.get()))).start();
   }
 
   @Override

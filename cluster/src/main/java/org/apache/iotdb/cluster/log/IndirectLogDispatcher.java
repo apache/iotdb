@@ -100,16 +100,17 @@ public class IndirectLogDispatcher extends LogDispatcher {
     @Override
     void sendLog(SendLogRequest logRequest) {
       Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
+          logRequest.getVotingLog().getLog().getCreateTime());
       member.sendLogToFollower(
-          logRequest.getLog(),
-          logRequest.getVotedNodeIds(),
+          logRequest.getVotingLog(),
           receiver,
           logRequest.getLeaderShipStale(),
           logRequest.getNewLeaderTerm(),
-          logRequest.getAppendEntryRequest(), directToIndirectFollowerMap.get(receiver));
+          logRequest.getAppendEntryRequest(),
+          logRequest.getQuorumSize(),
+          directToIndirectFollowerMap.get(receiver));
       Timer.Statistic.LOG_DISPATCHER_FROM_CREATE_TO_END.calOperationCostTimeFromStart(
-          logRequest.getLog().getCreateTime());
+          logRequest.getVotingLog().getLog().getCreateTime());
     }
   }
 }

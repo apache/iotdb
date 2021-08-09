@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
-public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
+public class LogCatchUpInBatchHandler implements AsyncMethodCallback<AppendEntryResult> {
 
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpInBatchHandler.class);
 
@@ -44,11 +45,11 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
   private RaftMember raftMember;
 
   @Override
-  public void onComplete(Long response) {
+  public void onComplete(AppendEntryResult response) {
     logger.debug(
         "{}: Received a catch-up result size of {} from {}", memberName, logs.size(), follower);
 
-    long resp = response;
+    long resp = response.status;
     if (resp == RESPONSE_AGREE) {
       synchronized (appendSucceed) {
         appendSucceed.set(true);

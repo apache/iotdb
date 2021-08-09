@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.reader.ClusterReaderFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -410,13 +411,13 @@ public class MetaGroupMemberTest extends BaseMember {
 
                 @Override
                 public void appendEntry(
-                    AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+                    AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
                   new Thread(
                           () -> {
                             long resp = dummyResponse.get();
                             // MIN_VALUE means let the request time out
                             if (resp != Long.MIN_VALUE) {
-                              resultHandler.onComplete(dummyResponse.get());
+                              resultHandler.onComplete(new AppendEntryResult(resp));
                             }
                           })
                       .start();

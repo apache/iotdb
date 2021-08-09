@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
@@ -36,7 +37,7 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
  * LogCatchUpHandler checks the result of appending a log in a catch-up task and decides to abort
  * the catch up or not.
  */
-public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
+public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult> {
 
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpHandler.class);
 
@@ -47,9 +48,9 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
   private RaftMember raftMember;
 
   @Override
-  public void onComplete(Long response) {
+  public void onComplete(AppendEntryResult response) {
     logger.debug("{}: Received a catch-up result of {} from {}", memberName, log, follower);
-    long resp = response;
+    long resp = response.status;
     if (resp == RESPONSE_AGREE) {
       synchronized (appendSucceed) {
         appendSucceed.set(true);

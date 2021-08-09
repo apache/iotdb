@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -152,7 +153,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
     }
 
     try {
-      long result = client.appendEntry(request);
+      AppendEntryResult result = client.appendEntry(request);
       handler.onComplete(result);
       return handler.getAppendSucceed().get();
     } catch (TException e) {
@@ -315,7 +316,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       return false;
     }
     try {
-      long result = client.appendEntries(request);
+      AppendEntryResult result = client.appendEntries(request);
       handler.onComplete(result);
       return appendSucceed.get();
     } catch (TException e) {

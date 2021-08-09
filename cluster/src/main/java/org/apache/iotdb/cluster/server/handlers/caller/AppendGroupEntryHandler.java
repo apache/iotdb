@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import java.util.Set;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 
@@ -32,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
 
 /**
  * AppendGroupEntryHandler checks if the log is successfully appended by the quorum or some node has
@@ -41,7 +43,7 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
  * if the actually agreed nodes can be less than quorum, because the same nodes may say "yes" for
  * multiple groups.
  */
-public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
+public class AppendGroupEntryHandler implements AsyncMethodCallback<AppendEntryResult> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendGroupEntryHandler.class);
 
@@ -52,7 +54,7 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   // for example: assuming there are 4 nodes and 3 replicas, then the initial array will be:
   // [2, 2, 2, 2]. And if node0 accepted the log, as node0 is in group 2,3,0, the array will be
   // [1, 2, 1, 1].
-  private int[] groupReceivedCounter;
+  private Set<Integer>[] groupReceivedNodeIds;
   // the index of the node which the request sends log to, if the node accepts the log, all
   // groups' counters the node is in should decrease
   private int receiverNodeIndex;
@@ -60,48 +62,51 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   // store the flag of leadership lost and the new leader's term
   private AtomicBoolean leaderShipStale;
   private AtomicLong newLeaderTerm;
+  private int quorumSize;
   private int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   private AtomicInteger erroredNodeNum = new AtomicInteger(0);
 
   public AppendGroupEntryHandler(
-      int[] groupReceivedCounter,
+      Set<Integer>[] groupReceivedNodeIds,
       int receiverNodeIndex,
       Node receiverNode,
       AtomicBoolean leaderShipStale,
       Log log,
       AtomicLong newLeaderTerm,
-      RaftMember member) {
-    this.groupReceivedCounter = groupReceivedCounter;
+      RaftMember member,
+      int quorumSize) {
+    this.groupReceivedNodeIds = groupReceivedNodeIds;
     this.receiverNodeIndex = receiverNodeIndex;
     this.receiverNode = receiverNode;
     this.leaderShipStale = leaderShipStale;
     this.log = log;
     this.newLeaderTerm = newLeaderTerm;
     this.member = member;
+    this.quorumSize = quorumSize;
   }
 
   @Override
-  public void onComplete(Long response) {
+  public void onComplete(AppendEntryResult response) {
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
     }
 
-    long resp = response;
+    long resp = response.status;
 
-    if (resp == RESPONSE_AGREE) {
+    if (resp == RESPONSE_STRONG_ACCEPT) {
       processAgreement();
     } else if (resp > 0) {
       // a response > 0 is the term fo the follower
-      synchronized (groupReceivedCounter) {
+      synchronized (groupReceivedNodeIds) {
         // the leader ship is stale, abort and wait for the new leader's heartbeat
         long previousNewTerm = newLeaderTerm.get();
         if (previousNewTerm < resp) {
           newLeaderTerm.set(resp);
         }
         leaderShipStale.set(true);
-        groupReceivedCounter.notifyAll();
+        groupReceivedNodeIds.notifyAll();
       }
     }
     // rejected because the follower's logs are stale or the follower has no cluster info, just
@@ -113,28 +118,28 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
    * example. If all counters reach 0, wake the waiting thread to welcome the success.
    */
   private void processAgreement() {
-    synchronized (groupReceivedCounter) {
+    synchronized (groupReceivedNodeIds) {
       logger.debug("{}: Node {} has accepted log {}", member.getName(), receiverNode, log);
       // this node is contained in REPLICATION_NUM groups, decrease the counters of these groups
       for (int i = 0; i < replicationNum; i++) {
         int nodeIndex = receiverNodeIndex - i;
         if (nodeIndex < 0) {
-          nodeIndex += groupReceivedCounter.length;
+          nodeIndex += groupReceivedNodeIds.length;
         }
-        groupReceivedCounter[nodeIndex]--;
+        groupReceivedNodeIds[nodeIndex].add(receiverNode.nodeIdentifier);
       }
 
       // examine if all groups has agreed
       boolean allAgreed = true;
-      for (int remaining : groupReceivedCounter) {
-        if (remaining > 0) {
+      for (Set<Integer> receivedNodeIds : groupReceivedNodeIds) {
+        if (receivedNodeIds.size() < quorumSize) {
           allAgreed = false;
           break;
         }
       }
       if (allAgreed) {
         // wake up the parent thread to welcome the new node
-        groupReceivedCounter.notifyAll();
+        groupReceivedNodeIds.notifyAll();
       }
     }
   }
@@ -147,10 +152,10 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
         receiverNode,
         exception);
     if (erroredNodeNum.incrementAndGet() >= replicationNum / 2) {
-      synchronized (groupReceivedCounter) {
+      synchronized (groupReceivedNodeIds) {
         logger.error(
             "{}: Over half of the nodes failed, the request is rejected", member.getName());
-        groupReceivedCounter.notifyAll();
+        groupReceivedNodeIds.notifyAll();
       }
     }
   }

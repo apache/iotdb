@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -67,7 +68,7 @@ public class LogCatchUpHandlerTest {
     handler.setLog(log);
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
-      new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
+      new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_AGREE))).start();
       appendSucceed.wait();
     }
     assertTrue(appendSucceed.get());
@@ -84,7 +85,7 @@ public class LogCatchUpHandlerTest {
     handler.setLog(log);
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
-      new Thread(() -> handler.onComplete(Response.RESPONSE_LOG_MISMATCH)).start();
+      new Thread(() -> handler.onComplete(new AppendEntryResult(Response.RESPONSE_LOG_MISMATCH))).start();
       appendSucceed.wait();
     }
     assertTrue(appendSucceed.get());
@@ -101,7 +102,7 @@ public class LogCatchUpHandlerTest {
     handler.setLog(log);
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
-      new Thread(() -> handler.onComplete(100L)).start();
+      new Thread(() -> handler.onComplete(new AppendEntryResult(100L))).start();
       appendSucceed.wait();
     }
     assertFalse(appendSucceed.get());

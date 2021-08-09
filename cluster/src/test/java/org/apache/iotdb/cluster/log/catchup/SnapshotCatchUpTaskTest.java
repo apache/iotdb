@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -78,7 +79,7 @@ public class SnapshotCatchUpTaskTest {
           return new TestAsyncClient() {
             @Override
             public void appendEntry(
-                AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+                AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
               new Thread(() -> resultHandler.onComplete(dummyAppendEntry(request))).start();
             }
 
@@ -102,7 +103,7 @@ public class SnapshotCatchUpTaskTest {
           }
           return new TestSyncClient() {
             @Override
-            public long appendEntry(AppendEntryRequest request) {
+            public AppendEntryResult appendEntry(AppendEntryRequest request) {
               return dummyAppendEntry(request);
             }
 
@@ -119,11 +120,11 @@ public class SnapshotCatchUpTaskTest {
         }
       };
 
-  private long dummyAppendEntry(AppendEntryRequest request) {
+  private AppendEntryResult dummyAppendEntry(AppendEntryRequest request) {
     TestLog testLog = new TestLog();
     testLog.deserialize(request.entry);
     receivedLogs.add(testLog);
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
   private void dummySendSnapshot(SendSnapshotRequest request) {

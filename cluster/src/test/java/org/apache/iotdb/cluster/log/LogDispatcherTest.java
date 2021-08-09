@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -70,7 +71,7 @@ public class LogDispatcherTest {
             return new TestAsyncClient() {
               @Override
               public void appendEntry(
-                  AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+                  AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
                 new Thread(
                         () -> {
                           if (!downNode.contains(node)) {
@@ -86,7 +87,7 @@ public class LogDispatcherTest {
 
               @Override
               public void appendEntries(
-                  AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+                  AppendEntriesRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler) {
                 new Thread(
                         () -> {
                           if (!downNode.contains(node)) {
@@ -106,24 +107,24 @@ public class LogDispatcherTest {
           public Client getSyncClient(Node node) {
             return new TestSyncClient() {
               @Override
-              public long appendEntry(AppendEntryRequest request) throws TException {
+              public AppendEntryResult appendEntry(AppendEntryRequest request) throws TException {
                 try {
                   if (!downNode.contains(node)) {
                     return mockedAppendEntry(request);
                   }
-                  return -1;
+                  return new AppendEntryResult(-1);
                 } catch (UnknownLogTypeException e) {
                   throw new TException(e);
                 }
               }
 
               @Override
-              public long appendEntries(AppendEntriesRequest request) throws TException {
+              public AppendEntryResult appendEntries(AppendEntriesRequest request) throws TException {
                 try {
                   if (!downNode.contains(node)) {
                     return mockedAppendEntries(request);
                   }
-                  return -1;
+                  return new AppendEntryResult(-1);
                 } catch (UnknownLogTypeException e) {
                   throw new TException(e);
                 }
@@ -139,14 +140,14 @@ public class LogDispatcherTest {
     raftMember.setCharacter(NodeCharacter.LEADER);
   }
 
-  private long mockedAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult mockedAppendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
     LogParser logParser = LogParser.getINSTANCE();
     Log parse = logParser.parse(request.entry.duplicate());
     appendedEntries.computeIfAbsent(parse, p -> new AtomicInteger()).incrementAndGet();
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
-  private long mockedAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
+  private AppendEntryResult mockedAppendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
     List<ByteBuffer> entries = request.getEntries();
     List<Log> logs = new ArrayList<>();
     for (ByteBuffer entry : entries) {
@@ -157,7 +158,7 @@ public class LogDispatcherTest {
     for (Log log : logs) {
       appendedEntries.computeIfAbsent(log, p -> new AtomicInteger()).incrementAndGet();
     }
-    return Response.RESPONSE_AGREE;
+    return new AppendEntryResult(Response.RESPONSE_AGREE);
   }
 
   @Test

@@ -98,6 +98,7 @@ public class ExprBench {
     ExprBench bench = new ExprBench(target);
     bench.maxRequestNum = Integer.parseInt(args[2]);
     bench.threadNum = Integer.parseInt(args[3]);
+    bench.workloadSize = Integer.parseInt(args[4]) * 1024;
     bench.benchmark();
   }
 }
