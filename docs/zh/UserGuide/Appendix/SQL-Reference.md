@@ -707,7 +707,7 @@ E.g. select * as temperature from root.sg.d1
 ```
 * Like 语句
 
-模糊查询，仅支持数据类型为TEXT，匹配时为Java标准库风格的正则表达式
+模糊查询，仅支持数据类型为 TEXT，匹配时为 Java 标准库风格的正则表达式
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
