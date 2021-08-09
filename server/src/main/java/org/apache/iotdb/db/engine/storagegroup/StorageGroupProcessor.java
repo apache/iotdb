@@ -387,7 +387,7 @@ public class StorageGroupProcessor {
       String virtualStorageGroupId,
       TsFileFlushPolicy fileFlushPolicy,
       String logicalStorageGroupName)
-          throws StorageGroupProcessorException, IOException {
+          throws StorageGroupProcessorException{
     this.virtualStorageGroupId = virtualStorageGroupId;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.fileFlushPolicy = fileFlushPolicy;
@@ -437,7 +437,7 @@ public class StorageGroupProcessor {
   }
 
   /** recover from file */
-  private void recover() throws StorageGroupProcessorException, IOException {
+  private void recover() throws StorageGroupProcessorException {
     logger.info(
         String.format(
             "start recovering virtual storage group %s[%s]",
@@ -1332,7 +1332,7 @@ public class StorageGroupProcessor {
                 (System.currentTimeMillis() - startTime) / 1000);
           }
         }
-      } catch (InterruptedException | IOException e) {
+      } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(
             "syncCloseOneTsFileProcessor error occurs while waiting for closing the storage "
@@ -1349,7 +1349,7 @@ public class StorageGroupProcessor {
    * @param sequence whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
-  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) throws IOException {
+  public void asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
     // for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
     // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
     if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
@@ -1618,8 +1618,6 @@ public class StorageGroupProcessor {
           new ArrayList<>(workUnsequenceTsFileProcessors.values())) {
         asyncCloseOneTsFileProcessor(false, tsFileProcessor);
       }
-    } catch (IOException e) {
-      logger.error("Can't read file {} from disk." );
     } finally {
       writeUnlock();
     }
@@ -1961,7 +1959,7 @@ public class StorageGroupProcessor {
    *
    * @param tsFileProcessor processor to be closed
    */
-  private void updateEndTimeMap(TsFileProcessor tsFileProcessor) throws IOException {
+  private void updateEndTimeMap(TsFileProcessor tsFileProcessor) {
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     for (String deviceId : resource.getDevices()) {
       resource.updateEndTime(
@@ -2137,7 +2135,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) throws IOException {
+  private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
@@ -2263,15 +2261,13 @@ public class StorageGroupProcessor {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
-    } catch (IOException e) {
-      e.printStackTrace();
     } finally {
       writeUnlock();
     }
   }
 
   private void resetLastCacheWhenLoadingTsfile(TsFileResource newTsFileResource)
-          throws IllegalPathException, IOException {
+          throws IllegalPathException {
     for (String device : newTsFileResource.getDevices()) {
       tryToDeleteLastCacheByDevice(new PartialPath(device));
     }
@@ -2367,8 +2363,6 @@ public class StorageGroupProcessor {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
       throw new LoadFileException(e);
-    } catch (IOException e) {
-      e.printStackTrace();
     } finally {
       writeUnlock();
     }
@@ -2399,7 +2393,7 @@ public class StorageGroupProcessor {
   private int findInsertionPosition(
       TsFileResource newTsFileResource,
       long newFilePartitionId,
-      List<TsFileResource> sequenceList) throws IOException {
+      List<TsFileResource> sequenceList) {
 
     int insertPos = -1;
 
@@ -2440,7 +2434,7 @@ public class StorageGroupProcessor {
    * @return -1 if fileA is totally older than fileB (A < B) 0 if fileA is partially older than
    *     fileB and partially newer than fileB (A X B) 1 if fileA is totally newer than fileB (B < A)
    */
-  private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) throws IOException {
+  private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) {
     boolean hasPre = false, hasSubsequence = false;
     for (String device : fileA.getDevices()) {
       if (!fileB.getDevices().contains(device)) {
@@ -2612,7 +2606,7 @@ public class StorageGroupProcessor {
    * Update latest time in latestTimeForEachDevice and
    * partitionLatestFlushedTimeForEachDevice. @UsedBy sync module, load external tsfile module.
    */
-  private void updateLatestTimeMap(TsFileResource newTsFileResource) throws IOException {
+  private void updateLatestTimeMap(TsFileResource newTsFileResource) {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = StorageEngine.getTimePartition(endTime);
@@ -3124,7 +3118,7 @@ public class StorageGroupProcessor {
   @FunctionalInterface
   public interface UpgradeTsFileResourceCallBack {
 
-    void call(TsFileResource caller) throws IOException;
+    void call(TsFileResource caller);
   }
 
   @FunctionalInterface

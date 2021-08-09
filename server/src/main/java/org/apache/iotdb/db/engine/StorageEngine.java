@@ -843,7 +843,7 @@ public class StorageEngine implements IService {
   }
 
   public boolean isFileAlreadyExist(
-      TsFileResource tsFileResource, PartialPath storageGroup, long partitionNum) throws IOException {
+      TsFileResource tsFileResource, PartialPath storageGroup, long partitionNum) {
     VirtualStorageGroupManager virtualStorageGroupManager = processorMap.get(storageGroup);
     if (virtualStorageGroupManager == null) {
       return false;
