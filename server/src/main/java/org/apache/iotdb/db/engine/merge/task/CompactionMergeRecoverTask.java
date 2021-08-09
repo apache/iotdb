@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.merge.task;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.StorageGroupCompactionTask;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -34,7 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-public class CompactionMergeRecoverTask extends StorageGroupCompactionTask {
+public class CompactionMergeRecoverTask implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(CompactionMergeRecoverTask.class);
 
@@ -42,6 +41,7 @@ public class CompactionMergeRecoverTask extends StorageGroupCompactionTask {
   private RecoverMergeTask recoverMergeTask;
   private TsFileManagement tsFileManagement;
   private String storageGroupSysDir;
+  private String storageGroupName;
 
   public CompactionMergeRecoverTask(
       TsFileManagement tsFileManagement,
@@ -53,11 +53,11 @@ public class CompactionMergeRecoverTask extends StorageGroupCompactionTask {
       boolean fullMerge,
       String storageGroupName,
       StorageGroupProcessor.CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
-    super(storageGroupName);
     this.tsFileManagement = tsFileManagement;
     this.compactionRecoverTask =
         this.tsFileManagement.new CompactionRecoverTask(closeCompactionMergeCallBack);
     this.storageGroupSysDir = storageGroupSysDir;
+    this.storageGroupName = storageGroupName;
     this.recoverMergeTask =
         new RecoverMergeTask(
             seqFiles,
@@ -70,25 +70,22 @@ public class CompactionMergeRecoverTask extends StorageGroupCompactionTask {
   }
 
   @Override
-  public Void call() throws Exception {
-    tsFileManagement.recovering = true;
+  public void run() {
+    tsFileManagement.recovered = false;
     try {
-      try {
-        recoverMergeTask.recoverMerge(
-            IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-        File mergingMods =
-            SystemFileFactory.INSTANCE.getFile(
-                storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);
-        if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-          mergingMods.delete();
-        }
-      } catch (MetadataException | IOException e) {
-        logger.error(e.getMessage(), e);
+      recoverMergeTask.recoverMerge(
+          IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+      File mergingMods =
+          SystemFileFactory.INSTANCE.getFile(
+              storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);
+      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
+        mergingMods.delete();
       }
-      compactionRecoverTask.call();
-    } finally {
-      tsFileManagement.recovering = false;
+    } catch (MetadataException | IOException e) {
+      logger.error(e.getMessage(), e);
     }
-    return null;
+    compactionRecoverTask.call();
+    tsFileManagement.recovered = true;
+    logger.info("{} Compaction recover finish", storageGroupName);
   }
 }

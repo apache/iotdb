@@ -498,7 +498,7 @@ public class StorageGroupProcessor {
               logicalStorageGroupName,
               this::closeCompactionRecoverCallBack);
 
-      CompactionMergeTaskPoolManager.getInstance().submitRecoverTask(recoverTask);
+      new Thread(recoverTask).start();
       logger.info("submit a compaction merge recover task");
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
@@ -590,7 +590,7 @@ public class StorageGroupProcessor {
       }
 
       // old version
-      // some TsFileResource may be being persisted when the system crashed, try recovering such
+      // some TsFileResource may be being persisted when the system crashed, try recovered such
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
@@ -604,7 +604,7 @@ public class StorageGroupProcessor {
           if (!partitionFolder.isDirectory()) {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
-            // some TsFileResource may be being persisted when the system crashed, try recovering
+            // some TsFileResource may be being persisted when the system crashed, try recovered
             // such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
@@ -1961,14 +1961,12 @@ public class StorageGroupProcessor {
       return;
     }
     CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(logicalStorageGroupName);
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableContinuousCompaction()) {
-      logger.info(
-          "{}-{} recover finished, submit continuous compaction task",
-          logicalStorageGroupName,
-          virtualStorageGroupId);
+    logger.info(
+        "{}-{} recover finished, submit scheduled compaction task",
+        logicalStorageGroupName,
+        virtualStorageGroupId);
 
-      CompactionMergeTaskPoolManager.getInstance().init(this::merge);
-    }
+    CompactionMergeTaskPoolManager.getInstance().init(this::merge);
   }
 
   /** close compaction merge callback, to release some locks */
@@ -2075,14 +2073,12 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    if (tsFileManagement.recovering) {
-      // doing recovering task
-      logger.info("[Compaction] Compact exits because running recover");
+    if (!tsFileManagement.recovered) {
+      // doing recovered task
       return;
     }
     if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
-      CompactionMergeTaskPoolManager.getInstance()
-          .submitTask(new CompactionAllPartitionTask(logicalStorageGroupName));
+      new CompactionAllPartitionTask(logicalStorageGroupName).call();
     }
   }
 

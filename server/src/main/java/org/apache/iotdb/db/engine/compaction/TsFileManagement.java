@@ -63,14 +63,12 @@ public abstract class TsFileManagement {
 
   public volatile boolean isUnseqMerging = false;
   public volatile boolean isSeqMerging = false;
-  public volatile boolean recovering = false;
+  public volatile boolean recovered = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   public ModificationFile mergingModification;
-
-  private long mergeStartTime;
 
   /** whether execute merge chunk in this task */
   protected boolean isMergeExecutedInCurrentTask = false;
@@ -259,7 +257,7 @@ public abstract class TsFileManagement {
           tsFileResource.setMerging(true);
         }
 
-        mergeStartTime = System.currentTimeMillis();
+        long mergeStartTime = System.currentTimeMillis();
         MergeTask mergeTask =
             new MergeTask(
                 mergeResource,

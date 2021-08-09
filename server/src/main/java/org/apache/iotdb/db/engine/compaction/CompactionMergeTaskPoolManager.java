@@ -37,12 +37,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -54,9 +51,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
-  private ScheduledExecutorService scheduledPool;
-  private ThreadPoolExecutor pool;
-  private ThreadPoolExecutor recoverPool;
+  private ScheduledThreadPoolExecutor pool;
   private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -70,19 +65,10 @@ public class CompactionMergeTaskPoolManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool =
-          (ThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
+          (ScheduledThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
                   ThreadName.COMPACTION_SERVICE.getName());
-      this.recoverPool =
-          (ThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newFixedThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-                  ThreadName.COMPACTION_SERVICE.getName());
-      this.scheduledPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
@@ -91,8 +77,6 @@ public class CompactionMergeTaskPoolManager implements IService {
   public void stop() {
     if (pool != null) {
       pool.shutdownNow();
-      scheduledPool.shutdownNow();
-      recoverPool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -102,9 +86,7 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void waitAndStop(long milliseconds) {
     if (pool != null) {
-      awaitTermination(scheduledPool, milliseconds);
       awaitTermination(pool, milliseconds);
-      awaitTermination(recoverPool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -159,8 +141,6 @@ public class CompactionMergeTaskPoolManager implements IService {
       }
     }
     pool = null;
-    scheduledPool = null;
-    recoverPool = null;
     storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
@@ -206,64 +186,8 @@ public class CompactionMergeTaskPoolManager implements IService {
   }
 
   public void init(Runnable function) {
-    scheduledPool.scheduleWithFixedDelay(
+    pool.scheduleWithFixedDelay(
         function, 1000, config.getCompactionInterval(), TimeUnit.MILLISECONDS);
-  }
-
-  public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
-      throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
-      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
-      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
-      if (isCompacting) {
-        return;
-      }
-      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
-      sgCompactionStatus.put(storageGroup, true);
-      Future<Void> future = pool.submit(storageGroupCompactionTask);
-      storageGroupTasks
-          .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
-          .add(future);
-      logger.info(
-          "Submit a StorageGroupCompactionTask, current active task num: {}, "
-              + "completed task num: {}, total   task num: {}, block queue size: {}",
-          pool.getActiveCount(),
-          pool.getCompletedTaskCount(),
-          pool.getTaskCount(),
-          pool.getQueue().size());
-      return;
-    }
-    logger.info(
-        "failed to submit compaction task because {}",
-        pool == null ? "pool is null" : "pool is terminated");
-  }
-
-  public synchronized void submitRecoverTask(StorageGroupCompactionTask storageGroupCompactionTask)
-      throws RejectedExecutionException {
-    if (recoverPool != null && !recoverPool.isTerminated()) {
-      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
-      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
-      if (isCompacting) {
-        return;
-      }
-      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
-      sgCompactionStatus.put(storageGroup, true);
-      Future<Void> future = recoverPool.submit(storageGroupCompactionTask);
-      storageGroupTasks
-          .computeIfAbsent(storageGroup, k -> new CopyOnWriteArrayList<>())
-          .add(future);
-      logger.info(
-          "Submit a recover StorageGroupCompactionTask, current active task num: {}, "
-              + "completed task num: {}, total task num: {}, block queue size: {}",
-          recoverPool.getActiveCount(),
-          recoverPool.getCompletedTaskCount(),
-          recoverPool.getTaskCount(),
-          recoverPool.getQueue().size());
-      return;
-    }
-    logger.info(
-        "failed to submit compaction task because {}",
-        pool == null ? "pool is null" : "pool is terminated");
   }
 
   @TestOnly
