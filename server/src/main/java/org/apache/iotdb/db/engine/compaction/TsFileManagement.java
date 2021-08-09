@@ -63,13 +63,12 @@ public abstract class TsFileManagement {
 
   public volatile boolean isUnseqMerging = false;
   public volatile boolean isSeqMerging = false;
+  public volatile boolean recovered = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   public ModificationFile mergingModification;
-
-  private long mergeStartTime;
 
   /** whether execute merge chunk in this task */
   protected boolean isMergeExecutedInCurrentTask = false;
@@ -258,7 +257,7 @@ public abstract class TsFileManagement {
           tsFileResource.setMerging(true);
         }
 
-        mergeStartTime = System.currentTimeMillis();
+        long mergeStartTime = System.currentTimeMillis();
         MergeTask mergeTask =
             new MergeTask(
                 mergeResource,
@@ -279,17 +278,6 @@ public abstract class TsFileManagement {
               mergeFiles[0].size(),
               mergeFiles[1].size());
         }
-        // wait until unseq merge has finished
-        while (isUnseqMerging) {
-          try {
-            Thread.sleep(200);
-          } catch (InterruptedException e) {
-            logger.error("{} [Compaction] shutdown", storageGroupName, e);
-            Thread.currentThread().interrupt();
-            return false;
-          }
-        }
-        return true;
       } catch (MergeException | IOException e) {
         logger.error("{} cannot select file for merge", storageGroupName, e);
         return false;
@@ -297,6 +285,17 @@ public abstract class TsFileManagement {
     } finally {
       writeUnlock();
     }
+    // wait until unseq merge has finished
+    while (isUnseqMerging) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    }
+    return true;
   }
 
   private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
@@ -423,7 +422,10 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          boolean deletionSuccess = mergedFile.delete();
+          if (!deletionSuccess) {
+            logger.warn("fail to delete {}", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {

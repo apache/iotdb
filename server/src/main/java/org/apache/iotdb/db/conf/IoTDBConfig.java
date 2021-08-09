@@ -384,7 +384,7 @@ public class IoTDBConfig {
   private int queryTimeoutThreshold = 60000;
 
   /** compaction interval in ms */
-  private long compactionInterval = 30000;
+  private long compactionInterval = 10000;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
