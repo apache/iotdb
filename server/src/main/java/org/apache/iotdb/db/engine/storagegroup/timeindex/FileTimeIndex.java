@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -141,7 +140,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
-
     if (this.startTime > time) {
       this.startTime = time;
     }
