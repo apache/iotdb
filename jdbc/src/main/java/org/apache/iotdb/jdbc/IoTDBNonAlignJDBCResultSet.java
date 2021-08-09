@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +49,10 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";
-
+  private String operationType = "";
   private TSQueryNonAlignDataSet tsQueryNonAlignDataSet;
   private byte[][] times; // used for disable align
-
+  private List<String> sgColumns = null;
   // for disable align clause
   IoTDBNonAlignJDBCResultSet(
       Statement statement,
@@ -64,7 +65,10 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
       long queryId,
       long sessionId,
       TSQueryNonAlignDataSet dataset,
-      long timeout)
+      long timeout,
+      String operationType,
+      List<String> sgColumns,
+      BitSet aliasColumnMap)
       throws SQLException {
     super(
         statement,
@@ -76,10 +80,11 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
         sql,
         queryId,
         sessionId,
-        timeout);
-
+        timeout,
+        sgColumns,
+        aliasColumnMap);
     times = new byte[columnNameList.size()][Long.BYTES];
-
+    this.operationType = operationType;
     ioTDBRpcDataSet.columnNameList = new ArrayList<>();
     ioTDBRpcDataSet.columnTypeList = new ArrayList<>();
     // deduplicate and map
@@ -90,8 +95,18 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     for (int i = 0; i < columnNameIndex.size(); i++) {
       ioTDBRpcDataSet.columnTypeDeduplicatedList.add(null);
     }
+    List<String> newSgColumns = new ArrayList<>();
     for (int i = 0; i < columnNameList.size(); i++) {
-      String name = columnNameList.get(i);
+      String name = "";
+      if (sgColumns != null && sgColumns.size() > 0) {
+        name = sgColumns.get(i) + "." + columnNameList.get(i);
+        newSgColumns.add(sgColumns.get(i));
+        newSgColumns.add(sgColumns.get(i));
+      } else {
+        name = columnNameList.get(i);
+        newSgColumns.add("");
+        newSgColumns.add("");
+      }
       ioTDBRpcDataSet.columnNameList.add(TIMESTAMP_STR + name);
       ioTDBRpcDataSet.columnNameList.add(name);
       ioTDBRpcDataSet.columnTypeList.add(String.valueOf(TSDataType.INT64));
@@ -103,6 +118,7 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
             index, TSDataType.valueOf(columnTypeList.get(i)));
       }
     }
+    this.sgColumns = newSgColumns;
     this.tsQueryNonAlignDataSet = dataset;
   }
 
@@ -279,5 +295,13 @@ public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
     }
     return ioTDBRpcDataSet.getObject(
         index, ioTDBRpcDataSet.columnTypeDeduplicatedList.get(index), ioTDBRpcDataSet.values);
+  }
+
+  public String getOperationType() {
+    return this.operationType;
+  }
+
+  public List<String> getSgColumns() {
+    return sgColumns;
   }
 }

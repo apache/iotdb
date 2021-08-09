@@ -2180,6 +2180,7 @@ public class StorageGroupProcessor {
       return;
     }
     for (TsFileResource resource : resources) {
+      resource.writeLock();
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
         tsFileManagement.addAll(resource.getUpgradedResources(), isseq);
@@ -2193,6 +2194,8 @@ public class StorageGroupProcessor {
             resource.getTsFile().getAbsolutePath() + "," + UpgradeCheckStatus.UPGRADE_SUCCESS);
       } catch (IOException e) {
         logger.error("Unable to load {}, caused by ", resource, e);
+      } finally {
+        resource.writeUnlock();
       }
     }
     // delete upgrade folder when it is empty

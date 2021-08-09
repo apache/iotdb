@@ -64,6 +64,7 @@ public interface ITimeIndex {
    */
   Set<String> getDevices(String tsFilePath) throws IOException;
 
+
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
 

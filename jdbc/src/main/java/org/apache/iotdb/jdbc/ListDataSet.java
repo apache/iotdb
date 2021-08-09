@@ -16,24 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.cost.statistic;
+package org.apache.iotdb.jdbc;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-  public String getName() {
-    return name;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+public class ListDataSet extends QueryDataSet {
+  private final List<RowRecord> records = new ArrayList<>();
+  private int index = 0;
+
+  @Override
+  public boolean hasNextWithoutConstraint() {
+    return index < records.size();
   }
 
-  String name;
+  @Override
+  public RowRecord nextWithoutConstraint() {
+    return records.get(index++);
+  }
 
-  Operation(String name) {
-    this.name = name;
+  public void putRecord(RowRecord newRecord) {
+    records.add(newRecord);
+  }
+
+  public void sortByTimeDesc() {
+    records.sort((o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp()));
+  }
+
+  public void sort(Comparator<RowRecord> c) {
+    records.sort(c);
   }
 }

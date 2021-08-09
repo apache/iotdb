@@ -16,24 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.cost.statistic;
+package org.apache.iotdb.jdbc;
 
-public enum Operation {
-  EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
-  EXECUTE_ONE_SQL_IN_BATCH("EXECUTE_ONE_SQL_IN_BATCH"),
-  EXECUTE_ROWS_PLAN_IN_BATCH("EXECUTE_ROWS_PLAN_IN_BATCH"),
-  EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH("EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH"),
-  EXECUTE_RPC_BATCH_INSERT("EXECUTE_RPC_BATCH_INSERT"),
-  EXECUTE_QUERY("EXECUTE_QUERY"),
-  EXECUTE_SELECT_INTO("EXECUTE_SELECT_INTO");
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-  public String getName() {
-    return name;
-  }
+public interface WatermarkEncoder {
+  int encodeInt(int value, long time);
 
-  String name;
+  long encodeLong(long value, long time);
 
-  Operation(String name) {
-    this.name = name;
-  }
+  float encodeFloat(float value, long time);
+
+  double encodeDouble(double value, long time);
+
+  boolean needEncode(long timestamp);
+
+  RowRecord encodeRecord(RowRecord record);
 }
