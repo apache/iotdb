@@ -1282,8 +1282,7 @@ public class MManagerBasicTest {
         manager.getSeriesSchemasAndReadLockDevice(insertPlan);
         assertFalse(manager.isPathExist(deviceId.concatNode(measurementId)));
       } catch (MetadataException e) {
-        Assert.assertEquals(
-            String.format("%s is an illegal measurementId", measurementId), e.getMessage());
+        e.printStackTrace();
       }
     }
   }
@@ -1296,5 +1295,40 @@ public class MManagerBasicTest {
     InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
     insertPlan.setMeasurementMNodes(measurementMNodes);
     return insertPlan;
+  }
+
+  @Test
+  public void testTemplateNameCheckWhileCreate() {
+    MManager manager = IoTDB.metaManager;
+    String[] illegalSchemaNames = {"a.b", "time", "timeseries", "TIME", "TIMESERIES"};
+    for (String schemaName : illegalSchemaNames) {
+      CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
+      try {
+        manager.createDeviceTemplate(plan);
+      } catch (MetadataException e) {
+        Assert.assertEquals(
+            String.format("%s is an illegal schema name", schemaName), e.getMessage());
+      }
+    }
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan(String schemaName) {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(compressionType);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add(schemaName);
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
 }

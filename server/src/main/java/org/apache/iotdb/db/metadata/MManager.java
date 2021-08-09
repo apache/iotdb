@@ -96,6 +96,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -2038,7 +2039,10 @@ public class MManager {
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+      checkTemplateSchemaNames(plan.getSchemaNames());
+
       Template template = new Template(plan);
+
       if (templateMap.putIfAbsent(plan.getName(), template) != null) {
         // already have template
         throw new DuplicatedTemplateException(plan.getName());
@@ -2050,6 +2054,20 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+  }
+
+  private void checkTemplateSchemaNames(List<String> schemaNames) throws MetadataException {
+    // check schema name.
+    String processedName;
+    for (String schemaName : schemaNames) {
+      processedName = schemaName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(processedName)
+          || "timeseries".equals(processedName)
+          || (schemaName.contains(".")
+              && !(schemaName.startsWith("\"") && schemaName.endsWith("\"")))) {
+        throw new MetadataException(String.format("%s is an illegal schema name", schemaName));
+      }
     }
   }
 
