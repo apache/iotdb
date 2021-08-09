@@ -188,8 +188,6 @@ public class TsFileProcessor {
       checkMemCostAndAddToTspInfo(insertRowPlan);
     }
 
-    workMemTable.insert(insertRowPlan);
-
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
@@ -201,6 +199,8 @@ public class TsFileProcessor {
             e);
       }
     }
+
+    workMemTable.insert(insertRowPlan);
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -247,7 +247,6 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
       long startTime = System.currentTimeMillis();
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
@@ -258,6 +257,8 @@ public class TsFileProcessor {
       if (elapsed > 5000) {
         logger.error("write wal slowly : cost {}ms", elapsed);
       }
+
+      workMemTable.insertTablet(insertTabletPlan, start, end);
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
