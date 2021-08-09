@@ -1275,7 +1275,7 @@ public class MManagerBasicTest {
     manager.getSeriesSchemasAndReadLockDevice(insertPlan);
     assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
 
-    String[] illegalMeasurementIds = {"a.b", "time", "timeseries", "TIME", "TIMESERIES"};
+    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String measurementId : illegalMeasurementIds) {
       insertPlan = getInsertPlan(measurementId);
       try {
@@ -1300,7 +1300,7 @@ public class MManagerBasicTest {
   @Test
   public void testTemplateNameCheckWhileCreate() {
     MManager manager = IoTDB.metaManager;
-    String[] illegalSchemaNames = {"a.b", "time", "timeseries", "TIME", "TIMESERIES"};
+    String[] illegalSchemaNames = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
     for (String schemaName : illegalSchemaNames) {
       CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
       try {

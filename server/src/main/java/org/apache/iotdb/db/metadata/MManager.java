@@ -2063,7 +2063,7 @@ public class MManager {
     for (String schemaName : schemaNames) {
       processedName = schemaName.trim().toLowerCase(Locale.ENGLISH);
       if ("time".equals(processedName)
-          || "timeseries".equals(processedName)
+          || "timestamp".equals(processedName)
           || (schemaName.contains(".")
               && !(schemaName.startsWith("\"") && schemaName.endsWith("\"")))) {
         throw new MetadataException(String.format("%s is an illegal schema name", schemaName));

@@ -293,7 +293,7 @@ public class MTree implements Serializable {
     // filter special id, including "time" and "timeseries"
     for (String nodeName : timeseries.getNodes()) {
       nodeName = nodeName.trim().toLowerCase(Locale.ENGLISH);
-      if ("time".equals(nodeName) || "timeseries".equals(nodeName)) {
+      if ("time".equals(nodeName) || "timestamp".equals(nodeName)) {
         throw new IllegalPathException(timeseries.getFullPath());
       }
     }
