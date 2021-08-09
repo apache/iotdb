@@ -1269,25 +1269,32 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
 
     PartialPath deviceId = new PartialPath("root.sg.d");
-    String[] measurementList = {"s", "a.b", "\"a.b\""};
-    String[] values = {"1", "1.0", "1.0"};
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[3];
+    InsertPlan insertPlan;
+
+    insertPlan = getInsertPlan("\"a.b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+
+    String[] illegalMeasurementIds = {"a.b", "time", "timeseries", "TIME", "TIMESERIES"};
+    for (String measurementId : illegalMeasurementIds) {
+      insertPlan = getInsertPlan(measurementId);
+      try {
+        manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        assertFalse(manager.isPathExist(deviceId.concatNode(measurementId)));
+      } catch (MetadataException e) {
+        Assert.assertEquals(
+            String.format("%s is an illegal measurementId", measurementId), e.getMessage());
+      }
+    }
+  }
+
+  private InsertPlan getInsertPlan(String measurementId) throws MetadataException {
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    String[] measurementList = {measurementId};
+    String[] values = {"1"};
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[1];
     InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
     insertPlan.setMeasurementMNodes(measurementMNodes);
-
-    try {
-      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-      assertFalse(manager.isPathExist(deviceId.concatNode("a.b")));
-    } catch (MetadataException e) {
-      Assert.assertEquals("a.b is an illegal measurementId", e.getMessage());
-    }
-
-    measurementList[1] = "a";
-    insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
-    insertPlan.setMeasurementMNodes(measurementMNodes);
-    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    for (String measurementId : measurementList) {
-      assertTrue(manager.isPathExist(deviceId.concatNode(measurementId)));
-    }
+    return insertPlan;
   }
 }

@@ -73,6 +73,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
@@ -288,6 +289,15 @@ public class MTree implements Serializable {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
     }
+
+    // filter special id, including "time" and "timeseries"
+    for (String nodeName : timeseries.getNodes()) {
+      nodeName = nodeName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(nodeName) || "timeseries".equals(nodeName)) {
+        throw new IllegalPathException(timeseries.getFullPath());
+      }
+    }
+
     String measurementId = timeseries.getMeasurement();
     // check measurementId syntax
     // only measurementId may be named separately from fullPath by user via API
