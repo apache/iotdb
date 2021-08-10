@@ -3,7 +3,6 @@
 **/logs/*
 **/lib/**
 **/data/**
-**/raft/**
 
 # Python runtime file
 **/__pycache__/**

@@ -16,29 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.cluster.server.raft;
 
-package org.apache.iotdb.cluster.client.sync;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.ServerContext;
+import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.transport.TTransport;
 
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+public class RaftServiceHandler implements TServerEventHandler {
+  @Override
+  public void preServe() {}
 
-import org.apache.thrift.transport.TTransportException;
-
-import java.io.IOException;
-
-public interface SyncClientFactory {
-
-  /**
-   * Get a client which will connect the given node and be cached in the given pool.
-   *
-   * @param node the cluster node the client will connect.
-   * @param pool the pool that will cache the client for reusing.
-   * @return
-   * @throws IOException
-   */
-  RaftService.Client getSyncClient(Node node, SyncClientPool pool) throws TTransportException;
-
-  default String nodeInfo(Node node) {
-    return node.toString();
+  @Override
+  public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    return null;
   }
+
+  @Override
+  public void deleteContext(
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+
+  @Override
+  public void processContext(
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {}
 }
