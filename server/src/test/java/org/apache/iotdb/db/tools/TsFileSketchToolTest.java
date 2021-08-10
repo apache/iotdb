@@ -110,12 +110,12 @@ public class TsFileSketchToolTest {
 
   @Test
   public void tsFileSketchToolTest() {
-    TsFileSketchTool tool = new TsFileSketchTool();
     String args[] = new String[2];
     args[0] = path;
     args[1] = sketchOut;
+    TsFileSketchTool tool = new TsFileSketchTool(path, sketchOut);
     try {
-      tool.main(args);
+      tool.run();
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }

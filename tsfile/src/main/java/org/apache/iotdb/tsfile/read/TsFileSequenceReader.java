@@ -647,7 +647,10 @@ public class TsFileSequenceReader implements AutoCloseable {
             .computeIfAbsent(deviceId, k -> new ArrayList<>())
             .addAll(timeseriesMetadataList);
       } else {
-        deviceId = metadataIndex.getName();
+        // deviceId should be determined by LEAF_DEVICE node
+        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          deviceId = metadataIndex.getName();
+        }
         MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
         int metadataIndexListSize = metadataIndexNode.getChildren().size();
         for (int i = 0; i < metadataIndexListSize; i++) {
@@ -1264,6 +1267,18 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return res;
+  }
+
+  /**
+   * get metadata index node
+   *
+   * @param startOffset start read offset
+   * @param endOffset end read offset
+   * @return MetadataIndexNode
+   */
+  public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
+      throws IOException {
+    return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
   }
 
   /**

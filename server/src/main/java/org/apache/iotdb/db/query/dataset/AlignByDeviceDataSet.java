@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -229,9 +229,9 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
     try {
-      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
+      IMNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       Set<String> res = new HashSet<>(deviceNode.getChildren().keySet());
-      for (MNode mnode : deviceNode.getChildren().values()) {
+      for (IMNode mnode : deviceNode.getChildren().values()) {
         res.addAll(mnode.getChildren().keySet());
       }
 

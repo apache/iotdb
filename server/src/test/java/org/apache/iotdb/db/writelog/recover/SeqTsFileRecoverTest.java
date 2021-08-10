@@ -119,7 +119,7 @@ public class SeqTsFileRecoverTest {
       template.put(
           "sensor" + i, new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
     }
-    schema.registerDeviceTemplate("template1", template);
+    schema.registerSchemaTemplate("template1", template);
     for (int i = 0; i < 10; i++) {
       schema.registerDevice("root.sg.device" + i, "template1");
     }
