@@ -78,9 +78,6 @@ public class CompactionMergeRecoverTask implements Runnable {
       File mergingMods =
           SystemFileFactory.INSTANCE.getFile(
               storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);
-      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-        mergingMods.delete();
-      }
     } catch (MetadataException | IOException e) {
       logger.error(e.getMessage(), e);
     }
