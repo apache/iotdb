@@ -23,10 +23,9 @@
 
 ## New Features
 * [IOTDB-1466] Support device template
-* [IOTDB-1399] Add a session interface to connect multiple nodes 
-* [IOTDB-1417] UDF meta plans for cluster 
-* [IOTDB-1491] UDTF query supported in cluster mode 
-* [IOTDB-959] Add createStorageGroup Grammar 
+* [IOTDB-1399] Add a session interface to connect multiple nodes
+* [IOTDB-1491] UDTF query supported in cluster 
+* [IOTDB-959] Add create storage group Grammar 
 * TTL can be set to the prefix path of storage group
 
 ## Improvements
@@ -36,47 +35,45 @@
 * Function Improvement: add overlapped page rate in Tracing
 
 ## Bug Fixes
-* [IOTDB-1437] Fix the tsfile sketch tool NPE 
-* [IOTDB-1442] Time filter & TTL is not used during the construction of ClusterTimeGenerator 
+* [IOTDB-1437] Fix the TsFileSketchTool NPE 
+* [IOTDB-1442] Time filter & TTL do not take effect in cluster 
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [IOTDB-1447] ClientPool is blocking other nodes when one node fails 
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries 
-* [ISSUE-3316] Fix constructing firstChunkMetaDatahasNextChunk logic in hasNextChunk() 
+* [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 *  Fix DataMigrationExample OOM if migrate too many timeseries 
 * [IOTDB-1452] remove compaction log/ change logger to daily 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
-* [IOTDB-1462] Fix cross space compaction recover bug 
-* [ISSUE-3458] fix load configuration 
+* [IOTDB-1462] Fix cross space compaction recover null pointer bug 
+* [ISSUE-3458] fix load configuration does not take effect
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
 * [IOTDB-1464] fix take byte array null pointer 
 * [IOTDB-1461] Fix compaction conflicts with ttl 
-* [IOTDB-1469] fix cross space compaction loss data bug 
+* [IOTDB-1469] fix cross space compaction lost data bug 
 * [IOTDB-1471] Fix path not right in "sg may not ready" log 
-* [IOTDB-1407] fix Filtering time series based on tags query fails Occasionly
+* [IOTDB-1407] fix Filtering time series based on tags query fails Occasionally
 * Fix cluster auto create schema bug when retry locally 
-* [IOTDB-1494] fix compaction block flush bug 
-* [IOTDB-1488] Fix metaMember's forwarding clientPool timeout in cluster module 
-* [IOTDB-1482] Fix Count Timeseries and Count Devices with Template Bug
-* [IOTDB-1492] Fix mLogParser.sh cannot parse the device template 
-* [ISSUE-3545] Bug: Time interval value is disorder in group by month 
+* [IOTDB-1494] fix compaction block flush bug
+* [IOTDB-1488] Fix metaMember's forwarding clientPool timeout in cluster module
+* [ISSUE-3545] Fix Time interval value is disorder in group by month 
 * [IoTDB-1501] Fix compaction recover delete tsfile bug 
-* [IoTDB-1499] Remove series registeration using IoTDBSink
+* [IoTDB-1499] Remove series registration using IoTDBSink
 * Fix thrift out of sequence in cluster module
 * [IOTDB-1456] Fix Error occurred while executing delete timeseries statement
-* [IOTDB-1529]Fix mlog recover idx bug and synchronize setStorageGroup 
+* [IOTDB-1529] Fix mlog recover idx bug and synchronize setStorageGroup 
 * [IOTDB-1282] fix C++ class SessionDataSet mem-leak 
 * [ISSUE-3653] fix Max_time and last return inconsistent result 
 * [IOTDB-1540] Bug Fix: 500 when using IN operator
 * Skip non exist measurement in where clause in align by device
-* fix dead lock in compaction file selection
-* [IOTDB-1537] fix insertTablet premission 
+* fix blocking query when selecting TsFile in compaction
+* [IOTDB-1537] fix insertTablet permission 
 * [IOTDB-1546] Optimize the Upgrade Tool rewrite logic to reduce the temp memory cost
 * [IOTDB-1542] Cpp client segment fault: char[] buffer overflow caused by long exception message
-* [IOTDB-1545] Query dataset momory leak on server caused by cpp client 
+* [IOTDB-1545] Query dataset memory leak on server caused by cpp client 
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists 
 * [IOTDB-1475] MeasurementId check while create timeseries or template/ disable time or timestamp in timeseries path 
-* [IOTDB-1541] Change sequence of wal and memtable in insert
-* [IOTDB-1556] Abort auto create device while setStorageGroup exception
+* [IOTDB-1541] Fix query result not right due to non-precise time index of resource 
+* [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 
 ## Incompatible changes
 * [IOTDB-1485] Replace tsfile_size_threshold by unseq_tsfile_size/seq_tsfile_size
