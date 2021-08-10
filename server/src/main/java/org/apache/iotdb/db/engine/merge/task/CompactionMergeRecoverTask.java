@@ -73,9 +73,6 @@ public class CompactionMergeRecoverTask implements Runnable {
     tsFileManagement.recovered = false;
     try {
       recoverMergeTask.recoverMerge(true);
-      File mergingMods =
-          SystemFileFactory.INSTANCE.getFile(
-              storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);
     } catch (MetadataException | IOException e) {
       logger.error(e.getMessage(), e);
     }
