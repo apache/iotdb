@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -41,7 +42,6 @@ import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -68,8 +68,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private final Object switchBufferCondition = new Object();
   private final ReentrantLock lock = new ReentrantLock();
-  private final ExecutorService FLUSH_BUFFER_THREAD_POOL =
-      Executors.newSingleThreadExecutor(r -> new Thread(r, "Flush-WAL-Thread-" + this.hashCode()));
+  private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
   private long fileId = 0;
   private long lastFlushedId = 0;
@@ -90,6 +89,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
+    FLUSH_BUFFER_THREAD_POOL =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+            "Flush-WAL-Thread-" + SystemFileFactory.INSTANCE.getFile(logDirectory).getName());
   }
 
   @Override

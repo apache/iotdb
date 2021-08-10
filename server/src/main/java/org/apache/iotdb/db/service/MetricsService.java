@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -37,7 +38,6 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class MetricsService implements MetricsServiceMBean, IService {
@@ -90,7 +90,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
       return;
     }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    executorService = Executors.newSingleThreadExecutor();
+    executorService = IoTDBThreadPoolFactory.newSingleThreadExecutor("DeprecatedMetricsWeb");
     int port = getMetricsPort();
     MetricsSystem metricsSystem = new MetricsSystem(new ServerArgument(port));
     MetricsWebUI metricsWebUI = new MetricsWebUI(metricsSystem.getMetricRegistry());
