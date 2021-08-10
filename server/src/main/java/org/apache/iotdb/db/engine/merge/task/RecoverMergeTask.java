@@ -205,11 +205,11 @@ public class RecoverMergeTask extends MergeTask {
   // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to
   // move the merged chunks or the unmerged chunks
   private void recoverChunkCounts() throws IOException {
-    logger.info("{} recovering chunk counts", taskName);
+    logger.info("{} recovered chunk counts", taskName);
     int fileCnt = 1;
     for (TsFileResource tsFileResource : resource.getSeqFiles()) {
       logger.info(
-          "{} recovering {}  {}/{}",
+          "{} recovered {}  {}/{}",
           taskName,
           tsFileResource.getTsFile().getName(),
           fileCnt,

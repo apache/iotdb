@@ -73,6 +73,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
@@ -216,7 +217,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    checkTimeseries(path);
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();
@@ -283,10 +284,26 @@ public class MTree implements Serializable {
     }
   }
 
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+  private void checkTimeseries(PartialPath timeseries) throws MetadataException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries.getFullPath()).matches()) {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
+    }
+
+    // filter special id, including "time" and "timeseries"
+    for (String nodeName : timeseries.getNodes()) {
+      nodeName = nodeName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(nodeName) || "timestamp".equals(nodeName)) {
+        throw new IllegalPathException(timeseries.getFullPath());
+      }
+    }
+
+    String measurementId = timeseries.getMeasurement();
+    // check measurementId syntax
+    // only measurementId may be named separately from fullPath by user via API
+    if (measurementId.contains(".")
+        && !(measurementId.startsWith("\"") && measurementId.endsWith("\""))) {
+      throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
     }
   }
 

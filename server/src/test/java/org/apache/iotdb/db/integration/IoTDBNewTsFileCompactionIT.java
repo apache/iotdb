@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.engine.compaction.level.LevelCompactionTsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -32,6 +33,8 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -46,6 +49,8 @@ import static org.junit.Assert.fail;
 
 public class IoTDBNewTsFileCompactionIT {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBNewTsFileCompactionIT.class);
+
   private int prevSeqLevelFileNum;
   private int prevSeqLevelNum;
   private int prevMergePagePointNumber;
@@ -53,7 +58,7 @@ public class IoTDBNewTsFileCompactionIT {
   private CompactionStrategy preCompactionStrategy;
   private PartialPath storageGroupPath;
   // the unit is ns
-  private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
+  private static final long MAX_WAIT_TIME_FOR_MERGE = 1L * 60L * 1000L * 1000L * 1000L;
   private static final float FLOAT_DELTA = 0.00001f;
 
   @Before
@@ -74,6 +79,7 @@ public class IoTDBNewTsFileCompactionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
+    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadNum(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -127,7 +133,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(2, 2)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -181,7 +189,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -234,7 +244,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -293,7 +305,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -347,7 +361,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -406,7 +422,9 @@ public class IoTDBNewTsFileCompactionIT {
 
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -461,7 +479,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -523,7 +543,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -578,7 +600,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(3, 3)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -635,7 +659,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -697,7 +723,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(4, 4)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -759,7 +787,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -819,7 +849,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(5, 5)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -882,7 +914,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -945,7 +979,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(6, 6)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -1011,7 +1047,9 @@ public class IoTDBNewTsFileCompactionIT {
       statement.execute("INSERT INTO root.sg1.d1(time,s1) values(8, 8)");
       statement.execute("FLUSH");
 
+      LOGGER.warn("Waiting for merge to finish");
       assertTrue(waitForMergeFinish());
+      LOGGER.warn("Merge Finish");
 
       int cnt;
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg1.d1")) {
@@ -1043,13 +1081,31 @@ public class IoTDBNewTsFileCompactionIT {
         (LevelCompactionTsFileManagement) storageGroupProcessor.getTsFileManagement();
 
     long startTime = System.nanoTime();
+    long intervalTime = startTime;
     // get the size of level 1's tsfile list to judge whether merge is finished
     while (tsFileManagement.getSequenceTsFileResources().get(0L).size() < 2
         || tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() != 1) {
       TimeUnit.MILLISECONDS.sleep(100);
       // wait too long, just break
       if ((System.nanoTime() - startTime) >= MAX_WAIT_TIME_FOR_MERGE) {
+        LOGGER.error("Unable to wait for compaction finish");
+        fail();
         break;
+      }
+      if ((System.nanoTime() - intervalTime) >= 20L * 1000L * 1000L * 1000L) {
+        intervalTime = System.nanoTime();
+        LOGGER.warn(
+            "The number of tsfile level: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).size());
+        LOGGER.warn(
+            "The number of tsfile in level 0: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).get(0).size());
+        LOGGER.warn(
+            "The number of tsfile in level 1: {}",
+            tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size());
+        LOGGER.warn(
+            "The number of current compaction task num {}",
+            CompactionMergeTaskPoolManager.getInstance().getCompactionTaskNum());
       }
     }
     return tsFileManagement.getSequenceTsFileResources().get(0L).get(1).size() == 1;

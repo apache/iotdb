@@ -205,7 +205,7 @@ public class PerformanceTest {
       logNode.forceSync();
       long time = System.currentTimeMillis();
       System.out.println(
-          3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovering ");
+          3000000 + " logs use " + (System.currentTimeMillis() - time) + "ms when recovered ");
     } finally {
       ByteBuffer[] array = logNode.delete();
       for (ByteBuffer byteBuffer : array) {

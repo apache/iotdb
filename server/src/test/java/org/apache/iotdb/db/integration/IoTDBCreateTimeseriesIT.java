@@ -82,7 +82,7 @@ public class IoTDBCreateTimeseriesIT {
     EnvironmentUtils.stopDaemon();
     setUp();
 
-    // ensure timeseries in cache is right after recovering.
+    // ensure timeseries in cache is right after recovered.
     createTimeSeries1Tool(timeSeriesArray);
   }
 
@@ -129,7 +129,7 @@ public class IoTDBCreateTimeseriesIT {
     EnvironmentUtils.stopDaemon();
     setUp();
 
-    // ensure storage group in cache is right after recovering.
+    // ensure storage group in cache is right after recovered.
     createTimeSeries2Tool(storageGroup);
   }
 
