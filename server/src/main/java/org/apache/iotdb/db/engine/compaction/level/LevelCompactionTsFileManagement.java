@@ -58,9 +58,7 @@ import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURC
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-/**
- * The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list
- */
+/** The TsFileManagement for LEVEL_COMPACTION, use level struct to manage TsFile list */
 public class LevelCompactionTsFileManagement extends TsFileManagement {
 
     private static final Logger logger =
@@ -197,7 +195,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 }
             } else {
                 List<List<TsFileResource>> unSequenceTsFileList =
-                        unSequenceTsFileResources.get(timePartition);
+                        unSequenceTsFileResources.getOrDefault(timePartition, new ArrayList<>());
                 for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
                     result.addAll(unSequenceTsFileList.get(i));
                 }
@@ -417,9 +415,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
     }
 
-    /**
-     * recover files
-     */
+    /** recover files */
     @Override
     @SuppressWarnings({"squid:S3776", "squid:S2142"})
     public void recover() {
@@ -839,9 +835,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         throw new IOException();
     }
 
-    /**
-     * restore the files back to the status before the compaction task is submitted
-     */
+    /** restore the files back to the status before the compaction task is submitted */
     private void restoreCompaction() {
         File logFile =
                 FSFactoryProducer.getFSFactory()

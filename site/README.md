@@ -58,7 +58,7 @@ npm run dev
 npm run build
 ```
 
-Remeber, only the changes of site/src can be logged by Git. 
+Remember, only the changes of site/src can be logged by Git. 
 All changes in the target folder will be ignored by Git.
 
 ## Deploy Manually
@@ -68,6 +68,11 @@ run `mvn compile scm-publish:publish-scm -P compile-site`.
 Apache ID and passwored is needed.
 
 Or run `mvn compile scm-publish:publish-scm -Dusername={YOUR_APACHE_ID} -Dpassword={YOUR_APACHE_PASSWORD}  -P compile-site`
+
+## Preview your website
+
+If you add `-Dscm-branch=asf-staging` in your command, then the website will be published to https://iotdb.staged.apache.org
+
 
 ## FAQ
 

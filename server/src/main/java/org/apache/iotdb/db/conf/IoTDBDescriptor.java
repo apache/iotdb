@@ -46,7 +46,7 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private IoTDBConfig conf = new IoTDBConfig();
+  private final IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -275,6 +275,34 @@ public class IoTDBDescriptor {
                   .trim());
       if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
+      }
+
+      conf.setEnableTimedFlushUnseqMemtable(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_timed_flush_unseq_memtable",
+                  Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
+
+      long unseqMemTableFlushInterval =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "unseq_memtable_flush_interval_in_ms",
+                      Long.toString(conf.getUnseqMemtableFlushInterval()))
+                  .trim());
+      if (unseqMemTableFlushInterval > 0) {
+        conf.setUnseqMemtableFlushInterval(unseqMemTableFlushInterval);
+      }
+
+      long unseqMemTableFlushCheckInterval =
+          Long.parseLong(
+              properties
+                  .getProperty(
+                      "unseq_memtable_flush_check_interval_in_ms",
+                      Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
+                  .trim());
+      if (unseqMemTableFlushCheckInterval > 0) {
+        conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
       }
 
       conf.setAvgSeriesPointNumberThreshold(
@@ -728,6 +756,12 @@ public class IoTDBDescriptor {
 
       conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1075,6 +1109,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_write_throughput_mb_per_sec",
                   Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+
+      // update insert-tablet-plan's row limit for select-into
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }

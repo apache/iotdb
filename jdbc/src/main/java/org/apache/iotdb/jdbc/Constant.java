@@ -25,4 +25,7 @@ public class Constant {
   public static final String GLOBAL_DB_NAME = "IoTDB";
 
   static final String METHOD_NOT_SUPPORTED = "Method not supported";
+  static final String PARAMETER_NOT_NULL = "The parameter cannot be null";
+  static final String PARAMETER_SUPPORTED =
+      "Parameter only supports BOOLEAN,INT32,INT64,FLOAT,DOUBLE,TEXT data type";
 }

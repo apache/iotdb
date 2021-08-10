@@ -81,7 +81,7 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices(String tsFilePath){
+  public Set<String> getDevices(String tsFilePath) {
     try {
       TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
       return new HashSet<>(fileReader.getAllDevices());
@@ -89,7 +89,6 @@ public class FileTimeIndex implements ITimeIndex {
       logger.error("Can't read file {} from disk ", tsFilePath, e);
       throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
     }
-    // return Collections.emptySet();
   }
 
   @Override
@@ -147,7 +146,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
-
     if (this.startTime > time) {
       this.startTime = time;
     }

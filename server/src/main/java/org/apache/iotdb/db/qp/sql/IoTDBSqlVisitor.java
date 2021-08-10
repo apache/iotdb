@@ -45,6 +45,7 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
+import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateFunctionContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateSnapshotContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateStorageGroupContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateTriggerContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.CreateUserContext;
@@ -156,6 +158,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertColumnsSpecContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertMultiValueContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.InsertValuesSpecContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.IntoPathContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.KillQueryContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LimitClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LimitStatementContext;
@@ -168,6 +171,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListRolePrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MeasurementNameContext;
@@ -284,7 +288,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
 
-  private static final Pattern cqLevelNodePattern = Pattern.compile("\\$\\{\\w+}");
+  // used to match "{x}", where x is a integer.
+  // for create-cq clause and select-into clause.
+  private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -976,24 +982,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLoadFiles(LoadFilesContext ctx) {
-    if (ctx.autoCreateSchema() != null) {
-      if (ctx.autoCreateSchema().INT() != null) {
-        return new LoadFilesOperator(
+    LoadFilesOperator loadFilesOperator =
+        new LoadFilesOperator(
             new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            Integer.parseInt(ctx.autoCreateSchema().INT().getText()));
-      } else {
-        return new LoadFilesOperator(
-            new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-      }
-    } else {
-      return new LoadFilesOperator(
-          new File(removeStringQuote(ctx.stringLiteral().getText())),
-          true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+            true,
+            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true);
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
     }
+    return loadFilesOperator;
   }
 
   @Override
@@ -1045,8 +1043,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         queryOp.setWhereComponent(whereComponent);
       }
     }
-
-    return queryOp;
+    // 4. Check whether it's a select-into clause
+    return ctx.intoClause() == null ? queryOp : parseAndConstructSelectIntoOperator(ctx);
   }
 
   public void parseSelectClause(SelectClauseContext ctx) {
@@ -1100,6 +1098,75 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         resultColumnContext.AS() == null ? null : resultColumnContext.ID().getText());
   }
 
+  private SelectIntoOperator parseAndConstructSelectIntoOperator(SelectStatementContext ctx) {
+    if (queryOp.getFromComponent().getPrefixPaths().size() != 1) {
+      throw new SQLParserException(
+          "select into: the number of prefix paths in the from clause should be 1.");
+    }
+
+    int sourcePathsCount = queryOp.getSelectComponent().getResultColumns().size();
+    if (sourcePathsCount != ctx.intoClause().intoPath().size()) {
+      throw new SQLParserException(
+          "select into: the number of source paths and the number of target paths should be the same.");
+    }
+
+    SelectIntoOperator selectIntoOperator = new SelectIntoOperator();
+    selectIntoOperator.setQueryOperator(queryOp);
+    List<PartialPath> intoPaths = new ArrayList<>();
+    for (int i = 0; i < sourcePathsCount; ++i) {
+      intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
+    }
+    selectIntoOperator.setIntoPaths(intoPaths);
+    return selectIntoOperator;
+  }
+
+  private PartialPath parseIntoPath(IntoPathContext intoPathContext) {
+    int levelLimitOfSourcePrefixPath =
+        queryOp.getSpecialClauseComponent() != null
+            ? queryOp.getSpecialClauseComponent().getLevel()
+            : -1;
+    if (levelLimitOfSourcePrefixPath == -1) {
+      levelLimitOfSourcePrefixPath =
+          queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength() - 1;
+    }
+
+    PartialPath intoPath = null;
+    if (intoPathContext.fullPath() != null) {
+      intoPath = parseFullPath(intoPathContext.fullPath());
+
+      Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
+      while (m.find()) {
+        String param = m.group();
+        int nodeIndex = 0;
+        try {
+          nodeIndex = Integer.parseInt(param.substring(2, param.length() - 1).trim());
+        } catch (NumberFormatException e) {
+          throw new SQLParserException("the x of ${x} should be an integer.");
+        }
+        if (nodeIndex < 1 || levelLimitOfSourcePrefixPath < nodeIndex) {
+          throw new SQLParserException(
+              "the x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
+        }
+      }
+    } else if (intoPathContext.nodeNameWithoutStar() != null) {
+      List<NodeNameWithoutStarContext> nodeNameWithoutStars = intoPathContext.nodeNameWithoutStar();
+      String[] intoPathNodes =
+          new String[1 + levelLimitOfSourcePrefixPath + nodeNameWithoutStars.size()];
+
+      intoPathNodes[0] = "root";
+      for (int i = 1; i <= levelLimitOfSourcePrefixPath; ++i) {
+        intoPathNodes[i] = "${" + i + "}";
+      }
+      for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
+        intoPathNodes[levelLimitOfSourcePrefixPath + i] = nodeNameWithoutStars.get(i - 1).getText();
+      }
+
+      intoPath = new PartialPath(intoPathNodes);
+    }
+
+    return intoPath;
+  }
+
   @Override
   public Operator visitDropContinuousQueryStatement(DropContinuousQueryStatementContext ctx) {
     DropContinuousQueryOperator dropContinuousQueryOperator =
@@ -1111,6 +1178,15 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitShowContinuousQueriesStatement(ShowContinuousQueriesStatementContext ctx) {
     return new ShowContinuousQueriesOperator(SQLConstant.TOK_SHOW_CONTINUOUS_QUERIES);
+  }
+
+  @Override
+  public Operator visitCreateStorageGroup(CreateStorageGroupContext ctx) {
+    SetStorageGroupOperator setStorageGroupOperator =
+        new SetStorageGroupOperator(SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
+    PartialPath path = parsePrefixPath(ctx.prefixPath());
+    setStorageGroupOperator.setPath(path);
+    return setStorageGroupOperator;
   }
 
   @Override
@@ -1199,54 +1275,18 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     }
 
     if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
-      throw new SQLParserException("CQ: CQ currently does not support multiple series .");
+      throw new SQLParserException("CQ: CQ currently does not support multiple series.");
     }
 
     parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
 
-    int fromLen = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
-    int queryLevel = queryOp.getSpecialClauseComponent().getLevel();
-    if (queryLevel >= fromLen) {
+    int groupByQueryLevel = queryOp.getSpecialClauseComponent().getLevel();
+    int fromPrefixLevelLimit = queryOp.getFromComponent().getPrefixPaths().get(0).getNodeLength();
+    if (groupByQueryLevel >= fromPrefixLevelLimit) {
       throw new SQLParserException("CQ: Level should not exceed the <from_prefix> length.");
     }
 
-    PartialPath targetPath = null;
-
-    int trueLevel = queryLevel;
-    if (trueLevel == -1) {
-      trueLevel = fromLen - 1;
-    }
-
-    if (ctx.fullPath() != null) {
-      targetPath = parseFullPath(ctx.fullPath());
-      Matcher m = cqLevelNodePattern.matcher(targetPath.getFullPath());
-      while (m.find()) {
-        String param = m.group();
-        int nodeIndex = 0;
-        try {
-          nodeIndex = Integer.parseInt(param.substring(2, param.length() - 1).trim());
-        } catch (NumberFormatException e) {
-          throw new SQLParserException("CQ: x of ${x} should be an integer.");
-        }
-        if (nodeIndex < 1 || nodeIndex > trueLevel) {
-          throw new SQLParserException(
-              "CQ: x of ${x} should be greater than 0 and equal to or less than <level> or the length of queried path prefix.");
-        }
-      }
-    } else if (ctx.nodeNameWithoutStar() != null) {
-
-      List<String> targetNodes = new ArrayList<>();
-
-      targetNodes.add("root");
-
-      for (int i = 1; i <= trueLevel; i++) {
-        targetNodes.add("${" + i + "}");
-      }
-      targetNodes.add(ctx.nodeNameWithoutStar().getText());
-      targetPath = new PartialPath(targetNodes.toArray(new String[0]));
-    }
-
-    createContinuousQueryOperator.setTargetPath(targetPath);
+    createContinuousQueryOperator.setTargetPath(parseIntoPath(ctx.intoPath()));
     createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
@@ -2130,8 +2170,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       long timestamp;
       if (insertMultiValues.get(i).dateFormat() != null) {
         timestamp = parseTimeFormat(insertMultiValues.get(i).dateFormat().getText());
-      } else {
+      } else if (insertMultiValues.get(i).INT() != null) {
         timestamp = Long.parseLong(insertMultiValues.get(i).INT().getText());
+      } else if (insertMultiValues.size() != 1) {
+        throw new SQLParserException("need timestamps when insert multi rows");
+      } else {
+        timestamp = parseTimeFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
       List<MeasurementValueContext> values = insertMultiValues.get(i).measurementValue();
@@ -2353,6 +2397,31 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
                   + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
                   + "refer to user document for more info.",
               timestampStr));
+    }
+  }
+
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param operator the result operator, setting by clause context
+   * @param ctx context of property statement
+   */
+  private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
+    if (ctx.AUTOREGISTER() != null) {
+      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else if (ctx.SGLEVEL() != null) {
+      operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
+    } else if (ctx.VERIFY() != null) {
+      operator.setVerifyMetadata(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 }

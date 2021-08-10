@@ -29,6 +29,10 @@ Code library：https://github.com/apache/iotdb/tree/master
 
 Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
 
+Jira Task Management：https://issues.apache.org/jira/projects/IOTDB/issues
+
+Wiki Document Management：https://cwiki.apache.org/confluence/display/IOTDB/Home\
+
 ## Subscribe to mailing list
 
 The mailing list is where the Apache project conducts technical discussions and communication with users. Follow the mailing list to receive mail.
@@ -40,10 +44,9 @@ Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email yo
 
 Other mailing list:
 * notifications@iotdb.apache.org (for JIRA information notification.)
-  * If you just want to pay attention to some issues, you do not need to subscribe this mailing list.
-  Instead, you just need to click "start-watching this issue" on the jira issue webpage. 
-* commits@iotdb.apache.org (for code changes notification. Take care because this mailing list may have many emails)
-* reviews@iotdb.apache.org (for code reviews notification on Github.  Take care because this mailing list may have many emails)
+  * If you only want to receive individual Jira notifications that you are interest in, you do not need to subscribe this mailing list. Instead, you just need to click "start-watching this issue" on the jira issue webpage or just comment on this issue.
+* commits@iotdb.apache.org (Any code changes will be notified here, please note that this mailing list will be very large)
+* reviews@iotdb.apache.org (Any code review comments will be notified here, please note that this mailing list will be very large)
 
 
 
@@ -125,12 +128,26 @@ You can go to jira to pick up the existing issue or create your own issue and ge
 
 # IoTDB Debug Guide
 
-Recommended use Intellij idea. 
-```
-mvn clean package -DskipTests
-``` 
+## Import the code
 
-Mark `antlr/target/generated-sources/antlr4` and `thrift/target/generated-sources/thrift` as `Source Root`.
+### Intellij idea
+
+It is recommended to use Intellij idea。```mvn clean package -DskipTests``` 
+
+Mark ```antlr/target/generated-sources/antlr4``` and```thrift/target/generated-sources/thrift``` as ```Source Root```。 
+
+### Eclipse
+
+If it is a version before eclipse 2019，users need to be executed in the root directory of IoTDB `mvn eclipse:eclipse -DskipTests`。
+
+import -> General -> Existing Projects into Workspace -> Select IoTDB root directory
+
+If the version after eclipse 2019
+
+import -> Maven -> Existing Maven Projects
+
+## Debugging code
+
 
 * Server main function：`server/src/main/java/org/apache/iotdb/db/service/IoTDB`, can be started in debug mode.
 * Cli：`cli/src/main/java/org/apache/iotdb/cli/`，Use Cli for linux and WinCli for windows, you can start directly with the parameter "`-h 127.0.0.1 -p 6667 -u root -pw root`"

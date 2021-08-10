@@ -41,11 +41,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DefaultDeviceTemplateTest {
+public class DefaultSchemaTemplateTest {
 
   @Test
-  public void testUsingDefaultDeviceTemplate() throws IOException, WriteProcessException {
-    File file = new File("target/defaultDeviceTemplate.tsfile");
+  public void testUsingDefaultSchemaTemplate() throws IOException, WriteProcessException {
+    File file = new File("target/defaultSchemaTemplate.tsfile");
     try (TsFileWriter writer = new TsFileWriter(file)) {
       MeasurementSchema s1 = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
       MeasurementSchema s2 = new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN);
@@ -58,7 +58,7 @@ public class DefaultDeviceTemplateTest {
       schema.put("s1", s1);
       schema.put("s2", s2);
 
-      writer.registerDeviceTemplate("defaultTemplate", schema);
+      writer.registerSchemaTemplate("defaultTemplate", schema);
 
       Tablet tablet = new Tablet("d1", schemaList);
       long[] timestamps = tablet.timestamps;
