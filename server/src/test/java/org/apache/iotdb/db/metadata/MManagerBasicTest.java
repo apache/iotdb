@@ -1331,4 +1331,28 @@ public class MManagerBasicTest {
     return new CreateTemplatePlan(
         "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
   }
+
+  @Test
+  public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath sg1 = new PartialPath("root.a.sg");
+    manager.setStorageGroup(sg1);
+
+    PartialPath deviceId = new PartialPath("root.a.d");
+    String[] measurementList = {"s"};
+    String[] values = {"1"};
+    MeasurementMNode[] measurementMNodes = new MeasurementMNode[1];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+
+    try {
+      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+      fail();
+    } catch (MetadataException e) {
+      Assert.assertEquals(
+          "some children of root.a have already been set to storage group", e.getMessage());
+      Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
+    }
+  }
 }
