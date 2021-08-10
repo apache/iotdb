@@ -362,7 +362,7 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
-      tsFileResourceManager.registerSealedTsFileResource(this);
+
     }
   }
 
@@ -493,7 +493,6 @@ public class TsFileResource {
     processor = null;
     chunkMetadataList = null;
     timeIndex.close();
-    tsFileResourceManager.registerSealedTsFileResource(this);
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
