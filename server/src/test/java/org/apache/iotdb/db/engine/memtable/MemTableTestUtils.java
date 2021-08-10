@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -85,9 +86,9 @@ public class MemTableTestUtils {
     encodings[0] = TSEncoding.PLAIN;
     encodings[1] = TSEncoding.GORILLA;
 
-    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     IMeasurementSchema schema =
-        new VectorMeasurementSchema("$#$0", measurements, dataTypes, encodings);
+        new VectorMeasurementSchema("vectorName", measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
 

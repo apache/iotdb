@@ -56,9 +56,10 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -267,7 +268,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[] {"1.0"});
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurementMNodes(new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+    insertPlan.setMeasurementMNodes(new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -302,6 +303,41 @@ public class DataLogApplierTest extends IoTDBTest {
     assertEquals(
         "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
+  }
+
+  @Test
+  public void testApplyBatchInsert()
+      throws MetadataException, QueryProcessException, StorageEngineException, IOException,
+          InterruptedException, QueryFilterOptimizationException {
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    log.setPlan(insertRowsPlan);
+
+    for (int i = 1; i <= 4; i++) {
+      InsertRowPlan insertPlan = new InsertRowPlan();
+      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setTime(1);
+      insertPlan.setNeedInferType(true);
+      insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+      insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
+      insertPlan.setValues(new Object[] {"1.0"});
+      insertPlan.setNeedInferType(true);
+      insertPlan.setMeasurementMNodes(
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+      insertRowsPlan.addOneInsertRowPlan(insertPlan, i - 1);
+    }
+
+    applier.apply(log);
+
+    for (int i = 1; i <= 4; i++) {
+      QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(i, 0)), null);
+      assertTrue(dataSet.hasNext());
+      RowRecord record = dataSet.next();
+      assertEquals(1, record.getTimestamp());
+      assertEquals(1, record.getFields().size());
+      assertEquals(1.0, record.getFields().get(0).getDoubleV(), 0.00001);
+      assertFalse(dataSet.hasNext());
+    }
   }
 
   @Test

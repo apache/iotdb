@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -219,7 +220,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -367,7 +368,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -448,7 +449,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -529,7 +530,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -630,7 +631,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testCheckMemTableFlushInterval()
+  public void testTimedFlushMemTable()
       throws IllegalPathException, InterruptedException, WriteProcessException,
           TriggerExecutionException {
     // create one seq memtable & close
@@ -655,12 +656,18 @@ public class StorageGroupProcessorTest {
 
     processor.timedFlushMemTable();
 
+    // wait until memtable flush task is done
+    Assert.assertEquals(1, processor.getWorkUnsequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor =
+        processor.getWorkUnsequenceTsFileProcessors().iterator().next();
     FlushManager flushManager = FlushManager.getInstance();
     int waitCnt = 0;
-    while (flushManager.getNumberOfPendingTasks() != 0
-        || FlushManager.getInstance().getNumberOfPendingSubTasks() != 0
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
         || flushManager.getNumberOfWorkingTasks() != 0
-        || FlushManager.getInstance().getNumberOfWorkingSubTasks() != 0) {
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
       Thread.sleep(500);
       ++waitCnt;
       if (waitCnt % 10 == 0) {

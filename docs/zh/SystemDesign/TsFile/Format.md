@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,39 +27,63 @@
 
 ### 1.1 变量的存储
 
-- **大端存储**
-  - 比如： `int` `0x8` 将会被存储为 `00 00 00 08`, 而不是 `08 00 00 00`
-- **可变长的字符串类型**
-  - 存储的方式是以一个 `int` 类型的 `Size` + 字符串组成。`Size` 的值可以为 0。
-  - `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度。 
-  - 举例来说，"sensor_1" 这个字符串将被存储为 `00 00 00 08` + "sensor_1" (ASCII 编码）。
-  - 另外需要注意的一点是文件签名 "TsFile000001" (`Magic String` + `Version`), 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
 - **数据类型**
+  
   - 0: BOOLEAN
   - 1: INT32 (`int`)
   - 2: INT64 (`long`)
   - 3: FLOAT
   - 4: DOUBLE
   - 5: TEXT (`String`)
+  
 - **编码类型**
-  - 0: PLAIN
-  - 1: DICTIONARY
-  - 2: RLE
-  - 3: DIFF
-  - 4: TS_2DIFF
-  - 5: BITMAP
-  - 6: GORILLA_V1
-  - 7: REGULAR 
-  - 8: GORILLA 
-- **压缩类型**
-  - 0: UNCOMPRESSED
-  - 1: SNAPPY
-  - 2: GZIP
-  - 3: LZO
-  - 4: SDT
-  - 5: PAA
-  - 6: PLA
-  - 7: LZ4
+
+	为了提高数据的存储效率，需要在数据写入的过程中对数据进行编码，从而减少磁盘空间的使用量。在写数据以及读数据的过程中都能够减少I/O操作的数据量从而提高性能。IoTDB支持多种针对不同类型的数据的编码方法：
+
+	- **0: PLAIN**
+
+		- PLAIN编码，默认的编码方式，即不编码，支持多种数据类型，压缩和解压缩的时间效率较高，但空间存储效率较低。
+
+	- **1: DICTIONARY**
+
+		- 字典编码是一种无损编码。它适合编码基数小的数据（即数据去重后唯一值数量小）。不推荐用于基数大的数据。
+
+	- **2: RLE**
+
+		- 游程编码，比较适合存储某些整数值连续出现的序列，不适合编码大部分情况下前后值不一样的序列数据。
+
+		- 游程编码也可用于对浮点数进行编码，但在创建时间序列的时候需指定保留小数位数（MAX_POINT_NUMBER，具体指定方式参见[SQL 参考文档](../../UserGuide/Appendix/SQL-Reference.md)）。比较适合存储某些浮点数值连续出现的序列数据，不适合存储对小数点后精度要求较高以及前后波动较大的序列数据。
+
+			> 游程编码（RLE）和二阶差分编码（TS_2DIFF）对 float 和 double 的编码是有精度限制的，默认保留2位小数。推荐使用 GORILLA。
+
+	- **3: DIFF**
+
+	- **4: TS_2DIFF**
+
+		- 二阶差分编码，比较适合编码单调递增或者递减的序列数据，不适合编码波动较大的数据。
+
+	- **5: BITMAP**
+
+	- **6: GORILLA_V1**
+
+		- GORILLA编码是一种无损编码，它比较适合编码前后值比较接近的数值序列，不适合编码前后波动较大的数据。
+		- 当前系统中存在两个版本的GORILLA编码实现，推荐使用`GORILLA`，不推荐使用`GORILLA_V1`（已过时）。
+		- 使用限制：使用Gorilla编码INT32数据时，需要保证序列中不存在值为`Integer.MIN_VALUE`的数据点；使用Gorilla编码INT64数据时，需要保证序列中不存在值为`Long.MIN_VALUE`的数据点。
+
+	- **7: REGULAR**
+
+	- **8: GORILLA**
+
+- **数据类型与支持编码的对应关系**
+
+	| 数据类型 |          支持的编码           |
+	| :------: | :---------------------------: |
+	| BOOLEAN  |          PLAIN, RLE           |
+	|  INT32   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|  INT64   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|  FLOAT   | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|  DOUBLE  | PLAIN, RLE, TS_2DIFF, GORILLA |
+	|   TEXT   |       PLAIN, DICTIONARY       |
 
 ### 1.2 TsFile 概述
 
@@ -217,33 +241,63 @@ PageHeader 结构：
 
 所有的索引节点构成一棵类 B+树结构的**索引树（二级索引）**，这棵树由两部分组成：实体索引部分和物理量索引部分。索引节点类型有四种，分别是`INTERNAL_ENTITY`、`LEAF_ENTITY`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应实体索引部分的中间节点和叶子节点，和物理量索引部分的中间节点和叶子节点。 只有物理量索引部分的叶子节点 (`LEAF_MEASUREMENT`) 指向 `TimeseriesIndex`。
 
-下面，我们使用四个例子来加以详细说明。
+考虑多元时间序列的引入，每个多元时间序列称为一个vector，有一个`TimeColumn`，例如d1实体下的多元时间序列vector1，有s1、s2两个物理量，即`d1.vector1.(s1,s2)`，我们称vector1为`TimeColumn`，在存储的时候需要多存储一个vector1的Chunk。
+
+构建`IndexOfTimeseriesIndex`时，对于多元时间序列的非`TimeValue`的物理量量，使用与`TimeValue`拼接的方式，例如`vector1.s1`视为“物理量”。
+
+> 注：从0.13起，系统支持[多元时间序列](https://iotdb.apache.org/zh/UserGuide/Master/Data-Concept/Data-Model-and-Terminology.html)（Multi-variable timeseries 或 Aligned timeseries），一个实体的一个多元物理量对应一个多元时间序列。这些时间序列称为**多元时间序列**，也叫**对齐时间序列**。多元时间序列需要被同时创建、同时插入值，删除时也必须同时删除，一组多元序列的时间戳列在内存和磁盘中仅需存储一次，而不是每个时间序列存储一次。
+>
+> ![img](https://cwiki.apache.org/confluence/download/attachments/184617773/image-20210720151044629.png?version=1&modificationDate=1626773824000&api=v2)
+
+下面，我们使用七个例子来加以详细说明。
 
 索引树节点的度（即每个节点的最大子节点个数）可以由用户进行配置，配置项为`max_degree_of_index_node`，其默认值为 256。在以下例子中，我们假定 `max_degree_of_index_node = 10`。
 
-* 例 1：5 个实体，每个实体有 5 个物理量
+需要注意的是，在索引树的每类节点（ENTITY、MEASUREMENT）中，键按照字典序排列。在下面的例子中，若i<j，假设字典序di<dj。（否则，实际上[d1,d2,...d10]的字典序排列应该为[d1,d10,d2,...d9]）
+
+其中，例1\~4为一元时间序列的例子，例5\~6为多元时间序列的例子，例7为综合例子。
+
+* **例 1：5 个实体，每个实体有 5 个物理量**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254013-9d2d7400-e32c-11eb-9f95-1663e14cffbb.png">
 
 在 5 个实体，每个实体有 5 个物理量的情况下，由于实体数和物理量数均不超过 `max_degree_of_index_node`，因此索引树只有默认的物理量部分。在这部分中，每个 IndexNode 最多由 10 个 IndexEntry 组成。根节点是 `LEAF_ENTITY` 类型，其中的 5 个 IndexEntry 指向对应的实体的 IndexNode，这些节点直接指向 `TimeseriesIndex`，是 `LEAF_MEASUREMENT`。
 
-* 例 2：1 个实体，150 个物理量
+* **例 2：1 个实体，150 个物理量**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/125254022-a0c0fb00-e32c-11eb-8fd1-462936358288.png">
 
 在 1 个实体，实体中有 150 个物理量的情况下，物理量个数超过了 `max_degree_of_index_node`，索引树有默认的物理量层级。在这个层级里，每个 IndexNode 最多由 10 个 IndexEntry 组成。直接指向 `TimeseriesIndex`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点不是物理量索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`；根节点是 `LEAF_ENTITY` 类型。
 
-* 例 3：150 个实体，每个实体有 1 个物理量
+* **例 3：150 个实体，每个实体有 1 个物理量**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122771008-9a64d380-d2d8-11eb-9044-5ac794dd38f7.png">
 
 在 150 个实体，每个实体中有 1 个物理量的情况下，实体个数超过了 `max_degree_of_index_node`，形成索引树的物理量层级和实体索引层级。在这两个层级里，每个 IndexNode 最多由 10 个 IndexEntry 组成。直接指向 `TimeseriesIndex` 的节点类型为 `LEAF_MEASUREMENT`，物理量索引层级的根节点同时作为实体索引层级的叶子节点，其节点类型为 `LEAF_ENTITY`；而后续产生的中间节点和根节点不是实体索引层级的叶子节点，因此节点类型为 `INTERNAL_ENTITY`。
 
-* 例 4：150 个实体，每个实体有 150 个物理量
+* **例 4：150 个实体，每个实体有 150 个物理量**
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122677241-1a753580-d214-11eb-817f-17bcf797251f.png">
 
 在 150 个实体，每个实体中有 150 个物理量的情况下，物理量和实体个数均超过了 `max_degree_of_index_node`，形成索引树的物理量层级和实体索引层级。在这两个层级里，每个 IndexNode 均最多由 10 个 IndexEntry 组成。如前所述，从根节点到实体索引层级的叶子节点，类型分别为`INTERNAL_ENTITY` 和 `LEAF_ENTITY`，而每个实体索引层级的叶子节点都是物理量索引层级的根节点，从这里到物理量索引层级的叶子节点，类型分别为`INTERNAL_MEASUREMENT` 和 `LEAF_MEASUREMENT`。
+
+- **例 5：1 个实体，18 个物理量，2 个多元时间序列组，每个多元时间序列组分别有 9 个物理量**
+
+![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase5.png?version=2&modificationDate=1626952911868&api=v2)
+
+- **例 6：1 个实体，30 个物理量，2 个多元时间序列组，每个多元时间序列组分别有 15 个物理量**
+
+![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase6.png?version=2&modificationDate=1626952911054&api=v2)
+
+- **例 7：2 个实体，每个实体的物理量如下表所示**
+
+| d0                                 | d1                                 |
+| :--------------------------------- | :--------------------------------- |
+| 【一元时间序列】s0,s1...,s4        | 【一元时间序列】s0,s1,...s14       |
+| 【多元时间序列】v0.(s5,s6,...,s14) | 【多元时间序列】v0.(s15,s16,..s18) |
+| 【一元时间序列】z15,z16,..,z18     |                                    |
+
+![img](https://cwiki.apache.org/confluence/download/attachments/184617773/tsFileVectorIndexCase7.png?version=2&modificationDate=1626952910746&api=v2)
 
 索引采用树形结构进行设计的目的是在实体数或者物理量数量过大时，可以不用一次读取所有的 `TimeseriesIndex`，只需要根据所读取的物理量定位对应的节点，从而减少 I/O，加快查询速度。有关 TsFile 的读流程将在本章最后一节加以详细说明。
 
@@ -385,211 +439,118 @@ TsFile path:test.tsfile
 Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
 file path: test.tsfile
-file length: 33436
+file length: 15462
+14:40:55.619 [main] INFO org.apache.iotdb.tsfile.read.TsFileSequenceReader - Start reading file test.tsfile metadata from 15356, length 96
 
-            POSITION| CONTENT
-            --------  -------
-                   0| [magic head] TsFile
-                   6| [version number] 000002
-||||||||||||||||||||| [Chunk Group] of root.group_12.d2, num of Chunks:3
-                  12| [Chunk] of s_INT64e_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   2 pages
-                 677| [Chunk] of s_INT64e_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-                1349| [Chunk] of s_INT64e_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   2 pages
-                5766| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d2
-                    |   [dataSize] 5754
-                    |   [num of chunks] 3
-||||||||||||||||||||| [Chunk Group] of root.group_12.d2 ends
-                5799| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-||||||||||||||||||||| [Chunk Group] of root.group_12.d1, num of Chunks:3
-                5808| [Chunk] of s_INT32e_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-                8231| [Chunk] of s_INT32e_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-                8852| [Chunk] of s_INT32e_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-                9399| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d1
-                    |   [dataSize] 3591
-                    |   [num of chunks] 3
-||||||||||||||||||||| [Chunk Group] of root.group_12.d1 ends
-                9432| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-||||||||||||||||||||| [Chunk Group] of root.group_12.d0, num of Chunks:2
-                9441| [Chunk] of s_BOOLEANe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:BOOLEAN, 
-                      startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-                9968| [Chunk] of s_BOOLEANe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:BOOLEAN, 
-                      startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               10961| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d0
-                    |   [dataSize] 1520
-                    |   [num of chunks] 2
-||||||||||||||||||||| [Chunk Group] of root.group_12.d0 ends
-               10994| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-||||||||||||||||||||| [Chunk Group] of root.group_12.d5, num of Chunks:1
-               11003| [Chunk] of s_TEXTe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:TEXT, 
-                      startTime: 1 endTime: 10000 count: 10000 [firstValue:version_test,lastValue:version_test]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   3 pages
-               19278| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d5
-                    |   [dataSize] 8275
-                    |   [num of chunks] 1
-||||||||||||||||||||| [Chunk Group] of root.group_12.d5 ends
-               19311| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-||||||||||||||||||||| [Chunk Group] of root.group_12.d4, num of Chunks:4
-               19320| [Chunk] of s_DOUBLEe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00000000123]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   2 pages
-               23740| [Chunk] of s_DOUBLEe_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               24414| [Chunk] of s_DOUBLEe_GORILLA, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               25054| [Chunk] of s_DOUBLEe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000001224]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   2 pages
-               25717| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d4
-                    |   [dataSize] 6397
-                    |   [num of chunks] 4
-||||||||||||||||||||| [Chunk Group] of root.group_12.d4 ends
-               25750| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-||||||||||||||||||||| [Chunk Group] of root.group_12.d3, num of Chunks:4
-               25759| [Chunk] of s_FLOATe_GORILLA, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               26375| [Chunk] of s_FLOATe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               28796| [Chunk] of s_FLOATe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               29343| [Chunk] of s_FLOATe_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
-                      startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
-                    |   [marker] 1
-                    |   [ChunkHeader]
-                    |   1 pages
-               29967| [Chunk Group Footer]
-                    |   [marker] 0
-                    |   [deviceID] root.group_12.d3
-                    |   [dataSize] 4208
-                    |   [num of chunks] 4
-||||||||||||||||||||| [Chunk Group] of root.group_12.d3 ends
-               30000| [Version Info]
-                    |   [marker] 3
-                    |   [version] 102
-               30009| [marker] 2
-               30010| [ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_PLAIN, tsDataType:BOOLEAN
-                    | [startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
-               30066| [ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_RLE, tsDataType:BOOLEAN
-                    | [startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
-               30120| [ChunkMetadataList] of root.group_12.d1.s_INT32e_PLAIN, tsDataType:INT32
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30196| [ChunkMetadataList] of root.group_12.d1.s_INT32e_RLE, tsDataType:INT32
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30270| [ChunkMetadataList] of root.group_12.d1.s_INT32e_TS_2DIFF, tsDataType:INT32
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30349| [ChunkMetadataList] of root.group_12.d2.s_INT64e_PLAIN, tsDataType:INT64
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30441| [ChunkMetadataList] of root.group_12.d2.s_INT64e_RLE, tsDataType:INT64
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30531| [ChunkMetadataList] of root.group_12.d2.s_INT64e_TS_2DIFF, tsDataType:INT64
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
-               30626| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_GORILLA, tsDataType:FLOAT
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30704| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_PLAIN, tsDataType:FLOAT
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30780| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_RLE, tsDataType:FLOAT
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30854| [ChunkMetadataList] of root.group_12.d3.s_FLOATe_TS_2DIFF, tsDataType:FLOAT
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
-               30933| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_GORILLA, tsDataType:DOUBLE
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
-               31028| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_PLAIN, tsDataType:DOUBLE
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00000000123]] 
-               31121| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_RLE, tsDataType:DOUBLE
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000001224]] 
-               31212| [ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_TS_2DIFF, tsDataType:DOUBLE
-                    | [startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
-               31308| [ChunkMetadataList] of root.group_12.d5.s_TEXTe_PLAIN, tsDataType:TEXT
-                    | [startTime: 1 endTime: 10000 count: 10000 [firstValue:version_test,lastValue:version_test]] 
-               32840| [MetadataIndex] of root.group_12.d0
-               32881| [MetadataIndex] of root.group_12.d1
-               32920| [MetadataIndex] of root.group_12.d2
-               32959| [MetadataIndex] of root.group_12.d3
-               33000| [MetadataIndex] of root.group_12.d4
-               33042| [MetadataIndex] of root.group_12.d5
-               33080| [TsFileMetadata]
-                    |   [num of devices] 6
-                    |   6 key&TsMetadataIndex
-                    |   [totalChunkNum] 17
-                    |   [invalidChunkNum] 0
-                    |   [bloom filter bit vector byte array length] 32
-                    |   [bloom filter bit vector byte array] 
-                    |   [bloom filter number of bits] 256
-                    |   [bloom filter number of hash functions] 5
-               33426| [TsFileMetadataSize] 346
-               33430| [magic tail] TsFile
-               33436| END of TsFile
-
+            POSITION|	CONTENT
+            -------- 	-------
+                   0|	[magic head] TsFile
+                   6|	[version number] 3
+|||||||||||||||||||||	[Chunk Group] of root.sg_1.d1, num of Chunks:4
+                   7|	[Chunk Group Header]
+                    |		[marker] 0
+                    |		[deviceID] root.sg_1.d1
+                  21|	[Chunk] of s6, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:6,maxValue:9996,firstValue:6,lastValue:9996,sumValue:5001000.0]
+                    |		[chunk header] marker=5, measurementId=s6, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+                1856|	[Chunk] of s4, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:4,maxValue:9994,firstValue:4,lastValue:9994,sumValue:4999000.0]
+                    |		[chunk header] marker=5, measurementId=s4, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+                3691|	[Chunk] of s2, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:3,maxValue:9993,firstValue:3,lastValue:9993,sumValue:4998000.0]
+                    |		[chunk header] marker=5, measurementId=s2, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+                5526|	[Chunk] of s5, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:5,maxValue:9995,firstValue:5,lastValue:9995,sumValue:5000000.0]
+                    |		[chunk header] marker=5, measurementId=s5, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+|||||||||||||||||||||	[Chunk Group] of root.sg_1.d1 ends
+|||||||||||||||||||||	[Chunk Group] of root.sg_1.d2, num of Chunks:4
+                7361|	[Chunk Group Header]
+                    |		[marker] 0
+                    |		[deviceID] root.sg_1.d2
+                7375|	[Chunk] of s2, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:3,maxValue:9993,firstValue:3,lastValue:9993,sumValue:4998000.0]
+                    |		[chunk header] marker=5, measurementId=s2, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+                9210|	[Chunk] of s4, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:4,maxValue:9994,firstValue:4,lastValue:9994,sumValue:4999000.0]
+                    |		[chunk header] marker=5, measurementId=s4, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+               11045|	[Chunk] of s6, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:6,maxValue:9996,firstValue:6,lastValue:9996,sumValue:5001000.0]
+                    |		[chunk header] marker=5, measurementId=s6, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+               12880|	[Chunk] of s5, numOfPoints:1000, time range:[0,999], tsDataType:INT64, 
+                     	startTime: 0 endTime: 999 count: 1000 [minValue:5,maxValue:9995,firstValue:5,lastValue:9995,sumValue:5000000.0]
+                    |		[chunk header] marker=5, measurementId=s5, dataSize=1826, serializedSize=9
+                    |		[chunk] java.nio.HeapByteBuffer[pos=0 lim=1826 cap=1826]
+                    |		[page]  CompressedSize:1822, UncompressedSize:1951
+|||||||||||||||||||||	[Chunk Group] of root.sg_1.d2 ends
+               14715|	[marker] 2
+               14716|	[TimeseriesIndex] of root.sg_1.d1.s2, tsDataType:INT64
+                    |		[ChunkIndex] s2, offset=3691
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:3,maxValue:9993,firstValue:3,lastValue:9993,sumValue:4998000.0]] 
+               14788|	[TimeseriesIndex] of root.sg_1.d1.s4, tsDataType:INT64
+                    |		[ChunkIndex] s4, offset=1856
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:4,maxValue:9994,firstValue:4,lastValue:9994,sumValue:4999000.0]] 
+               14860|	[TimeseriesIndex] of root.sg_1.d1.s5, tsDataType:INT64
+                    |		[ChunkIndex] s5, offset=5526
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:5,maxValue:9995,firstValue:5,lastValue:9995,sumValue:5000000.0]] 
+               14932|	[TimeseriesIndex] of root.sg_1.d1.s6, tsDataType:INT64
+                    |		[ChunkIndex] s6, offset=21
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:6,maxValue:9996,firstValue:6,lastValue:9996,sumValue:5001000.0]] 
+               15004|	[TimeseriesIndex] of root.sg_1.d2.s2, tsDataType:INT64
+                    |		[ChunkIndex] s2, offset=7375
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:3,maxValue:9993,firstValue:3,lastValue:9993,sumValue:4998000.0]] 
+               15076|	[TimeseriesIndex] of root.sg_1.d2.s4, tsDataType:INT64
+                    |		[ChunkIndex] s4, offset=9210
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:4,maxValue:9994,firstValue:4,lastValue:9994,sumValue:4999000.0]] 
+               15148|	[TimeseriesIndex] of root.sg_1.d2.s5, tsDataType:INT64
+                    |		[ChunkIndex] s5, offset=12880
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:5,maxValue:9995,firstValue:5,lastValue:9995,sumValue:5000000.0]] 
+               15220|	[TimeseriesIndex] of root.sg_1.d2.s6, tsDataType:INT64
+                    |		[ChunkIndex] s6, offset=11045
+                    |		[startTime: 0 endTime: 999 count: 1000 [minValue:6,maxValue:9996,firstValue:6,lastValue:9996,sumValue:5001000.0]] 
+|||||||||||||||||||||
+               15292|	[IndexOfTimerseriesIndex Node] type=LEAF_MEASUREMENT
+                    |		<s2, 14716>
+                    |		<s6, 14932>
+                    |		<endOffset, 15004>
+               15324|	[IndexOfTimerseriesIndex Node] type=LEAF_MEASUREMENT
+                    |		<s2, 15004>
+                    |		<s6, 15220>
+                    |		<endOffset, 15292>
+               15356|	[TsFileMetadata]
+                    |		[meta offset] 14715
+                    |		[num of devices] 2
+                    |		2 key&TsMetadataIndex
+                    |		[bloom filter bit vector byte array length] 32
+                    |		[bloom filter bit vector byte array] 
+                    |		[bloom filter number of bits] 256
+                    |		[bloom filter number of hash functions] 5
+               15452|	[TsFileMetadataSize] 96
+               15456|	[magic tail] TsFile
+               15462|	END of TsFile
+---------------------------- IndexOfTimerseriesIndex Tree -----------------------------
+	[MetadataIndex:LEAF_DEVICE]
+	└───[root.sg_1.d1,15292]
+			[MetadataIndex:LEAF_MEASUREMENT]
+			└───[s2,14716]
+			└───[s6,14932]
+	└───[root.sg_1.d2,15324]
+			[MetadataIndex:LEAF_MEASUREMENT]
+			└───[s2,15004]
+			└───[s6,15220]]
 ---------------------------------- TsFile Sketch End ----------------------------------
 ```
 
@@ -765,3 +726,22 @@ title("draw(timeMap,countMap,{'root.vehicle.d0.s0','root.vehicle.d0.s1'},true)")
 ![3](https://user-images.githubusercontent.com/33376433/123760418-66e70200-d8f3-11eb-8701-437afd73ac4c.png)
 ![4](https://user-images.githubusercontent.com/33376433/123760424-69e1f280-d8f3-11eb-9f45-571496685a6e.png)
 ![5](https://user-images.githubusercontent.com/33376433/123760433-6cdce300-d8f3-11eb-8ecd-da04a475af41.png)
+
+## 附录
+
+- **大端存储**
+	- 比如： `int` `0x8` 将会被存储为 `00 00 00 08`, 而不是 `08 00 00 00`
+- **可变长的字符串类型**
+	- 存储的方式是以一个 `int` 类型的 `Size` + 字符串组成。`Size` 的值可以为 0。
+	- `Size` 指的是字符串所占的字节数，它并不一定等于字符串的长度。
+	- 举例来说，"sensor_1" 这个字符串将被存储为 `00 00 00 08` + "sensor_1" (ASCII编码)。
+	- 另外需要注意的一点是文件签名 "TsFile000001" (`Magic String` + `Version`), 因为他的 `Size(12)` 和 ASCII 编码值是固定的，所以没有必要在这个字符串前的写入 `Size` 值。
+- **压缩类型**
+	- 0: UNCOMPRESSED
+	- 1: SNAPPY
+	- 2: GZIP
+	- 3: LZO
+	- 4: SDT
+	- 5: PAA
+	- 6: PLA
+	- 7: LZ4

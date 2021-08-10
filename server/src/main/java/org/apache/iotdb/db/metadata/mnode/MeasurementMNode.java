@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,12 +30,18 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 /** Represents an MNode which has a Measurement or Sensor attached to it. */
-public class MeasurementMNode extends MNode {
+public class MeasurementMNode extends MNode implements IMeasurementMNode {
+
+  private static final Logger logger = LoggerFactory.getLogger(MeasurementMNode.class);
 
   private static final long serialVersionUID = -1199657856921206435L;
 
@@ -54,7 +62,7 @@ public class MeasurementMNode extends MNode {
 
   /** @param alias alias of measurementName */
   public MeasurementMNode(
-      MNode parent,
+      IMNode parent,
       String measurementName,
       String alias,
       TSDataType dataType,
@@ -67,16 +75,84 @@ public class MeasurementMNode extends MNode {
   }
 
   public MeasurementMNode(
-      MNode parent, String measurementName, IMeasurementSchema schema, String alias) {
+      IMNode parent, String measurementName, IMeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
   }
 
+  @Override
+  public IEntityMNode getParent() {
+    return (IEntityMNode) parent;
+  }
+
+  @Override
   public IMeasurementSchema getSchema() {
     return schema;
   }
 
+  @Override
+  public void setSchema(IMeasurementSchema schema) {
+    this.schema = schema;
+  }
+
+  @Override
+  public int getMeasurementMNodeCount() {
+    return 1;
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return schema.getMeasurementCount();
+  }
+
+  /**
+   * get data type
+   *
+   * @param measurementId if it's a vector schema, we need sensor name of it
+   * @return measurement data type
+   */
+  @Override
+  public TSDataType getDataType(String measurementId) {
+    if (schema instanceof MeasurementSchema) {
+      return schema.getType();
+    } else {
+      int index = schema.getMeasurementIdColumnIndex(measurementId);
+      return schema.getValueTSDataTypeList().get(index);
+    }
+  }
+
+  @Override
+  public long getOffset() {
+    return offset;
+  }
+
+  @Override
+  public void setOffset(long offset) {
+    this.offset = offset;
+  }
+
+  @Override
+  public String getAlias() {
+    return alias;
+  }
+
+  @Override
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  @Override
+  public TriggerExecutor getTriggerExecutor() {
+    return triggerExecutor;
+  }
+
+  @Override
+  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
+    this.triggerExecutor = triggerExecutor;
+  }
+
+  @Override
   public TimeValuePair getCachedLast() {
     return cachedLastValuePair;
   }
@@ -88,6 +164,7 @@ public class MeasurementMNode extends MNode {
    * @param highPriorityUpdate whether it's a high priority update
    * @param latestFlushedTime latest flushed time
    */
+  @Override
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -110,46 +187,12 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public String getFullPath() {
-    return concatFullPath();
-  }
-
   public void resetCache() {
     cachedLastValuePair = null;
   }
 
-  public long getOffset() {
-    return offset;
-  }
-
-  public void setOffset(long offset) {
-    this.offset = offset;
-  }
-
-  public String getAlias() {
-    return alias;
-  }
-
-  public TriggerExecutor getTriggerExecutor() {
-    return triggerExecutor;
-  }
-
-  public void setAlias(String alias) {
-    this.alias = alias;
-  }
-
-  public void setSchema(IMeasurementSchema schema) {
-    this.schema = schema;
-  }
-
-  public void setTriggerExecutor(TriggerExecutor triggerExecutor) {
-    this.triggerExecutor = triggerExecutor;
-  }
-
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
-    serializeChildren(logWriter);
-
     logWriter.serializeMeasurementMNode(this);
   }
 
@@ -161,7 +204,7 @@ public class MeasurementMNode extends MNode {
    *     [3] TSDataType.ordinal() [4] TSEncoding.ordinal() [5] CompressionType.ordinal() [6] props
    *     [7] offset [8] children size
    */
-  public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
+  public static IMeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
     String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
     Map<String, String> props = new HashMap<>();
@@ -177,32 +220,88 @@ public class MeasurementMNode extends MNode {
             Byte.parseByte(nodeInfo[4]),
             Byte.parseByte(nodeInfo[5]),
             props);
-    MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
+    IMeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.parseLong(nodeInfo[7]));
     return node;
   }
 
   /** deserialize MeasuremetMNode from MeasurementNodePlan */
-  public static MeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
-    MeasurementMNode node =
+  public static IMeasurementMNode deserializeFrom(MeasurementMNodePlan plan) {
+    IMeasurementMNode node =
         new MeasurementMNode(null, plan.getName(), plan.getSchema(), plan.getAlias());
     node.setOffset(plan.getOffset());
 
     return node;
   }
 
-  /**
-   * get data type
-   *
-   * @param measurementId if it's a vector schema, we need sensor name of it
-   * @return measurement data type
-   */
-  public TSDataType getDataType(String measurementId) {
-    if (schema instanceof MeasurementSchema) {
-      return schema.getType();
-    } else {
-      int index = schema.getMeasurementIdColumnIndex(measurementId);
-      return schema.getValueTSDataTypeList().get(index);
-    }
+  @Override
+  public String getFullPath() {
+    return concatFullPath();
+  }
+
+  @Override
+  public boolean hasChild(String name) {
+    return false;
+  }
+
+  @Override
+  public IMNode getChild(String name) {
+    logger.warn("current node {} is a MeasurementMNode, can not get child {}", super.name, name);
+    throw new RuntimeException(
+        String.format(
+            "current node %s is a MeasurementMNode, can not get child %s", super.name, name));
+  }
+
+  @Override
+  public void addChild(String name, IMNode child) {
+    // Do nothing
+  }
+
+  @Override
+  public IMNode addChild(IMNode child) {
+    return null;
+  }
+
+  @Override
+  public void deleteChild(String name) {
+    // Do nothing
+  }
+
+  @Override
+  public void replaceChild(String oldChildName, IMNode newChildNode) {}
+
+  @Override
+  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
+    return null;
+  }
+
+  @Override
+  public Map<String, IMNode> getChildren() {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
+    // Do nothing
+  }
+
+  @Override
+  public Template getUpperTemplate() {
+    return parent.getUpperTemplate();
+  }
+
+  @Override
+  public Template getSchemaTemplate() {
+    logger.warn("current node {} is a MeasurementMNode, can not get Device Template", name);
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
+  }
+
+  @Override
+  public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public boolean isMeasurement() {
+    return true;
   }
 }
