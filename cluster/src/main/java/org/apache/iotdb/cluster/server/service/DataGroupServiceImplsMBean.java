@@ -16,16 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.server.service;
 
-// we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
-public interface ClusterIoTDBMBean {
-  /** @return true only if the log degree is DEBUG and the report is enabled */
-  boolean startRaftInfoReport();
+public interface DataGroupServiceImplsMBean {
 
-  void stopRaftInfoReport();
+  String getHeaderGroupMapAsString();
 
-  void enablePrintClientConnectionErrorStack();
+  int getAsyncServiceMapSize();
 
-  void disablePrintClientConnectionErrorStack();
+  int getSyncServiceMapSize();
+
+  String getPartitionTable();
 }

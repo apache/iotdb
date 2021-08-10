@@ -57,6 +57,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     this.metaGroupMember = metaGroupMember;
   }
 
+  // behavior of followers
   @Override
   public long appendEntry(AppendEntryRequest request) throws TException {
     // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
@@ -70,6 +71,8 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         // this node lacks information of the cluster and refuse to work
         logger.debug("This node is blind to the cluster and cannot accept logs, {}", request);
         return Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
+      } else {
+        // do nothing because we consider if the partitionTable is loaded, then it is corrected.
       }
     }
 

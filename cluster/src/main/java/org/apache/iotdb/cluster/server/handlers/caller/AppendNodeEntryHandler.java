@@ -25,7 +25,6 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
-
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +76,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       // the request already failed
       return;
     }
-    logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
+    logger.debug(
+        "{}: Append response {} from {} for log {}", member.getName(), response, receiver, log);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
@@ -106,11 +106,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         // the leader ship is stale, wait for the new leader's heartbeat
         long prevReceiverTerm = receiverTerm.get();
         logger.debug(
-            "{}: Received a rejection from {} because term is stale: {}/{}",
+            "{}: Received a rejection from {} because term is stale: {}/{} for log {}",
             member.getName(),
             receiver,
             prevReceiverTerm,
-            resp);
+            resp,
+            log);
         if (resp > prevReceiverTerm) {
           receiverTerm.set(resp);
         }

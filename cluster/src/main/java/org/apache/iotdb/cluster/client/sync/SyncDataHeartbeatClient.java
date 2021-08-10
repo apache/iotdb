@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
-
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -63,6 +62,15 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
     public SyncDataHeartbeatClient getSyncClient(Node node, SyncClientPool pool)
         throws TTransportException {
       return new SyncDataHeartbeatClient(protocolFactory, node, pool);
+    }
+
+    @Override
+    public String nodeInfo(Node node) {
+      return String.format(
+          "DataNode (listenIp = %s, HB port = %d, id = %d)",
+          node.getInternalIp(),
+          node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+          node.getNodeIdentifier());
     }
   }
 

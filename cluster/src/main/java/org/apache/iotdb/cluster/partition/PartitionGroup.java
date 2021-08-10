@@ -102,4 +102,9 @@ public class PartitionGroup extends ArrayList<Node> {
   public void setId(int id) {
     this.id = id;
   }
+
+  @Override
+  public String toString() {
+    return super.toString() + ", id = " + id;
+  }
 }

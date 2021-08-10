@@ -23,7 +23,6 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
-
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +53,11 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
   public void onComplete(HeartBeatResponse resp) {
     long followerTerm = resp.getTerm();
     if (logger.isDebugEnabled()) {
-      logger.debug("{}: Received a heartbeat response {}", memberName, followerTerm);
+      logger.debug(
+          "{}: Received a heartbeat response {} for last log index {}",
+          memberName,
+          followerTerm,
+          resp.getLastLogIndex());
     }
     if (followerTerm == RESPONSE_AGREE) {
       // current leadership is still valid

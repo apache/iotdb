@@ -16,16 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.server.member;
 
-// we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
-public interface ClusterIoTDBMBean {
-  /** @return true only if the log degree is DEBUG and the report is enabled */
-  boolean startRaftInfoReport();
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 
-  void stopRaftInfoReport();
+import java.util.concurrent.atomic.AtomicLong;
 
-  void enablePrintClientConnectionErrorStack();
+public interface RaftMemberMBean {
 
-  void disablePrintClientConnectionErrorStack();
+  String getAllNodesAsString();
+
+  String getName();
+
+  String getPeerMapAsString();
+
+  AtomicLong getTerm();
+
+  String getCharacterAsString();
+
+  String getLeaderAsString();
+
+  Node getVoteFor();
+
+  long getLastHeartbeatReceivedTime();
+
+  String getLogManagerObject();
+
+  boolean isReadOnly();
+
+  long getLastReportedLogIndex();
+
+  String getLastCatchUpResponseTimeAsString();
+
+  boolean isSkipElection();
 }

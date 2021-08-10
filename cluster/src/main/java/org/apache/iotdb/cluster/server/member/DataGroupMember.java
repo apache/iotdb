@@ -74,6 +74,7 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
@@ -88,11 +89,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +122,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
-public class DataGroupMember extends RaftMember {
+public class DataGroupMember extends RaftMember implements DataGroupMemberMBean {
+
+  private final String mbeanName;
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
 
@@ -167,6 +170,13 @@ public class DataGroupMember extends RaftMember {
   public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
     allNodes = nodes;
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     localQueryExecutor = new LocalQueryExecutor(this);
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
@@ -177,7 +187,7 @@ public class DataGroupMember extends RaftMember {
         "Data("
             + nodes.getHeader().getNode().getInternalIp()
             + ":"
-            + nodes.getHeader().getNode().getMetaPort()
+            + nodes.getHeader().getNode().getDataPort()
             + ", raftId="
             + nodes.getId()
             + ")",
@@ -188,6 +198,13 @@ public class DataGroupMember extends RaftMember {
         new AsyncClientPool(new SingleManagerFactory(factory)));
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
     LogApplier applier = new DataLogApplier(metaGroupMember, this);
@@ -213,6 +230,8 @@ public class DataGroupMember extends RaftMember {
     if (heartBeatService != null) {
       return;
     }
+    logger.info("Starting DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.registerMBean(this, mbeanName);
     super.start();
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -227,7 +246,8 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public void stop() {
-    logger.info("{}: stopping...", name);
+    logger.info("Stopping DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.deregisterMBean(mbeanName);
     super.stop();
     if (pullSnapshotService != null) {
       pullSnapshotService.shutdownNow();
@@ -718,6 +738,11 @@ public class DataGroupMember extends RaftMember {
 
       return executeNonQueryPlanWithKnownLeader(plan);
     }
+  }
+
+  @Override
+  public String getMBeanName() {
+    return mbeanName;
   }
 
   private void handleChangeMembershipLogWithoutRaft(Log log) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -62,6 +63,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
@@ -78,8 +80,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,7 +115,7 @@ import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_T
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so on.
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
-public abstract class RaftMember {
+public abstract class RaftMember implements RaftMemberMBean {
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static final boolean USE_LOG_DISPATCHER = false;
 
@@ -653,6 +653,10 @@ public abstract class RaftMember {
     return character;
   }
 
+  public String getCharacterAsString() {
+    return character.toString();
+  }
+
   public void setCharacter(NodeCharacter character) {
     if (!Objects.equals(character, this.character)) {
       logger.info("{} has become a {}", name, character);
@@ -802,6 +806,12 @@ public abstract class RaftMember {
               "unknown consistency=" + config.getConsistencyLevel().name());
       }
     }
+  }
+
+  public String getMBeanName() {
+    return String.format(
+        "%s:%s=%s",
+        "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "Engine", getRaftGroupId());
   }
 
   /** call back after syncLeader */
@@ -2073,5 +2083,34 @@ public abstract class RaftMember {
 
   public void setSkipElection(boolean skipElection) {
     this.skipElection = skipElection;
+  }
+
+  public long getLastReportedLogIndex() {
+    return lastReportedLogIndex;
+  }
+
+  @Override
+  public String getAllNodesAsString() {
+    return allNodes.toString();
+  }
+
+  @Override
+  public String getPeerMapAsString() {
+    return peerMap.toString();
+  }
+
+  @Override
+  public String getLeaderAsString() {
+    return leader.get().toString();
+  }
+
+  @Override
+  public String getLogManagerObject() {
+    return getLogManager().toString();
+  }
+
+  @Override
+  public String getLastCatchUpResponseTimeAsString() {
+    return lastCatchUpResponseTime.toString();
   }
 }

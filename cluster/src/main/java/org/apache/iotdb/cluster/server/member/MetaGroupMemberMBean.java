@@ -16,16 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.cluster;
+package org.apache.iotdb.cluster.server.member;
 
-// we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB.
-public interface ClusterIoTDBMBean {
-  /** @return true only if the log degree is DEBUG and the report is enabled */
-  boolean startRaftInfoReport();
+public interface MetaGroupMemberMBean extends RaftMemberMBean {
 
-  void stopRaftInfoReport();
+  String getPartitionTableAsString();
 
-  void enablePrintClientConnectionErrorStack();
+  boolean isReady();
 
-  void disablePrintClientConnectionErrorStack();
+  String getAllNodesAsString();
+
+  String getCharacterAsString();
+
+  String getBlindNodesAsString();
+
+  String getIdNodeMapAsString();
 }

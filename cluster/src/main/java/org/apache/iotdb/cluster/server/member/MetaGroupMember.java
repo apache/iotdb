@@ -78,6 +78,7 @@ import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.ShutdownException;
@@ -136,7 +137,12 @@ import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TI
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 
 @SuppressWarnings("java:S1135")
-public class MetaGroupMember extends RaftMember implements IService {
+public class MetaGroupMember extends RaftMember implements IService, MetaGroupMemberMBean {
+
+  private static final String mbeanName =
+      String.format(
+          "%s:%s=%s",
+          "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "MetaGroupEngine");
 
   /** the file that contains the identifier of this node */
   static final String NODE_IDENTIFIER_FILE_NAME =
@@ -601,6 +607,25 @@ public class MetaGroupMember extends RaftMember implements IService {
         response.setRequirePartitionTable(true);
       }
     }
+
+    // if isReady, then it means the node has receives partitionTable from the leader, skip the
+    // following logic.
+    if (!ready) {
+      // if the node does not provide necessary info, wait for the next heartbeat.
+      if (response.isSetFollowerIdentifier()) {
+        return;
+      }
+      if (response.isSetRequirePartitionTable()) {
+        return;
+      }
+      // if the commitIndex is the same, ok we can start our datagroup service.
+      if (request.getTerm() == term.get()
+          && request.getCommitLogIndex() == getLogManager().getCommitLogIndex()) {
+        logger.info("Meta Group is ready");
+        rebuildDataGroups();
+        ready = true;
+      }
+    }
   }
 
   /**
@@ -678,29 +703,34 @@ public class MetaGroupMember extends RaftMember implements IService {
       // register the follower, the response.getFollower() contains the node information of the
       // receiver.
       registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
-      // if all nodes' ids are known, we can build the partition table
-      if (allNodesIdKnown()) {
-        // Notice that this should only be called once.
-
-        // When the meta raft group is established, the follower reports its node information to the
-        // leader through the first heartbeat. After the leader knows the node information of all
-        // nodes, it can replace the incomplete node information previously saved locally, and build
-        // partitionTable to send it to other followers.
-        allNodes = new PartitionGroup(idNodeMap.values());
-        if (partitionTable == null) {
-          partitionTable = new SlotPartitionTable(allNodes, thisNode);
-          logger.info("Partition table is set up");
-        }
-        router = new ClusterPlanRouter(partitionTable);
-        this.coordinator.setRouter(router);
-        rebuildDataGroups();
-        logger.info("The Meta Engine is ready");
-        this.ready = true;
-      }
+      buildMetaEngineServiceIfNotReady();
     }
     // record the requirement of partition table of the follower
     if (response.isRequirePartitionTable()) {
       addBlindNode(receiver);
+    }
+  }
+
+  public void buildMetaEngineServiceIfNotReady() {
+    // if all nodes' ids are known, we can build the partition table
+    if (!ready && allNodesIdKnown()) {
+      // Notice that this should only be called once.
+
+      // When the meta raft group is established, the follower reports its node information to the
+      // leader through the first heartbeat. After the leader knows the node information of all
+      // nodes, it can replace the incomplete node information previously saved locally, and build
+      // partitionTable to send it to other followers.
+      allNodes = new PartitionGroup(idNodeMap.values());
+      if (partitionTable == null) {
+        partitionTable = new SlotPartitionTable(allNodes, thisNode);
+        logger.info("Partition table is set up");
+      }
+
+      router = new ClusterPlanRouter(partitionTable);
+      this.coordinator.setRouter(router);
+      rebuildDataGroups();
+      logger.info("The Meta Engine is ready");
+      this.ready = true;
     }
   }
 
@@ -1370,6 +1400,11 @@ public class MetaGroupMember extends RaftMember implements IService {
     return result;
   }
 
+  @Override
+  public String getMBeanName() {
+    return mbeanName;
+  }
+
   /**
    * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
    * so the MetaLeader should take the responsible to make sure that every node receives the plan.
@@ -1957,5 +1992,25 @@ public class MetaGroupMember extends RaftMember implements IService {
 
   public void handleHandshake(Node sender) {
     NodeStatusManager.getINSTANCE().activate(sender);
+  }
+
+  @Override
+  public String getAllNodesAsString() {
+    return getAllNodes().toString();
+  }
+
+  @Override
+  public String getPartitionTableAsString() {
+    return partitionTable.toString();
+  }
+
+  @Override
+  public String getBlindNodesAsString() {
+    return blindNodes.toString();
+  }
+
+  @Override
+  public String getIdNodeMapAsString() {
+    return idNodeMap.toString();
   }
 }

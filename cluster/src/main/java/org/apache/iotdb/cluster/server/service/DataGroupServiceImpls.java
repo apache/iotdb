@@ -41,7 +41,6 @@ import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -61,7 +60,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataService.Iface {
+public class DataGroupServiceImpls
+    implements TSDataService.AsyncIface, TSDataService.Iface, DataGroupServiceImplsMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupServiceImpls.class);
 
@@ -678,6 +678,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
         dataGroupMember.setUnchanged(true);
       } else {
         prevMember.setUnchanged(true);
+        prevMember.start();
+        // TODO do we nedd call other functions in addDataGroupMember() ?
       }
     }
 
@@ -1035,5 +1037,25 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
     } catch (IOException e) {
       resultHandler.onError(e);
     }
+  }
+
+  @Override
+  public String getHeaderGroupMapAsString() {
+    return headerGroupMap.toString();
+  }
+
+  @Override
+  public int getAsyncServiceMapSize() {
+    return asyncServiceMap.size();
+  }
+
+  @Override
+  public int getSyncServiceMapSize() {
+    return syncServiceMap.size();
+  }
+
+  @Override
+  public String getPartitionTable() {
+    return partitionTable.toString();
   }
 }

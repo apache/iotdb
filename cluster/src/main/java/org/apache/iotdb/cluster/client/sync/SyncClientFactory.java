@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
@@ -37,4 +36,8 @@ public interface SyncClientFactory {
    * @throws IOException
    */
   RaftService.Client getSyncClient(Node node, SyncClientPool pool) throws TTransportException;
+
+  default String nodeInfo(Node node) {
+    return node.toString();
+  }
 }

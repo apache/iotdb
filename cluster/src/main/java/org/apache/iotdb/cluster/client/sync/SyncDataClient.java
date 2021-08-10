@@ -26,7 +26,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
-
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -52,6 +51,7 @@ public class SyncDataClient extends Client implements Closeable {
 
   public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
+
     // the difference of the two clients lies in the port
     super(
         protocolFactory.getProtocol(
@@ -104,6 +104,13 @@ public class SyncDataClient extends Client implements Closeable {
     @Override
     public SyncDataClient getSyncClient(Node node, SyncClientPool pool) throws TTransportException {
       return new SyncDataClient(protocolFactory, node, pool);
+    }
+
+    @Override
+    public String nodeInfo(Node node) {
+      return String.format(
+          "DataNode (listenIp = %s, port = %d, id = %d)",
+          node.getInternalIp(), node.getDataPort(), node.getNodeIdentifier());
     }
   }
 

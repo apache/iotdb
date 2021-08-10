@@ -22,9 +22,9 @@ package org.apache.iotdb.cluster.client.sync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
-
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -87,6 +87,15 @@ public class SyncMetaClient extends Client implements Closeable {
     @Override
     public SyncMetaClient getSyncClient(Node node, SyncClientPool pool) throws TTransportException {
       return new SyncMetaClient(protocolFactory, node, pool);
+    }
+
+    @Override
+    public String nodeInfo(Node node) {
+      return String.format(
+          "MetaNode (listenIp = %s, HB port = %d, id = %d)",
+          node.getInternalIp(),
+          node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+          node.getNodeIdentifier());
     }
   }
 

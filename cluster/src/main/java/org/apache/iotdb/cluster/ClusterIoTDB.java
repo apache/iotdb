@@ -82,6 +82,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       String.format(
           "%s:%s=%s", "org.apache.iotdb.cluster.service", IoTDBConstant.JMX_TYPE, "ClusterIoTDB");
 
+  // TODO fix me: better to throw exception if the client can not be get. Then we can remove this
+  // field.
+  public static boolean printClientConnectionErrorStack = false;
+
   // establish the cluster as a seed
   private static final String MODE_START = "-s";
   // join an established cluster
@@ -148,6 +152,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     dataGroupEngine = new DataGroupServiceImpls(protocolFactory, metaGroupEngine);
     dataClientProvider = new DataClientProvider(protocolFactory);
     initTasks();
+    JMXService.registerMBean(metaGroupEngine, metaGroupEngine.getMBeanName());
   }
 
   private void initTasks() {
@@ -268,6 +273,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       // start RPC service
       logger.info("start Meta Heartbeat RPC service... ");
       registerManager.register(MetaRaftHeartBeatService.getInstance());
+      // TODO: better to start the Meta RPC service untill the heartbeatservice has elected the
+      // leader.
+      // and quorum of followers have caught up.
       logger.info("start Meta RPC service... ");
       registerManager.register(MetaRaftService.getInstance());
 
@@ -574,6 +582,16 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   public void stopRaftInfoReport() {
     logger.info("Raft status report is disabled.");
     allowReport = false;
+  }
+
+  @Override
+  public void enablePrintClientConnectionErrorStack() {
+    printClientConnectionErrorStack = true;
+  }
+
+  @Override
+  public void disablePrintClientConnectionErrorStack() {
+    printClientConnectionErrorStack = false;
   }
 
   private static class ClusterIoTDBHolder {

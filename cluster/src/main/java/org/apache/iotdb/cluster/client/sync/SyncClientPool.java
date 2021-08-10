@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
@@ -42,10 +43,6 @@ public class SyncClientPool {
   private Map<ClusterNode, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
   private SyncClientFactory syncClientFactory;
-
-  // TODO fix me: better to throw exception if the client can not be get. Then we can remove this
-  // field.
-  public static boolean printStack = false;
 
   public SyncClientPool(SyncClientFactory syncClientFactory) {
     this.syncClientFactory = syncClientFactory;
@@ -94,8 +91,11 @@ public class SyncClientPool {
             client = syncClientFactory.getSyncClient(clusterNode, this);
           } catch (TTransportException e) {
             // TODO throw me is better.
-            if (printStack) {
-              logger.error("Cannot open transport for client {}", node, e);
+            if (ClusterIoTDB.printClientConnectionErrorStack) {
+              logger.error(
+                  "Cannot open transport for client {}", syncClientFactory.nodeInfo(node), e);
+            } else {
+              logger.error("Cannot open transport for client {}", syncClientFactory.nodeInfo(node));
             }
             return null;
           }
@@ -130,10 +130,18 @@ public class SyncClientPool {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Interrupted when waiting for an available client of {}", clusterNode);
+        logger.warn(
+            "Interrupted when waiting for an available client of {}",
+            syncClientFactory.nodeInfo(clusterNode));
         return null;
       } catch (TTransportException e) {
-        logger.error("Cannot open transport for client {}", clusterNode, e);
+        if (ClusterIoTDB.printClientConnectionErrorStack) {
+          logger.error(
+              "Cannot open transport for client {}", syncClientFactory.nodeInfo(clusterNode), e);
+        } else {
+          logger.error(
+              "Cannot open transport for client {}", syncClientFactory.nodeInfo(clusterNode));
+        }
         return null;
       }
     }
@@ -159,7 +167,12 @@ public class SyncClientPool {
           clientStack.push(syncClientFactory.getSyncClient(node, this));
           NodeStatusManager.getINSTANCE().activate(node);
         } catch (TTransportException e) {
-          logger.error("Cannot open transport for client {}", node, e);
+          if (ClusterIoTDB.printClientConnectionErrorStack) {
+            logger.error(
+                "Cannot open transport for client {}", syncClientFactory.nodeInfo(node), e);
+          } else {
+            logger.error("Cannot open transport for client {}", syncClientFactory.nodeInfo(node));
+          }
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue - 1);
           NodeStatusManager.getINSTANCE().deactivate(node);
         }
