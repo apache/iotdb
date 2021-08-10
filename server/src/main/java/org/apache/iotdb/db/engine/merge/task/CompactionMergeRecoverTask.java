@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -29,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -73,14 +70,7 @@ public class CompactionMergeRecoverTask implements Runnable {
   public void run() {
     tsFileManagement.recovered = false;
     try {
-      recoverMergeTask.recoverMerge(
-          IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-      File mergingMods =
-          SystemFileFactory.INSTANCE.getFile(
-              storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);
-      if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-        mergingMods.delete();
-      }
+      recoverMergeTask.recoverMerge(true);
     } catch (MetadataException | IOException e) {
       logger.error(e.getMessage(), e);
     }

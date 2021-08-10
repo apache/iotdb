@@ -384,7 +384,7 @@ public class IoTDBConfig {
   private int queryTimeoutThreshold = 60000;
 
   /** compaction interval in ms */
-  private long compactionInterval = 10000;
+  private long compactionInterval = 30000;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -1225,14 +1225,6 @@ public class IoTDBConfig {
 
   void setMergeThreadNum(int mergeThreadNum) {
     this.mergeThreadNum = mergeThreadNum;
-  }
-
-  public boolean isContinueMergeAfterReboot() {
-    return continueMergeAfterReboot;
-  }
-
-  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
-    this.continueMergeAfterReboot = continueMergeAfterReboot;
   }
 
   public long getMergeIntervalSec() {
