@@ -23,6 +23,8 @@ public class MetaFormatUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaFormatUtils.class);
 
+  public static String[] RESERVED_NODE_NAMES = {"time", "timestamp"};
+
   /** check whether the given path is well formatted */
   public static void checkTimeseries(PartialPath timeseries) throws IllegalPathException {
     try {
@@ -51,15 +53,17 @@ public class MetaFormatUtils {
   /** check whether the node name uses the reserved name */
   private static void checkReservedNames(String name) throws MetadataException {
     String processedName = name.trim().toLowerCase(Locale.ENGLISH);
-    if ("time".equals(processedName) || "timestamp".equals(processedName)) {
-      throw new MetadataException(String.format("%s is an illegal node name.", name));
+    for (String reservedName : RESERVED_NODE_NAMES) {
+      if (reservedName.equals(processedName)) {
+        throw new MetadataException(String.format("%s is an illegal name.", name));
+      }
     }
   }
 
   /** check whether the node name uses "." correctly */
   private static void checkNameFormat(String name) throws MetadataException {
     if (name.contains(".") && !(name.startsWith("\"") && name.endsWith("\""))) {
-      throw new MetadataException(String.format("%s is an illegal node name.", name));
+      throw new MetadataException(String.format("%s is an illegal name.", name));
     }
   }
 
