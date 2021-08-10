@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -73,8 +72,7 @@ public class CompactionMergeRecoverTask implements Runnable {
   public void run() {
     tsFileManagement.recovered = false;
     try {
-      recoverMergeTask.recoverMerge(
-          IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
+      recoverMergeTask.recoverMerge(true);
       File mergingMods =
           SystemFileFactory.INSTANCE.getFile(
               storageGroupSysDir, StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME);

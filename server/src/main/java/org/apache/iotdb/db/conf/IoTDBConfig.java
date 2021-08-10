@@ -1227,14 +1227,6 @@ public class IoTDBConfig {
     this.mergeThreadNum = mergeThreadNum;
   }
 
-  public boolean isContinueMergeAfterReboot() {
-    return continueMergeAfterReboot;
-  }
-
-  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
-    this.continueMergeAfterReboot = continueMergeAfterReboot;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
