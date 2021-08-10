@@ -25,12 +25,19 @@ public class StorageGroupAlreadySetException extends MetadataException {
 
   private static final long serialVersionUID = 9110669164701929779L;
 
+  private boolean hasChild = false;
+
   public StorageGroupAlreadySetException(String path) {
     super(getMessage(path, false), TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
   }
 
   public StorageGroupAlreadySetException(String path, boolean hasChild) {
     super(getMessage(path, hasChild), TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode());
+    this.hasChild = hasChild;
+  }
+
+  public boolean isHasChild() {
+    return hasChild;
   }
 
   private static String getMessage(String path, boolean hasChild) {
