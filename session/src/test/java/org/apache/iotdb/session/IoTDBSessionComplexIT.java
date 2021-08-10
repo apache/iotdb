@@ -719,7 +719,6 @@ public class IoTDBSessionComplexIT {
       while (resultSet.next()) {
         fail();
       }
-
       List<String> storageGroups = new ArrayList<>();
       storageGroups.add("root.sg1.d1");
       storageGroups.add("root.sg2");
@@ -818,6 +817,8 @@ public class IoTDBSessionComplexIT {
 
     insertViaSQL();
     queryByDevice("root.sg1.d1");
+
+    session.close();
   }
 
   @Test
@@ -832,5 +833,6 @@ public class IoTDBSessionComplexIT {
     } catch (Exception e) {
       Assert.assertEquals("NodeUrl Incorrect format", e.getMessage());
     }
+    session.close();
   }
 }
