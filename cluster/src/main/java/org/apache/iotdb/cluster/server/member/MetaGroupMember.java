@@ -95,7 +95,6 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -210,6 +209,17 @@ public class MetaGroupMember extends RaftMember implements IService {
   public ClusterPlanRouter getRouter() {
     return router;
   }
+
+  public boolean isReady() {
+    return ready;
+  }
+
+  public void setReady(boolean ready) {
+    this.ready = ready;
+  }
+
+  // whether the MetaEngine has been ready.
+  boolean ready = false;
 
   @TestOnly
   public MetaGroupMember() {}
@@ -397,8 +407,12 @@ public class MetaGroupMember extends RaftMember implements IService {
       initIdNodeMap();
       router = new ClusterPlanRouter(partitionTable);
       this.coordinator.setRouter(router);
-      startSubServers();
+      rebuildDataGroups();
+      ready = true;
     }
+    // else, we have to wait the meta group elects the Leader, and let the leader confirm the
+    // correct PartitionTable.
+    // then we can set the meta group Engine ready.
   }
 
   private void threadTaskInit() {
@@ -502,8 +516,9 @@ public class MetaGroupMember extends RaftMember implements IService {
     } else if (resp.getRespNum() == Response.RESPONSE_AGREE) {
       logger.info("Node {} admitted this node into the cluster", node);
       ByteBuffer partitionTableBuffer = resp.partitionTableBytes;
-      acceptPartitionTable(partitionTableBuffer, true);
-      getDataGroupEngine().pullSnapshots();
+      acceptVerifiedPartitionTable(partitionTableBuffer, true);
+      // this should be called in ClusterIoTDB TODO
+      // getDataGroupEngine().pullSnapshots();
       return true;
     } else if (resp.getRespNum() == Response.RESPONSE_IDENTIFIER_CONFLICT) {
       logger.info(
@@ -552,9 +567,11 @@ public class MetaGroupMember extends RaftMember implements IService {
   }
 
   /**
-   * Process the heartbeat request from a valid leader. Generate and tell the leader the identifier
-   * of the node if necessary. If the partition table is missing, use the one from the request or
-   * require it in the response.
+   * This is the behavior of a follower:
+   *
+   * <p>Process the heartbeat request from a valid leader. Generate and tell the leader the
+   * identifier of the node if necessary. If the partition table is missing, use the one from the
+   * request or require it in the response. TODO should go to RPC Service
    */
   @Override
   void processValidHeartbeatReq(HeartBeatRequest request, HeartBeatResponse response) {
@@ -575,7 +592,7 @@ public class MetaGroupMember extends RaftMember implements IService {
           // if the leader has sent the partition table then accept it
           if (partitionTable == null) {
             ByteBuffer byteBuffer = request.partitionTableBytes;
-            acceptPartitionTable(byteBuffer, true);
+            acceptVerifiedPartitionTable(byteBuffer, true);
           }
         }
       } else {
@@ -590,10 +607,11 @@ public class MetaGroupMember extends RaftMember implements IService {
    * Deserialize a partition table from the buffer, save it locally, add nodes from the partition
    * table and start DataClusterServer and ClusterTSServiceImpl.
    */
-  public synchronized void acceptPartitionTable(
+  protected synchronized void acceptPartitionTable(
       ByteBuffer partitionTableBuffer, boolean needSerialization) {
     SlotPartitionTable newTable = new SlotPartitionTable(thisNode);
     newTable.deserialize(partitionTableBuffer);
+
     // avoid overwriting current partition table with a previous one
     if (partitionTable != null) {
       long currIndex = partitionTable.getLastMetaLogIndex();
@@ -618,7 +636,20 @@ public class MetaGroupMember extends RaftMember implements IService {
 
     updateNodeList(newTable.getAllNodes());
 
-    startSubServers();
+    // we can not start the data group engine here,
+    // because the partitionTable is not verified.
+    // TODO
+    //    restartSubServers();
+  }
+
+  // this is the behavior of the follower
+  public synchronized void acceptVerifiedPartitionTable(
+      ByteBuffer partitionTableBuffer, boolean needSerialization) {
+    logger.info("new Partition Table is received.");
+    acceptPartitionTable(partitionTableBuffer, needSerialization);
+    rebuildDataGroups();
+    logger.info("The Meta Engine is ready");
+    ready = true;
   }
 
   private void updateNodeList(Collection<Node> nodes) {
@@ -632,11 +663,13 @@ public class MetaGroupMember extends RaftMember implements IService {
   }
 
   /**
-   * Process a HeartBeatResponse from a follower. If the follower has provided its identifier, try
-   * registering for it and if all nodes have registered and there is no available partition table,
-   * initialize a new one and start the ClusterTSServiceImpl and DataClusterServer. If the follower
-   * requires a partition table, add it to the blind node list so that at the next heartbeat this
-   * node will send it a partition table
+   * This is the behavior of the Leader:
+   *
+   * <p>Process a HeartBeatResponse from a follower. If the follower has provided its identifier,
+   * try registering for it and if all nodes have registered and there is no available partition
+   * table, initialize a new one and start the ClusterTSServiceImpl and DataClusterServer. If the
+   * follower requires a partition table, add it to the blind node list so that at the next
+   * heartbeat this node will send it a partition table
    */
   @Override
   public void processValidHeartbeatResp(HeartBeatResponse response, Node receiver) {
@@ -647,6 +680,8 @@ public class MetaGroupMember extends RaftMember implements IService {
       registerNodeIdentifier(response.getFollower(), response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
+        // Notice that this should only be called once.
+
         // When the meta raft group is established, the follower reports its node information to the
         // leader through the first heartbeat. After the leader knows the node information of all
         // nodes, it can replace the incomplete node information previously saved locally, and build
@@ -658,7 +693,9 @@ public class MetaGroupMember extends RaftMember implements IService {
         }
         router = new ClusterPlanRouter(partitionTable);
         this.coordinator.setRouter(router);
-        startSubServers();
+        rebuildDataGroups();
+        logger.info("The Meta Engine is ready");
+        this.ready = true;
       }
     }
     // record the requirement of partition table of the follower
@@ -672,7 +709,7 @@ public class MetaGroupMember extends RaftMember implements IService {
    * the next heartbeat the partition table will be sent to the node.
    */
   private void addBlindNode(Node node) {
-    logger.debug("Node {} requires the node list", node);
+    logger.debug("Node {} requires the node list (partition table)", node);
     blindNodes.add(node);
   }
 
@@ -722,7 +759,7 @@ public class MetaGroupMember extends RaftMember implements IService {
    * Start the DataClusterServer and ClusterTSServiceImpl` so this node can serve other nodes and
    * clients. Also build DataGroupMembers using the partition table.
    */
-  protected synchronized void startSubServers() {
+  protected synchronized void rebuildDataGroups() {
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
@@ -739,7 +776,7 @@ public class MetaGroupMember extends RaftMember implements IService {
   }
 
   /** When the node restarts, it sends handshakes to all other nodes so they may know it is back. */
-  private void sendHandshake() {
+  public void sendHandshake() {
     for (Node node : allNodes) {
       if (ClusterUtils.nodeEqual(node, thisNode)) {
         // no need to shake hands with yourself
@@ -1058,7 +1095,7 @@ public class MetaGroupMember extends RaftMember implements IService {
       inconsistentNum.set(0);
       checkSeedNodesStatusOnce(consistentNum, inconsistentNum);
       logger.debug(
-          "Status check result: {}-{}/{}",
+          "Status check result: consistent nodes: {}, inconsistent nodes: {}, total nodes: {}",
           consistentNum.get(),
           inconsistentNum.get(),
           getAllNodes().size());
@@ -1078,6 +1115,7 @@ public class MetaGroupMember extends RaftMember implements IService {
         }
       }
     }
+    // after checking, we enable print the error stack in 'SyncClientPool.getClient'
   }
 
   // TODO rewrite this method.
@@ -1194,6 +1232,7 @@ public class MetaGroupMember extends RaftMember implements IService {
       }
 
       ByteBuffer wrap = ByteBuffer.wrap(tableBuffer);
+      logger.info("Load Partition Table locally.");
       acceptPartitionTable(wrap, false);
 
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);

@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.heartbeat;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +84,9 @@ public class MetaHeartbeatThread extends HeartbeatThread {
       localMetaMember
           .getAppendLogThreadPool()
           .submit(() -> localMetaMember.processEmptyContentLog());
+      // this is a risk that (1) put a task into a pool
+      // and (2) the task puts more sub-tasks into the same pool, especially the task can only
+      // terminal when all sub-tasks finish.
     }
   }
 }

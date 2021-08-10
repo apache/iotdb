@@ -49,6 +49,7 @@ public class ClusterInfoServer extends ThriftService implements ClusterInfoServe
 
   @Override
   public void initTProcessor() {
+    initSyncedServiceImpl(null);
     serviceImpl = new ClusterInfoServiceImpl();
     processor = new Processor<>(serviceImpl);
   }

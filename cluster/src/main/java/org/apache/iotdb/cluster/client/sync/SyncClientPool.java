@@ -25,7 +25,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.db.utils.TestOnly;
-
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +42,10 @@ public class SyncClientPool {
   private Map<ClusterNode, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
   private SyncClientFactory syncClientFactory;
+
+  // TODO fix me: better to throw exception if the client can not be get. Then we can remove this
+  // field.
+  public static boolean printStack = false;
 
   public SyncClientPool(SyncClientFactory syncClientFactory) {
     this.syncClientFactory = syncClientFactory;
@@ -90,7 +93,10 @@ public class SyncClientPool {
           try {
             client = syncClientFactory.getSyncClient(clusterNode, this);
           } catch (TTransportException e) {
-            logger.error("Cannot open transport for client {}", node, e);
+            // TODO throw me is better.
+            if (printStack) {
+              logger.error("Cannot open transport for client {}", node, e);
+            }
             return null;
           }
           nodeClientNumMap.compute(

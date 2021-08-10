@@ -238,6 +238,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   public void activeStartNodeMode() {
     try {
+      stopRaftInfoReport();
+
       startServerCheck();
       preStartCustomize();
 
@@ -248,8 +250,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       // TODO fixme it is better to remove coordinator out of metaGroupEngine
 
       registerManager.register(metaGroupEngine);
-
-      metaGroupEngine.buildCluster();
 
       // rpc service initialize
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -265,11 +265,16 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
         DataRaftService.getInstance().initSyncedServiceImpl(dataGroupEngine);
         DataRaftHeartBeatService.getInstance().initSyncedServiceImpl(dataGroupEngine);
       }
-
       // start RPC service
+      logger.info("start Meta Heartbeat RPC service... ");
       registerManager.register(MetaRaftHeartBeatService.getInstance());
+      logger.info("start Meta RPC service... ");
       registerManager.register(MetaRaftService.getInstance());
+
+      metaGroupEngine.buildCluster();
+      logger.info("start Data Heartbeat RPC service... ");
       registerManager.register(DataRaftHeartBeatService.getInstance());
+      logger.info("start Data RPC service... ");
       registerManager.register(DataRaftService.getInstance());
       // RPC based DBA API
       registerManager.register(ClusterInfoServer.getInstance());
@@ -279,8 +284,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       // So that the ClusterRPCService can work.
       registerManager.register(ClusterRPCService.getInstance());
     } catch (StartupException | StartUpCheckFailureException | ConfigInconsistentException e) {
+      logger.error("Fail to start  server", e);
       stop();
-      logger.error("Fail to start meta server", e);
     }
   }
 
@@ -291,6 +296,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     //      preStartCustomize();
     //      metaServer.start();
     //      metaServer.joinCluster();
+    //      dataEngine.pullSnapshots();
     //      // Currently, we do not register ClusterInfoService as a JMX Bean,
     //      // so we use startService() rather than start()
     //      ClusterInfoServer.getInstance().startService();
