@@ -85,6 +85,7 @@ public class IoTDBInIT {
     }
   }
 
+  /** Test for IOTDB-1540 */
   @Test
   public void selectWithStarTest1() throws ClassNotFoundException {
     String[] retArray = new String[] {"1509465720000,qrcode003,qrcode002,"};
@@ -131,6 +132,7 @@ public class IoTDBInIT {
     }
   }
 
+  /** Test for IOTDB-1540 */
   @Test
   public void selectWithStarTest2() throws ClassNotFoundException {
     String[] retArray = new String[] {"1509465780000,qrcode004,qrcode003,qrcode002,"};
@@ -177,6 +179,7 @@ public class IoTDBInIT {
     }
   }
 
+  /** Test for IOTDB-1540 */
   @Test
   public void selectWithAlignByDeviceTest() throws ClassNotFoundException {
     String[] retArray =
