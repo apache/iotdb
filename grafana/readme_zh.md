@@ -77,12 +77,11 @@ Unsigned plugins were found during plugin initialization. Grafana Labs cannot gu
 The following plugins are disabled and not shown in the list below:
 ```
 
-请找到相关的grafana的配置文件（例如windows下为customer.ini，linux下为/etc/grafana/grafana.ini），并进行如下的配置
+请找到相关的grafana的配置文件（例如windows下的customer.ini，linux下rpm安装后为/etc/grafana/grafana.ini），并进行如下的配置
 
 ```
 allow_loading_unsigned_plugins = "grafana-simple-json-datasource"
 ```
-
 
 ### 启动Grafana
 进入Grafana的安装目录，使用以下命令启动Grafana：
