@@ -29,6 +29,11 @@
 * [IOTDB-959] Add createStorageGroup Grammar 
 * TTL can be set to the prefix path of storage group
 
+## Improvements
+* Use StringCachedPool in TsFileResource to reduce the memory size 
+* write performance optimization when replicaNum == 1
+* Optimize Primitive Array Manager
+* Function Improvement: add overlapped page rate in Tracing
 
 ## Bug Fixes
 * [IOTDB-1437] Fix the tsfile sketch tool NPE 
@@ -45,7 +50,6 @@
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
 * [IOTDB-1464] fix take byte array null pointer 
 * [IOTDB-1461] Fix compaction conflicts with ttl 
-* Use StringCachedPool in TsFileResource to reduce the memory size 
 * [IOTDB-1469] fix cross space compaction loss data bug 
 * [IOTDB-1471] Fix path not right in "sg may not ready" log 
 * [IOTDB-1407] fix Filtering time series based on tags query fails Occasionly
@@ -78,14 +82,11 @@
 * [IOTDB-1485] Replace tsfile_size_threshold by unseq_tsfile_size/seq_tsfile_size
 
 ## Miscellaneous changes
-* write performance optimization when replicaNum == 1
 * enable cacheLeader by default 
 * add audit log when execute delete and set sg for tracing 
-* Optimize Primitive Array Manager
 * [IOTDB-1500] Remove current dynamic query memory control 
 * modify nodeTool user to root 
 * [IOTDB-1499] Remove unused exception throwing notation in IoTDBSink 
-* Function Improvement: add overlapped page rate in Tracing
 * [ISSUE-3674] Disable thrift code generation for Javascript 
 
 # Apache IoTDB 0.12.1
