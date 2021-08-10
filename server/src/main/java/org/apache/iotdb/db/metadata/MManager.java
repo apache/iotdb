@@ -96,6 +96,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -2038,7 +2039,10 @@ public class MManager {
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+      checkTemplateSchemaNames(plan.getSchemaNames());
+
       Template template = new Template(plan);
+
       if (templateMap.putIfAbsent(plan.getName(), template) != null) {
         // already have template
         throw new DuplicatedTemplateException(plan.getName());
@@ -2053,6 +2057,20 @@ public class MManager {
     }
   }
 
+  private void checkTemplateSchemaNames(List<String> schemaNames) throws MetadataException {
+    // check schema name.
+    String processedName;
+    for (String schemaName : schemaNames) {
+      processedName = schemaName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(processedName)
+          || "timestamp".equals(processedName)
+          || (schemaName.contains(".")
+              && !(schemaName.startsWith("\"") && schemaName.endsWith("\"")))) {
+        throw new MetadataException(String.format("%s is an illegal schema name", schemaName));
+      }
+    }
+  }
+
   public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
     try {
       Template template = templateMap.get(plan.getTemplateName());
@@ -2060,11 +2078,12 @@ public class MManager {
       if (template == null) {
         throw new UndefinedTemplateException(plan.getTemplateName());
       }
-
+      PartialPath path = new PartialPath(plan.getPrefixPath());
       // get mnode and update template should be atomic
       synchronized (this) {
-        Pair<MNode, Template> node =
-            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
+        mtree.checkTemplateOnPath(path);
+
+        Pair<MNode, Template> node = getDeviceNodeWithAutoCreate(path);
 
         if (node.left.getDeviceTemplate() != null) {
           if (node.left.getDeviceTemplate().equals(template)) {
@@ -2072,10 +2091,6 @@ public class MManager {
           } else {
             throw new MetadataException("Specified node already has template");
           }
-        }
-
-        if (!isTemplateCompatible(node.right, template)) {
-          throw new MetadataException("Incompatible template");
         }
 
         node.left.setDeviceTemplate(template);
@@ -2088,28 +2103,6 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
-  }
-
-  public boolean isTemplateCompatible(Template upper, Template current) {
-    if (upper == null) {
-      return true;
-    }
-
-    Map<String, MeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-    Map<String, MeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-    for (String name : currentMap.keySet()) {
-      MeasurementSchema upperSchema = upperMap.remove(name);
-      if (upperSchema != null) {
-        MeasurementSchema currentSchema = currentMap.get(name);
-        if (!upperSchema.equals(currentSchema)) {
-          return false;
-        }
-      }
-    }
-
-    // current template must contains all measurements of upper template
-    return upperMap.isEmpty();
   }
 
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {

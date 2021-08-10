@@ -174,7 +174,7 @@ public class IoTDBAutoCreateSchemaIT {
     EnvironmentUtils.stopDaemon();
     setUp();
 
-    // ensure that insert data in cache is right after recovering.
+    // ensure that insert data in cache is right after recovered.
     insertAutoCreate1Tool();
   }
 
@@ -222,7 +222,7 @@ public class IoTDBAutoCreateSchemaIT {
     EnvironmentUtils.stopDaemon();
     setUp();
 
-    // ensure that storage group in cache is right after recovering.
+    // ensure that storage group in cache is right after recovered.
     InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
   }
 

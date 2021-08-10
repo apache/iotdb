@@ -68,7 +68,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
   private ThreadPoolExecutor mergeChunkSubTaskPool;
-  private ScheduledExecutorService timedMergeThreadPool;
   private ScheduledExecutorService taskCleanerThreadPool;
 
   private Map<String, Set<MergeFuture>> storageGroupMainTasks = new ConcurrentHashMap<>();
@@ -143,13 +142,6 @@ public class MergeManager implements IService, MergeManagerMBean {
           new MergeThreadPool(
               threadNum * chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
-      if (mergeInterval > 0) {
-        timedMergeThreadPool =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(
-            this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
-      }
 
       taskCleanerThreadPool =
           Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
@@ -161,10 +153,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void stop() {
     if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        timedMergeThreadPool.shutdownNow();
-        timedMergeThreadPool = null;
-      }
       taskCleanerThreadPool.shutdownNow();
       taskCleanerThreadPool = null;
       mergeTaskPool.shutdownNow();
@@ -199,10 +187,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void waitAndStop(long milliseconds) {
     if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        awaitTermination(timedMergeThreadPool, milliseconds);
-        timedMergeThreadPool = null;
-      }
       awaitTermination(taskCleanerThreadPool, milliseconds);
       taskCleanerThreadPool = null;
 

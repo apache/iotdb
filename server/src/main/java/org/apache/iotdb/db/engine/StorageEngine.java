@@ -284,9 +284,7 @@ public class StorageEngine implements IService {
                       storageGroup.getFullPath());
                 } catch (Exception e) {
                   logger.error(
-                      "meet error when recovering storage group: {}",
-                      storageGroup.getFullPath(),
-                      e);
+                      "meet error when recovered storage group: {}", storageGroup.getFullPath(), e);
                 }
                 return null;
               }));
