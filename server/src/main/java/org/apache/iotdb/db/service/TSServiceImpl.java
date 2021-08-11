@@ -22,6 +22,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -150,7 +151,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -199,7 +199,7 @@ public class TSServiceImpl implements TSIService.Iface {
     executor = new PlanExecutor();
 
     ScheduledExecutorService timedQuerySqlCountThread =
-        Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "timedQuerySqlCountThread"));
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
     timedQuerySqlCountThread.scheduleAtFixedRate(
         () -> {
           if (queryCount.get() != 0) {

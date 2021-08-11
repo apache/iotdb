@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,7 +46,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -146,13 +146,13 @@ public class MergeManager implements IService, MergeManagerMBean {
       long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
       if (mergeInterval > 0) {
         timedMergeThreadPool =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
+            IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedMergeThread");
         timedMergeThreadPool.scheduleAtFixedRate(
             this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
       }
 
       taskCleanerThreadPool =
-          Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MergeTaskCleaner");
       taskCleanerThreadPool.scheduleAtFixedRate(this::cleanFinishedTask, 30, 30, TimeUnit.MINUTES);
       logger.info("MergeManager started");
     }

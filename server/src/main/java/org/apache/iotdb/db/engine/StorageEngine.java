@@ -89,7 +89,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -272,13 +271,14 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() {
-    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
+    ttlCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TTL");
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
 
     if (config.isEnableTimedFlushUnseqMemtable()) {
-      memtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      memtableTimedFlushCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedFlushMemtable");
       memtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushMemTable,
           config.getUnseqMemtableFlushCheckInterval(),

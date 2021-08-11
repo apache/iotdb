@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.cq;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.ShutdownException;
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -94,7 +94,7 @@ public class ContinuousQueryService implements IService {
       nextExecutionTimestamps.put(plan.getContinuousQueryName(), nextExecutionTimestamp);
     }
 
-    checkThread = Executors.newSingleThreadScheduledExecutor();
+    checkThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Check");
     checkThread.scheduleAtFixedRate(
         this::checkAndSubmitTasks,
         0,

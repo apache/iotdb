@@ -127,6 +127,18 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newCachedThreadPoolWithDaemon(String poolName) {
+    logger.info("new cached thread pool: {}", poolName);
+    return new WrappedThreadPoolExecutor(
+        0,
+        Integer.MAX_VALUE,
+        60L,
+        TimeUnit.SECONDS,
+        new SynchronousQueue<>(),
+        new IoTDBDaemonThreadFactory(poolName),
+        poolName);
+  }
+
   /**
    * see {@link Executors#newSingleThreadExecutor(java.util.concurrent.ThreadFactory)}.
    *
