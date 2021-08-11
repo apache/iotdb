@@ -413,7 +413,7 @@ $ {"code":200,"message":"execute sucessfully"}
 | code | integer |  状态码 |
 | message  |  string | 信息提示 |
 
-###  write 接口
+###  写入接口
 
 请求方式：post
 请求头：application/json
@@ -438,5 +438,4 @@ $ {"code":200,"message":"execute sucessfully"}
 | ------------ | ------------ | ------------|
 | code | integer |  状态码 |
 | message  |  string | 信息提示 |
-
 
