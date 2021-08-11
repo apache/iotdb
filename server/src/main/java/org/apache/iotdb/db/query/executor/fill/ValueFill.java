@@ -32,17 +32,12 @@ public class ValueFill extends IFill implements Cloneable {
 
   private String value;
 
-  private boolean booleanValue;
-  private int intValue;
-  private long longValue;
-  private float floatValue;
-  private double doubleValue;
-  private Binary textValue;
+  private TsPrimitiveType tsPrimitiveType;
 
   public ValueFill(String value, TSDataType dataType) {
     this.value = value;
     this.dataType = dataType;
-    parseValue();
+    parseTsPrimitiveType();
   }
 
   @Override
@@ -55,7 +50,7 @@ public class ValueFill extends IFill implements Cloneable {
     ValueFill valueFill = null;
     try {
       valueFill = (ValueFill) super.clone();
-    } catch (CloneNotSupportedException e) {
+    } catch (CloneNotSupportedException ignored) {
     }
     return valueFill;
   }
@@ -66,23 +61,20 @@ public class ValueFill extends IFill implements Cloneable {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {}
+      QueryContext context) {
+    this.queryTime = queryTime;
+  }
 
   @Override
   public TimeValuePair getFillResult() {
     switch (dataType) {
       case BOOLEAN:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsBoolean(booleanValue));
       case INT32:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsInt(intValue));
       case INT64:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsLong(longValue));
       case FLOAT:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsFloat(floatValue));
       case DOUBLE:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsDouble(doubleValue));
       case TEXT:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsBinary(textValue));
+        return new TimeValuePair(queryTime, tsPrimitiveType);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
@@ -91,25 +83,25 @@ public class ValueFill extends IFill implements Cloneable {
   @Override
   void constructFilter() {}
 
-  private void parseValue() {
+  private void parseTsPrimitiveType() {
     switch (dataType) {
       case BOOLEAN:
-        this.booleanValue = Boolean.parseBoolean(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsBoolean(Boolean.parseBoolean(value));
         break;
       case INT32:
-        this.intValue = Integer.parseInt(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsInt(Integer.parseInt(value));
         break;
       case INT64:
-        this.longValue = Long.parseLong(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsLong(Long.parseLong(value));
         break;
       case FLOAT:
-        this.floatValue = Float.parseFloat(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsFloat(Float.parseFloat(value));
         break;
       case DOUBLE:
-        this.doubleValue = Double.parseDouble(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsDouble(Double.parseDouble(value));
         break;
       case TEXT:
-        this.textValue = Binary.valueOf(value);
+        this.tsPrimitiveType = new TsPrimitiveType.TsBinary(Binary.valueOf(value));
         break;
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
