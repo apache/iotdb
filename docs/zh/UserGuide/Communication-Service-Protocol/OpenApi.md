@@ -20,7 +20,7 @@
 -->
 
 # Rest API
-IoTDB的restApi设计用于支持与Grafana和Prometheus的集成同时也提供了查询、插入和non-query接口,它使用OpenAPI标准来定义接口和生成框架源代码。
+IoTDB 的 restApi 设计用于支持与 Grafana 和 Prometheus 的集成同时也提供了读写等接口,它使用 OpenAPI 标准来定义接口和生成框架源代码。
 为了 IoTDB 数据库安全我们建议使用一台非 IoTDB 的服务器安装反向代理服务（例如 nginx 等）把 http 请求转发到 IoTDB，当然你可以不使用反向代理服务直接使用 openapi 的 rest，如果你正在使用 grafana 服务同时使用 nginx 则需要在 nginx.conf 添加 add_header 'Access-Control-Max-Age' xx 来保证可以正常使用
 OpenApi 接口使用了基础（basic）鉴权，每次url请求都需要在 header 中携带 'Authorization': 'Basic ' + base64.encode(username + ':' + password)例如:
 
