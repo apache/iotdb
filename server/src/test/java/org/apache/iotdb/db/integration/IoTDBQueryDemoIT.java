@@ -483,4 +483,66 @@ public class IoTDBQueryDemoIT {
     }
     return actualIndexToExpectedIndexList;
   }
+
+  @Test
+  public void testWrongTextQuery() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("select * from root.ln.wf02.wt02 where hardware > 'v1'");
+    } catch (Exception e) {
+      Assert.assertEquals(
+          e.getMessage(),
+          "411: Error occurred in query process: For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
+    }
+  }
+
+  @Test
+  public void testRightTextQuery() throws ClassNotFoundException {
+    // Text type uses the equal operator to query the correct result
+    String[] retArray =
+        new String[] {
+          "1509465600000,v2,", "1509465660000,v2,",
+        };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute("select hardware from root.ln.wf02.wt02 where hardware = 'v2'");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,root.ln.wf02.wt02.hardware,",
+                new int[] {
+                  Types.TIMESTAMP, Types.VARCHAR,
+                });
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+    } catch (Exception e) {
+      Assert.assertNull(e.getMessage());
+    }
+  }
 }
