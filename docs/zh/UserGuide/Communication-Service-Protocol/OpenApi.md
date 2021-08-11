@@ -365,7 +365,7 @@ prometheus 数据经过Protobuf (3.12.3)编码和snappy 压缩后传输
 
 ## 其他接口
 
-###  read 接口
+###  SQL 查询接口
 
 请求方式：post
 请求头：application/json
