@@ -389,7 +389,7 @@ $ [{"values":[1],"name":"Time","type":"INT64"},{"values":[1.1],"name":"root.ln.w
 | name  |  string | 测点名称 |
 | type | String| 数据类型 |
 
-###  nonQuery 接口
+###  SQL 非查询接口
 
 请求方式：post
 请求头：application/json
@@ -438,4 +438,3 @@ $ {"code":200,"message":"execute sucessfully"}
 | ------------ | ------------ | ------------|
 | code | integer |  状态码 |
 | message  |  string | 信息提示 |
-
