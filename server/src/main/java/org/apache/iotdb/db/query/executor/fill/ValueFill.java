@@ -28,24 +28,36 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.Set;
 
-public class ValueFill extends IFill {
-  private PartialPath seriesPath;
-  private QueryContext context;
+public class ValueFill extends IFill implements Cloneable {
+
   private String value;
-  private Set<String> allSensors;
 
-  public ValueFill(TSDataType dataType, long queryTime, String value) {
-    super(dataType, queryTime);
-    this.value = value;
-  }
+  private boolean booleanValue;
+  private int intValue;
+  private long longValue;
+  private float floatValue;
+  private double doubleValue;
+  private Binary textValue;
 
-  public ValueFill(String value) {
+  public ValueFill(String value, TSDataType dataType) {
     this.value = value;
+    this.dataType = dataType;
+    parseValue();
   }
 
   @Override
   public IFill copy() {
-    return new ValueFill(dataType, queryTime, value);
+    return (IFill) clone();
+  }
+
+  @Override
+  public Object clone() {
+    ValueFill valueFill = null;
+    try {
+      valueFill = (ValueFill) super.clone();
+    } catch (CloneNotSupportedException e) {
+    }
+    return valueFill;
   }
 
   @Override
@@ -54,32 +66,23 @@ public class ValueFill extends IFill {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {
-    this.seriesPath = path;
-    this.dataType = dataType;
-    this.context = context;
-    this.queryTime = queryTime;
-    this.allSensors = deviceMeasurements;
-
-  }
+      QueryContext context) {}
 
   @Override
   public TimeValuePair getFillResult() {
     switch (dataType) {
       case BOOLEAN:
-        return new TimeValuePair(
-            queryTime, new TsPrimitiveType.TsBoolean(Boolean.parseBoolean(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsBoolean(booleanValue));
       case INT32:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsInt(Integer.parseInt(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsInt(intValue));
       case INT64:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsLong(Long.parseLong(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsLong(longValue));
       case FLOAT:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsFloat(Float.parseFloat(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsFloat(floatValue));
       case DOUBLE:
-        return new TimeValuePair(
-            queryTime, new TsPrimitiveType.TsDouble(Double.parseDouble(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsDouble(doubleValue));
       case TEXT:
-        return new TimeValuePair(queryTime, new TsPrimitiveType.TsBinary(Binary.valueOf(value)));
+        return new TimeValuePair(queryTime, new TsPrimitiveType.TsBinary(textValue));
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
@@ -87,4 +90,29 @@ public class ValueFill extends IFill {
 
   @Override
   void constructFilter() {}
+
+  private void parseValue() {
+    switch (dataType) {
+      case BOOLEAN:
+        this.booleanValue = Boolean.parseBoolean(value);
+        break;
+      case INT32:
+        this.intValue = Integer.parseInt(value);
+        break;
+      case INT64:
+        this.longValue = Long.parseLong(value);
+        break;
+      case FLOAT:
+        this.floatValue = Float.parseFloat(value);
+        break;
+      case DOUBLE:
+        this.doubleValue = Double.parseDouble(value);
+        break;
+      case TEXT:
+        this.textValue = Binary.valueOf(value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+    }
+  }
 }
