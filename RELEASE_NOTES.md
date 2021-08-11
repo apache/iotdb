@@ -27,6 +27,7 @@
 * [IOTDB-1466] Support device template
 * [IOTDB-1491] UDTF query supported in cluster
 * TTL can be set to the prefix path of storage group
+* add JMX monitor to all ThreadPools in the server module 
 
 ## Improvements
 * Use StringCachedPool in TsFileResource to reduce the memory size 
