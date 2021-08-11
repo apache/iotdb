@@ -23,7 +23,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -34,7 +33,6 @@ public class ValueFill extends IFill {
   private QueryContext context;
   private String value;
   private Set<String> allSensors;
-  private Filter timeFilter;
 
   public ValueFill(TSDataType dataType, long queryTime, String value) {
     super(dataType, queryTime);
@@ -62,6 +60,7 @@ public class ValueFill extends IFill {
     this.context = context;
     this.queryTime = queryTime;
     this.allSensors = deviceMeasurements;
+
   }
 
   @Override
