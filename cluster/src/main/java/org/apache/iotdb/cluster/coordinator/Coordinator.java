@@ -461,20 +461,6 @@ public class Coordinator {
     } else {
       status = forwardToMultipleGroup(planGroupMap);
     }
-    boolean hasCreated = false;
-    try {
-      if (plan instanceof InsertPlan
-          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-      }
-    } catch (MetadataException | CheckConsistencyException e) {
-      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreated) {
-      status = forwardPlan(planGroupMap, plan);
-    }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
       status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
@@ -485,10 +471,19 @@ public class Coordinator {
 
   private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
       throws CheckConsistencyException, IllegalPathException {
-    // try to create timeseries
+    // apply measurements according to failed measurements
+    if (plan instanceof InsertMultiTabletPlan) {
+      for (InsertTabletPlan insertPlan : ((InsertMultiTabletPlan) plan).getInsertTabletPlanList()) {
+        if (insertPlan.getFailedMeasurements() != null) {
+          insertPlan.getPlanFromFailed();
+        }
+      }
+    }
+
     if (plan.getFailedMeasurements() != null) {
       plan.getPlanFromFailed();
     }
+
     return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
   }
 
@@ -505,6 +500,20 @@ public class Coordinator {
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
               .executeNonQueryPlan(entry.getKey());
+      boolean hasCreated = false;
+      try {
+        if (entry.getKey() instanceof InsertPlan
+            && result.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+            && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+          hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) entry.getKey()));
+        }
+      } catch (MetadataException | CheckConsistencyException e) {
+        logger.error("{}: Cannot auto-create timeseries for {}", name, entry.getKey(), e);
+        return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
+      }
+      if (hasCreated) {
+        result = forwardPlan(entry.getKey(), entry.getValue());
+      }
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
     } else {
