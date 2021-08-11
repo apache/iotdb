@@ -51,13 +51,13 @@ public class FlushManager implements FlushManagerMBean, IService {
 
   @Override
   public void start() throws StartupException {
-    FlushSubTaskPoolManager.getInstance().start();
-    FlushTaskPoolManager.getInstance().start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
+    FlushSubTaskPoolManager.getInstance().start();
+    FlushTaskPoolManager.getInstance().start();
   }
 
   @Override
