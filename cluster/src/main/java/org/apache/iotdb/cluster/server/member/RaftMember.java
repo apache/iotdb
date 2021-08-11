@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -62,6 +63,7 @@ import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -79,8 +81,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,7 +103,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -302,7 +301,7 @@ public abstract class RaftMember implements RaftMemberMBean {
             new ThreadFactoryBuilder().setNameFormat(getName() + "-AppendLog%d").build());
     if (!config.isUseAsyncServer()) {
       serialToParallelPool =
-          new ThreadPoolExecutor(
+          IoTDBThreadPoolFactory.newThreadPool(
               allNodes.size(),
               Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
               1000L,
@@ -310,9 +309,7 @@ public abstract class RaftMember implements RaftMemberMBean {
               new LinkedBlockingQueue<>(),
               new ThreadFactoryBuilder().setNameFormat(getName() + "-SerialToParallel%d").build());
     }
-    commitLogPool =
-        Executors.newSingleThreadExecutor(
-            new ThreadFactoryBuilder().setNameFormat(getName() + "-CommitLog%d").build());
+    commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
   }
 
   public String getName() {

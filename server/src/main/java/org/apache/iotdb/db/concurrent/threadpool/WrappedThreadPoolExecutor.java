@@ -24,7 +24,6 @@ import org.apache.iotdb.db.service.JMXService;
 
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,20 +48,14 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
   }
 
   public WrappedThreadPoolExecutor(
-      int minWorkerThreads,
-      int maxWorkerThreads,
-      int stopTimeoutVal,
-      TimeUnit stopTimeoutUnit,
-      SynchronousQueue<Runnable> executorQueue,
+      int corePoolSize,
+      int maximumPoolSize,
+      long keepAliveTime,
+      TimeUnit unit,
+      BlockingQueue<Runnable> workQueue,
       IoTThreadFactory ioTThreadFactory,
       String mbeanName) {
-    super(
-        minWorkerThreads,
-        maxWorkerThreads,
-        stopTimeoutVal,
-        stopTimeoutUnit,
-        executorQueue,
-        ioTThreadFactory);
+    super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, ioTThreadFactory);
     this.mbeanName =
         String.format(
             "%s:%s=%s", IoTDBConstant.IOTDB_THREADPOOL_PACKAGE, IoTDBConstant.JMX_TYPE, mbeanName);
