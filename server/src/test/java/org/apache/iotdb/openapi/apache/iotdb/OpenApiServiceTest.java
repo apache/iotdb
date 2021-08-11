@@ -62,7 +62,6 @@ public class OpenApiServiceTest {
     groupByFillPlan.setStime(stime);
     groupByFillPlan.setEtime(etime);
     groupByFillPlan.setPaths(path);
-    // groupByFillPlan.set("1ms");
   }
 
   @After
