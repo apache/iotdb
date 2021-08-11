@@ -39,7 +39,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -51,7 +52,7 @@ public class CompactionMergeTaskPoolManager implements IService {
       LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
-  private ScheduledThreadPoolExecutor pool;
+  private ScheduledExecutorService pool;
   private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -64,11 +65,10 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void start() {
     if (pool == null) {
-      this.pool =
-          (ScheduledThreadPoolExecutor)
-              IoTDBThreadPoolFactory.newScheduledThreadPool(
-                  IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-                  ThreadName.COMPACTION_SERVICE.getName());
+      pool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
+              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
+              ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
@@ -192,7 +192,7 @@ public class CompactionMergeTaskPoolManager implements IService {
 
   @TestOnly
   public synchronized int getCompactionTaskNum() {
-    return pool.getActiveCount();
+    return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
   public boolean isTerminated() {
