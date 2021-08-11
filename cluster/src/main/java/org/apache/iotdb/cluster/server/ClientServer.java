@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -34,12 +33,9 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -47,7 +43,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -67,7 +62,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -243,36 +237,6 @@ public class ClientServer extends TSServiceImpl {
         ServerContext serverContext, TTransport inputTransport, TTransport outputTransport) {
       // do nothing
     }
-  }
-
-  /**
-   * Get the data types of each path in “paths”. If "aggregations" is not null, then it should be
-   * corresponding to "paths" one to one and the data type will be the type of the aggregation over
-   * the corresponding path.
-   *
-   * @param paths full timeseries paths
-   * @param aggregations if not null, it should be the same size as "paths"
-   * @return the data types of "paths" (using the aggregations)
-   * @throws MetadataException
-   */
-  @Override
-  protected List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPath(paths, aggregations).left;
-  }
-
-  /**
-   * Get the data types of each path in “paths”. If "aggregation" is not null, all "paths" will use
-   * this aggregation.
-   *
-   * @param paths full timeseries paths
-   * @param aggregation if not null, it means "paths" all use this aggregation
-   * @return the data types of "paths" (using the aggregation)
-   * @throws MetadataException
-   */
-  protected List<TSDataType> getSeriesTypesByString(List<PartialPath> paths, String aggregation)
-      throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getSeriesTypesByPaths(paths, aggregation).left;
   }
 
   /**

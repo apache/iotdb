@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -169,7 +169,7 @@ public class LogReplayer {
         tempEndTimeMap.put(plan.getPrefixPath().getFullPath(), maxTime);
       }
     }
-    MeasurementMNode[] mNodes;
+    IMeasurementMNode[] mNodes;
     try {
       mNodes = IoTDB.metaManager.getMNodes(plan.getPrefixPath(), plan.getMeasurements());
     } catch (MetadataException e) {
@@ -187,7 +187,7 @@ public class LogReplayer {
     }
   }
 
-  private void checkDataTypeAndMarkFailed(final MeasurementMNode[] mNodes, InsertPlan tPlan) {
+  private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
     int columnIndex = 0;
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {

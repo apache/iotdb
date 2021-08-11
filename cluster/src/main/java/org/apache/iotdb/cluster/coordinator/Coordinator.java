@@ -52,7 +52,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -205,10 +205,10 @@ public class Coordinator {
 
   public void createSchemaIfNecessary(PhysicalPlan plan)
       throws MetadataException, CheckConsistencyException {
-    if (plan instanceof SetDeviceTemplatePlan) {
+    if (plan instanceof SetSchemaTemplatePlan) {
       try {
         IoTDB.metaManager.getStorageGroupPath(
-            new PartialPath(((SetDeviceTemplatePlan) plan).getPrefixPath()));
+            new PartialPath(((SetSchemaTemplatePlan) plan).getPrefixPath()));
       } catch (IllegalPathException e) {
         // the plan has been checked
       } catch (StorageGroupNotSetException e) {
@@ -314,7 +314,7 @@ public class Coordinator {
             status);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && !(plan instanceof SetDeviceTemplatePlan
+          && !(plan instanceof SetSchemaTemplatePlan
               && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())
           && !(plan instanceof DeleteTimeSeriesPlan
               && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode())) {

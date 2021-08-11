@@ -47,7 +47,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -239,9 +239,9 @@ public class StorageEngine implements IService {
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
     // recover all logic storage group processors
-    List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     List<Future<Void>> futures = new LinkedList<>();
-    for (StorageGroupMNode storageGroup : sgNodes) {
+    for (IStorageGroupMNode storageGroup : sgNodes) {
       VirtualStorageGroupManager virtualStorageGroupManager =
           processorMap.computeIfAbsent(
               storageGroup.getPartialPath(), id -> new VirtualStorageGroupManager(true));
@@ -387,7 +387,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
@@ -403,7 +403,7 @@ public class StorageEngine implements IService {
    */
   public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
@@ -419,7 +419,7 @@ public class StorageEngine implements IService {
     try {
       List<String> lockHolderList = new ArrayList<>(pathList.size());
       for (PartialPath path : pathList) {
-        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
         StorageGroupProcessor storageGroupProcessor =
             getStorageGroupProcessorByPath(path, storageGroupMNode);
         lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
@@ -441,7 +441,7 @@ public class StorageEngine implements IService {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private StorageGroupProcessor getStorageGroupProcessorByPath(
-      PartialPath devicePath, StorageGroupMNode storageGroupMNode)
+      PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     VirtualStorageGroupManager virtualStorageGroupManager =
         processorMap.get(storageGroupMNode.getPartialPath());
@@ -465,7 +465,7 @@ public class StorageEngine implements IService {
    */
   public StorageGroupProcessor buildNewStorageGroupProcessor(
       PartialPath logicalStorageGroupName,
-      StorageGroupMNode storageGroupMNode,
+      IStorageGroupMNode storageGroupMNode,
       String virtualStorageGroupId)
       throws StorageGroupProcessorException {
     StorageGroupProcessor processor;
@@ -511,7 +511,7 @@ public class StorageEngine implements IService {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
-          StorageGroupMNode storageGroupMNode =
+          IStorageGroupMNode storageGroupMNode =
               IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getPrefixPath());
           updateMonitorStatistics(
               processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
@@ -571,7 +571,7 @@ public class StorageEngine implements IService {
 
     if (config.isEnableStatMonitor()) {
       try {
-        StorageGroupMNode storageGroupMNode =
+        IStorageGroupMNode storageGroupMNode =
             IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getPrefixPath());
         updateMonitorStatistics(
             processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);

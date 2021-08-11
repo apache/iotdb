@@ -122,16 +122,6 @@ public class UpgradeUtils {
       upgradedResource.serialize();
       // delete generated temp resource file
       Files.delete(tempResourceFile.toPath());
-      // delete tmp partition folder when it is empty
-      File tmpPartitionDir = upgradedFile.getParentFile();
-      if (tmpPartitionDir.isDirectory() && tmpPartitionDir.listFiles().length == 0) {
-        Files.delete(tmpPartitionDir.toPath());
-      }
-      // delete upgrade folder when it is empty
-      File upgradeDir = tmpPartitionDir.getParentFile();
-      if (upgradeDir.isDirectory() && upgradeDir.listFiles().length == 0) {
-        Files.delete(upgradeDir.toPath());
-      }
     }
   }
 

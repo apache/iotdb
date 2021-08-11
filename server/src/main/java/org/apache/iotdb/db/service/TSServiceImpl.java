@@ -48,7 +48,6 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -57,9 +56,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -310,12 +310,17 @@ public class TSServiceImpl implements TSIService.Iface {
     }
 
     try {
-      if (req.isSetStatementId() && req.isSetQueryId()) {
-        sessionManager.closeDataset(req.statementId, req.queryId);
+      if (req.isSetStatementId()) {
+        if (req.isSetQueryId()) {
+          sessionManager.closeDataset(req.statementId, req.queryId);
+        } else {
+          sessionManager.closeStatement(req.sessionId, req.statementId);
+        }
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
-        sessionManager.closeStatement(req.sessionId, req.statementId);
+        return RpcUtils.getStatus(
+            TSStatusCode.CLOSE_OPERATION_ERROR, "statement id not set by client.");
       }
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "executing closeOperation", TSStatusCode.CLOSE_OPERATION_ERROR);
@@ -944,7 +949,7 @@ public class TSServiceImpl implements TSIService.Iface {
         for (ResultColumn resultColumn : resultColumns) {
           respColumns.add(resultColumn.getResultColumnName());
         }
-        seriesTypes = getSeriesTypesByPaths(paths, aggregations);
+        seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
         break;
       case UDTF:
         seriesTypes = new ArrayList<>();
@@ -974,23 +979,23 @@ public class TSServiceImpl implements TSIService.Iface {
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, TSDataType> measurementDataTypeMap = plan.getColumnDataTypeMap();
+    Map<String, MeasurementInfo> measurementInfoMap = plan.getMeasurementInfoMap();
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
-    Map<String, String> measurementAliasMap = plan.getMeasurementAliasMap();
-    Map<String, MeasurementType> measurementTypeMap = plan.getMeasurementTypeMap();
     for (String measurement : measurements) {
+      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
       TSDataType type = TSDataType.TEXT;
-      switch (measurementTypeMap.get(measurement)) {
+      switch (measurementInfo.getMeasurementType()) {
         case Exist:
-          type = measurementDataTypeMap.get(measurement);
+          type = measurementInfo.getColumnDataType();
           break;
         case NonExist:
         case Constant:
           type = TSDataType.TEXT;
       }
-      respColumns.add(measurementAliasMap.getOrDefault(measurement, measurement));
+      String measurementAlias = measurementInfo.getMeasurementAlias();
+      respColumns.add(measurementAlias != null ? measurementAlias : measurement);
       columnTypes.add(type.toString());
 
       if (!deduplicatedMeasurements.contains(measurement)) {
@@ -1054,12 +1059,10 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
-    } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(queryId);
-      throw e;
     } finally {
+      sessionManager.releaseQueryResourceNoExceptions(queryId);
       queryTimeManager.unRegisterQuery(queryId, queryPlan);
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= config.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
@@ -2030,7 +2033,7 @@ public class TSServiceImpl implements TSIService.Iface {
           req.getPrefixPath());
     }
 
-    SetDeviceTemplatePlan plan = new SetDeviceTemplatePlan(req.templateName, req.prefixPath);
+    SetSchemaTemplatePlan plan = new SetSchemaTemplatePlan(req.templateName, req.prefixPath);
 
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
@@ -2075,11 +2078,6 @@ public class TSServiceImpl implements TSIService.Iface {
           "Current system mode is read-only, does not support non-query operation");
     }
     return executor.processNonQuery(plan);
-  }
-
-  protected List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
   }
 
   protected TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {

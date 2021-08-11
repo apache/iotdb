@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -198,7 +199,7 @@ public class InsertRowPlan extends InsertPlan {
     this.prefixPath = new PartialPath(tsRecord.deviceId);
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
-    this.measurementMNodes = new MeasurementMNode[tsRecord.dataPointList.size()];
+    this.measurementMNodes = new IMeasurementMNode[tsRecord.dataPointList.size()];
     this.dataTypes = new TSDataType[tsRecord.dataPointList.size()];
     this.values = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {

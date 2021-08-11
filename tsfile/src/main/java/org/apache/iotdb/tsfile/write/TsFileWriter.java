@@ -150,9 +150,9 @@ public class TsFileWriter implements AutoCloseable {
     }
   }
 
-  public void registerDeviceTemplate(
+  public void registerSchemaTemplate(
       String templateName, Map<String, IMeasurementSchema> template) {
-    schema.registerDeviceTemplate(templateName, template);
+    schema.registerSchemaTemplate(templateName, template);
   }
 
   public void registerDevice(String deviceId, String templateName) {
@@ -189,10 +189,10 @@ public class TsFileWriter implements AutoCloseable {
       Path path = new Path(record.deviceId, measurementId);
       if (schema.containsTimeseries(path)) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
-      } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
+      } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
         // use the default template without needing to register device
         Map<String, IMeasurementSchema> template =
-            schema.getDeviceTemplates().entrySet().iterator().next().getValue();
+            schema.getSchemaTemplates().entrySet().iterator().next().getValue();
         if (template.containsKey(path.getMeasurement())) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
         }
@@ -226,10 +226,10 @@ public class TsFileWriter implements AutoCloseable {
       Path path = new Path(deviceId, measurementId);
       if (schema.containsTimeseries(path)) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(path), pageSize);
-      } else if (schema.getDeviceTemplates() != null && schema.getDeviceTemplates().size() == 1) {
+      } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
         // use the default template without needing to register device
         Map<String, IMeasurementSchema> template =
-            schema.getDeviceTemplates().entrySet().iterator().next().getValue();
+            schema.getSchemaTemplates().entrySet().iterator().next().getValue();
         if (template.containsKey(path.getMeasurement())) {
           groupWriter.tryToAddSeriesWriter(template.get(path.getMeasurement()), pageSize);
         }

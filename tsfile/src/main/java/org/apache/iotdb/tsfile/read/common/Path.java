@@ -133,6 +133,10 @@ public class Path implements Serializable, Comparable<Path> {
     throw new IllegalArgumentException("doesn't alias in TSFile Path");
   }
 
+  public void setMeasurement(String measurement) {
+    this.measurement = measurement;
+  }
+
   @Override
   public int hashCode() {
     return fullPath.hashCode();
