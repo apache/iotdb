@@ -443,7 +443,12 @@ public class QueryOperator extends Operator {
       }
       return;
     }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+    FunctionOperator basicOperator;
+    if (operator instanceof InOperator) {
+      basicOperator = (InOperator) operator;
+    } else {
+      basicOperator = (BasicFunctionOperator) operator;
+    }
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"

@@ -26,13 +26,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromComponent;
-import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
-import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
@@ -180,11 +174,20 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         currentNode = newInnerNode;
       }
       try {
-        currentNode.addChildOperator(
-            new BasicFunctionOperator(
-                operator.getFilterType(),
-                noStarPaths.get(i),
-                ((BasicFunctionOperator) operator).getValue()));
+        if (operator instanceof InOperator) {
+          currentNode.addChildOperator(
+              new InOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((InOperator) operator).getNot(),
+                  ((InOperator) operator).getValues()));
+        } else {
+          currentNode.addChildOperator(
+              new BasicFunctionOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((BasicFunctionOperator) operator).getValue()));
+        }
       } catch (SQLParserException e) {
         throw new LogicalOptimizeException(e.getMessage());
       }
