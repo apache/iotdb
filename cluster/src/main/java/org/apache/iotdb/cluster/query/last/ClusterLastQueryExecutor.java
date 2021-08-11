@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -58,7 +59,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class ClusterLastQueryExecutor extends LastQueryExecutor {
@@ -67,7 +67,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   private MetaGroupMember metaGroupMember;
 
   private static ExecutorService lastQueryPool =
-      Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+      IoTDBThreadPoolFactory.newFixedThreadPool(
+          Runtime.getRuntime().availableProcessors(), "ClusterLastQuery");
 
   public ClusterLastQueryExecutor(LastQueryPlan lastQueryPlan, MetaGroupMember metaGroupMember) {
     super(lastQueryPlan);

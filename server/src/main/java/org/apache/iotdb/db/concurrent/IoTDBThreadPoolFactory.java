@@ -22,6 +22,7 @@ import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService
 import org.apache.iotdb.db.concurrent.threadpool.WrappedSingleThreadExecutorService;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedSingleThreadScheduledExecutor;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedThreadPoolExecutor;
+
 import org.apache.thrift.server.TThreadPoolServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +65,19 @@ public class IoTDBThreadPoolFactory {
         poolName);
   }
 
+  public static ExecutorService newFixedThreadPoolWithDaemonThread(int nThreads, String poolName) {
+    logger.info("new fixed thread pool: {}, thread number: {}", poolName, nThreads);
+
+    return new WrappedThreadPoolExecutor(
+        nThreads,
+        nThreads,
+        0L,
+        TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<>(),
+        new IoTDBDaemonThreadFactory(poolName),
+        poolName);
+  }
+
   public static ExecutorService newFixedThreadPool(
       int nThreads, String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info("new fixed thread pool: {}, thread number: {}", poolName, nThreads);
@@ -87,6 +101,12 @@ public class IoTDBThreadPoolFactory {
     logger.info("new single thread pool: {}", poolName);
     return new WrappedSingleThreadExecutorService(
         Executors.newSingleThreadExecutor(new IoTThreadFactory(poolName)), poolName);
+  }
+
+  public static ExecutorService newSingleThreadExecutorWithDaemon(String poolName) {
+    logger.info("new single thread pool: {}", poolName);
+    return new WrappedSingleThreadExecutorService(
+        Executors.newSingleThreadExecutor(new IoTDBDaemonThreadFactory(poolName)), poolName);
   }
 
   public static ExecutorService newSingleThreadExecutor(
@@ -170,6 +190,14 @@ public class IoTDBThreadPoolFactory {
     logger.info("new scheduled thread pool: {}", poolName);
     return new WrappedScheduledExecutorService(
         Executors.newScheduledThreadPool(corePoolSize, new IoTThreadFactory(poolName)), poolName);
+  }
+
+  public static ScheduledExecutorService newScheduledThreadPoolWithDaemon(
+      int corePoolSize, String poolName) {
+    logger.info("new scheduled thread pool: {}", poolName);
+    return new WrappedScheduledExecutorService(
+        Executors.newScheduledThreadPool(corePoolSize, new IoTDBDaemonThreadFactory(poolName)),
+        poolName);
   }
 
   public static ScheduledExecutorService newScheduledThreadPool(

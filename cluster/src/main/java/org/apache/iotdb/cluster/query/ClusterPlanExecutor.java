@@ -200,7 +200,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
     if (groupPathMap.isEmpty()) {
       return result.get();
     }
-
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
     List<Future<Void>> remoteFutures = new ArrayList<>();
     // query each data group separately
@@ -301,6 +303,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throws MetadataException {
 
     ConcurrentSkipListSet<PartialPath> nodeSet = new ConcurrentSkipListSet<>();
+
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
     List<Future<Void>> futureList = new ArrayList<>();
@@ -319,6 +325,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 return null;
               }));
     }
+    // TODO seems there is a long-term block here.
     waitForThreadPool(futureList, pool, "getNodesList()");
     return new ArrayList<>(nodeSet);
   }
@@ -398,6 +405,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
@@ -489,6 +499,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 
     List<Future<Void>> futureList = new ArrayList<>();

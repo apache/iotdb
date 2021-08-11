@@ -20,12 +20,9 @@
 package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.ServiceType;
@@ -50,12 +47,15 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
   }
 
   @Override
-  public void initTProcessor() throws IllegalAccessException, InstantiationException {
-    try {
-      impl = new ClusterTSServiceImpl();
-      initSyncedServiceImpl(null);
-    } catch (QueryProcessException e) {
-      throw new InstantiationException(e.getMessage());
+  public void initSyncedServiceImpl(Object serviceImpl) {
+    impl = (ClusterTSServiceImpl) serviceImpl;
+    super.initSyncedServiceImpl(serviceImpl);
+  }
+
+  @Override
+  public void initTProcessor() throws InstantiationException {
+    if (impl == null) {
+      throw new InstantiationException("ClusterTSServiceImpl is null");
     }
     processor = new Processor<>(impl);
   }
@@ -98,14 +98,6 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
 
   public static ClusterRPCService getInstance() {
     return ClusterRPCServiceHolder.INSTANCE;
-  }
-
-  public void assignExecutorToServiceImpl(MetaGroupMember member) throws QueryProcessException {
-    this.impl.setExecutor(member);
-  }
-
-  public void assignCoordinator(Coordinator coordinator) {
-    this.impl.setCoordinator(coordinator);
   }
 
   private static class ClusterRPCServiceHolder {

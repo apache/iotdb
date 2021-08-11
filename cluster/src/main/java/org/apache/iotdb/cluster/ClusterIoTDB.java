@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotStrategy;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.ClusterRPCService;
+import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
@@ -47,16 +48,17 @@ import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
@@ -68,7 +70,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -113,13 +114,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
    * of all raft members in this node
    */
   private ScheduledExecutorService reportThread =
-      Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "NodeReportThread"));
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
 
   private boolean allowReport = true;
 
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
   private ScheduledExecutorService hardLinkCleanerThread =
-      Executors.newSingleThreadScheduledExecutor(n -> new Thread(n, "HardLinkCleaner"));
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
   // DataGroup..
@@ -127,6 +128,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   private DataClientProvider dataClientProvider;
 
   private ClusterIoTDB() {
+    // we do not init anything here, so that we can re-initialize the instance in IT.
+  }
+
+  public void initLocalEngines() {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     thisNode = new Node();
     // set internal rpc ip and ports
@@ -137,9 +142,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     thisNode.setClientPort(config.getClusterRpcPort());
     thisNode.setClientIp(IoTDBDescriptor.getInstance().getConfig().getRpcAddress());
     coordinator = new Coordinator();
-  }
-
-  public void initLocalEngines() {
     // local engine
     TProtocolFactory protocolFactory =
         ThriftServiceThread.getProtocolFactory(
@@ -256,6 +258,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       // TODO fixme it is better to remove coordinator out of metaGroupEngine
 
       registerManager.register(metaGroupEngine);
+      registerManager.register(dataGroupEngine);
 
       // rpc service initialize
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -291,8 +294,15 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       registerManager.register(ClusterMonitor.INSTANCE);
       // we must wait until the metaGroup established.
       // So that the ClusterRPCService can work.
+      ClusterTSServiceImpl clusterRPCServiceImpl = new ClusterTSServiceImpl();
+      clusterRPCServiceImpl.setCoordinator(coordinator);
+      clusterRPCServiceImpl.setExecutor(metaGroupEngine);
+      ClusterRPCService.getInstance().initSyncedServiceImpl(clusterRPCServiceImpl);
       registerManager.register(ClusterRPCService.getInstance());
-    } catch (StartupException | StartUpCheckFailureException | ConfigInconsistentException e) {
+    } catch (StartupException
+        | StartUpCheckFailureException
+        | ConfigInconsistentException
+        | QueryProcessException e) {
       logger.error("Fail to start  server", e);
       stop();
     }
@@ -497,7 +507,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void deactivate() {
     logger.info("Deactivating Cluster IoTDB...");
-    // metaServer.stop();
     stopThreadPools();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);

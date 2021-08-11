@@ -58,11 +58,11 @@ import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,16 +92,19 @@ public class Coordinator {
       "The following errors occurred when executing "
           + "the query, please retry or contact the DBA: ";
 
+  @TestOnly
   public Coordinator(MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-    this.name = metaGroupMember.getName();
-    this.thisNode = metaGroupMember.getThisNode();
+    linkMetaGroupMember(metaGroupMember);
   }
 
   public Coordinator() {}
 
-  public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
+  public void linkMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+    if (metaGroupMember.getCoordinator() != null && metaGroupMember.getCoordinator() != this) {
+      logger.warn("MetadataGroupMember linked inconsistent Coordinator, will correct it.");
+      metaGroupMember.setCoordinator(this);
+    }
     this.name = metaGroupMember.getName();
     this.thisNode = metaGroupMember.getThisNode();
   }

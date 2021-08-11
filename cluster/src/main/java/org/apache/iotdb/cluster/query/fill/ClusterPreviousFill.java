@@ -121,7 +121,9 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     CountDownLatch latch = new CountDownLatch(partitionGroups.size());
     PreviousFillHandler handler = new PreviousFillHandler(latch);
-
+    // TODO it is not suitable for register and deregister an Object to JMX to such a frequent
+    // function call.
+    // BUT is it suitable to create a thread pool for each calling??
     ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
     PreviousFillArguments arguments =
         new PreviousFillArguments(path, dataType, queryTime, beforeRange, deviceMeasurements);

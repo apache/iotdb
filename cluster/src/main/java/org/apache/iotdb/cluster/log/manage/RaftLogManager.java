@@ -31,10 +31,10 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +44,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public abstract class RaftLogManager {
@@ -140,19 +138,10 @@ public abstract class RaftLogManager {
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
 
     this.deleteLogExecutorService =
-        new ScheduledThreadPoolExecutor(
-            1,
-            new BasicThreadFactory.Builder()
-                .namingPattern("raft-log-delete-" + name)
-                .daemon(true)
-                .build());
+        IoTDBThreadPoolFactory.newScheduledThreadPoolWithDaemon(1, "raft-log-delete-" + name);
 
     this.checkLogApplierExecutorService =
-        Executors.newSingleThreadExecutor(
-            new BasicThreadFactory.Builder()
-                .namingPattern("check-log-applier-" + name)
-                .daemon(true)
-                .build());
+        IoTDBThreadPoolFactory.newSingleThreadExecutorWithDaemon("check-log-applier-" + name);
 
     /** deletion check period of the submitted log */
     int logDeleteCheckIntervalSecond =
@@ -763,11 +752,7 @@ public abstract class RaftLogManager {
     this.blockAppliedCommitIndex = -1;
     this.blockedUnappliedLogList = new CopyOnWriteArrayList<>();
     this.checkLogApplierExecutorService =
-        Executors.newSingleThreadExecutor(
-            new BasicThreadFactory.Builder()
-                .namingPattern("check-log-applier-" + name)
-                .daemon(true)
-                .build());
+        IoTDBThreadPoolFactory.newSingleThreadExecutorWithDaemon("check-log-applier-" + name);
     this.checkLogApplierFuture = checkLogApplierExecutorService.submit(this::checkAppliedLogIndex);
     for (int i = 0; i < logUpdateConditions.length; i++) {
       logUpdateConditions[i] = new Object();

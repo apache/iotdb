@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +68,10 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       Node thisNode,
       SnapshotFactory<T> factory,
       DataGroupMember dataGroupMember) {
-    super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
+    super(
+        new SyncLogDequeSerializer(header.nodeIdentifier),
+        logApplier,
+        Integer.toString(header.getNodeIdentifier()));
     this.partitionTable = partitionTable;
     this.factory = factory;
     this.thisNode = thisNode;

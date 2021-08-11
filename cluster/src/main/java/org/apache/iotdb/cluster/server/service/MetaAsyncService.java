@@ -38,7 +38,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -47,7 +46,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 
 public class MetaAsyncService extends BaseAsyncService implements TSMetaService.AsyncIface {
-
+  private static final String ERROR_MSG_META_NOT_READY = "The metadata not is not ready.";
   private static final Logger logger = LoggerFactory.getLogger(MetaAsyncService.class);
 
   private MetaGroupMember metaGroupMember;
@@ -59,11 +58,19 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    if (metaGroupMember.getPartitionTable() == null) {
-      // this node lacks information of the cluster and refuse to work
-      logger.debug("This node is blind to the cluster and cannot accept logs");
-      resultHandler.onComplete(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
-      return;
+    // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
+    // locally, but the partition table is not verified), we do not handle the RPC requests.
+    if (!metaGroupMember.isReady()) {
+      // the only special case is that the leader will send an empty entry for letting followers
+      // submit  previous log
+      // at this time, the partitionTable has been loaded but is not verified. So the PRC is not
+      // ready.
+      if (metaGroupMember.getPartitionTable() == null) {
+        // this node lacks information of the cluster and refuse to work
+        logger.debug("This node is blind to the cluster and cannot accept logs");
+        resultHandler.onComplete(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
+        return;
+      }
     }
 
     super.appendEntry(request, resultHandler);
@@ -72,6 +79,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void addNode(
       Node node, StartUpStatus startUpStatus, AsyncMethodCallback<AddNodeResponse> resultHandler) {
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      resultHandler.onError(new TException(ERROR_MSG_META_NOT_READY));
+      return;
+    }
     AddNodeResponse addNodeResponse = null;
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
@@ -160,6 +172,11 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
 
   @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
+    if (!metaGroupMember.isReady()) {
+      logger.debug(ERROR_MSG_META_NOT_READY);
+      resultHandler.onError(new TException(ERROR_MSG_META_NOT_READY));
+      return;
+    }
     long result;
     try {
       result = metaGroupMember.removeNode(node);

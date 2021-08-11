@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -64,6 +63,7 @@ import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
@@ -81,6 +81,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,6 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -289,16 +289,12 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   void startBackGroundThreads() {
-    heartBeatService =
-        Executors.newSingleThreadScheduledExecutor(
-            r -> new Thread(r, name + "-HeartbeatThread@" + System.currentTimeMillis()));
-    catchUpService =
-        Executors.newCachedThreadPool(
-            new ThreadFactoryBuilder().setNameFormat(getName() + "-CatchUpThread%d").build());
+    heartBeatService = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name + "-Heartbeat");
+
+    catchUpService = IoTDBThreadPoolFactory.newCachedThreadPool(name + "-CatchUp");
     appendLogThreadPool =
-        Executors.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors() * 10,
-            new ThreadFactoryBuilder().setNameFormat(getName() + "-AppendLog%d").build());
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() * 10, name + "-AppendLog");
     if (!config.isUseAsyncServer()) {
       serialToParallelPool =
           IoTDBThreadPoolFactory.newThreadPool(
@@ -307,7 +303,8 @@ public abstract class RaftMember implements RaftMemberMBean {
               1000L,
               TimeUnit.MILLISECONDS,
               new LinkedBlockingQueue<>(),
-              new ThreadFactoryBuilder().setNameFormat(getName() + "-SerialToParallel%d").build());
+              new IoTThreadFactory(getName() + "-SerialToParallel"),
+              getName() + "-SerialToParallel");
     }
     commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
   }

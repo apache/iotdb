@@ -19,12 +19,12 @@
 package org.apache.iotdb.cluster.server.raft;
 
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.thrift.TBaseAsyncProcessor;
 
 public abstract class AbstractRaftService extends ThriftService {
 
@@ -36,7 +36,7 @@ public abstract class AbstractRaftService extends ThriftService {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         thriftServiceThread =
             new ThriftServiceThread(
-                (TSMetaService.AsyncProcessor) processor,
+                (TBaseAsyncProcessor) processor,
                 getID().getName(),
                 clientThreadName,
                 getBindIP(),
