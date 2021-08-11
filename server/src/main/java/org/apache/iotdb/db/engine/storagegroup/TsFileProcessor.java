@@ -600,7 +600,8 @@ public class TsFileProcessor {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold();
+    long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
+
     if (fileSize >= fileSizeThreshold) {
       logger.info(
           "{} fileSize {} >= fileSizeThreshold {}",
