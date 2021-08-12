@@ -83,7 +83,9 @@ public interface TsFileOutput {
   void flush() throws IOException;
 
   /**
-   * The same with {@link java.nio.channels.FileChannel#truncate(long)}.
+   * The same with {@link java.nio.channels.FileChannel#truncate(long)}. truncate will truncate from
+   * the position to the end of file (including the position) for example, a file has 80 bytes, if
+   * use truncate(60), it will truncate from 60 to 80. The file remain has data of range [0, 59].
    *
    * @param size size The new size, a non-negative byte count
    */

@@ -138,7 +138,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         compactionLogger,
         new HashSet<>(),
         true,
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
     compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
@@ -229,7 +230,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         compactionLogger,
         new HashSet<>(),
         true,
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
     compactionLogger.close();
 
     BufferedReader logReader =
@@ -344,7 +346,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         compactionLogger,
         new HashSet<>(),
         true,
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
     compactionLogger.close();
 
     BufferedReader logReader =
@@ -468,7 +471,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         compactionLogger,
         new HashSet<>(),
         false,
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
     compactionLogger.close();
     levelCompactionTsFileManagement.add(targetTsFileResource, false);
     levelCompactionTsFileManagement.recover();
@@ -675,7 +679,8 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         compactionLogger,
         new HashSet<>(),
         true,
-        new ArrayList<>());
+        new ArrayList<>(),
+        null);
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     compactionLogger.close();
     levelCompactionTsFileManagement.recover();

@@ -258,10 +258,13 @@ public class CompactionUtils {
       CompactionLogger compactionLogger,
       Set<String> devices,
       boolean sequence,
-      List<Modification> modifications)
+      List<Modification> modifications,
+      RestorableTsFileIOWriter writer)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
-    RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
+    if (writer == null) {
+      writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
+    }
     try {
       Map<String, List<Modification>> modificationCache = new HashMap<>();
       RateLimiter compactionWriteRateLimiter =
