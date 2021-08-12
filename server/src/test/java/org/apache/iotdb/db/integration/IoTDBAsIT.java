@@ -424,7 +424,7 @@ public class IoTDBAsIT {
       fail();
     } catch (Exception e) {
       Assert.assertTrue(
-          e.getMessage().contains("alias 'speed' can only be matched with one time series"));
+          e.getMessage().contains("alias speed can only be matched with one time series"));
     }
   }
 

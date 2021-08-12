@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -80,8 +82,13 @@ public class GroupByTimeDataSet extends QueryDataSet {
 
     this.dataTypes = new ArrayList<>();
     this.paths = new ArrayList<>();
-    for (int i = 0; i < finalPaths.size(); i++) {
-      this.dataTypes.add(TSDataType.INT64);
+    for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+      try {
+        this.paths.add(new PartialPath(entry.getKey()));
+      } catch (IllegalPathException e) {
+        logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
+      }
+      this.dataTypes.add(entry.getValue().getResultDataType());
     }
   }
 

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -169,7 +170,8 @@ public class LastQueryExecutor {
             new LastPointReader(
                 nonCachedPaths.get(i),
                 nonCachedDataTypes.get(i),
-                deviceMeasurementsMap.get(nonCachedPaths.get(i).getDevice()),
+                deviceMeasurementsMap.getOrDefault(
+                    nonCachedPaths.get(i).getDevice(), new HashSet<>()),
                 context,
                 dataSource,
                 Long.MAX_VALUE,
@@ -251,7 +253,7 @@ public class LastQueryExecutor {
 
   private static class LastCacheAccessor {
     private PartialPath path;
-    private MeasurementMNode node;
+    private IMeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
       this.path = seriesPath;
@@ -259,7 +261,7 @@ public class LastQueryExecutor {
 
     public TimeValuePair read() {
       try {
-        node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
+        node = (IMeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
       } catch (MetadataException e) {
         TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
         if (timeValuePair != null) {

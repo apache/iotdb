@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -526,7 +526,7 @@ public class IoTDBGroupByFillIT {
       hasResultSet =
           statement.execute(
               "select last_value(temperature) from root.ln.wf01.wt01 "
-                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast])order by time desc");
+                  + "GROUP BY ([2, 48), 5ms) FILL(int32[previousUntilLast]) order by time desc");
 
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -804,7 +804,7 @@ public class IoTDBGroupByFillIT {
 
       fail("No expected exception thrown");
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains(GroupByTimePlan.LACK_FUNC_ERROR_MESSAGE));
+      Assert.assertTrue(e.getMessage().contains(AggregationQueryOperator.ERROR_MESSAGE1));
     }
   }
 

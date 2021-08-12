@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -161,19 +162,25 @@ public class DataSourceInfo {
             .getClientProvider()
             .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
 
-      if (byTimestamp) {
-        newReaderId = client.querySingleSeriesByTimestamp(request);
-      } else {
-        Filter newFilter;
-        // add timestamp to as a timeFilter to skip the data which has been read
-        if (request.isSetTimeFilterBytes()) {
-          Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
-          newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
+      try {
+        if (byTimestamp) {
+          newReaderId = client.querySingleSeriesByTimestamp(request);
         } else {
-          newFilter = TimeFilter.gt(timestamp);
+          Filter newFilter;
+          // add timestamp to as a timeFilter to skip the data which has been read
+          if (request.isSetTimeFilterBytes()) {
+            Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
+            newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
+          } else {
+            newFilter = TimeFilter.gt(timestamp);
+          }
+          request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
+          newReaderId = client.querySingleSeries(request);
         }
-        request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-        newReaderId = client.querySingleSeries(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        client.getInputProtocol().getTransport().close();
+        throw e;
       }
       return newReaderId;
     }
@@ -187,7 +194,7 @@ public class DataSourceInfo {
     return this.dataType;
   }
 
-  public Node getHeader() {
+  public RaftNode getHeader() {
     return partitionGroup.getHeader();
   }
 

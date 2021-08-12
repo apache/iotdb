@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.MultSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -189,7 +190,13 @@ public class MultDataSourceInfo {
         newFilter = TimeFilter.gt(timestamp);
       }
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-      newReaderId = client.queryMultSeries(request);
+      try {
+        newReaderId = client.queryMultSeries(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        client.getInputProtocol().getTransport().close();
+        throw e;
+      }
       return newReaderId;
     }
   }
@@ -202,7 +209,7 @@ public class MultDataSourceInfo {
     return this.dataTypes;
   }
 
-  public Node getHeader() {
+  public RaftNode getHeader() {
     return partitionGroup.getHeader();
   }
 

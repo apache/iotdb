@@ -62,16 +62,16 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<String> getDevices();
+  Set<String> getDevices(String tsFilePath);
 
   /** @return whether end time is empty (Long.MIN_VALUE) */
   boolean endTimeEmpty();
 
   /**
-   * @param timeLowerBound time lower bound
+   * @param ttlLowerBound time lower bound
    * @return whether any of the device lives over the given time bound
    */
-  boolean stillLives(long timeLowerBound);
+  boolean stillLives(long ttlLowerBound);
 
   /** @return Calculate file index ram size */
   long calculateRamSize();
@@ -147,4 +147,12 @@ public interface ITimeIndex {
    * @return end time
    */
   long getEndTime(String deviceId);
+
+  /**
+   * check whether deviceId exists in TsFile
+   *
+   * @param deviceId device name
+   * @return true if the deviceId may exist in TsFile, otherwise false.
+   */
+  boolean checkDeviceIdExist(String deviceId);
 }

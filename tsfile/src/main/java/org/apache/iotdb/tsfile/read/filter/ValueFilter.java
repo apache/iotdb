@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.apache.iotdb.tsfile.read.filter.operator.Like;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
@@ -66,6 +67,10 @@ public class ValueFilter {
 
   public static <T extends Comparable<T>> ValueNotEq<T> notEq(T value) {
     return new ValueNotEq(value);
+  }
+
+  public static <T extends Comparable<T>> ValueLike<T> like(String value) {
+    return new ValueLike(value);
   }
 
   public static class ValueIn<T extends Comparable<T>> extends In<T> {
@@ -231,6 +236,28 @@ public class ValueFilter {
     public boolean satisfy(long time, TsPrimitiveType[] values) {
       Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
       return !this.value.equals(v);
+    }
+  }
+
+  public static class ValueLike<T extends Comparable<T>> extends Like<T> {
+
+    private ValueLike(String value) {
+      super(value, FilterType.VALUE_FILTER);
+    }
+  }
+
+  public static class VectorValueLike<T extends Comparable<T>> extends ValueLike<T> {
+
+    private final int index;
+
+    private VectorValueLike(String value, int index) {
+      super(value);
+      this.index = index;
+    }
+
+    public boolean satisfy(long time, TsPrimitiveType[] values) {
+      Object v = filterType == FilterType.TIME_FILTER ? time : values[index].getValue();
+      return this.value.equals(v);
     }
   }
 }

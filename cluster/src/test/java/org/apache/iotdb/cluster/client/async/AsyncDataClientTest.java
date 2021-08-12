@@ -63,7 +63,7 @@ public class AsyncDataClientTest {
     client.matchTerm(
         0,
         0,
-        TestUtils.getNode(0),
+        TestUtils.getRaftNode(0, 0),
         new AsyncMethodCallback<Boolean>() {
           @Override
           public void onComplete(Boolean aBoolean) {

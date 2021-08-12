@@ -27,6 +27,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -159,6 +160,7 @@ public class IoTDBAutoCreateSchemaIT {
    * insert data when the time series that is a prefix path of an existing time series hasn't been
    * created
    */
+  @Ignore // nested measurement has been forbidden
   @Test
   public void testInsertAutoCreate1() throws Exception {
     String[] timeSeriesArray = {"root.sg1.a.a", "root.sg1.a", "root.sg1.a.a.a"};
@@ -171,6 +173,8 @@ public class IoTDBAutoCreateSchemaIT {
     // ensure that insert data in cache is right.
     insertAutoCreate1Tool();
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 
@@ -219,6 +223,8 @@ public class IoTDBAutoCreateSchemaIT {
     // ensure that current storage group in cache is right.
     InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 

@@ -19,9 +19,9 @@
 
 -->
 
-## 获取IoTDB的途径
+## 获取 IoTDB 的途径
 
-IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选其中一种：
+IoTDB 为您提供了两种安装方式，您可以参考下面的建议，任选其中一种：
 
 第一种，从官网下载安装包。这是我们推荐使用的安装方式，通过该方式，您将得到一个可以立即使用的、打包好的二进制可执行文件。
 
@@ -29,7 +29,7 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 ### 安装环境要求
 
-安装前请保证您的电脑上配有JDK>=1.8的运行环境，并配置好JAVA_HOME环境变量。
+安装前请保证您的电脑上配有 JDK>=1.8 的运行环境，并配置好 JAVA_HOME 环境变量。
 
 如果您需要从源码进行编译，还需要安装：
 
@@ -39,19 +39,17 @@ IoTDB为您提供了两种安装方式，您可以参考下面的建议，任选
 
 ### 从官网下载二进制可执行文件
 
-您可以从[http://iotdb.apache.org/Download/](http://iotdb.apache.org/Download/) 上下载已经编译好的可执行程序iotdb-xxx.zip，该压缩包包含了IoTDB系统运行所需的所有必要组件。
+您可以从 [http://iotdb.apache.org/Download/](http://iotdb.apache.org/Download/) 上下载已经编译好的可执行程序 iotdb-xxx.zip，该压缩包包含了 IoTDB 系统运行所需的所有必要组件。
 
-
-下载后，您可使用以下操作对IoTDB的压缩包进行解压: 
+下载后，您可使用以下操作对 IoTDB 的压缩包进行解压：
 
 ```
 Shell > uzip iotdb-<version>.zip
 ```
 
-
 ### 使用源码编译
 
-您可以获取已发布的源码[https://iotdb.apache.org/Download/](https://iotdb.apache.org/Download/) ，或者从[https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master) git仓库获取
+您可以获取已发布的源码 [https://iotdb.apache.org/Download/](https://iotdb.apache.org/Download/) ，或者从 [https://github.com/apache/iotdb/tree/master](https://github.com/apache/iotdb/tree/master) git 仓库获取
 
 源码克隆后，进入到源码文件夹目录下，使用以下命令进行编译：
 
@@ -71,41 +69,40 @@ Shell > uzip iotdb-<version>.zip
 +- tools/      <-- system tools
 ```
 
-### 通过Docker安装 (Dockerfile)
+### 通过 Docker 安装 (Dockerfile)
 
-Apache IoTDB的Docker镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)，
-使用`docker pull apache/iotdb:latest`即可获取最新的docker镜像。
+Apache IoTDB 的 Docker 镜像已经上传至 [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb)，
 
-用户也可以根据代码提供的Dockerfile文件来自己生成镜像。
-Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中.
+1. **获取 IoTDB docker 镜像**
 
-1. 您可以使用下面的命令构建 docker image:
+   - **推荐**：执行 `docker pull apache/iotdb:latest` 即可获取最新的 docker 镜像。
 
-```shell
-$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker
-```
-或者:
+   - 用户也可以根据代码提供的 Dockerfile 文件来自己生成镜像。Dockerfile 存放在的 docker 工程下的 src/main/Dockerfile 中。
 
-```shell
-$ git clone https://github.com/apache/iotdb
-$ cd iotdb
-$ mvn package -DskipTests
-$ cd docker
-$ docker build -t iotdb:base .
-```
-当 docker image 在本地构建完成当时候 (示例中的 tag为 iotdb:base)，已经距完成只有一步之遥了!
+     - 方法 1：```$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker```
 
-2. 创建数据文件和日志的 docker 挂载目录(docker volume):
+     - 方法 2：
+       ```shell
+       $ git clone https://github.com/apache/iotdb
+       $ cd iotdb
+       $ mvn package -DskipTests
+       $ cd docker
+       $ docker build -t iotdb:base .
+       ```
+
+   当 docker image 在本地构建完成的时候 （示例中的 tag 为 iotdb:base)，已经距完成只有一步之遥了！
+
+2. **创建数据文件和日志的 docker 挂载目录 (docker volume):**
 ```
 $ docker volume create mydata
 $ docker volume create mylogs
 ```
-3. 运行 docker container:
+3. **运行 docker 容器：**
 
 ```shell
 $ docker run -p 6667:6667 -v mydata:/iotdb/data -v mylogs:/iotdb/logs -d iotdb:base /iotdb/bin/start-server.sh
 ```
-您可以使用`docker ps`来检查是否运行成功，当成功时控制台会输出下面的日志:
+您可以使用`docker ps`来检查是否运行成功，当成功时控制台会输出下面的日志：
 ```
 CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                               NAMES
 2a68b6944cb5        iotdb:base          "/iotdb/bin/start-se…"   4 minutes ago       Up 5 minutes        0.0.0.0:6667->6667/tcp              laughing_meitner
@@ -117,31 +114,26 @@ $ docker container ls
 ```
 假设这个 ID 为 <C_ID>.
 
-然后使用下面的命令获取这个 ID 对应的 IP 地址:
+然后使用下面的命令获取这个 ID 对应的 IP 地址，假设获取的 IP 为 <C_IP>:
 
 ```shell
 $ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
 ```
-假设获取的 IP 为 <C_IP>.
+现在 IoTDB 服务器已经启动成功了。
 
-4. 如果您想尝试使用 iotdb-cli 命令行, 您可以使用如下命令:
-
-```shell
-$ docker exec -it /bin/bash  <C_ID>
-$ (now you have enter the container): /cli/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
-```
-
-或者运行一个新的 client docker container，命令如下:
+4. 如果您想尝试使用 iotdb-cli 命令行，您可以使用如下命令：
 
 ```shell
-$ docker run -it iotdb:base /cli/sbin/start-cli.sh -h <C_IP> -p 6667 -u root -pw root
+$ docker exec -it <C_ID> /bin/bash
+$ (now you have enter the container): /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
-还可以使用本地的 iotdb-cli (比如：您已经使用`mvn package`编译过源码), 假设您的 work_dir 是 cli/bin, 那么您可以直接运行:
+
+还可以使用本地的 iotdb-cli，执行如下命令：
 
 ```shell
-$ start-cli.sh -h localhost -p 6667 -u root -pw root
+$ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
-5. 如果您想写一些代码来插入或者查询数据，您可以在 pom.xml 文件中加入下面的依赖:
+5. 如果您想写一些代码来插入或者查询数据，您可以在 pom.xml 文件中加入下面的依赖：
 
 ```xml
         <dependency>
@@ -150,8 +142,4 @@ $ start-cli.sh -h localhost -p 6667 -u root -pw root
             <version>0.13.0-SNAPSHOT</version>
         </dependency>
 ```
-这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
-
-6. 现在已经大功告成了
-
-
+这里是一些使用 IoTDB-JDBC 连接 IoTDB 的示例：https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

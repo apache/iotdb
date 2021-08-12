@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -38,8 +38,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class IoTDBQueryMemoryControlIT {
-
-  private int defaultMaxQueryDeduplicatedPathNum;
 
   private static final String[] sqls =
       new String[] {
@@ -61,10 +59,8 @@ public class IoTDBQueryMemoryControlIT {
         "create timeseries root.ln.wf03.wt05 with datatype=TEXT,encoding=PLAIN",
       };
 
-  @Before
-  public void setUp() throws Exception {
-    defaultMaxQueryDeduplicatedPathNum =
-        IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
+  @BeforeClass
+  public static void setUp() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMaxQueryDeduplicatedPathNum(10);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -72,9 +68,10 @@ public class IoTDBQueryMemoryControlIT {
   }
 
   private static void createTimeSeries() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }
@@ -84,12 +81,10 @@ public class IoTDBQueryMemoryControlIT {
     }
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxQueryDeduplicatedPathNum(defaultMaxQueryDeduplicatedPathNum);
+    IoTDBDescriptor.getInstance().getConfig().setMaxQueryDeduplicatedPathNum(1000);
   }
 
   @Test

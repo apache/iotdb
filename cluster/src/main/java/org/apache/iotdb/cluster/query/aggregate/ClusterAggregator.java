@@ -154,7 +154,8 @@ public class ClusterAggregator {
           ascending);
     } else {
       // perform the aggregations locally
-      DataGroupMember dataMember = metaGroupMember.getLocalDataMember(partitionGroup.getHeader());
+      DataGroupMember dataMember =
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger.debug(
@@ -268,8 +269,13 @@ public class ClusterAggregator {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        resultBuffers = syncDataClient.getAggrResult(request);
+        try {
+          resultBuffers = syncDataClient.getAggrResult(request);
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
+        }
       }
     }
     return resultBuffers;

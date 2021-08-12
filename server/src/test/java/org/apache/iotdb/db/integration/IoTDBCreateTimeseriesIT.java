@@ -26,6 +26,7 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -65,25 +66,32 @@ public class IoTDBCreateTimeseriesIT {
   }
 
   /** Test creating a time series that is a prefix path of an existing time series */
+  @Ignore // nested measurement has been forbidden
   @Test
   public void testCreateTimeseries1() throws Exception {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
-    for (String timeSeries : timeSeriesArray) {
-      statement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
+    try {
+      for (String timeSeries : timeSeriesArray) {
+        statement.execute(
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
+      }
+
+      // ensure that current timeseries in cache is right.
+      createTimeSeries1Tool(timeSeriesArray);
+
+      statement.close();
+      connection.close();
+      EnvironmentUtils.stopDaemon();
+      setUp();
+
+      // ensure timeseries in cache is right after recovering.
+      createTimeSeries1Tool(timeSeriesArray);
+    } catch (IoTDBSQLException e) {
+      Assert.assertEquals("300: Path [root.sg1.aa.bb] already exist", e.getMessage());
     }
-
-    // ensure that current timeseries in cache is right.
-    createTimeSeries1Tool(timeSeriesArray);
-
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure timeseries in cache is right after recovering.
-    createTimeSeries1Tool(timeSeriesArray);
   }
 
   private void createTimeSeries1Tool(String[] timeSeriesArray) throws SQLException {
@@ -126,6 +134,8 @@ public class IoTDBCreateTimeseriesIT {
     // ensure that current storage group in cache is right.
     createTimeSeries2Tool(storageGroup);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 

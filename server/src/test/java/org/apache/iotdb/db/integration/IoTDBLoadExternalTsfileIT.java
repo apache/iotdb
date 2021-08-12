@@ -52,6 +52,7 @@ import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class IoTDBLoadExternalTsfileIT {
@@ -616,7 +617,8 @@ public class IoTDBLoadExternalTsfileIT {
       // test not load metadata automatically, it will occur errors.
       boolean hasError = false;
       try {
-        statement.execute(String.format("load \"%s\" false 1", tmpDir.getAbsolutePath()));
+        statement.execute(
+            String.format("load \"%s\" autoregister=false,sglevel=1", tmpDir.getAbsolutePath()));
       } catch (Exception e) {
         hasError = true;
       }
@@ -624,7 +626,8 @@ public class IoTDBLoadExternalTsfileIT {
 
       // test load metadata automatically, it will succeed.
       tmpDir = tmpDir.getParentFile().getParentFile().getParentFile();
-      statement.execute(String.format("load \"%s\" true 1", tmpDir.getAbsolutePath()));
+      statement.execute(
+          String.format("load \"%s\" autoregister=true,sglevel=1", tmpDir.getAbsolutePath()));
       resources =
           new ArrayList<>(
               StorageEngine.getInstance()
@@ -642,6 +645,120 @@ public class IoTDBLoadExternalTsfileIT {
         assertEquals(0, dir.listFiles()[0].listFiles()[0].listFiles().length);
       }
     } catch (StorageEngineException | IllegalPathException e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  @Test
+  public void loadTsFileTestWithVerifyMetadata() throws Exception {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      List<TsFileResource> resources =
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.vehicle"))
+                  .getSequenceFileTreeSet());
+      assertEquals(1, resources.size());
+      File vehicleTmpDir =
+          new File(
+              resources
+                  .get(0)
+                  .getTsFile()
+                  .getParentFile()
+                  .getParentFile()
+                  .getParentFile()
+                  .getParentFile(),
+              "tmp" + File.separator + "root.vehicle");
+      if (!vehicleTmpDir.exists()) {
+        vehicleTmpDir.mkdirs();
+      }
+
+      for (TsFileResource resource : resources) {
+        statement.execute("move \"" + resource.getTsFilePath() + "\" \"" + vehicleTmpDir + "\"");
+      }
+
+      resources =
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet());
+      assertEquals(2, resources.size());
+
+      File testTmpDir = new File(vehicleTmpDir.getParentFile(), "root.test");
+      if (!testTmpDir.exists()) {
+        testTmpDir.mkdirs();
+      }
+
+      for (TsFileResource resource : resources) {
+        statement.execute("move \"" + resource.getTsFilePath() + "\" \"" + testTmpDir + "\"");
+      }
+
+      for (String sql : deleteSqls) {
+        statement.execute(sql);
+      }
+
+      List<String> metaDataSqls =
+          new ArrayList<>(
+              Arrays.asList(
+                  "SET STORAGE GROUP TO root.vehicle",
+                  "SET STORAGE GROUP TO root.test",
+                  "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE",
+                  "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+                  "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+                  "CREATE TIMESERIES root.vehicle.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+                  "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+                  "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+                  "CREATE TIMESERIES root.test.d1.g0.s0 WITH DATATYPE=INT32, ENCODING=RLE"));
+
+      for (String sql : metaDataSqls) {
+        statement.execute(sql);
+      }
+
+      // load vehicle
+      boolean hasError = false;
+      try {
+        statement.execute("load \"" + vehicleTmpDir + "\"");
+      } catch (Exception e) {
+        hasError = true;
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "because root.vehicle.d0.s0 is INT32 in the loading TsFile but is INT64 in IoTDB."));
+      }
+      assertTrue(hasError);
+
+      statement.execute("load \"" + vehicleTmpDir + "\" verify=false");
+      assertEquals(
+          1,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.vehicle"))
+              .getSequenceFileTreeSet()
+              .size());
+
+      // load test
+      hasError = false;
+      try {
+        statement.execute("load \"" + testTmpDir + "\"");
+      } catch (Exception e) {
+        hasError = true;
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "because root.test.d0.s0 is INT32 in the loading TsFile but is FLOAT in IoTDB."));
+      }
+      assertTrue(hasError);
+
+      statement.execute("load \"" + testTmpDir + "\" verify=false");
+      assertEquals(
+          2,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.test"))
+              .getSequenceFileTreeSet()
+              .size());
+
+    } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
     }

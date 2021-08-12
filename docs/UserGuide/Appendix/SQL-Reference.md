@@ -104,25 +104,25 @@ Note: For SDT, it is optional to set compression minimum COMPMINTIME, which is t
 Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is the maximum time difference between stored values regardless of COMPDEV.
 ```
 
-* Create device template
+* Create schema template
 ```
-CREATE device template <TemplateName> WITH <AttributeClauses>
+CREATE schema template <TemplateName> WITH <AttributeClauses>
 attributeClauses
     : (MEASUREMENT_NAME DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
     (COMMA property)*)
     attributeClause
     ;
-Eg: create device template temp1(
+Eg: create schema template temp1(
         (s1 INT32 with encoding=Gorilla, compression=SNAPPY),
         (s2 FLOAT with encoding=RLE, compression=SNAPPY)
        )  
 ```
 
-* Set device template
+* Set schema template
 ```
-set device template <TemplateName> to <STORAGE_GROUP_NAME>
-Eg: set device template temp1 to root.beijing
+set schema template <TemplateName> to <STORAGE_GROUP_NAME>
+Eg: set schema template temp1 to root.beijing
 ```
 
 * Delete Timeseries Statement
@@ -324,8 +324,8 @@ CREATE SNAPSHOT FOR SCHEMA
 * Insert Record Statement
 
 ```
-INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <MeasurementName> [COMMA <MeasurementName>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
-MeasurementName : Identifier | LPAREN Identifier (COMMA Identifier)+ RPAREN
+INSERT INTO <PrefixPath> LPAREN TIMESTAMP COMMA <Sensor> [COMMA <Sensor>]* RPAREN VALUES LPAREN <TimeValue>, <PointValue> [COMMA <PointValue>]* RPAREN
+Sensor : Identifier
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) values(1509465600000,true)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,status) VALUES(NOW(), false)
 Eg: IoTDB > INSERT INTO root.ln.wf01.wt01(timestamp,temperature) VALUES(2017-11-01T00:17:00.000+08:00,24.22028)
@@ -714,6 +714,24 @@ E.g. select * as temperature from root.sg.d1
 
 In this situation, it will throws an exception if * corresponds to multiple sensors.
 
+```
+
+* Like Statement
+
+Fuzzy query only supports regular expressions with data type of text and Java standard library style when matching
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE stringLiteral
+stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+
+Eg. select s1 from root.sg.d1 where s1 like 'Regex'
+Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
 ```
 
 ## Database Management Statement

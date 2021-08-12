@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -47,12 +48,12 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   private long executorId;
   private MetaGroupMember metaGroupMember;
   private Node source;
-  private Node header;
+  private RaftNode header;
 
   private List<AggregateResult> results = new ArrayList<>();
 
   public RemoteGroupByExecutor(
-      long executorId, MetaGroupMember metaGroupMember, Node source, Node header) {
+      long executorId, MetaGroupMember metaGroupMember, Node source, RaftNode header) {
     this.executorId = executorId;
     this.metaGroupMember = metaGroupMember;
     this.source = source;
@@ -88,9 +89,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
-
-          aggrBuffers =
-              syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+          try {
+            aggrBuffers =
+                syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+          } catch (TException e) {
+            // the connection may be broken, close it to avoid it being reused
+            syncDataClient.getInputProtocol().getTransport().close();
+            throw e;
+          }
         }
       }
     } catch (TException e) {
@@ -133,9 +139,14 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             metaGroupMember
                 .getClientProvider()
                 .getSyncDataClient(source, RaftServer.getReadOperationTimeoutMS())) {
-
-          aggrBuffer =
-              syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+          try {
+            aggrBuffer =
+                syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+          } catch (TException e) {
+            // the connection may be broken, close it to avoid it being reused
+            syncDataClient.getInputProtocol().getTransport().close();
+            throw e;
+          }
         }
       }
     } catch (TException e) {

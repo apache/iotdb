@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -260,7 +261,7 @@ public class LogReplayerTest {
 
     String deviceId = "root.sg.device5";
 
-    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     mNodes[0] = new MeasurementMNode(null, "sensor0", null, null);
     mNodes[1] = new MeasurementMNode(null, "sensor1", null, null);
 

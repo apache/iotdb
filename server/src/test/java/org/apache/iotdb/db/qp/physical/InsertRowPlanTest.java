@@ -30,7 +30,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -119,19 +119,21 @@ public class InsertRowPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(vectorRowPlan);
 
-    Assert.assertEquals("[$#$0, $#$1, s6]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
+    Assert.assertEquals(
+        "[vector, vector, vector]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 
   @Test
-  public void testInsertRowPlanWithDeviceTemplate()
+  public void testInsertRowPlanWithSchemaTemplate()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     List<List<String>> measurementList = new ArrayList<>();
@@ -175,12 +177,22 @@ public class InsertRowPlanTest {
       compressionTypes.add(CompressionType.SNAPPY);
     }
 
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("vector");
+    schemaNames.add("vector2");
+    schemaNames.add("s6");
+
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
-            "template1", measurementList, dataTypesList, encodingList, compressionTypes);
+            "template1",
+            schemaNames,
+            measurementList,
+            dataTypesList,
+            encodingList,
+            compressionTypes);
 
-    IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 
@@ -189,12 +201,13 @@ public class InsertRowPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
 
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      Assert.assertEquals(3, record.getFields().size());
     }
   }
 
@@ -219,28 +232,19 @@ public class InsertRowPlanTest {
   private InsertRowPlan getInsertVectorRowPlan() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
-        new TSDataType[] {
-          TSDataType.DOUBLE,
-          TSDataType.FLOAT,
-          TSDataType.INT64,
-          TSDataType.INT32,
-          TSDataType.BOOLEAN,
-          TSDataType.TEXT
-        };
+        new TSDataType[] {TSDataType.DOUBLE, TSDataType.FLOAT, TSDataType.INT64};
 
-    String[] columns = new String[6];
+    String[] columns = new String[3];
     columns[0] = 1.0 + "";
     columns[1] = 2 + "";
     columns[2] = 10000 + "";
-    columns[3] = 100 + "";
-    columns[4] = false + "";
-    columns[5] = "hh" + 0;
 
     return new InsertRowPlan(
-        new PartialPath("root.isp.d1"),
+        new PartialPath("root.isp.d1.vector"),
         time,
-        new String[] {"(s1,s2,s3)", "(s4,s5)", "s6"},
+        new String[] {"s1", "s2", "s3"},
         dataTypes,
-        columns);
+        columns,
+        true);
   }
 }

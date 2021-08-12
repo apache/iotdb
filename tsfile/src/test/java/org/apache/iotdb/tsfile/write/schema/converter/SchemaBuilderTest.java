@@ -77,7 +77,7 @@ public class SchemaBuilderTest {
         "s5",
         new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerDeviceTemplate("template1", template);
+    schema.registerSchemaTemplate("template1", template);
     schema.registerDevice("d1", "template1");
 
     Collection<IMeasurementSchema> timeseries = schema.getRegisteredTimeseriesMap().values();
@@ -105,7 +105,7 @@ public class SchemaBuilderTest {
         "s5",
         new MeasurementSchema(
             "s5", TSDataType.INT32, TSEncoding.TS_2DIFF, CompressionType.UNCOMPRESSED, null));
-    schema.registerDeviceTemplate("template1", template);
+    schema.registerSchemaTemplate("template1", template);
 
     schema.extendTemplate(
         "template1",

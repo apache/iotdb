@@ -20,13 +20,15 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
-import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FromComponent;
+import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
+import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
 import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser;
@@ -85,9 +87,9 @@ public class LogicalGenerator {
   public static Operator generate(TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
       throws IllegalPathException {
     // construct query operator and set its global time filter
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
+    QueryOperator queryOp = new QueryOperator();
+    FromComponent fromOp = new FromComponent();
+    SelectComponent selectOp = new SelectComponent(zoneId);
 
     // iterate the path list and add it to from operator
     for (String p : rawDataQueryReq.getPaths()) {
@@ -96,11 +98,11 @@ public class LogicalGenerator {
     }
     selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
 
-    queryOp.setSelectOperator(selectOp);
-    queryOp.setFromOperator(fromOp);
+    queryOp.setSelectComponent(selectOp);
+    queryOp.setFromComponent(fromOp);
 
     // set time filter operator
-    FilterOperator filterOp = new FilterOperator(SQLConstant.KW_AND);
+    FilterOperator filterOp = new FilterOperator(FilterType.KW_AND);
     PartialPath timePath = new PartialPath(TIME);
     filterOp.setSinglePath(timePath);
     Set<PartialPath> pathSet = new HashSet<>();
@@ -110,16 +112,16 @@ public class LogicalGenerator {
 
     BasicFunctionOperator left =
         new BasicFunctionOperator(
-            SQLConstant.GREATERTHANOREQUALTO,
+            FilterType.GREATERTHANOREQUALTO,
             timePath,
             Long.toString(rawDataQueryReq.getStartTime()));
     BasicFunctionOperator right =
         new BasicFunctionOperator(
-            SQLConstant.LESSTHAN, timePath, Long.toString(rawDataQueryReq.getEndTime()));
+            FilterType.LESSTHAN, timePath, Long.toString(rawDataQueryReq.getEndTime()));
     filterOp.addChildOperator(left);
     filterOp.addChildOperator(right);
 
-    queryOp.setFilterOperator(filterOp);
+    queryOp.setWhereComponent(new WhereComponent(filterOp));
 
     return queryOp;
   }
@@ -127,27 +129,26 @@ public class LogicalGenerator {
   public static Operator generate(TSLastDataQueryReq req, ZoneId zoneId)
       throws IllegalPathException {
     // construct query operator and set its global time filter
-    SelectOperator selectOp = new SelectOperator(SQLConstant.TOK_SELECT, zoneId);
-    FromOperator fromOp = new FromOperator(SQLConstant.TOK_FROM);
-    QueryOperator queryOp = new QueryOperator(SQLConstant.TOK_QUERY);
+    LastQueryOperator queryOp = new LastQueryOperator();
+    FromComponent fromOp = new FromComponent();
+    SelectComponent selectOp = new SelectComponent(zoneId);
 
     selectOp.addResultColumn(new ResultColumn(new TimeSeriesOperand(new PartialPath(""))));
-    selectOp.markAsLastQuery();
 
     for (String p : req.getPaths()) {
       PartialPath path = new PartialPath(p);
       fromOp.addPrefixTablePath(path);
     }
 
-    queryOp.setSelectOperator(selectOp);
-    queryOp.setFromOperator(fromOp);
+    queryOp.setSelectComponent(selectOp);
+    queryOp.setFromComponent(fromOp);
 
     PartialPath timePath = new PartialPath(TIME);
 
     BasicFunctionOperator basicFunctionOperator =
         new BasicFunctionOperator(
-            SQLConstant.GREATERTHANOREQUALTO, timePath, Long.toString(req.getTime()));
-    queryOp.setFilterOperator(basicFunctionOperator);
+            FilterType.GREATERTHANOREQUALTO, timePath, Long.toString(req.getTime()));
+    queryOp.setWhereComponent(new WhereComponent(basicFunctionOperator));
 
     return queryOp;
   }

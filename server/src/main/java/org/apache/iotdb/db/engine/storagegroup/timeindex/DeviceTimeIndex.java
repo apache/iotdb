@@ -64,14 +64,6 @@ public class DeviceTimeIndex implements ITimeIndex {
     initTimes(endTimes, Long.MIN_VALUE);
   }
 
-  public DeviceTimeIndex(int deviceNumInLastClosedTsFile) {
-    this.deviceToIndex = new ConcurrentHashMap<>();
-    this.startTimes = new long[deviceNumInLastClosedTsFile];
-    this.endTimes = new long[deviceNumInLastClosedTsFile];
-    initTimes(startTimes, Long.MAX_VALUE);
-    initTimes(endTimes, Long.MIN_VALUE);
-  }
-
   public DeviceTimeIndex(Map<String, Integer> deviceToIndex, long[] startTimes, long[] endTimes) {
     this.startTimes = startTimes;
     this.endTimes = endTimes;
@@ -88,12 +80,17 @@ public class DeviceTimeIndex implements ITimeIndex {
       ReadWriteIOUtils.write(endTimes[i], outputStream);
     }
 
+    Map<String, Integer> stringMemoryReducedMap = new ConcurrentHashMap<>();
     for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
       String deviceName = stringIntegerEntry.getKey();
       int index = stringIntegerEntry.getValue();
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedMap.put(cachedDevicePool.computeIfAbsent(deviceName, k -> k), index);
       ReadWriteIOUtils.write(deviceName, outputStream);
       ReadWriteIOUtils.write(index, outputStream);
     }
+    deviceToIndex = stringMemoryReducedMap;
   }
 
   @Override
@@ -149,7 +146,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices() {
+  public Set<String> getDevices(String tsFilePath) {
     return deviceToIndex.keySet();
   }
 
@@ -164,13 +161,13 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public boolean stillLives(long timeLowerBound) {
-    if (timeLowerBound == Long.MAX_VALUE) {
+  public boolean stillLives(long ttlLowerBound) {
+    if (ttlLowerBound == Long.MAX_VALUE) {
       return true;
     }
     for (long endTime : endTimes) {
       // the file cannot be deleted if any device still lives
-      if (endTime >= timeLowerBound) {
+      if (endTime >= ttlLowerBound) {
         return true;
       }
     }
@@ -303,5 +300,10 @@ public class DeviceTimeIndex implements ITimeIndex {
       return Long.MIN_VALUE;
     }
     return endTimes[deviceToIndex.get(deviceId)];
+  }
+
+  @Override
+  public boolean checkDeviceIdExist(String deviceId) {
+    return deviceToIndex.containsKey(deviceId);
   }
 }
