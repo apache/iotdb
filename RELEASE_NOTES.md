@@ -27,6 +27,7 @@
 * [IOTDB-1466] Support device template
 * [IOTDB-1491] UDTF query supported in cluster
 * [IOTDB-1536] Support fuzzy query
+* [IOTDB-1561] Support fill by specific value
 * TTL can be set to the prefix path of storage group
 * add JMX monitor to all ThreadPools in the server module 
 
