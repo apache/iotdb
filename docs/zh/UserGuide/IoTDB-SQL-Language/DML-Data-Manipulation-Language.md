@@ -810,6 +810,52 @@ Total line number = 1
 It costs 0.017s
 ```
 
+- Value方法
+
+当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constant]…)
+```
+
+表3-6中给出了所有参数的详细说明。
+
+<center>**表3-6特定值填充参数列表**
+
+| 参数名称（不区分大小写）    | 解释                                                         |
+| :-------------------------- | :----------------------------------------------------------- |
+| path, prefixPath            | 查询路径； 必填项                                            |
+| T                           | 查询时间戳（只能指定一个）； 必填项                          |
+| data_type                   | 填充方法使用的数据类型。 可选值是int32，int64，float，double，boolean，text; 可选字段 |
+| constant                    | 给定的填充值                                          |
+
+</center>
+
+需要注意的是一旦时间序列在查询时间戳T时刻存在有效值，特定值填充就会使用这个值作为结果返回。
+
+
+在这里，我们举一个使用特定值方法填充空值的示例。 SQL语句如下：
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [value, 2.0])
+```
+
+意思是：
+
+由于时间根目录root.sgcc.wf03.wt01.temperature在2017-11-01T16:37:50.000为空，因此使用给定的值2.0进行填充：
+
+在 [样例数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), 该语句的执行结果如下所示：
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                           2.0 |
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 数据类型和填充方法之间的对应关系
 
 数据类型和支持的填充方法如表 3-6 所示。
@@ -817,13 +863,13 @@ It costs 0.017s
 <center>**表 3-6 数据类型和支持的填充方法**
 
 | 数据类型 | 支持的填充方法   |
-| :------- | :--------------- |
-| boolean  | previous         |
-| int32    | previous, linear |
-| int64    | previous, linear |
-| float    | previous, linear |
-| double   | previous, linear |
-| text     | previous         |
+| :------- | :---------------------  |
+| boolean  | previous, value         |
+| int32    | previous, linear, value |
+| int64    | previous, linear, value |
+| float    | previous, linear, value |
+| double   | previous, linear, value |
+| text     | previous, value         |
 
 </center>
 
