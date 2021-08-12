@@ -2081,6 +2081,7 @@ public class StorageGroupProcessor {
       // stop running new compaction
       return;
     }
+    logger.info("{} - {} start a compaction task", logicalStorageGroupName, virtualStorageGroupId);
     if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
       new CompactionAllPartitionTask(logicalStorageGroupName).call();
     }
