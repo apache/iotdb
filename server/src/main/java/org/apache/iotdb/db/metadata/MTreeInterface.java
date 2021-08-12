@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -69,7 +69,7 @@ public interface MTreeInterface extends Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  MNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException;
+  IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel) throws MetadataException;
 
   /**
    * Check whether the given path exists.
@@ -116,9 +116,9 @@ public interface MTreeInterface extends Serializable {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  MNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
+  IMNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException;
 
-  MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
+  IMNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path) throws MetadataException;
 
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
@@ -142,16 +142,16 @@ public interface MTreeInterface extends Serializable {
    *
    * @return last node in given seriesPath
    */
-  MNode getNodeByPath(PartialPath path) throws MetadataException;
+  IMNode getNodeByPath(PartialPath path) throws MetadataException;
 
-  MNode getNodeByPathWithMemoryLock(PartialPath path) throws MetadataException;
+  IMNode getNodeByPathWithMemoryLock(PartialPath path) throws MetadataException;
 
-  Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException;
+  Map<String, IMNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException;
 
-  MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName)
+  IMNode getChildMNodeInDeviceWithMemoryLock(IMNode deviceNode, String childName)
       throws MetadataException;
 
-  MNode getNodeDeepClone(MNode mNode) throws MetadataException;
+  IMNode getNodeDeepClone(IMNode mNode) throws MetadataException;
 
   /**
    * Get all storage groups under the given path
@@ -307,13 +307,13 @@ public interface MTreeInterface extends Serializable {
 
   int getMeasurementMNodeCount(PartialPath path) throws MetadataException;
 
-  Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode);
+  Collection<MeasurementMNode> collectMeasurementMNode(IMNode startingNode);
 
-  void updateMNode(MNode mNode) throws MetadataException;
+  void updateMNode(IMNode mNode) throws MetadataException;
 
-  MNode lockMNode(MNode mNode) throws MetadataException;
+  IMNode lockMNode(IMNode mNode) throws MetadataException;
 
-  void unlockMNode(MNode mNode) throws MetadataException;
+  void unlockMNode(IMNode mNode) throws MetadataException;
 
   void serializeTo(String snapshotPath) throws IOException;
 

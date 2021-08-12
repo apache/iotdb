@@ -116,15 +116,15 @@ public class MTreeFile {
 
   private void fileCheck() throws IOException {
     PersistenceInfo persistenceInfo = PersistenceInfo.createPersistenceInfo(rootPosition);
-    MNode mNode = read(persistenceInfo);
+    IMNode mNode = read(persistenceInfo);
   }
 
-  public MNode read(String path) throws IOException {
+  public IMNode read(String path) throws IOException {
     String[] nodes = path.split("\\.");
     if (!nodes[0].equals("root")) {
       return null;
     }
-    MNode mNode = read(PersistenceInfo.createPersistenceInfo(rootPosition));
+    IMNode mNode = read(PersistenceInfo.createPersistenceInfo(rootPosition));
     for (int i = 1; i < nodes.length; i++) {
       if (!mNode.hasChild(nodes[i])) {
         return null;
@@ -134,11 +134,11 @@ public class MTreeFile {
     return mNode;
   }
 
-  public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
-    MNode mNode = read(persistenceInfo);
-    Map<String, MNode> children = mNode.getChildren();
-    MNode child;
-    for (Map.Entry<String, MNode> entry : children.entrySet()) {
+  public IMNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+    IMNode mNode = read(persistenceInfo);
+    Map<String, IMNode> children = mNode.getChildren();
+    IMNode child;
+    for (Map.Entry<String, IMNode> entry : children.entrySet()) {
       child = entry.getValue();
       child = readRecursively(child.getPersistenceInfo());
       entry.setValue(child);
@@ -147,12 +147,12 @@ public class MTreeFile {
     return mNode;
   }
 
-  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
     long position = persistenceInfo.getPosition();
     Pair<Byte, ByteBuffer> mNodeData = readBytesFromFile(position);
     byte nodeType = mNodeData.left;
     ByteBuffer dataBuffer = mNodeData.right;
-    MNode mNode;
+    IMNode mNode;
     switch (nodeType) {
       case INTERNAL_NODE: // normal InternalMNode
         mNode = mNodeSerializer.deserializeInternalMNode(dataBuffer);
@@ -224,7 +224,7 @@ public class MTreeFile {
     return new Pair<>(nodeType, dataBuffer);
   }
 
-  public void write(MNode mNode) throws IOException {
+  public void write(IMNode mNode) throws IOException {
     if (mNode == null) {
       throw new IOException("MNode is null and cannot be persist.");
     }
@@ -258,14 +258,14 @@ public class MTreeFile {
     }
 
     long position = mNode.getPersistenceInfo().getPosition();
-    MNode parent = mNode.getParent();
+    IMNode parent = mNode.getParent();
     long parentPosition =
         (parent == null || !parent.isPersisted()) ? 0 : parent.getPersistenceInfo().getPosition();
     writeBytesToFile(dataBuffer, bitmap, position, parentPosition);
   }
 
-  public void writeRecursively(MNode mNode) throws IOException {
-    for (MNode child : mNode.getChildren().values()) {
+  public void writeRecursively(IMNode mNode) throws IOException {
+    for (IMNode child : mNode.getChildren().values()) {
       writeRecursively(child);
     }
     write(mNode);

@@ -19,14 +19,14 @@ import java.util.Map;
 public class MNodePersistenceSerializer implements MNodeSerializer {
 
   @Override
-  public ByteBuffer serializeMNode(MNode mNode) {
+  public ByteBuffer serializeMNode(IMNode mNode) {
     ByteBuffer dataBuffer = ByteBuffer.allocate(evaluateMNodeLength(mNode));
     serializeMNode(mNode, dataBuffer);
     return dataBuffer;
   }
 
   @Override
-  public void serializeMNode(MNode mNode, ByteBuffer dataBuffer) {
+  public void serializeMNode(IMNode mNode, ByteBuffer dataBuffer) {
     if (mNode.isStorageGroup()) {
       serializeStorageGroupMNode((StorageGroupMNode) mNode, dataBuffer);
     } else if (mNode.isMeasurement()) {
@@ -37,7 +37,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
   }
 
   @Override
-  public MNode deserializeMNode(ByteBuffer dataBuffer, int type) {
+  public IMNode deserializeMNode(ByteBuffer dataBuffer, int type) {
     switch (type) {
       case INTERNAL_MNODE:
         return deserializeInternalMNode(dataBuffer);
@@ -130,7 +130,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
     return mNode;
   }
 
-  private void serializeChildren(Map<String, MNode> children, ByteBuffer dataBuffer) {
+  private void serializeChildren(Map<String, IMNode> children, ByteBuffer dataBuffer) {
     for (String childName : children.keySet()) {
       ReadWriteIOUtils.writeVar(childName, dataBuffer);
       dataBuffer.putLong(children.get(childName).getPersistenceInfo().getPosition());
@@ -138,7 +138,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
     dataBuffer.put((byte) 0);
   }
 
-  private void deserializeChildren(MNode mNode, ByteBuffer byteBuffer) {
+  private void deserializeChildren(IMNode mNode, ByteBuffer byteBuffer) {
     String name;
     name = ReadWriteIOUtils.readVarIntString(byteBuffer);
     Map<Long, String> children = new HashMap<>();
@@ -153,7 +153,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
       name = ReadWriteIOUtils.readVarIntString(byteBuffer);
     }
 
-    MNode child;
+    IMNode child;
     for (long position : children.keySet()) {
       child = new PersistenceMNode(position);
       mNode.addChild(children.get(position), child);
@@ -265,7 +265,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
   }
 
   @Override
-  public int evaluateMNodeLength(MNode mNode) {
+  public int evaluateMNodeLength(IMNode mNode) {
     int length = 0;
     length +=
         ReadWriteForEncodingUtils.varIntSize(mNode.getName().length())
@@ -286,7 +286,7 @@ public class MNodePersistenceSerializer implements MNodeSerializer {
     return length;
   }
 
-  private int evaluateChildrenLength(Map<String, MNode> children) {
+  private int evaluateChildrenLength(Map<String, IMNode> children) {
     int length = 0;
     for (String childName : children.keySet()) {
       length +=

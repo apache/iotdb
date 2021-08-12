@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -811,7 +811,7 @@ public class MTreeTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      MNode sgNode = root.getNodeByPath(sgPath);
+      IMNode sgNode = root.getNodeByPath(sgPath);
       assertEquals(1, sgNode.getMeasurementMNodeCount()); // b
 
       root.createTimeseries(
@@ -822,7 +822,7 @@ public class MTreeTest {
           Collections.emptyMap(),
           null);
       assertEquals(2, sgNode.getMeasurementMNodeCount()); // b and c
-      MNode cNode = sgNode.getChild("a").getChild("b").getChild("c");
+      IMNode cNode = sgNode.getChild("a").getChild("b").getChild("c");
       assertEquals(1, cNode.getMeasurementMNodeCount()); // c
 
       root.createTimeseries(
@@ -834,7 +834,7 @@ public class MTreeTest {
           null);
       assertEquals(3, sgNode.getMeasurementMNodeCount()); // b, c and d
       assertEquals(2, cNode.getMeasurementMNodeCount()); // c and d
-      MNode dNode = cNode.getChild("d");
+      IMNode dNode = cNode.getChild("d");
       assertEquals(1, dNode.getMeasurementMNodeCount()); // d
 
     } catch (MetadataException e1) {
@@ -864,7 +864,7 @@ public class MTreeTest {
         Collections.emptyMap(),
         null);
 
-    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    IMNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertTrue(node instanceof MeasurementMNode);
   }
 }

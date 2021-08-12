@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.List;
 
@@ -29,30 +29,30 @@ public interface CacheStrategy {
   int getSize();
 
   /** used for mnode object occupation statistic to decide whether this mnode could be evict */
-  void lockMNode(MNode mNode);
+  void lockMNode(IMNode mNode);
 
-  void unlockMNode(MNode mNode);
+  void unlockMNode(IMNode mNode);
 
   /** change the mnode's position in cache */
-  void applyChange(MNode mNode);
+  void applyChange(IMNode mNode);
 
   /**
    * change the mnode's status in cache if a mnode in cache is modified, it will be collected when
    * eviction is triggered and need to be persisted
    */
-  void setModified(MNode mNode, boolean modified);
+  void setModified(IMNode mNode, boolean modified);
 
   /** remove a mnode from cache, so as its subtree */
-  void remove(MNode mNode);
+  void remove(IMNode mNode);
 
   /**
    * evict a mnode and remove its subtree from the cache and collect the modified mnodes in cache
    * the evicted one will be the first one of the returned collection and the rest of the returned
    * collection need to be persisted
    */
-  List<MNode> evict();
+  List<IMNode> evict();
 
-  List<MNode> collectModified(MNode mNode);
+  List<IMNode> collectModified(IMNode mNode);
 
   void clear();
 }

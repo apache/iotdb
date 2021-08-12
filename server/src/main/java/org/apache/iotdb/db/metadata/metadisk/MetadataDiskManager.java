@@ -10,8 +10,8 @@ import org.apache.iotdb.db.metadata.metadisk.cache.LRUCacheStrategy;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFile;
 import org.apache.iotdb.db.metadata.metadisk.metafile.MetaFileAccess;
 import org.apache.iotdb.db.metadata.metadisk.metafile.PersistenceInfo;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ public class MetadataDiskManager implements MetadataAccess {
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
 
-  private MNode root;
+  private IMNode root;
 
   private ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
   private Lock readLock = readWriteLock.readLock();
@@ -68,13 +68,13 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   private void init() throws IOException {
-    MNode root = recoverFromFile();
+    IMNode root = recoverFromFile();
     cacheStrategy.lockMNode(root);
     cacheStrategy.setModified(root, false);
     this.root = root;
   }
 
-  private MNode recoverFromFile() throws IOException {
+  private IMNode recoverFromFile() throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
@@ -86,7 +86,7 @@ public class MetadataDiskManager implements MetadataAccess {
       Files.delete(metaFile.toPath());
     }
 
-    MNode root = null;
+    IMNode root = null;
     long time = System.currentTimeMillis();
     if (snapshotFile.exists() && snapshotFile.renameTo(metaFile)) {
       try {
@@ -118,7 +118,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public MNode getRoot() throws MetadataException {
+  public IMNode getRoot() throws MetadataException {
     readLock.lock();
     try {
       return root;
@@ -128,10 +128,10 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public MNode getChild(MNode parent, String name) throws MetadataException {
+  public IMNode getChild(IMNode parent, String name) throws MetadataException {
     readLock.lock();
     try {
-      MNode result = parent.getChild(name);
+      IMNode result = parent.getChild(name);
       if (result == null) {
         return null;
       }
@@ -168,7 +168,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public MNode getChild(MNode parent, String name, boolean lockChild) throws MetadataException {
+  public IMNode getChild(IMNode parent, String name, boolean lockChild) throws MetadataException {
     if (!lockChild) {
       return getChild(parent, name);
     }
@@ -177,7 +177,7 @@ public class MetadataDiskManager implements MetadataAccess {
       if (!parent.isLockedInMemory()) {
         throw new MetadataException("Parent MNode has not been locked before lock child");
       }
-      MNode result = parent.getChild(name);
+      IMNode result = parent.getChild(name);
       if (result == null) {
         return null;
       }
@@ -202,17 +202,17 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public Map<String, MNode> getChildren(MNode parent) throws MetadataException {
-    Map<String, MNode> result = new ConcurrentHashMap<>();
+  public Map<String, IMNode> getChildren(IMNode parent) throws MetadataException {
+    Map<String, IMNode> result = new ConcurrentHashMap<>();
     for (String childName : parent.getChildren().keySet()) {
-      MNode child = getChild(parent, childName);
+      IMNode child = getChild(parent, childName);
       result.put(childName, child);
     }
     return result;
   }
 
   @Override
-  public void addChild(MNode parent, String childName, MNode child) throws MetadataException {
+  public void addChild(IMNode parent, String childName, IMNode child) throws MetadataException {
     readLock.lock();
     try {
       if (parent.hasChild(childName)) {
@@ -239,7 +239,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void addChild(MNode parent, String childName, MNode child, boolean lockChild)
+  public void addChild(IMNode parent, String childName, IMNode child, boolean lockChild)
       throws MetadataException {
     if (!lockChild) {
       addChild(parent, childName, child);
@@ -261,7 +261,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void addAlias(MNode parent, String alias, MNode child) throws MetadataException {
+  public void addAlias(IMNode parent, String alias, IMNode child) throws MetadataException {
     readLock.lock();
     try {
       child.setParent(parent);
@@ -285,7 +285,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void replaceChild(MNode parent, String measurement, MNode newChild)
+  public void replaceChild(IMNode parent, String measurement, IMNode newChild)
       throws MetadataException {
     readLock.lock();
     try {
@@ -312,7 +312,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void replaceChild(MNode parent, String measurement, MNode newChild, boolean lockChild)
+  public void replaceChild(IMNode parent, String measurement, IMNode newChild, boolean lockChild)
       throws MetadataException {
     if (!lockChild) {
       replaceChild(parent, measurement, newChild);
@@ -334,10 +334,10 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public MNode deleteChild(MNode parent, String childName) throws MetadataException {
+  public IMNode deleteChild(IMNode parent, String childName) throws MetadataException {
     writeLock.lock();
     try {
-      MNode child = getChild(parent, childName);
+      IMNode child = getChild(parent, childName);
       parent.deleteChild(childName);
 
       if (child.isCached()) {
@@ -360,8 +360,8 @@ public class MetadataDiskManager implements MetadataAccess {
     }
   }
 
-  private void deleteChildRecursively(MNode mNode) throws MetadataException {
-    MNode child;
+  private void deleteChildRecursively(IMNode mNode) throws MetadataException {
+    IMNode child;
     for (String childName : mNode.getChildren().keySet()) {
       child = mNode.getChild(childName);
       if (!child.isLoaded()) {
@@ -380,7 +380,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void deleteAliasChild(MNode parent, String alias) throws MetadataException {
+  public void deleteAliasChild(IMNode parent, String alias) throws MetadataException {
     readLock.lock();
     try {
       parent.deleteAliasChild(alias);
@@ -399,7 +399,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void updateMNode(MNode mNode) throws MetadataException {
+  public void updateMNode(IMNode mNode) throws MetadataException {
     readLock.lock();
     try {
       if (mNode.isDeleted()) {
@@ -421,11 +421,11 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void lockMNodeInMemory(MNode mNode) throws MetadataException {
+  public void lockMNodeInMemory(IMNode mNode) throws MetadataException {
     readLock.lock();
     try {
-      MNode temp = mNode;
-      Stack<MNode> stack = new Stack<>();
+      IMNode temp = mNode;
+      Stack<IMNode> stack = new Stack<>();
       while (temp != root) {
         if (!temp.isCached()) {
           throw new MetadataException("Cannot lock a MNode not in cache");
@@ -435,7 +435,7 @@ public class MetadataDiskManager implements MetadataAccess {
       }
       temp = stack.pop();
       cacheStrategy.lockMNode(temp);
-      MNode last;
+      IMNode last;
       while (!stack.empty()) {
         last = temp;
         temp = stack.pop();
@@ -452,7 +452,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   @Override
-  public void releaseMNodeMemoryLock(MNode mNode) throws MetadataException {
+  public void releaseMNodeMemoryLock(IMNode mNode) throws MetadataException {
     readLock.lock();
     try {
       if (!mNode.isCached() || !mNode.isLockedInMemory()) {
@@ -472,8 +472,8 @@ public class MetadataDiskManager implements MetadataAccess {
   public void sync() throws IOException {
     writeLock.lock();
     try {
-      List<MNode> modifiedMNodes = cacheStrategy.collectModified(root);
-      for (MNode mNode : modifiedMNodes) {
+      List<IMNode> modifiedMNodes = cacheStrategy.collectModified(root);
+      for (IMNode mNode : modifiedMNodes) {
         metaFile.write(mNode);
         cacheStrategy.setModified(mNode, false);
       }
@@ -536,7 +536,7 @@ public class MetadataDiskManager implements MetadataAccess {
   }
 
   /** get mnode from disk */
-  private MNode getMNodeFromDisk(PersistenceInfo persistenceInfo) throws MetadataException {
+  private IMNode getMNodeFromDisk(PersistenceInfo persistenceInfo) throws MetadataException {
     try {
       return metaFile.read(persistenceInfo);
     } catch (IOException e) {
@@ -550,8 +550,8 @@ public class MetadataDiskManager implements MetadataAccess {
    * <p>only if the cache has enough space and the parent of the mnode is cached, the mnode will be
    * cached.
    */
-  private boolean isCacheable(MNode mNode) throws MetadataException {
-    MNode parent = mNode.getParent();
+  private boolean isCacheable(IMNode mNode) throws MetadataException {
+    IMNode parent = mNode.getParent();
     // parent may be evicted from the cache when checkSizeAndEviction
     return parent.isCached() && checkSizeAndEviction() && parent.isCached();
   }
@@ -579,12 +579,12 @@ public class MetadataDiskManager implements MetadataAccess {
       writeLock.lock();
       try {
         while (cacheStrategy.getSize() >= capacity * 0.8) {
-          List<MNode> modifiedMNodes = cacheStrategy.evict();
+          List<IMNode> modifiedMNodes = cacheStrategy.evict();
           if (modifiedMNodes.size() == 0) {
             break;
           }
-          MNode evictedMNode = modifiedMNodes.remove(0);
-          for (MNode mNode : modifiedMNodes) {
+          IMNode evictedMNode = modifiedMNodes.remove(0);
+          for (IMNode mNode : modifiedMNodes) {
             try {
               metaFile.write(mNode);
               cacheStrategy.setModified(mNode, false);

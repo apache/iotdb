@@ -8,11 +8,11 @@ public interface MNodeSerializer {
   int STORAGE_GROUP_MNODE = 1;
   int MEASUREMENT_MNODE = 2;
 
-  ByteBuffer serializeMNode(MNode mNode);
+  ByteBuffer serializeMNode(IMNode mNode);
 
-  void serializeMNode(MNode mNode, ByteBuffer dataBuffer);
+  void serializeMNode(IMNode mNode, ByteBuffer dataBuffer);
 
-  MNode deserializeMNode(ByteBuffer dataBuffer, int type);
+  IMNode deserializeMNode(ByteBuffer dataBuffer, int type);
 
   ByteBuffer serializeInternalMNode(InternalMNode mNode);
 
@@ -32,5 +32,5 @@ public interface MNodeSerializer {
 
   MeasurementMNode deserializeMeasurementMNode(ByteBuffer dataBuffer);
 
-  int evaluateMNodeLength(MNode mNode);
+  int evaluateMNodeLength(IMNode mNode);
 }

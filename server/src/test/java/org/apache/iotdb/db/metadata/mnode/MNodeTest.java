@@ -45,12 +45,12 @@ public class MNodeTest {
   @Test
   public void testReplaceChild() throws InterruptedException {
     // after replacing a with c, the timeseries root.a.b becomes root.c.b
-    MNode rootNode = new InternalMNode(null, "root");
+    IMNode rootNode = new InternalMNode(null, "root");
 
-    MNode aNode = new InternalMNode(rootNode, "a");
+    IMNode aNode = new InternalMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
 
-    MNode bNode = new InternalMNode(aNode, "b");
+    IMNode bNode = new InternalMNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
     aNode.addAlias("aliasOfb", bNode);
 
@@ -71,9 +71,9 @@ public class MNodeTest {
 
   @Test
   public void testAddChild() {
-    MNode rootNode = new InternalMNode(null, "root");
+    IMNode rootNode = new InternalMNode(null, "root");
 
-    MNode speedNode =
+    IMNode speedNode =
         rootNode
             .addChild(new InternalMNode(null, "sg1"))
             .addChild(new InternalMNode(null, "a"))
@@ -84,7 +84,7 @@ public class MNodeTest {
             .addChild(new InternalMNode(null, "speed"));
     assertEquals("root.sg1.a.b.c.d.device.speed", speedNode.getFullPath());
 
-    MNode temperatureNode =
+    IMNode temperatureNode =
         rootNode
             .getChild("sg1")
             .addChild(new InternalMNode(null, "aa"))

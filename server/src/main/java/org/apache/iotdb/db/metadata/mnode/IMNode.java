@@ -31,7 +31,7 @@ import java.util.Map;
  * This interface is the interface of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public interface MNode extends Serializable {
+public interface IMNode extends Serializable {
 
   /** check whether the MNode has a child with the name or alias */
   boolean hasChild(String name);
@@ -42,7 +42,7 @@ public interface MNode extends Serializable {
    * @param name child's name
    * @param child child's node
    */
-  void addChild(String name, MNode child);
+  void addChild(String name, IMNode child);
 
   /**
    * Add a child to the current mnode.
@@ -55,7 +55,7 @@ public interface MNode extends Serializable {
    * @param child child's node
    * @return return the MNode already added
    */
-  MNode addChild(MNode child);
+  IMNode addChild(IMNode child);
 
   /** delete a child */
   void deleteChild(String name);
@@ -64,7 +64,7 @@ public interface MNode extends Serializable {
   void deleteAliasChild(String alias);
 
   /** get the child with the name */
-  MNode getChild(String name);
+  IMNode getChild(String name);
 
   /**
    * get the count of all MeasurementMNode whose ancestor is current node Attention!!! the child
@@ -74,7 +74,7 @@ public interface MNode extends Serializable {
   int getMeasurementMNodeCount();
 
   /** add an alias */
-  boolean addAlias(String alias, MNode child);
+  boolean addAlias(String alias, IMNode child);
 
   /** get full path */
   String getFullPath();
@@ -82,17 +82,17 @@ public interface MNode extends Serializable {
   PartialPath getPartialPath();
 
   /** get parent */
-  MNode getParent();
+  IMNode getParent();
 
-  void setParent(MNode parent);
+  void setParent(IMNode parent);
 
-  Map<String, MNode> getChildren();
+  Map<String, IMNode> getChildren();
 
-  Map<String, MNode> getAliasChildren();
+  Map<String, IMNode> getAliasChildren();
 
-  void setChildren(Map<String, MNode> children);
+  void setChildren(Map<String, IMNode> children);
 
-  void setAliasChildren(Map<String, MNode> aliasChildren);
+  void setAliasChildren(Map<String, IMNode> aliasChildren);
 
   String getName();
 
@@ -100,7 +100,7 @@ public interface MNode extends Serializable {
 
   void serializeTo(MLogWriter logWriter) throws IOException;
 
-  void replaceChild(String measurement, MNode newChildNode);
+  void replaceChild(String measurement, IMNode newChildNode);
 
   /** whether this is an instance of StorageGroupMNode */
   boolean isStorageGroup();
@@ -134,7 +134,7 @@ public interface MNode extends Serializable {
    * when a mnode is going to be evicted from memory, get its evictionHolder which is simply a mnode
    * with only its persistence information
    */
-  MNode getEvictionHolder();
+  IMNode getEvictionHolder();
 
   /**
    * evict one child and replace it in children map with its evictionHolder to avoid
@@ -149,5 +149,5 @@ public interface MNode extends Serializable {
   boolean isDeleted();
 
   /** get a cloned instance of this mnode */
-  MNode clone();
+  IMNode clone();
 }

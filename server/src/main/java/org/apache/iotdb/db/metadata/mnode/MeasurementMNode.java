@@ -49,7 +49,7 @@ public class MeasurementMNode extends InternalMNode {
 
   /** @param alias alias of measurementName */
   public MeasurementMNode(
-      MNode parent,
+      IMNode parent,
       String measurementName,
       String alias,
       TSDataType dataType,
@@ -62,7 +62,7 @@ public class MeasurementMNode extends InternalMNode {
   }
 
   public MeasurementMNode(
-      MNode parent, String measurementName, MeasurementSchema schema, String alias) {
+      IMNode parent, String measurementName, MeasurementSchema schema, String alias) {
     super(parent, measurementName);
     this.schema = schema;
     this.alias = alias;
@@ -146,7 +146,7 @@ public class MeasurementMNode extends InternalMNode {
     logWriter.serializeMeasurementMNode(this);
   }
 
-  public MNode clone() {
+  public IMNode clone() {
     MeasurementMNode result = new MeasurementMNode(parent, name, schema, alias);
     copyData(result);
     result.setOffset(offset);

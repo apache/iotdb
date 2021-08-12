@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -49,7 +49,7 @@ public class MTreeFileTest {
 
   @Test
   public void testSimpleMNodeRW() throws IOException {
-    MNode mNode = new InternalMNode(null, "root");
+    IMNode mNode = new InternalMNode(null, "root");
     mTreeFile.write(mNode);
     mNode = mTreeFile.read(mNode.getPersistenceInfo());
     Assert.assertEquals("root", mNode.getName());
@@ -57,8 +57,8 @@ public class MTreeFileTest {
 
   @Test
   public void testPathRW() throws IOException {
-    MNode root = new InternalMNode(null, "root");
-    MNode p = new InternalMNode(root, "p");
+    IMNode root = new InternalMNode(null, "root");
+    IMNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
@@ -71,7 +71,7 @@ public class MTreeFileTest {
     s.addChild("t", m);
 
     mTreeFile.writeRecursively(root);
-    MNode mNode = mTreeFile.read("root.p.s");
+    IMNode mNode = mTreeFile.read("root.p.s");
     Assert.assertTrue(mNode.isStorageGroup());
     Assert.assertTrue(mNode.hasChild("t"));
     mNode = mTreeFile.read("root.p.s.t");
@@ -85,8 +85,8 @@ public class MTreeFileTest {
 
   @Test
   public void testBigMNode() throws IOException {
-    MNode root = new InternalMNode(null, "root");
-    MNode p = new InternalMNode(root, "p");
+    IMNode root = new InternalMNode(null, "root");
+    IMNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
@@ -100,13 +100,13 @@ public class MTreeFileTest {
       s.addChild("t" + i, m);
     }
     mTreeFile.writeRecursively(root);
-    MNode mNode = mTreeFile.read("root.p.s");
+    IMNode mNode = mTreeFile.read("root.p.s");
     Assert.assertEquals(10000, mNode.getChildren().size());
   }
 
   @Test
   public void testSimpleTreeRW() throws IOException {
-    MNode mNode = getSimpleTree();
+    IMNode mNode = getSimpleTree();
     mTreeFile.writeRecursively(mNode);
     mNode = mTreeFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
@@ -121,8 +121,8 @@ public class MTreeFileTest {
         treeToStringDFT(mNode));
   }
 
-  private MNode getSimpleTree() {
-    MNode root = new InternalMNode(null, "root");
+  private IMNode getSimpleTree() {
+    IMNode root = new InternalMNode(null, "root");
     root.addChild("s1", new InternalMNode(root, "s1"));
     root.addChild("s2", new InternalMNode(root, "s2"));
     root.getChild("s1").addChild("t1", new InternalMNode(root.getChild("s1"), "t1"));
@@ -137,7 +137,7 @@ public class MTreeFileTest {
 
   @Test
   public void testMTreeRW() throws IOException {
-    MNode mNode = getMTree();
+    IMNode mNode = getMTree();
     mTreeFile.writeRecursively(mNode);
     mNode = mTreeFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
@@ -160,9 +160,9 @@ public class MTreeFileTest {
     Assert.assertTrue(mNode.getChild("p").getChild("s2").getChild("t2").isMeasurement());
   }
 
-  private MNode getMTree() {
-    MNode root = new InternalMNode(null, "root");
-    MNode p = new InternalMNode(root, "p");
+  private IMNode getMTree() {
+    IMNode root = new InternalMNode(null, "root");
+    IMNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s1 = new StorageGroupMNode(p, "s1", 1000);
     StorageGroupMNode s2 = new StorageGroupMNode(p, "s2", 2000);
@@ -179,28 +179,28 @@ public class MTreeFileTest {
     return root;
   }
 
-  private void showTree(MNode mNode) {
+  private void showTree(IMNode mNode) {
     if (mNode == null) {
       return;
     }
     System.out.println(mNode.getFullPath());
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       showTree(child);
     }
   }
 
-  private String treeToStringDFT(MNode mNode) {
+  private String treeToStringDFT(IMNode mNode) {
     StringBuilder stringBuilder = new StringBuilder();
     dft(mNode, stringBuilder);
     return stringBuilder.toString();
   }
 
-  private void dft(MNode mNode, StringBuilder stringBuilder) {
+  private void dft(IMNode mNode, StringBuilder stringBuilder) {
     if (mNode == null) {
       return;
     }
     stringBuilder.append(mNode.getFullPath()).append("\r\n");
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       dft(child, stringBuilder);
     }
   }

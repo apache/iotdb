@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -12,7 +12,7 @@ public class LRUCacheStrategyTest {
 
   @Test
   public void testLRUEviction() {
-    MNode root = getSimpleTree();
+    IMNode root = getSimpleTree();
     LRUCacheStrategy lruEviction = new LRUCacheStrategy();
     lruEviction.applyChange(root);
     lruEviction.applyChange(root.getChild("s1"));
@@ -36,14 +36,14 @@ public class LRUCacheStrategyTest {
     }
     Assert.assertEquals("root\r\n" + "root.s2\r\n", stringBuilder.toString());
 
-    Collection<MNode> collection = lruEviction.evict();
+    Collection<IMNode> collection = lruEviction.evict();
     Assert.assertTrue(collection.contains(root));
     Assert.assertTrue(collection.contains(root.getChild("s2")));
     Assert.assertFalse(collection.contains(root.getChild("s1")));
   }
 
-  private MNode getSimpleTree() {
-    MNode root = new InternalMNode(null, "root");
+  private IMNode getSimpleTree() {
+    IMNode root = new InternalMNode(null, "root");
     root.addChild("s1", new InternalMNode(root, "s1"));
     root.addChild("s2", new InternalMNode(root, "s2"));
     root.getChild("s1").addChild("t1", new InternalMNode(root.getChild("s1"), "t1"));

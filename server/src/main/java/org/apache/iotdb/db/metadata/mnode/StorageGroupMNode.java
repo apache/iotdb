@@ -33,7 +33,7 @@ public class StorageGroupMNode extends InternalMNode {
    */
   private long dataTTL;
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }
@@ -57,7 +57,7 @@ public class StorageGroupMNode extends InternalMNode {
     logWriter.serializeStorageGroupMNode(this);
   }
 
-  public MNode clone() {
+  public IMNode clone() {
     StorageGroupMNode result = new StorageGroupMNode(parent, name, dataTTL);
     copyData(result);
     return result;

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.io.IOException;
 import java.util.*;
@@ -33,24 +33,24 @@ public class MetaFile implements MetaFileAccess {
   }
 
   @Override
-  public MNode readRoot() throws IOException {
+  public IMNode readRoot() throws IOException {
     return mTreeFile.read(PersistenceInfo.createPersistenceInfo(mTreeFile.getRootPosition()));
   }
 
   @Override
-  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
     return mTreeFile.read(persistenceInfo);
   }
 
   @Override
-  public void write(MNode mNode) throws IOException {
+  public void write(IMNode mNode) throws IOException {
     mTreeFile.write(mNode);
   }
 
   @Override
-  public void write(Collection<MNode> mNodes) throws IOException {
+  public void write(Collection<IMNode> mNodes) throws IOException {
     allocateFreePos(mNodes);
-    for (MNode mNode : mNodes) {
+    for (IMNode mNode : mNodes) {
       write(mNode);
     }
   }
@@ -70,31 +70,31 @@ public class MetaFile implements MetaFileAccess {
     mTreeFile.sync();
   }
 
-  public MNode read(String path) throws IOException {
+  public IMNode read(String path) throws IOException {
     return mTreeFile.read(path);
   }
 
-  public MNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode readRecursively(PersistenceInfo persistenceInfo) throws IOException {
     return mTreeFile.readRecursively(persistenceInfo);
   }
 
-  public void writeRecursively(MNode mNode) throws IOException {
-    List<MNode> mNodeList = new LinkedList<>();
+  public void writeRecursively(IMNode mNode) throws IOException {
+    List<IMNode> mNodeList = new LinkedList<>();
     flatten(mNode, mNodeList);
     write(mNodeList);
   }
 
   public void remove(PartialPath path) throws IOException {}
 
-  private void flatten(MNode mNode, Collection<MNode> mNodes) {
+  private void flatten(IMNode mNode, Collection<IMNode> mNodes) {
     mNodes.add(mNode);
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       flatten(child, mNodes);
     }
   }
 
-  private void allocateFreePos(Collection<MNode> mNodes) throws IOException {
-    for (MNode mNode : mNodes) {
+  private void allocateFreePos(Collection<IMNode> mNodes) throws IOException {
+    for (IMNode mNode : mNodes) {
       if (mNode.getPersistenceInfo() != null) {
         continue;
       }

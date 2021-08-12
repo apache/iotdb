@@ -36,7 +36,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
@@ -133,7 +133,7 @@ public class MManager {
   private TagLogFile tagLogFile;
   private boolean isRecovering;
   // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, MNode> mNodeCache;
+  private RandomDeleteCache<PartialPath, IMNode> mNodeCache;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
@@ -198,10 +198,10 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
-        new RandomDeleteCache<PartialPath, MNode>(cacheSize) {
+        new RandomDeleteCache<PartialPath, IMNode>(cacheSize) {
 
           @Override
-          public MNode loadObjectByKey(PartialPath key) throws CacheException {
+          public IMNode loadObjectByKey(PartialPath key) throws CacheException {
             try {
               return mtree.getNodeByPathWithStorageGroupCheck(key);
             } catch (MetadataException e) {
@@ -251,7 +251,7 @@ public class MManager {
       int lineNumber = initFromLog(logFile);
       List<PartialPath> storageGroups = mtree.getAllStorageGroupPaths();
       for (PartialPath sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
+        IMNode node = mtree.getNodeByPath(sg);
         totalSeriesNumber.addAndGet(node.getMeasurementMNodeCount());
       }
 
@@ -717,7 +717,7 @@ public class MManager {
   public MeasurementMNode[] getMNodes(PartialPath deviceId, String[] measurements)
       throws MetadataException {
     //    MNode deviceNode = getNodeByPath(deviceId);
-    Map<String, MNode> deviceChildren = mtree.getChildrenOfNodeByPath(deviceId);
+    Map<String, IMNode> deviceChildren = mtree.getChildrenOfNodeByPath(deviceId);
     MeasurementMNode[] mNodes = new MeasurementMNode[measurements.length];
     for (int i = 0; i < mNodes.length; i++) {
       //      mNodes[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]));
@@ -883,7 +883,7 @@ public class MManager {
       try {
         list =
             StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
+                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
         try {
           allMatchedNodes =
               allMatchedNodes.stream()
@@ -891,7 +891,7 @@ public class MManager {
                       Comparator.comparingLong(
                               (MeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
                           .reversed()
-                          .thenComparing(MNode::getFullPath))
+                          .thenComparing(IMNode::getFullPath))
                   .collect(toList());
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
@@ -903,7 +903,7 @@ public class MManager {
       // otherwise, we just sort them by the alphabetical order
       allMatchedNodes =
           allMatchedNodes.stream()
-              .sorted(Comparator.comparing(MNode::getFullPath))
+              .sorted(Comparator.comparing(IMNode::getFullPath))
               .collect(toList());
     }
 
@@ -1014,8 +1014,8 @@ public class MManager {
 
   public MeasurementSchema getSeriesSchema(PartialPath device, String measurement)
       throws MetadataException {
-    MNode node = mtree.getNodeByPath(device);
-    MNode leaf = node.getChild(measurement);
+    IMNode node = mtree.getNodeByPath(device);
+    IMNode leaf = node.getChild(measurement);
     if (!leaf.isLoaded()) {
       leaf = mtree.getNodeByPath(device.concatNode(measurement));
     }
@@ -1060,13 +1060,13 @@ public class MManager {
   }
 
   /** Get node by path */
-  public MNode getNodeByPath(PartialPath path) throws MetadataException {
+  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
     return mtree.getNodeByPath(path);
   }
 
   public MeasurementMNode getMeasurementNodeByPathWithMemoryLock(PartialPath path)
       throws MetadataException {
-    MNode node = mtree.getNodeByPathWithMemoryLock(path);
+    IMNode node = mtree.getNodeByPathWithMemoryLock(path);
     return (MeasurementMNode) node;
   }
 
@@ -1092,18 +1092,18 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath path, boolean autoCreateSchema, int sgLevel)
       throws MetadataException {
-    MNode node =
+    IMNode node =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(path, autoCreateSchema, sgLevel, false);
     node = processMNodeForExternChildrenCheck(node);
     return node;
   }
 
-  private MNode getDeviceNodeWithAutoCreateWithoutReturnProcess(
+  private IMNode getDeviceNodeWithAutoCreateWithoutReturnProcess(
       PartialPath path, boolean autoCreateSchema, int sgLevel, boolean isLocked)
       throws MetadataException {
-    MNode node;
+    IMNode node;
     boolean shouldSetStorageGroup;
     if (MTreeType == MTREE_DISK_BASED && isLocked) {
       try {
@@ -1148,13 +1148,13 @@ public class MManager {
   }
 
   /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
-  public MNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException {
+  public IMNode getDeviceNodeWithAutoCreate(PartialPath path) throws MetadataException {
     return getDeviceNodeWithAutoCreate(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  public MNode getDeviceNode(PartialPath path) throws MetadataException {
-    MNode node;
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
+    IMNode node;
     try {
       node = getMNodeFromCache(path);
       node = processMNodeForExternChildrenCheck(node);
@@ -1166,9 +1166,9 @@ public class MManager {
 
   public Map<String, MeasurementMNode> getMeasurementNodesInDeviceWithMemoryLock(PartialPath path)
       throws MetadataException {
-    MNode node = mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
+    IMNode node = mtree.getNodeByPathWithStorageGroupCheckAndMemoryLock(path);
     Map<String, MeasurementMNode> result = new HashMap<>();
-    MNode child;
+    IMNode child;
     for (String childName : node.getChildren().keySet()) {
       child = mtree.getChildMNodeInDeviceWithMemoryLock(node, childName);
       if (child.isMeasurement()) {
@@ -1191,7 +1191,7 @@ public class MManager {
   public String getDeviceId(PartialPath path) {
     String device = null;
     try {
-      MNode deviceNode = getMNodeFromCache(path);
+      IMNode deviceNode = getMNodeFromCache(path);
       device = deviceNode.getFullPath();
     } catch (CacheException | NullPointerException e) {
       // Cannot get deviceId from MManager, return the input deviceId
@@ -1238,7 +1238,7 @@ public class MManager {
    * @param offset offset in the tag file
    */
   public void changeOffset(PartialPath path, long offset) throws MetadataException {
-    MNode mNode = mtree.getNodeByPathWithMemoryLock(path);
+    IMNode mNode = mtree.getNodeByPathWithMemoryLock(path);
     try {
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(path.getFullPath());
@@ -1253,7 +1253,7 @@ public class MManager {
   }
 
   public void changeAlias(PartialPath path, String alias) throws MetadataException {
-    MNode mNode = mtree.getNodeByPathWithMemoryLock(path);
+    IMNode mNode = mtree.getNodeByPathWithMemoryLock(path);
     try {
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(path.getFullPath());
@@ -1311,7 +1311,7 @@ public class MManager {
       Map<String, String> attributesMap,
       PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
+    IMNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
     try {
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(fullPath.getFullPath());
@@ -1426,7 +1426,7 @@ public class MManager {
    */
   public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
+    IMNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
     try {
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(fullPath.getFullPath());
@@ -1469,7 +1469,7 @@ public class MManager {
    */
   public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
+    IMNode mNode = mtree.getNodeByPathWithMemoryLock(fullPath);
     try {
       if (!(mNode instanceof MeasurementMNode)) {
         throw new PathNotExistException(fullPath.getFullPath());
@@ -1528,7 +1528,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
+    IMNode mNode = mtree.getNodeByPath(fullPath);
     if (!(mNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1608,7 +1608,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
+    IMNode mNode = mtree.getNodeByPath(fullPath);
     if (!(mNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1690,7 +1690,7 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
       throws MetadataException, IOException {
-    MNode mNode = mtree.getNodeByPath(fullPath);
+    IMNode mNode = mtree.getNodeByPath(fullPath);
     if (!(mNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(fullPath.getFullPath());
     }
@@ -1780,7 +1780,7 @@ public class MManager {
   }
 
   public void collectTimeseriesSchema(
-      MNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
+      IMNode startingNode, Collection<TimeseriesSchema> timeseriesSchemas) {
     for (MeasurementMNode node : mtree.collectMeasurementMNode(startingNode)) {
       MeasurementSchema nodeSchema = node.getSchema();
       timeseriesSchemas.add(
@@ -1798,7 +1798,7 @@ public class MManager {
   }
 
   private void collectMeasurementSchema(
-      MNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
+      IMNode startingNode, Collection<MeasurementSchema> measurementSchemas) {
     for (MeasurementMNode node : mtree.collectMeasurementMNode(startingNode)) {
       MeasurementSchema nodeSchema = node.getSchema();
       measurementSchemas.add(
@@ -1812,7 +1812,7 @@ public class MManager {
 
   /** Collect the timeseries schemas under "startingPath". */
   public void collectSeries(PartialPath startingPath, List<MeasurementSchema> measurementSchemas) {
-    MNode mNode;
+    IMNode mNode;
     try {
       mNode = mtree.getNodeByPath(startingPath);
     } catch (MetadataException e) {
@@ -1943,14 +1943,14 @@ public class MManager {
 
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
 
     PartialPath deviceId = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     MeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node
-    MNode deviceMNode =
+    IMNode deviceMNode =
         getDeviceNodeWithAutoCreateWithoutReturnProcess(
             deviceId,
             config.isAutoCreateSchemaEnabled(),
@@ -1963,7 +1963,7 @@ public class MManager {
       TSDataType dataType;
       for (int i = 0; i < measurementList.length; i++) {
         try {
-          MNode child = getMNode(deviceMNode, measurementList[i]);
+          IMNode child = getMNode(deviceMNode, measurementList[i]);
           if (child instanceof MeasurementMNode) {
             measurementMNode = (MeasurementMNode) child;
           } else if (child instanceof StorageGroupMNode) {
@@ -2036,7 +2036,7 @@ public class MManager {
     return deviceMNode;
   }
 
-  public MNode getMNode(MNode deviceMNode, String measurementName) throws MetadataException {
+  public IMNode getMNode(IMNode deviceMNode, String measurementName) throws MetadataException {
     return mtree.getChildMNodeInDeviceWithMemoryLock(deviceMNode, measurementName);
   }
 
@@ -2078,7 +2078,7 @@ public class MManager {
     boolean satisfy(String storageGroup);
   }
 
-  public void unlockNode(MNode mNode) {
+  public void unlockNode(IMNode mNode) {
     try {
       mtree.unlockMNode(mNode);
     } catch (MetadataException e) {
@@ -2086,8 +2086,8 @@ public class MManager {
     }
   }
 
-  private MNode getMNodeFromCache(PartialPath path) throws CacheException {
-    MNode node = mNodeCache.get(path);
+  private IMNode getMNodeFromCache(PartialPath path) throws CacheException {
+    IMNode node = mNodeCache.get(path);
     if (MTreeType == MTREE_DISK_BASED && !node.isCached()) {
       mNodeCache.removeObject(path);
       return mNodeCache.loadObjectByKey(path);
@@ -2095,7 +2095,7 @@ public class MManager {
     return node;
   }
 
-  private MNode processMNodeForExternChildrenCheck(MNode node) throws MetadataException {
+  private IMNode processMNodeForExternChildrenCheck(IMNode node) throws MetadataException {
     return mtree.getNodeDeepClone(node);
   }
 }

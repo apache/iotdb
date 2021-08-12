@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -60,12 +60,12 @@ public class MetadataDiskManagerTest {
   @Test
   public void testRecover() throws Exception {
     MetadataDiskManager manager = new MetadataDiskManager(0, METAFILE_FILEPATH);
-    MNode root = manager.getRoot();
-    MNode sg = new StorageGroupMNode(null, "sg", 0);
+    IMNode root = manager.getRoot();
+    IMNode sg = new StorageGroupMNode(null, "sg", 0);
     manager.addChild(root, "sg", sg);
-    MNode device = new InternalMNode(null, "device");
+    IMNode device = new InternalMNode(null, "device");
     manager.addChild(sg, "device", device);
-    MNode measurement = new MeasurementMNode(null, "t1", new MeasurementSchema(), null);
+    IMNode measurement = new MeasurementMNode(null, "t1", new MeasurementSchema(), null);
     manager.addChild(device, "t1", measurement);
     manager.createSnapshot();
     manager.clear();

@@ -2,7 +2,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -681,7 +681,7 @@ public class MTreeDiskBasedTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap(),
           null);
-      MNode sgNode = root.getNodeByPath(sgPath);
+      IMNode sgNode = root.getNodeByPath(sgPath);
       assertEquals(1, root.getMeasurementMNodeCount(sgPath)); // b
 
       createTimeseries(
@@ -733,7 +733,7 @@ public class MTreeDiskBasedTest {
         Collections.emptyMap(),
         null);
 
-    MNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
+    IMNode node = root.getNodeByPath(new PartialPath("root.sg1.a.b"));
     Assert.assertTrue(node instanceof MeasurementMNode);
   }
 

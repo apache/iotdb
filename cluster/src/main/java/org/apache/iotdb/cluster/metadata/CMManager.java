@@ -45,8 +45,8 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -332,7 +332,7 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
+  public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan) throws MetadataException {
     MeasurementMNode[] measurementMNodes = new MeasurementMNode[plan.getMeasurements().length];
     int nonExistSchemaIndex =
         getMNodesLocally(plan.getDeviceId(), plan.getMeasurements(), measurementMNodes);
@@ -1446,8 +1446,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public MNode getMNode(MNode deviceMNode, String measurementName) {
-    MNode child = deviceMNode.getChild(measurementName);
+  public IMNode getMNode(IMNode deviceMNode, String measurementName) {
+    IMNode child = deviceMNode.getChild(measurementName);
     if (child == null) {
       child = mRemoteMetaCache.get(deviceMNode.getPartialPath().concatNode(measurementName));
     }

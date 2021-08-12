@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -26,19 +26,19 @@ public class CacheEntry {
 
   CacheEntry pre = null;
   CacheEntry next = null;
-  MNode value;
+  IMNode value;
 
   /** whether the node in memory cache has been modified. default value is true */
   boolean isModified = true;
 
   AtomicInteger semaphore = new AtomicInteger(0);
 
-  CacheEntry(MNode mNode) {
+  CacheEntry(IMNode mNode) {
     value = mNode;
     mNode.setCacheEntry(this);
   }
 
-  public void setMNode(MNode mNode) {
+  public void setMNode(IMNode mNode) {
     value = mNode;
   }
 
@@ -50,7 +50,7 @@ public class CacheEntry {
     return next;
   }
 
-  MNode getValue() {
+  IMNode getValue() {
     return value;
   }
 
@@ -62,7 +62,7 @@ public class CacheEntry {
     this.next = next;
   }
 
-  void setValue(MNode mNode) {
+  void setValue(IMNode mNode) {
     value = mNode;
   }
 

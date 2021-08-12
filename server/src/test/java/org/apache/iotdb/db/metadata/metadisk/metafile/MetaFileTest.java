@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -47,7 +47,7 @@ public class MetaFileTest {
 
   @Test
   public void testSimpleMNodeRW() throws IOException {
-    MNode mNode = new InternalMNode(null, "root");
+    IMNode mNode = new InternalMNode(null, "root");
     metaFile.write(mNode);
     Assert.assertNotEquals(0, mNode.getPersistenceInfo().getPosition());
     mNode = metaFile.read(mNode.getPersistenceInfo());
@@ -56,21 +56,21 @@ public class MetaFileTest {
 
   @Test
   public void testPathRW() throws IOException {
-    MNode root = new InternalMNode(null, "root");
-    MNode p = new InternalMNode(root, "p");
+    IMNode root = new InternalMNode(null, "root");
+    IMNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s = new StorageGroupMNode(root.getChild("p"), "s", 0);
     p.addChild("s", s);
     s.addChild("t", new MeasurementMNode(null, "t", new MeasurementSchema(), null));
     metaFile.writeRecursively(root);
-    MNode mNode = metaFile.read("root.p.s.t");
+    IMNode mNode = metaFile.read("root.p.s.t");
     Assert.assertEquals("t", mNode.getName());
     Assert.assertTrue(mNode.isLoaded());
   }
 
   @Test
   public void testSimpleTreeRW() throws IOException {
-    MNode mNode = getSimpleTree();
+    IMNode mNode = getSimpleTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
@@ -85,8 +85,8 @@ public class MetaFileTest {
         treeToStringDFT(mNode));
   }
 
-  private MNode getSimpleTree() {
-    MNode root = new InternalMNode(null, "root");
+  private IMNode getSimpleTree() {
+    IMNode root = new InternalMNode(null, "root");
     root.addChild("s1", new InternalMNode(null, "s1"));
     root.addChild("s2", new InternalMNode(null, "s2"));
     root.getChild("s1").addChild("t1", new InternalMNode(root.getChild("s1"), "t1"));
@@ -101,7 +101,7 @@ public class MetaFileTest {
 
   @Test
   public void testMTreeRW() throws IOException {
-    MNode mNode = getMTree();
+    IMNode mNode = getMTree();
     metaFile.writeRecursively(mNode);
     mNode = metaFile.readRecursively(mNode.getPersistenceInfo());
     Assert.assertEquals(
@@ -125,9 +125,9 @@ public class MetaFileTest {
     Assert.assertEquals("1", t1.getSchema().getProps().get("a"));
   }
 
-  private MNode getMTree() {
-    MNode root = new InternalMNode(null, "root");
-    MNode p = new InternalMNode(root, "p");
+  private IMNode getMTree() {
+    IMNode root = new InternalMNode(null, "root");
+    IMNode p = new InternalMNode(root, "p");
     root.addChild("p", p);
     StorageGroupMNode s1 = new StorageGroupMNode(null, "s1", 1000);
     StorageGroupMNode s2 = new StorageGroupMNode(null, "s2", 2000);
@@ -144,12 +144,12 @@ public class MetaFileTest {
     return root;
   }
 
-  private void showTree(MNode mNode) {
+  private void showTree(IMNode mNode) {
     if (mNode == null) {
       return;
     }
     System.out.println(mNode.getFullPath());
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       showTree(child);
     }
   }
@@ -162,10 +162,10 @@ public class MetaFileTest {
 
     long startTime, endTime;
     startTime = System.currentTimeMillis();
-    MNode root = new InternalMNode(null, "root");
+    IMNode root = new InternalMNode(null, "root");
     String s, d, t;
     StorageGroupMNode sg;
-    MNode device;
+    IMNode device;
     MeasurementMNode m;
     for (int k = 0; k < sgNum; k++) {
       s = "sg" + k;
@@ -207,26 +207,26 @@ public class MetaFileTest {
     System.out.println("MTree read from file time: " + (endTime - startTime) + "ms.");
   }
 
-  private int count(MNode mNode) {
+  private int count(IMNode mNode) {
     int num = 1;
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       num += count(child);
     }
     return num;
   }
 
-  private String treeToStringDFT(MNode mNode) {
+  private String treeToStringDFT(IMNode mNode) {
     StringBuilder stringBuilder = new StringBuilder();
     dft(mNode, stringBuilder);
     return stringBuilder.toString();
   }
 
-  private void dft(MNode mNode, StringBuilder stringBuilder) {
+  private void dft(IMNode mNode, StringBuilder stringBuilder) {
     if (mNode == null) {
       return;
     }
     stringBuilder.append(mNode.getFullPath()).append("\r\n");
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       dft(child, stringBuilder);
     }
   }

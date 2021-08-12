@@ -48,7 +48,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -1012,7 +1012,7 @@ public class PlanExecutor implements IPlanExecutor {
     Set<PartialPath> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
-      MNode node =
+      IMNode node =
           IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath(device), true, sgLevel);
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
         PartialPath series =
@@ -1103,7 +1103,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected MNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+  protected IMNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
     return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
   }
 

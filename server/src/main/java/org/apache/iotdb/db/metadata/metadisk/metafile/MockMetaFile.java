@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.metadisk.metafile;
 
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -28,24 +28,24 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class MockMetaFile implements MetaFileAccess {
 
-  private final Map<Long, MNode> positionFile = new ConcurrentHashMap<>();
+  private final Map<Long, IMNode> positionFile = new ConcurrentHashMap<>();
   private final long rootPosition = 0;
   private long freePosition = 1;
 
   public MockMetaFile(String metaFilePath) {}
 
   @Override
-  public MNode readRoot() throws IOException {
+  public IMNode readRoot() throws IOException {
     return positionFile.get(rootPosition);
   }
 
   @Override
-  public MNode read(PersistenceInfo persistenceInfo) throws IOException {
+  public IMNode read(PersistenceInfo persistenceInfo) throws IOException {
     return positionFile.get(persistenceInfo.getPosition());
   }
 
   @Override
-  public void write(MNode mNode) throws IOException {
+  public void write(IMNode mNode) throws IOException {
     if (!mNode.isPersisted()) {
       if (mNode.getFullPath().equals("root")) {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(rootPosition));
@@ -53,7 +53,7 @@ public class MockMetaFile implements MetaFileAccess {
         mNode.setPersistenceInfo(PersistenceInfo.createPersistenceInfo(freePosition++));
       }
     }
-    MNode persistedMNode = mNode.clone();
+    IMNode persistedMNode = mNode.clone();
     persistedMNode.setCacheEntry(null);
     for (String childName : persistedMNode.getChildren().keySet()) {
       // require child be written before parent
@@ -63,8 +63,8 @@ public class MockMetaFile implements MetaFileAccess {
   }
 
   @Override
-  public void write(Collection<MNode> mNodes) throws IOException {
-    for (MNode mNode : mNodes) {
+  public void write(Collection<IMNode> mNodes) throws IOException {
+    for (IMNode mNode : mNodes) {
       write(mNode);
     }
   }
@@ -80,7 +80,7 @@ public class MockMetaFile implements MetaFileAccess {
   @Override
   public void sync() throws IOException {}
 
-  public MNode read(PartialPath path) throws IOException {
+  public IMNode read(PartialPath path) throws IOException {
     return getMNodeByPath(path);
   }
 
@@ -90,9 +90,9 @@ public class MockMetaFile implements MetaFileAccess {
 
   // todo require all node in the path be persist, which means when write child, the parent should
   // also be written
-  private MNode getMNodeByPath(PartialPath path) {
+  private IMNode getMNodeByPath(PartialPath path) {
     String[] nodes = path.getNodes();
-    MNode cur = positionFile.get(rootPosition);
+    IMNode cur = positionFile.get(rootPosition);
     for (int i = 1; i < nodes.length; i++) {
       cur = positionFile.get(cur.getChild(nodes[i]).getPersistenceInfo().getPosition());
     }

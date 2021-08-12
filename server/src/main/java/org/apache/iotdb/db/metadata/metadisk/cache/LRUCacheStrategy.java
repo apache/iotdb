@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.metadisk.cache;
 
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -40,7 +40,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void lockMNode(MNode mNode) {
+  public void lockMNode(IMNode mNode) {
     if (mNode == null) {
       return;
     }
@@ -71,7 +71,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void unlockMNode(MNode mNode) {
+  public void unlockMNode(IMNode mNode) {
     if (mNode == null) {
       return;
     }
@@ -102,7 +102,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void applyChange(MNode mNode) {
+  public void applyChange(IMNode mNode) {
     if (mNode == null) {
       return;
     }
@@ -124,7 +124,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void setModified(MNode mNode, boolean modified) {
+  public void setModified(IMNode mNode, boolean modified) {
     if (mNode == null || mNode.getCacheEntry() == null) {
       return;
     }
@@ -163,7 +163,7 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public void remove(MNode mNode) {
+  public void remove(IMNode mNode) {
     if (mNode == null || !mNode.isCached()) {
       return;
     }
@@ -193,7 +193,7 @@ public class LRUCacheStrategy implements CacheStrategy {
     entry.next = null;
   }
 
-  private void removeRecursively(MNode mNode) {
+  private void removeRecursively(IMNode mNode) {
     CacheEntry entry = mNode.getCacheEntry();
     if (entry == null) {
       return;
@@ -202,22 +202,22 @@ public class LRUCacheStrategy implements CacheStrategy {
       removeOne(entry);
     }
     mNode.setCacheEntry(null);
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       removeRecursively(child);
     }
   }
 
   @Override
-  public List<MNode> evict() {
+  public List<IMNode> evict() {
     try {
       lock.lock();
-      List<MNode> modifiedMNodes = new LinkedList<>();
+      List<IMNode> modifiedMNodes = new LinkedList<>();
       if (last == null) {
         return modifiedMNodes;
       }
 
-      MNode mNode = last.value;
-      MNode parent = mNode.getParent();
+      IMNode mNode = last.value;
+      IMNode parent = mNode.getParent();
       while (parent != null && parent.getCacheEntry().isModified) {
         mNode = parent;
         parent = mNode.getParent();
@@ -234,10 +234,10 @@ public class LRUCacheStrategy implements CacheStrategy {
   }
 
   @Override
-  public List<MNode> collectModified(MNode mNode) {
+  public List<IMNode> collectModified(IMNode mNode) {
     try {
       lock.lock();
-      List<MNode> result = new LinkedList<>();
+      List<IMNode> result = new LinkedList<>();
       collectModifiedRecursively(mNode, result);
       return result;
     } finally {
@@ -257,12 +257,12 @@ public class LRUCacheStrategy implements CacheStrategy {
     }
   }
 
-  private void collectModifiedRecursively(MNode mNode, Collection<MNode> mNodeCollection) {
+  private void collectModifiedRecursively(IMNode mNode, Collection<IMNode> mNodeCollection) {
     CacheEntry cacheEntry = mNode.getCacheEntry();
     if (cacheEntry == null) {
       return;
     }
-    for (MNode child : mNode.getChildren().values()) {
+    for (IMNode child : mNode.getChildren().values()) {
       collectModifiedRecursively(child, mNodeCollection);
     }
     if (cacheEntry.isModified) {

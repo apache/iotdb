@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class InternalMNode implements MNode {
+public class InternalMNode implements IMNode {
 
   private static final long serialVersionUID = -770028375899514063L;
   private static Map<String, String> cachedPathPool =
@@ -46,7 +46,7 @@ public class InternalMNode implements MNode {
   /** Name of the MNode */
   protected String name;
 
-  protected MNode parent;
+  protected IMNode parent;
 
   /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
@@ -64,7 +64,7 @@ public class InternalMNode implements MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile Map<String, MNode> children = null;
+  protected transient volatile Map<String, IMNode> children = null;
 
   /**
    * suppress warnings reason: volatile for double synchronized check
@@ -72,10 +72,10 @@ public class InternalMNode implements MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, MNode> aliasChildren = null;
+  private transient volatile Map<String, IMNode> aliasChildren = null;
 
   /** Constructor of MNode. */
-  public InternalMNode(MNode parent, String name) {
+  public InternalMNode(IMNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }
@@ -94,7 +94,7 @@ public class InternalMNode implements MNode {
    * @param child child's node
    */
   @Override
-  public void addChild(String name, MNode child) {
+  public void addChild(String name, IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -124,7 +124,7 @@ public class InternalMNode implements MNode {
    * @param child child's node
    * @return return the MNode already added
    */
-  public MNode addChild(MNode child) {
+  public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
      * add child method will only be called when writing MTree, which is not a frequent operation
@@ -162,8 +162,8 @@ public class InternalMNode implements MNode {
 
   /** get the child with the name */
   @Override
-  public MNode getChild(String name) {
-    MNode child = null;
+  public IMNode getChild(String name) {
+    IMNode child = null;
     if (children != null) {
       child = children.get(name);
     }
@@ -184,7 +184,7 @@ public class InternalMNode implements MNode {
     if (children == null) {
       return measurementMNodeCount;
     }
-    for (MNode child : children.values()) {
+    for (IMNode child : children.values()) {
       measurementMNodeCount += child.getMeasurementMNodeCount();
     }
     return measurementMNodeCount;
@@ -192,7 +192,7 @@ public class InternalMNode implements MNode {
 
   /** add an alias */
   @Override
-  public boolean addAlias(String alias, MNode child) {
+  public boolean addAlias(String alias, IMNode child) {
     if (aliasChildren == null) {
       // double check, alias children volatile
       synchronized (this) {
@@ -225,7 +225,7 @@ public class InternalMNode implements MNode {
   @Override
   public PartialPath getPartialPath() {
     List<String> detachedPath = new ArrayList<>();
-    MNode temp = this;
+    IMNode temp = this;
     detachedPath.add(temp.getName());
     while (temp.getParent() != null) {
       temp = temp.getParent();
@@ -236,7 +236,7 @@ public class InternalMNode implements MNode {
 
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(name);
-    MNode curr = this;
+    IMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
@@ -250,17 +250,17 @@ public class InternalMNode implements MNode {
   }
 
   @Override
-  public MNode getParent() {
+  public IMNode getParent() {
     return parent;
   }
 
   @Override
-  public void setParent(MNode parent) {
+  public void setParent(IMNode parent) {
     this.parent = parent;
   }
 
   @Override
-  public Map<String, MNode> getChildren() {
+  public Map<String, IMNode> getChildren() {
     if (children == null) {
       return Collections.emptyMap();
     }
@@ -268,7 +268,7 @@ public class InternalMNode implements MNode {
   }
 
   @Override
-  public Map<String, MNode> getAliasChildren() {
+  public Map<String, IMNode> getAliasChildren() {
     if (aliasChildren == null) {
       return Collections.emptyMap();
     }
@@ -276,11 +276,11 @@ public class InternalMNode implements MNode {
   }
 
   @Override
-  public void setChildren(Map<String, MNode> children) {
+  public void setChildren(Map<String, IMNode> children) {
     this.children = children;
   }
 
-  public void setAliasChildren(Map<String, MNode> aliasChildren) {
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
     this.aliasChildren = aliasChildren;
   }
 
@@ -305,25 +305,25 @@ public class InternalMNode implements MNode {
     if (children == null) {
       return;
     }
-    for (Entry<String, MNode> entry : children.entrySet()) {
+    for (Entry<String, IMNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(logWriter);
     }
   }
 
   @Override
-  public void replaceChild(String measurement, MNode newChildNode) {
-    MNode oldChildNode = this.getChild(measurement);
+  public void replaceChild(String measurement, IMNode newChildNode) {
+    IMNode oldChildNode = this.getChild(measurement);
     if (oldChildNode == null) {
       return;
     }
 
     // newChildNode builds parent-child relationship
-    Map<String, MNode> grandChildren = oldChildNode.getChildren();
+    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
     newChildNode.setChildren(grandChildren);
     grandChildren.forEach(
         (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
 
-    Map<String, MNode> grandAliasChildren = oldChildNode.getAliasChildren();
+    Map<String, IMNode> grandAliasChildren = oldChildNode.getAliasChildren();
     newChildNode.setAliasChildren(grandAliasChildren);
     grandAliasChildren.forEach(
         (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
@@ -394,14 +394,14 @@ public class InternalMNode implements MNode {
   }
 
   @Override
-  public MNode getEvictionHolder() {
+  public IMNode getEvictionHolder() {
     return persistenceMNode;
   }
 
   @Override
   public void evictChild(String name) {
     if (children != null && children.containsKey(name)) {
-      MNode mNode = children.get(name);
+      IMNode mNode = children.get(name);
       if (!mNode.isLoaded()) {
         return;
       }
@@ -427,19 +427,19 @@ public class InternalMNode implements MNode {
   }
 
   @Override
-  public MNode clone() {
+  public IMNode clone() {
     InternalMNode result = new InternalMNode(this.parent, this.name);
     copyData(result);
     return result;
   }
 
-  protected void copyData(MNode mNode) {
+  protected void copyData(IMNode mNode) {
     mNode.setParent(parent);
     mNode.setPersistenceInfo(getPersistenceInfo());
 
-    Map<String, MNode> newChildren = new ConcurrentHashMap<>();
+    Map<String, IMNode> newChildren = new ConcurrentHashMap<>();
     if (children != null) {
-      for (Entry<String, MNode> entry : children.entrySet()) {
+      for (Entry<String, IMNode> entry : children.entrySet()) {
         newChildren.put(entry.getKey(), entry.getValue());
       }
     }
@@ -447,9 +447,9 @@ public class InternalMNode implements MNode {
       mNode.setChildren(newChildren);
     }
 
-    Map<String, MNode> newAliasChildren = new ConcurrentHashMap<>();
+    Map<String, IMNode> newAliasChildren = new ConcurrentHashMap<>();
     if (aliasChildren != null) {
-      for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
+      for (Entry<String, IMNode> entry : aliasChildren.entrySet()) {
         newAliasChildren.put(entry.getKey(), entry.getValue());
       }
     }

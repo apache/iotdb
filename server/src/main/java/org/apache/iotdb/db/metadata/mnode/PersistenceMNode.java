@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-public class PersistenceMNode implements PersistenceInfo, MNode {
+public class PersistenceMNode implements PersistenceInfo, IMNode {
 
   /** offset in metafile */
   private long position;
@@ -87,7 +87,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public MNode getEvictionHolder() {
+  public IMNode getEvictionHolder() {
     return this;
   }
 
@@ -97,10 +97,10 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public void addChild(String name, MNode child) {}
+  public void addChild(String name, IMNode child) {}
 
   @Override
-  public MNode addChild(MNode child) {
+  public IMNode addChild(IMNode child) {
     return null;
   }
 
@@ -111,7 +111,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   public void deleteAliasChild(String alias) {}
 
   @Override
-  public MNode getChild(String name) {
+  public IMNode getChild(String name) {
     return null;
   }
 
@@ -121,7 +121,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public boolean addAlias(String alias, MNode child) {
+  public boolean addAlias(String alias, IMNode child) {
     return false;
   }
 
@@ -136,28 +136,28 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public MNode getParent() {
+  public IMNode getParent() {
     return null;
   }
 
   @Override
-  public void setParent(MNode parent) {}
+  public void setParent(IMNode parent) {}
 
   @Override
-  public Map<String, MNode> getChildren() {
+  public Map<String, IMNode> getChildren() {
     return Collections.emptyMap();
   }
 
   @Override
-  public Map<String, MNode> getAliasChildren() {
+  public Map<String, IMNode> getAliasChildren() {
     return Collections.emptyMap();
   }
 
   @Override
-  public void setChildren(Map<String, MNode> children) {}
+  public void setChildren(Map<String, IMNode> children) {}
 
   @Override
-  public void setAliasChildren(Map<String, MNode> aliasChildren) {}
+  public void setAliasChildren(Map<String, IMNode> aliasChildren) {}
 
   @Override
   public String getName() {
@@ -171,7 +171,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   public void serializeTo(MLogWriter logWriter) throws IOException {}
 
   @Override
-  public void replaceChild(String measurement, MNode newChildNode) {}
+  public void replaceChild(String measurement, IMNode newChildNode) {}
 
   @Override
   public CacheEntry getCacheEntry() {
@@ -200,7 +200,7 @@ public class PersistenceMNode implements PersistenceInfo, MNode {
   }
 
   @Override
-  public MNode clone() {
+  public IMNode clone() {
     return new PersistenceMNode(position);
   }
 }

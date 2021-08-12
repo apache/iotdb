@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -82,22 +82,22 @@ public class MetaUtilsTest {
 
   @Test
   public void testGetMultiFullPaths() {
-    MNode rootNode = new InternalMNode(null, "root");
+    IMNode rootNode = new InternalMNode(null, "root");
 
     // builds the relationship of root.a and root.aa
-    MNode aNode = new InternalMNode(rootNode, "a");
+    IMNode aNode = new InternalMNode(rootNode, "a");
     rootNode.addChild(aNode.getName(), aNode);
-    MNode aaNode = new InternalMNode(rootNode, "aa");
+    IMNode aaNode = new InternalMNode(rootNode, "aa");
     rootNode.addChild(aaNode.getName(), aaNode);
 
     // builds the relationship of root.a.b and root.aa.bb
-    MNode bNode = new InternalMNode(aNode, "b");
+    IMNode bNode = new InternalMNode(aNode, "b");
     aNode.addChild(bNode.getName(), bNode);
-    MNode bbNode = new InternalMNode(aaNode, "bb");
+    IMNode bbNode = new InternalMNode(aaNode, "bb");
     aaNode.addChild(bbNode.getName(), bbNode);
 
     // builds the relationship of root.aa.bb.cc
-    MNode ccNode = new InternalMNode(bbNode, "cc");
+    IMNode ccNode = new InternalMNode(bbNode, "cc");
     bbNode.addChild(ccNode.getName(), ccNode);
 
     List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);

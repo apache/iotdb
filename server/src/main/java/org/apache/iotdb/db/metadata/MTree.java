@@ -27,8 +27,8 @@ import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -79,7 +79,7 @@ public class MTree implements MTreeInterface {
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
 
-  private MNode root;
+  private IMNode root;
 
   public MTree() {
     try {
@@ -90,7 +90,7 @@ public class MTree implements MTreeInterface {
     }
   }
 
-  private MTree(MNode root) {
+  private MTree(IMNode root) {
     this.root = root;
   }
 
@@ -206,7 +206,7 @@ public class MTree implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     checkTimeseries(path.getFullPath());
-    MNode cur = root;
+    IMNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length - 1; i++) {
@@ -232,13 +232,13 @@ public class MTree implements MTreeInterface {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      MNode child = cur.getChild(leafName);
+      IMNode child = cur.getChild(leafName);
       if (child instanceof MeasurementMNode || child instanceof StorageGroupMNode) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
       if (alias != null) {
-        MNode childByAlias = cur.getChild(alias);
+        IMNode childByAlias = cur.getChild(alias);
         if (childByAlias instanceof MeasurementMNode) {
           throw new AliasAlreadyExistException(path.getFullPath(), alias);
         }
@@ -322,13 +322,13 @@ public class MTree implements MTreeInterface {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  public MNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
+  public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId, int sgLevel)
       throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(deviceId.getFullPath());
     }
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
         if (i == sgLevel) {
@@ -352,7 +352,7 @@ public class MTree implements MTreeInterface {
    */
   public boolean isPathExist(PartialPath path) {
     String[] nodeNames = path.getNodes();
-    MNode cur = root;
+    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
@@ -374,14 +374,14 @@ public class MTree implements MTreeInterface {
   public void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
     checkStorageGroup(path.getFullPath());
-    MNode cur = root;
+    IMNode cur = root;
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      MNode temp = cur.getChild(nodeNames[i]);
+      IMNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
@@ -417,7 +417,7 @@ public class MTree implements MTreeInterface {
 
   /** Delete a storage group */
   public List<MeasurementMNode> deleteStorageGroup(PartialPath path) throws MetadataException {
-    MNode cur = getNodeByPath(path);
+    IMNode cur = getNodeByPath(path);
     if (!(cur instanceof StorageGroupMNode)) {
       throw new StorageGroupNotSetException(path.getFullPath());
     }
@@ -427,11 +427,11 @@ public class MTree implements MTreeInterface {
 
     // collect all the LeafMNode in this storage group
     List<MeasurementMNode> leafMNodes = new LinkedList<>();
-    Queue<MNode> queue = new LinkedList<>();
+    Queue<IMNode> queue = new LinkedList<>();
     queue.add(cur);
     while (!queue.isEmpty()) {
-      MNode node = queue.poll();
-      for (MNode child : node.getChildren().values()) {
+      IMNode node = queue.poll();
+      for (IMNode child : node.getChildren().values()) {
         if (child instanceof MeasurementMNode) {
           leafMNodes.add((MeasurementMNode) child);
         } else {
@@ -463,7 +463,7 @@ public class MTree implements MTreeInterface {
     if (nodeNames.length <= 1 || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       return false;
     }
-    MNode cur = root;
+    IMNode cur = root;
     int i = 1;
     while (i < nodeNames.length - 1) {
       cur = cur.getChild(nodeNames[i]);
@@ -483,7 +483,7 @@ public class MTree implements MTreeInterface {
    */
   public Pair<PartialPath, MeasurementMNode> deleteTimeseriesAndReturnEmptyStorageGroup(
       PartialPath path) throws MetadataException {
-    MNode curNode = getNodeByPath(path);
+    IMNode curNode = getNodeByPath(path);
     if (!(curNode instanceof MeasurementMNode)) {
       throw new PathNotExistException(path.getFullPath());
     }
@@ -524,14 +524,14 @@ public class MTree implements MTreeInterface {
    * Get node by path with storage group check If storage group is not set,
    * StorageGroupNotSetException will be thrown
    */
-  public MNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
+  public IMNode getNodeByPathWithStorageGroupCheck(PartialPath path) throws MetadataException {
     boolean storageGroupChecked = false;
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
@@ -554,7 +554,7 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
+  public IMNode getNodeByPathWithStorageGroupCheckAndMemoryLock(PartialPath path)
       throws MetadataException {
     return getNodeByPathWithStorageGroupCheck(path);
   }
@@ -566,7 +566,7 @@ public class MTree implements MTreeInterface {
    */
   public StorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
       throws MetadataException {
-    MNode node = getNodeByPath(path);
+    IMNode node = getNodeByPath(path);
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
     } else {
@@ -584,7 +584,7 @@ public class MTree implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur instanceof StorageGroupMNode) {
@@ -605,12 +605,12 @@ public class MTree implements MTreeInterface {
    *
    * @return last node in given seriesPath
    */
-  public MNode getNodeByPath(PartialPath path) throws MetadataException {
+  public IMNode getNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
@@ -621,31 +621,31 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public MNode getNodeByPathWithMemoryLock(PartialPath path) throws MetadataException {
+  public IMNode getNodeByPathWithMemoryLock(PartialPath path) throws MetadataException {
     return getNodeByPath(path);
   }
 
   @Override
-  public Map<String, MNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
-    Map<String, MNode> result = new HashMap<>();
-    MNode node = getNodeByPath(path);
-    for (Entry<String, MNode> entry : node.getChildren().entrySet()) {
+  public Map<String, IMNode> getChildrenOfNodeByPath(PartialPath path) throws MetadataException {
+    Map<String, IMNode> result = new HashMap<>();
+    IMNode node = getNodeByPath(path);
+    for (Entry<String, IMNode> entry : node.getChildren().entrySet()) {
       result.put(entry.getKey(), entry.getValue());
     }
-    for (Entry<String, MNode> entry : node.getAliasChildren().entrySet()) {
+    for (Entry<String, IMNode> entry : node.getAliasChildren().entrySet()) {
       result.put(entry.getKey(), entry.getValue());
     }
     return result;
   }
 
   @Override
-  public MNode getChildMNodeInDeviceWithMemoryLock(MNode deviceNode, String childName)
+  public IMNode getChildMNodeInDeviceWithMemoryLock(IMNode deviceNode, String childName)
       throws MetadataException {
     return deviceNode.getChild(childName);
   }
 
   @Override
-  public MNode getNodeDeepClone(MNode mNode) throws MetadataException {
+  public IMNode getNodeDeepClone(IMNode mNode) throws MetadataException {
     return mNode.clone();
   }
 
@@ -671,20 +671,20 @@ public class MTree implements MTreeInterface {
    * @apiNote :for cluster
    */
   private void findStorageGroup(
-      MNode node, String[] nodes, int idx, String parent, List<String> storageGroupNames) {
+      IMNode node, String[] nodes, int idx, String parent, List<String> storageGroupNames) {
     if (node instanceof StorageGroupMNode) {
       storageGroupNames.add(node.getFullPath());
       return;
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         findStorageGroup(
             next, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupNames);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         findStorageGroup(
             child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, storageGroupNames);
       }
@@ -698,10 +698,10 @@ public class MTree implements MTreeInterface {
    */
   public List<PartialPath> getAllStorageGroupPaths() {
     List<PartialPath> res = new ArrayList<>();
-    Deque<MNode> nodeStack = new ArrayDeque<>();
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      MNode current = nodeStack.pop();
+      IMNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         res.add(current.getPartialPath());
       } else {
@@ -761,7 +761,7 @@ public class MTree implements MTreeInterface {
    * @param prefixOnly only return storage groups that start with this prefix path
    */
   private void findStorageGroupPaths(
-      MNode node,
+      IMNode node,
       String[] nodes,
       int idx,
       String parent,
@@ -773,7 +773,7 @@ public class MTree implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         findStorageGroupPaths(
             node.getChild(nodeReg),
@@ -784,7 +784,7 @@ public class MTree implements MTreeInterface {
             prefixOnly);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         findStorageGroupPaths(
             child,
             nodes,
@@ -799,10 +799,10 @@ public class MTree implements MTreeInterface {
   /** Get all storage group MNodes */
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
     List<StorageGroupMNode> ret = new ArrayList<>();
-    Deque<MNode> nodeStack = new ArrayDeque<>();
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
     nodeStack.add(root);
     while (!nodeStack.isEmpty()) {
-      MNode current = nodeStack.pop();
+      IMNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         ret.add((StorageGroupMNode) current);
       } else {
@@ -821,7 +821,7 @@ public class MTree implements MTreeInterface {
    */
   public PartialPath getStorageGroupPath(PartialPath path) throws StorageGroupNotSetException {
     String[] nodes = path.getNodes();
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur instanceof StorageGroupMNode) {
@@ -836,7 +836,7 @@ public class MTree implements MTreeInterface {
   /** Check whether the given path contains a storage group */
   public boolean checkStorageGroupByPath(PartialPath path) {
     String[] nodes = path.getNodes();
-    MNode cur = root;
+    IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
       if (cur == null) {
@@ -912,17 +912,17 @@ public class MTree implements MTreeInterface {
   }
 
   /** Traverse the MTree to get the count of timeseries. */
-  private int getCount(MNode node, String[] nodes, int idx, boolean wildcard)
+  private int getCount(IMNode node, String[] nodes, int idx, boolean wildcard)
       throws PathNotExistException {
     if (idx < nodes.length) {
       if (PATH_WILDCARD.equals(nodes[idx])) {
         int sum = 0;
-        for (MNode child : node.getChildren().values()) {
+        for (IMNode child : node.getChildren().values()) {
           sum += getCount(child, nodes, idx + 1, true);
         }
         return sum;
       } else {
-        MNode child = node.getChild(nodes[idx]);
+        IMNode child = node.getChild(nodes[idx]);
         if (child == null) {
           if (!wildcard) {
             throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
@@ -934,7 +934,7 @@ public class MTree implements MTreeInterface {
       }
     } else {
       int sum = node instanceof MeasurementMNode ? 1 : 0;
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         sum += getCount(child, nodes, idx + 1, wildcard);
       }
       return sum;
@@ -973,7 +973,7 @@ public class MTree implements MTreeInterface {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    MNode node = root;
+    IMNode node = root;
     int i;
     for (i = 1; i < nodes.length; i++) {
       if (nodes[i].equals("*")) {
@@ -989,11 +989,11 @@ public class MTree implements MTreeInterface {
   }
 
   /** Traverse the MTree to get the count of devices. */
-  private int getDevicesCount(MNode node, String[] nodes, int idx) {
+  private int getDevicesCount(IMNode node, String[] nodes, int idx) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     int cnt = 0;
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         if (next instanceof MeasurementMNode && idx >= nodes.length) {
           cnt++;
@@ -1003,7 +1003,7 @@ public class MTree implements MTreeInterface {
       }
     } else {
       boolean deviceAdded = false;
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         if (child instanceof MeasurementMNode && !deviceAdded && idx >= nodes.length) {
           cnt++;
           deviceAdded = true;
@@ -1015,7 +1015,7 @@ public class MTree implements MTreeInterface {
   }
 
   /** Traverse the MTree to get the count of storage group. */
-  private int getStorageGroupCount(MNode node, String[] nodes, int idx, String parent) {
+  private int getStorageGroupCount(IMNode node, String[] nodes, int idx, String parent) {
     int cnt = 0;
     if (node instanceof StorageGroupMNode && idx >= nodes.length) {
       cnt++;
@@ -1023,12 +1023,12 @@ public class MTree implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         cnt += getStorageGroupCount(next, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         cnt +=
             getStorageGroupCount(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
       }
@@ -1041,12 +1041,12 @@ public class MTree implements MTreeInterface {
    *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
-  private int getCountInGivenLevel(MNode node, int targetLevel) {
+  private int getCountInGivenLevel(IMNode node, int targetLevel) {
     if (targetLevel == 0) {
       return 1;
     }
     int cnt = 0;
-    for (MNode child : node.getChildren().values()) {
+    for (IMNode child : node.getChildren().values()) {
       cnt += getCountInGivenLevel(child, targetLevel - 1);
     }
     return cnt;
@@ -1124,7 +1124,7 @@ public class MTree implements MTreeInterface {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findPath(
-      MNode node,
+      IMNode node,
       String[] nodes,
       int idx,
       List<Pair<PartialPath, String[]>> timeseriesSchemaList,
@@ -1160,12 +1160,12 @@ public class MTree implements MTreeInterface {
     }
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         findPath(next, nodes, idx + 1, timeseriesSchemaList, hasLimit, needLast, queryContext);
       }
     } else {
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
@@ -1208,7 +1208,7 @@ public class MTree implements MTreeInterface {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodePathInNextLevel(
-      MNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
     if (node == null) {
       return;
     }
@@ -1227,7 +1227,7 @@ public class MTree implements MTreeInterface {
       }
     } else {
       if (node.getChildren().size() > 0) {
-        for (MNode child : node.getChildren().values()) {
+        for (IMNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
           }
@@ -1279,7 +1279,7 @@ public class MTree implements MTreeInterface {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void findChildNodeInNextLevel(
-      MNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
+      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
     if (node == null) {
       return;
     }
@@ -1298,7 +1298,7 @@ public class MTree implements MTreeInterface {
       }
     } else {
       if (node.getChildren().size() > 0) {
-        for (MNode child : node.getChildren().values()) {
+        for (IMNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
           }
@@ -1369,11 +1369,11 @@ public class MTree implements MTreeInterface {
    */
   @SuppressWarnings("squid:S3776")
   private void findDevices(
-      MNode node, String[] nodes, int idx, Set<PartialPath> res, boolean hasLimit) {
+      IMNode node, String[] nodes, int idx, Set<PartialPath> res, boolean hasLimit) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     // the node path doesn't contains '*'
     if (!nodeReg.contains(PATH_WILDCARD)) {
-      MNode next = node.getChild(nodeReg);
+      IMNode next = node.getChild(nodeReg);
       if (next != null) {
         if (next instanceof MeasurementMNode && idx >= nodes.length) {
           if (hasLimit) {
@@ -1391,7 +1391,7 @@ public class MTree implements MTreeInterface {
       }
     } else { // the node path contains '*'
       boolean deviceAdded = false;
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         // use '.*' to replace '*' to form a regex to match
         // if the match failed, skip it.
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
@@ -1427,7 +1427,7 @@ public class MTree implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> res = new ArrayList<>();
-    MNode node = root;
+    IMNode node = root;
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
@@ -1450,7 +1450,7 @@ public class MTree implements MTreeInterface {
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
   private void findNodes(
-      MNode node,
+      IMNode node,
       PartialPath path,
       List<PartialPath> res,
       int targetLevel,
@@ -1465,7 +1465,7 @@ public class MTree implements MTreeInterface {
       res.add(path);
       return;
     }
-    for (MNode child : node.getChildren().values()) {
+    for (IMNode child : node.getChildren().values()) {
       findNodes(child, path.concatNode(child.toString()), res, targetLevel - 1, filter);
     }
   }
@@ -1478,17 +1478,17 @@ public class MTree implements MTreeInterface {
 
   @Override
   public int getMeasurementMNodeCount(PartialPath path) throws MetadataException {
-    MNode mNode = getNodeByPath(path);
+    IMNode mNode = getNodeByPath(path);
     return mNode.getMeasurementMNodeCount();
   }
 
   @Override
-  public Collection<MeasurementMNode> collectMeasurementMNode(MNode startingNode) {
+  public Collection<MeasurementMNode> collectMeasurementMNode(IMNode startingNode) {
     Collection<MeasurementMNode> measurementMNodes = new LinkedList<>();
-    Deque<MNode> nodeDeque = new ArrayDeque<>();
+    Deque<IMNode> nodeDeque = new ArrayDeque<>();
     nodeDeque.addLast(startingNode);
     while (!nodeDeque.isEmpty()) {
-      MNode node = nodeDeque.removeFirst();
+      IMNode node = nodeDeque.removeFirst();
       if (node instanceof MeasurementMNode) {
         measurementMNodes.add((MeasurementMNode) node);
       } else if (!node.getChildren().isEmpty()) {
@@ -1499,15 +1499,15 @@ public class MTree implements MTreeInterface {
   }
 
   @Override
-  public void updateMNode(MNode mNode) throws MetadataException {}
+  public void updateMNode(IMNode mNode) throws MetadataException {}
 
   @Override
-  public MNode lockMNode(MNode mNode) throws MetadataException {
+  public IMNode lockMNode(IMNode mNode) throws MetadataException {
     return mNode;
   }
 
   @Override
-  public void unlockMNode(MNode mNode) throws MetadataException {}
+  public void unlockMNode(IMNode mNode) throws MetadataException {}
 
   @Override
   public void createSnapshot() throws IOException {
@@ -1583,9 +1583,9 @@ public class MTree implements MTreeInterface {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static MNode deserializeFromReader(MLogReader mLogReader) {
-    Deque<MNode> nodeStack = new ArrayDeque<>();
-    MNode node = null;
+  private static IMNode deserializeFromReader(MLogReader mLogReader) {
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
+    IMNode node = null;
     while (mLogReader.hasNext()) {
       PhysicalPlan plan = null;
       try {
@@ -1606,9 +1606,9 @@ public class MTree implements MTreeInterface {
         }
 
         if (childrenSize != 0) {
-          ConcurrentHashMap<String, MNode> childrenMap = new ConcurrentHashMap<>();
+          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
           for (int i = 0; i < childrenSize; i++) {
-            MNode child = nodeStack.removeFirst();
+            IMNode child = nodeStack.removeFirst();
             child.setParent(node);
             childrenMap.put(child.getName(), child);
             if (child instanceof MeasurementMNode) {
@@ -1637,13 +1637,13 @@ public class MTree implements MTreeInterface {
     return jsonToString(jsonObject);
   }
 
-  private JsonObject mNodeToJSON(MNode node, String storageGroupName) {
+  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
     JsonObject jsonObject = new JsonObject();
     if (node.getChildren().size() > 0) {
       if (node instanceof StorageGroupMNode) {
         storageGroupName = node.getFullPath();
       }
-      for (MNode child : node.getChildren().values()) {
+      for (IMNode child : node.getChildren().values()) {
         jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
       }
     } else if (node instanceof MeasurementMNode) {
@@ -1666,7 +1666,7 @@ public class MTree implements MTreeInterface {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    Deque<MNode> nodeStack = new ArrayDeque<>();
+    Deque<IMNode> nodeStack = new ArrayDeque<>();
     Deque<Integer> depthStack = new ArrayDeque<>();
     if (!root.getChildren().isEmpty()) {
       nodeStack.push(root);
@@ -1674,7 +1674,7 @@ public class MTree implements MTreeInterface {
     }
 
     while (!nodeStack.isEmpty()) {
-      MNode mNode = nodeStack.removeFirst();
+      IMNode mNode = nodeStack.removeFirst();
       int depth = depthStack.removeFirst();
 
       determineStorageGroup(depth + 1, nodes, mNode, paths, nodeStack, depthStack);
@@ -1690,17 +1690,17 @@ public class MTree implements MTreeInterface {
   private void determineStorageGroup(
       int depth,
       String[] nodes,
-      MNode mNode,
+      IMNode mNode,
       Map<String, String> paths,
-      Deque<MNode> nodeStack,
+      Deque<IMNode> nodeStack,
       Deque<Integer> depthStack) {
     String currNode = depth >= nodes.length ? PATH_WILDCARD : nodes[depth];
-    for (Entry<String, MNode> entry : mNode.getChildren().entrySet()) {
+    for (Entry<String, IMNode> entry : mNode.getChildren().entrySet()) {
       if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
         continue;
       }
       // this child is desired
-      MNode child = entry.getValue();
+      IMNode child = entry.getValue();
       if (child instanceof StorageGroupMNode) {
         // we have found one storage group, record it
         String sgName = child.getFullPath();
