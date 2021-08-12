@@ -220,6 +220,7 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -1565,6 +1566,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
+      }
+    } else if (ctx.valueClause() != null) {
+      if (ctx.valueClause().constant() != null) {
+        fillTypes.put(dataType, new ValueFill(ctx.valueClause().constant().getText(), dataType));
+      } else {
+        throw new SQLParserException("fill value cannot be null");
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
