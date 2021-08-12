@@ -84,6 +84,82 @@ ssl 超时时间单位为秒
 idle_timeout=5000
 ```
 
+## sql 接口
+
+###  SQL 查询接口
+
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/read
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root limit 1 slimit 2"}' http://127.0.0.1:18080/rest/read
+$ [{"values":[1],"name":"Time","type":"INT64"},{"values":[1.1],"name":"root.ln.wf02","type":""},{"values":[2.0],"name":"root.ln.wf03","type":""}]
+```
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | 是  |   |
+
+
+返回参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| values | array |  值 |
+| name  |  string | 测点名称 |
+| type | String| 数据类型 |
+
+###  SQL 非查询接口
+
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/nonQuery
+
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/nonQuery
+$ {"code":200,"message":"execute sucessfully"}
+```
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | 是  |   |
+
+
+返回参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| code | integer |  状态码 |
+| message  |  string | 信息提示 |
+
+###  写入接口
+
+请求方式：post
+请求头：application/json
+请求url：http://ip:port/rest/write
+
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"params":["timestamp","a","b","c"],"values":[1,1,2,4],"paths":["root","ln"]}' http://127.0.0.1:18080/rest/nonQuery
+$ {"code":200,"message":"execute sucessfully"}
+```
+参数说明:
+
+|参数名称  |参数类型  |是否必填|参数描述|
+| ------------ | ------------ | ------------ |------------ |
+|  params | array | 是 |  测点名称  |
+|  values | array | 是  | 值  |
+|  paths | array | 是  | 路径  |
+
+
+返回参数:
+
+|参数名称  |参数类型  |参数描述|
+| ------------ | ------------ | ------------|
+| code | integer |  状态码 |
+| message  |  string | 信息提示 |
+
 ## grafana接口
 
 ## 检查iotdb服务是否在运行
@@ -363,78 +439,4 @@ prometheus 数据经过Protobuf (3.12.3)编码和snappy 压缩后传输
 | Timestamp  |  number|  时间 |
 | Value  |  number | 值 |
 
-## 其他接口
 
-###  SQL 查询接口
-
-请求方式：post
-请求头：application/json
-请求url：http://ip:port/rest/read
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root limit 1 slimit 2"}' http://127.0.0.1:18080/rest/read
-$ [{"values":[1],"name":"Time","type":"INT64"},{"values":[1.1],"name":"root.ln.wf02","type":""},{"values":[2.0],"name":"root.ln.wf03","type":""}]
-```
-参数说明:
-
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | 是  |   |
-
-
-返回参数:
-
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| values | array |  值 |
-| name  |  string | 测点名称 |
-| type | String| 数据类型 |
-
-###  SQL 非查询接口
-
-请求方式：post
-请求头：application/json
-请求url：http://ip:port/rest/nonQuery
-
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/nonQuery
-$ {"code":200,"message":"execute sucessfully"}
-```
-参数说明:
-
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | 是  |   |
-
-
-返回参数:
-
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| code | integer |  状态码 |
-| message  |  string | 信息提示 |
-
-###  写入接口
-
-请求方式：post
-请求头：application/json
-请求url：http://ip:port/rest/write
-
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"params":["timestamp","a","b","c"],"values":[1,1,2,4],"paths":["root","ln"]}' http://127.0.0.1:18080/rest/nonQuery
-$ {"code":200,"message":"execute sucessfully"}
-```
-参数说明:
-
-|参数名称  |参数类型  |是否必填|参数描述|
-| ------------ | ------------ | ------------ |------------ |
-|  params | array | 是 |  测点名称  |
-|  values | array | 是  | 值  |
-|  paths | array | 是  | 路径  |
-
-
-返回参数:
-
-|参数名称  |参数类型  |参数描述|
-| ------------ | ------------ | ------------|
-| code | integer |  状态码 |
-| message  |  string | 信息提示 |

@@ -123,6 +123,83 @@ Example of user name password authentication failure
   "message": "username or passowrd is incorrect!"
 }
 ```
+## SQL interfaces
+
+###  SQL query interface
+
+Request method：post
+content-type：application/json
+url：http://ip:port/rest/read
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root limit 1 slimit 2"}' http://127.0.0.1:18080/rest/read
+$ [{"values":[1],"name":"Time","type":"INT64"},{"values":[1.1],"name":"root.ln.wf02","type":""},{"values":[2.0],"name":"root.ln.wf03","type":""}]
+```
+Parameter description:
+
+|Parameter name  |Parameter type  |required|description|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | true  |   |
+
+
+Return parameters:
+
+|Parameter name  |Parameter Type  |description|
+| ------------ | ------------ | ------------|
+| values | array |  values |
+| name  |  string | measurements |
+| type | String| data type |
+
+###  SQL non query interface
+
+Request method：post
+content-type：application/json
+url：http://ip:port/rest/nonQuery
+
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/nonQuery
+$ {"code":200,"message":"execute sucessfully"}
+```
+Parameter description:
+
+|Parameter name  |Parameter type  |required|description|
+| ------------ | ------------ | ------------ |------------ |
+|  sql | string | true  |   |
+
+
+Return parameters:
+
+|Parameter name  |Parameter Type  |description|
+| ------------ | ------------ | ------------|
+| code | integer |  Status code |
+| message  |  string | message |
+
+###  write interfaces
+
+Request method：post
+content-type：application/json
+url：http://ip:port/rest/write
+
+```
+$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"params":["timestamp","a","b","c"],"values":[1,1,2,4],"paths":["root","ln"]}' http://127.0.0.1:18080/rest/nonQuery
+$ {"code":200,"message":"execute sucessfully"}
+```
+Parameter description:
+
+|Parameter name  |Parameter type  |required|description|
+| ------------ | ------------ | ------------ |------------ |
+|  params | array | true |  measurements  |
+|  values | array | true  | values  |
+|  paths | array | true  | paths  |
+
+
+Return parameters:
+
+|Parameter name  |Parameter Type  |description|
+| ------------ | ------------ | ------------|
+| values | array |  values |
+| name  |  string | measurements |
+| type | String| data type |
+
 
 ### grafana interface
 
@@ -365,79 +442,3 @@ Return parameters:
 | Timestamp  |  number|  timestamp |
 | Value  |  number | value |
 
-## Other interfaces
-
-###  read interfaces
-
-Request method：post
-content-type：application/json
-url：http://ip:port/rest/read
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"select * from root limit 1 slimit 2"}' http://127.0.0.1:18080/rest/read
-$ [{"values":[1],"name":"Time","type":"INT64"},{"values":[1.1],"name":"root.ln.wf02","type":""},{"values":[2.0],"name":"root.ln.wf03","type":""}]
-```
-Parameter description:
-
-|Parameter name  |Parameter type  |required|description|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | true  |   |
-
-
-Return parameters:
-
-|Parameter name  |Parameter Type  |description|
-| ------------ | ------------ | ------------|
-| values | array |  values |
-| name  |  string | measurements |
-| type | String| data type |
-
-###  nonQuery 
-
-Request method：post
-content-type：application/json
-url：http://ip:port/rest/nonQuery
-
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/nonQuery
-$ {"code":200,"message":"execute sucessfully"}
-```
-Parameter description:
-
-|Parameter name  |Parameter type  |required|description|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | true  |   |
-
-
-Return parameters:
-
-|Parameter name  |Parameter Type  |description|
-| ------------ | ------------ | ------------|
-| code | integer |  Status code |
-| message  |  string | message |
-
-###  write interfaces
-
-Request method：post
-content-type：application/json
-url：http://ip:port/rest/write
-
-```
-$ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"params":["timestamp","a","b","c"],"values":[1,1,2,4],"paths":["root","ln"]}' http://127.0.0.1:18080/rest/nonQuery
-$ {"code":200,"message":"execute sucessfully"}
-```
-Parameter description:
-
-|Parameter name  |Parameter type  |required|description|
-| ------------ | ------------ | ------------ |------------ |
-|  params | array | true |  measurements  |
-|  values | array | true  | values  |
-|  paths | array | true  | paths  |
-
-
-Return parameters:
-
-|Parameter name  |Parameter Type  |description|
-| ------------ | ------------ | ------------|
-| values | array |  values |
-| name  |  string | measurements |
-| type | String| data type |
