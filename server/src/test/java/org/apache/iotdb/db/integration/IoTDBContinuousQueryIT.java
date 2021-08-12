@@ -53,16 +53,12 @@ public class IoTDBContinuousQueryIT {
 
   private final Thread dataGenerator =
       new Thread() {
-
         @Override
         public void run() {
-
-          try {
-            Connection connection =
-                DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
-
+          try (Connection connection =
+                  DriverManager.getConnection(
+                      Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+              Statement statement = connection.createStatement()) {
             do {
               for (String timeSeries : timeSeriesArray) {
                 boolean isSuccessful = false;
@@ -74,16 +70,8 @@ public class IoTDBContinuousQueryIT {
                             timeSeries, 200 * Math.random()));
                     isSuccessful = true;
                   } catch (SQLException throwable) {
-                    LOGGER.error(throwable.getMessage());
                     throwable.printStackTrace();
-
-                    statement.close();
-                    connection.close();
-
-                    connection =
-                        DriverManager.getConnection(
-                            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-                    statement = connection.createStatement();
+                    fail(throwable.getMessage());
                   }
                 }
               }
@@ -163,6 +151,8 @@ public class IoTDBContinuousQueryIT {
 
     checkShowContinuousQueriesResult(new String[] {"cq3"});
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.stopDaemon();
     setUp();

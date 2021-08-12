@@ -60,12 +60,10 @@ public class IoTDBTriggerExecutionIT {
 
         @Override
         public void run() {
-
-          try {
-            Connection connection =
-                DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-            Statement statement = connection.createStatement();
+          try (Connection connection =
+                  DriverManager.getConnection(
+                      Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+              Statement statement = connection.createStatement()) {
 
             long count = 0;
             do {
@@ -85,16 +83,8 @@ public class IoTDBTriggerExecutionIT {
                           count));
                   isSuccessful = true;
                 } catch (SQLException throwable) {
+                  fail(throwable.getMessage());
                   LOGGER.error(throwable.getMessage());
-                  throwable.printStackTrace();
-
-                  statement.close();
-                  connection.close();
-
-                  connection =
-                      DriverManager.getConnection(
-                          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-                  statement = connection.createStatement();
                 }
               }
             } while (!isInterrupted());

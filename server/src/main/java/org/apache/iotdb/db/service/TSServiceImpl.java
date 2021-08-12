@@ -2146,11 +2146,11 @@ public class TSServiceImpl implements TSIService.Iface {
     String message =
         String.format("[%s] Exception occurred while %s. ", statusCode.name(), operation);
     if (e instanceof NullPointerException) {
-      LOGGER.error(message, e);
+      LOGGER.error("Status code: {}, MSG: {}", statusCode, message, e);
     } else if (e instanceof UnSupportedDataTypeException) {
-      LOGGER.warn(e.getMessage());
+      LOGGER.warn("Status code: {}, MSG: {}", statusCode, e.getMessage());
     } else {
-      LOGGER.warn(message, e);
+      LOGGER.warn("Status code: {}, MSG: {}", statusCode, message, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
   }
