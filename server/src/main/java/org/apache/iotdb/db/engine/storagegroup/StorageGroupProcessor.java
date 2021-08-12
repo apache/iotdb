@@ -268,6 +268,8 @@ public class StorageGroupProcessor {
 
   private String insertWriteLockHolder = "";
 
+  private volatile boolean compacting = false;
+
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
@@ -2074,15 +2076,17 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    if (!tsFileManagement.recovered
-        || tsFileManagement.isSeqMerging
-        || tsFileManagement.isUnseqMerging) {
+    if (!tsFileManagement.recovered || compacting) {
       // recovering or doing compaction
       // stop running new compaction
       return;
     }
-    if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
-      new CompactionAllPartitionTask(logicalStorageGroupName).call();
+    try {
+      if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {
+        new CompactionAllPartitionTask(logicalStorageGroupName).call();
+      }
+    } finally {
+      compacting = false;
     }
   }
 
