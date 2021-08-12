@@ -72,6 +72,8 @@ public class IoTDBCreateStorageGroupIT {
     // ensure that current StorageGroup in cache is right.
     createStorageGroupTool(storageGroups);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 
