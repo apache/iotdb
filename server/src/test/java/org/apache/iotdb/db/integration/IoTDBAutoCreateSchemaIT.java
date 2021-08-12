@@ -171,6 +171,8 @@ public class IoTDBAutoCreateSchemaIT {
     // ensure that insert data in cache is right.
     insertAutoCreate1Tool();
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 
@@ -219,6 +221,8 @@ public class IoTDBAutoCreateSchemaIT {
     // ensure that current storage group in cache is right.
     InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 
