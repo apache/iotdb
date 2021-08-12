@@ -113,14 +113,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
    * a single thread pool, every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status
    * of all raft members in this node
    */
-  private ScheduledExecutorService reportThread =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
+  private ScheduledExecutorService reportThread;
 
   private boolean allowReport = true;
 
   /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
-  private ScheduledExecutorService hardLinkCleanerThread =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
+  private ScheduledExecutorService hardLinkCleanerThread;
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
   // DataGroup..
@@ -159,11 +157,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   private void initTasks() {
+    reportThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("NodeReportThread");
     reportThread.scheduleAtFixedRate(
         this::generateNodeReport,
         ClusterConstant.REPORT_INTERVAL_SEC,
         ClusterConstant.REPORT_INTERVAL_SEC,
         TimeUnit.SECONDS);
+    hardLinkCleanerThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("HardLinkCleaner");
     hardLinkCleanerThread.scheduleAtFixedRate(
         new HardLinkCleaner(),
         ClusterConstant.CLEAN_HARDLINK_INTERVAL_SEC,

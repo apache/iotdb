@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.Session;
+
 import org.junit.After;
 import org.junit.Before;
 
