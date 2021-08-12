@@ -252,6 +252,7 @@ import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1815,6 +1816,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
         fillTypes.put(dataType, new PreviousFill(preRange));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
+      }
+    } else if (ctx.valueClause() != null) {
+      if (ctx.valueClause().constant() != null) {
+        fillTypes.put(dataType, new ValueFill(ctx.valueClause().constant().getText(), dataType));
+      } else {
+        throw new SQLParserException("fill value cannot be null");
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
