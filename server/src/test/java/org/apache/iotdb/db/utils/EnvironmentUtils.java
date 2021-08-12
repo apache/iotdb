@@ -38,6 +38,8 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.RPCService;
+import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 
@@ -93,6 +95,7 @@ public class EnvironmentUtils {
       fail(e.getMessage());
     }
 
+    RPCService.getInstance().stopService();
     logger.warn("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();

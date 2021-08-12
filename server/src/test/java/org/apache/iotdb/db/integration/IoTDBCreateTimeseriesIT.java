@@ -51,22 +51,19 @@ public class IoTDBCreateTimeseriesIT {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-    statement = connection.createStatement();
   }
 
   @After
   public void tearDown() throws Exception {
-    statement.close();
-    connection.close();
     EnvironmentUtils.cleanEnv();
   }
 
   /** Test creating a time series that is a prefix path of an existing time series */
   @Test
   public void testCreateTimeseries1() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    statement = connection.createStatement();
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
@@ -79,11 +76,17 @@ public class IoTDBCreateTimeseriesIT {
     // ensure that current timeseries in cache is right.
     createTimeSeries1Tool(timeSeriesArray);
 
-    EnvironmentUtils.stopDaemon();
-    setUp();
+    statement.close();
+    connection.close();
+    EnvironmentUtils.restartDaemon();
 
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    statement = connection.createStatement();
     // ensure timeseries in cache is right after recovered.
     createTimeSeries1Tool(timeSeriesArray);
+    statement.close();
+    connection.close();
   }
 
   private void createTimeSeries1Tool(String[] timeSeriesArray) throws SQLException {
@@ -112,6 +115,9 @@ public class IoTDBCreateTimeseriesIT {
   /** Test if creating a time series will cause the storage group with same name to disappear */
   @Test
   public void testCreateTimeseries2() throws Exception {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    statement = connection.createStatement();
     String storageGroup = "root.sg1.a.b.c";
 
     statement.execute(String.format("SET storage group TO %s", storageGroup));
@@ -126,11 +132,17 @@ public class IoTDBCreateTimeseriesIT {
     // ensure that current storage group in cache is right.
     createTimeSeries2Tool(storageGroup);
 
-    EnvironmentUtils.stopDaemon();
-    setUp();
+    statement.close();
+    connection.close();
+    EnvironmentUtils.restartDaemon();
 
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    statement = connection.createStatement();
     // ensure storage group in cache is right after recovered.
     createTimeSeries2Tool(storageGroup);
+    statement.close();
+    connection.close();
   }
 
   private void createTimeSeries2Tool(String storageGroup) throws SQLException {
