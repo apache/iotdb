@@ -452,13 +452,12 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             }
           }
           long timePartition = targetTsFileResource.getTimePartition();
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset - 1);
             }
-            writer.close();
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             List<Modification> modifications = new ArrayList<>();
@@ -469,7 +468,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 compactionLogger,
                 deviceSet,
                 isSeq,
-                modifications);
+                modifications,
+                writer);
             compactionLogger.close();
           } else {
             writer.close();
@@ -497,14 +497,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             sourceTsFileResources.add(sourceTsFileResource);
           }
           int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
           List<Modification> modifications = new ArrayList<>();
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset - 1);
             }
-            writer.close();
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             CompactionUtils.merge(
@@ -514,7 +513,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 compactionLogger,
                 deviceSet,
                 isSeq,
-                modifications);
+                modifications,
+                writer);
             compactionLogger.close();
             // complete compaction and add target tsfile
             int targetLevel = TsFileResource.getMergeLevel(targetResource.getTsFile().getName());
@@ -718,7 +718,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 compactionLogger,
                 new HashSet<>(),
                 sequence,
-                modifications);
+                modifications,
+                null);
             logger.info(
                 "{} [Compaction] merged level-{}'s {} TsFiles to next level, and start to delete old files",
                 storageGroupName,
