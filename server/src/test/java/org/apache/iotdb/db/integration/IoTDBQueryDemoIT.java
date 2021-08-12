@@ -483,7 +483,7 @@ public class IoTDBQueryDemoIT {
     }
     return actualIndexToExpectedIndexList;
   }
-  
+
   @Test
   public void testWrongTextQuery() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
