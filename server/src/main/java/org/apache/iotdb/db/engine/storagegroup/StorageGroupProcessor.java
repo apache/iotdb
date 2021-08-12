@@ -2074,8 +2074,11 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    if (!tsFileManagement.recovered) {
-      // doing recovered task
+    if (!tsFileManagement.recovered
+        || tsFileManagement.isSeqMerging
+        || tsFileManagement.isUnseqMerging) {
+      // recovering or doing compaction
+      // stop running new compaction
       return;
     }
     if (config.getCompactionStrategy() == CompactionStrategy.LEVEL_COMPACTION) {

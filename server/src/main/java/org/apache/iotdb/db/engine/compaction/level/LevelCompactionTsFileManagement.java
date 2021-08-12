@@ -456,7 +456,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
             if (offset > 0) {
-              writer.getIOWriterOut().truncate(offset - 1);
+              writer.getIOWriterOut().truncate(offset);
             }
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
@@ -502,7 +502,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
             if (offset > 0) {
-              writer.getIOWriterOut().truncate(offset - 1);
+              writer.getIOWriterOut().truncate(offset);
             }
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
