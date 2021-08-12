@@ -136,9 +136,10 @@ public class IoTDBUDFWindowQueryIT {
             "select counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       int count = 0;
       assertEquals(2, resultSet.getMetaData().getColumnCount());
@@ -197,9 +198,10 @@ public class IoTDBUDFWindowQueryIT {
             "select accumulator(s1, \"%s\"=\"%s\", \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING_SIZE, WINDOW_SIZE_KEY, windowSize);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -328,9 +330,10 @@ public class IoTDBUDFWindowQueryIT {
             DISPLAY_WINDOW_END_KEY,
             displayWindowEnd);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -395,9 +398,10 @@ public class IoTDBUDFWindowQueryIT {
 
     int displayWindowBegin = 0;
     int displayWindowEnd = ITERATION_TIMES;
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(2, resultSet.getMetaData().getColumnCount());
 
@@ -518,9 +522,10 @@ public class IoTDBUDFWindowQueryIT {
             "consumptionPoint",
             consumptionPoint);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sql);
       assertEquals(3, resultSet.getMetaData().getColumnCount());
 
