@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -105,6 +105,15 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** push check memtable flush interval down to all sg */
+  public void timedFlushMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushMemTable();
+      }
+    }
+  }
+
   /**
    * get processor from device id
    *
@@ -114,7 +123,7 @@ public class VirtualStorageGroupManager {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public StorageGroupProcessor getProcessor(
-      PartialPath partialPath, StorageGroupMNode storageGroupMNode)
+      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
@@ -153,7 +162,7 @@ public class VirtualStorageGroupManager {
    * @param futures virtual storage group recover tasks
    */
   public void asyncRecover(
-      StorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
+      IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
       Callable<Void> recoverVsgTask =

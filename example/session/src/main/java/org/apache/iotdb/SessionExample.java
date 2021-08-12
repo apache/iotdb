@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,12 +69,14 @@ public class SessionExample {
       }
     }
 
+    // createTemplate();
     createTimeseries();
     createMultiTimeseries();
     insertRecord();
     insertTablet();
     insertTablets();
     insertRecords();
+    selectInto();
     createAndDropContinuousQueries();
     nonQuery();
     query();
@@ -210,6 +213,37 @@ public class SessionExample {
       session.createMultiTimeseries(
           paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList, attributesList, alias);
     }
+  }
+
+  private static void createTemplate()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s1"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    session.createSchemaTemplate(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    session.setSchemaTemplate("template1", "root.sg1");
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
@@ -485,6 +519,19 @@ public class SessionExample {
       tablet2.reset();
       tablet3.reset();
     }
+  }
+
+  private static void selectInto() throws IoTDBConnectionException, StatementExecutionException {
+    session.executeNonQueryStatement(
+        "select s1, s2, s3 into into_s1, into_s2, into_s3 from root.sg1.d1");
+
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select into_s1, into_s2, into_s3 from root.sg1.d1");
+    System.out.println(dataSet.getColumnNames());
+    while (dataSet.hasNext()) {
+      System.out.println(dataSet.next());
+    }
+    dataSet.closeOperationHandle();
   }
 
   private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {

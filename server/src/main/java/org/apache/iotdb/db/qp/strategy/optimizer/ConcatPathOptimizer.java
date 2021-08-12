@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
@@ -56,14 +57,14 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       "failed to concat series paths because the given query operator didn't have prefix paths";
 
   @Override
-  public Operator transform(Operator operator, int fetchSize)
+  public Operator transform(Operator operator)
       throws LogicalOptimizeException, PathNumOverLimitException {
     QueryOperator queryOperator = (QueryOperator) operator;
     if (!optimizable(queryOperator)) {
       return queryOperator;
     }
     concatSelect(queryOperator);
-    removeWildcardsInSelectPaths(queryOperator, fetchSize);
+    removeWildcardsInSelectPaths(queryOperator);
     concatFilterAndRemoveWildcards(queryOperator);
     return queryOperator;
   }
@@ -97,13 +98,13 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
   }
 
-  private void removeWildcardsInSelectPaths(QueryOperator queryOperator, int fetchSize)
+  private void removeWildcardsInSelectPaths(QueryOperator queryOperator)
       throws LogicalOptimizeException, PathNumOverLimitException {
     if (queryOperator.getIndexType() != null) {
       return;
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator, fetchSize);
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     List<ResultColumn> resultColumns = new ArrayList<>();
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
@@ -180,11 +181,20 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         currentNode = newInnerNode;
       }
       try {
-        currentNode.addChildOperator(
-            new BasicFunctionOperator(
-                operator.getFilterType(),
-                noStarPaths.get(i),
-                ((BasicFunctionOperator) operator).getValue()));
+        if (operator instanceof InOperator) {
+          currentNode.addChildOperator(
+              new InOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((InOperator) operator).getNot(),
+                  ((InOperator) operator).getValues()));
+        } else {
+          currentNode.addChildOperator(
+              new BasicFunctionOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((BasicFunctionOperator) operator).getValue()));
+        }
       } catch (SQLParserException e) {
         throw new LogicalOptimizeException(e.getMessage());
       }

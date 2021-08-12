@@ -91,7 +91,7 @@ statement
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
@@ -105,7 +105,7 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause fromClause whereClause? specialClause? #selectStatement
+    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
     | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
       resampleClause?
       cqSelectIntoClause #createContinuousQueryStatement
@@ -114,26 +114,35 @@ statement
     ;
 
 selectClause
-   : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
-   ;
+    : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
+    ;
 
 resultColumn
-   : expression (AS ID)?
-   ;
+    : expression (AS ID)?
+    ;
 
 expression
-   : LR_BRACKET unary=expression RR_BRACKET
-   | (PLUS | MINUS) unary=expression
-   | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
-   | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-   | suffixPath
-   | literal=SINGLE_QUOTE_STRING_LITERAL
-   ;
+    : LR_BRACKET unary=expression RR_BRACKET
+    | (PLUS | MINUS) unary=expression
+    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | suffixPath
+    | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
 
 functionAttribute
-   : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
-   ;
+    : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
+    ;
+
+intoClause
+    : INTO intoPath (COMMA intoPath)*
+    ;
+
+intoPath
+    : fullPath
+    | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
+    ;
 
 alias
     : LR_BRACKET ID RR_BRACKET
@@ -340,12 +349,7 @@ resampleClause
     : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
 
 cqSelectIntoClause
-    : BEGIN
-    selectClause
-    INTO (fullPath | nodeNameWithoutStar)
-    fromClause
-    cqGroupByTimeClause
-    END
+    : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
     ;
 
 cqGroupByTimeClause
@@ -684,9 +688,10 @@ property
     : name=ID OPERATOR_EQ value=propertyValue
     ;
 
-autoCreateSchema
-    : booleanClause
-    | booleanClause INT
+loadFilesClause
+    : AUTOREGISTER OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    | SGLEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
+    | VERIFY OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
     ;
 
 triggerEventClause
@@ -1179,6 +1184,18 @@ FOR
 
 SCHEMA
     : S C H E M A
+    ;
+
+AUTOREGISTER
+    : A U T O R E G I S T E R
+    ;
+
+VERIFY
+    : V E R I F Y
+    ;
+
+SGLEVEL
+    : S G L E V E L
     ;
 
 TEMPORARY
