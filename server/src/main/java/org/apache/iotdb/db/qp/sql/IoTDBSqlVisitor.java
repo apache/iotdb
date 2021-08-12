@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
@@ -2035,14 +2036,24 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private FilterOperator parsePredicate(PredicateContext ctx) {
+    PartialPath path = null;
     if (ctx.OPERATOR_NOT() != null) {
       FilterOperator notOp = new FilterOperator(FilterType.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
       return parseOrExpression(ctx.orExpression());
+    } else if (ctx.LIKE() != null) {
+      if (ctx.suffixPath() != null) {
+        path = parseSuffixPath(ctx.suffixPath());
+      } else if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
+      }
+      if (path == null) {
+        throw new SQLParserException("Path is null, please check the sql.");
+      }
+      return new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
     } else {
-      PartialPath path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
       }
