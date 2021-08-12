@@ -94,6 +94,19 @@ public class IoTDBDeletionIT {
           "303: Check metadata error: For delete statement, where clause can only"
               + " contain time expressions, value filter is not currently supported.";
 
+      String errorMsg2 =
+          "303: Check metadata error: For delete statement, where clause can only contain"
+              + " atomic expressions like : time > XXX, time <= XXX,"
+              + " or two atomic expressions connected by 'AND'";
+
+      try {
+        statement.execute(
+            "DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND time > 0 AND time < 100");
+        fail("should not reach here!");
+      } catch (SQLException e) {
+        assertEquals(errorMsg2, e.getMessage());
+      }
+
       try {
         statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND s0 > 0");
         fail("should not reach here!");
