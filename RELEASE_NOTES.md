@@ -60,6 +60,7 @@
 * [IOTDB-1542] Cpp client segment fault: char[] buffer overflow caused by long exception message
 * [IOTDB-1545] Query dataset memory leak on server caused by cpp client
 * [IOTDB-1546] Optimize the Upgrade Tool rewrite logic to reduce the temp memory cost
+* [IOTDB-1552] Only allow equivalent filter for TEXT data type
 * [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
