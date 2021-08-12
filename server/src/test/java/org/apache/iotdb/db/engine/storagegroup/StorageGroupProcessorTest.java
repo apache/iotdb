@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -219,7 +220,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -367,7 +368,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -448,7 +449,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);
@@ -529,7 +530,7 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    MeasurementMNode[] measurementMNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[2];
     measurementMNodes[0] =
         new MeasurementMNode(
             null, "s0", new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN), null);

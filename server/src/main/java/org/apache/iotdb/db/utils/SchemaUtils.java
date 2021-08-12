@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
@@ -119,7 +120,7 @@ public class SchemaUtils {
     IMeasurementSchema measurementSchema =
         new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
-    MeasurementMNode measurementMNode =
+    IMeasurementMNode measurementMNode =
         new MeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
     IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
   }

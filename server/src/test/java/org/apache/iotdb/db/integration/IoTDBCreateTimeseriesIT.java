@@ -23,7 +23,11 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -78,6 +82,8 @@ public class IoTDBCreateTimeseriesIT {
       // ensure that current timeseries in cache is right.
       createTimeSeries1Tool(timeSeriesArray);
 
+      statement.close();
+      connection.close();
       EnvironmentUtils.stopDaemon();
       setUp();
 
@@ -128,6 +134,8 @@ public class IoTDBCreateTimeseriesIT {
     // ensure that current storage group in cache is right.
     createTimeSeries2Tool(storageGroup);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 

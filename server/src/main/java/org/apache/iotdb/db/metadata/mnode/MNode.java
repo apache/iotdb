@@ -114,6 +114,26 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public boolean isStorageGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean isEntity() {
+    return false;
+  }
+
+  @Override
+  public boolean isMeasurement() {
+    return false;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

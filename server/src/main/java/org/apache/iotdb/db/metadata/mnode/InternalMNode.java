@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public class InternalMNode extends MNode implements IMNode {
+public class InternalMNode extends MNode {
 
   private static final long serialVersionUID = -770028375899514063L;
 
@@ -50,18 +50,8 @@ public class InternalMNode extends MNode implements IMNode {
   @SuppressWarnings("squid:S3077")
   protected transient volatile Map<String, IMNode> children = null;
 
-  /**
-   * suppress warnings reason: volatile for double synchronized check
-   *
-   * <p>This will be a ConcurrentHashMap instance
-   */
-  @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, IMNode> aliasChildren = null;
-
-  // device template
-  protected Template deviceTemplate = null;
-
-  private volatile boolean useTemplate = false;
+  // schema template
+  protected Template schemaTemplate = null;
 
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
@@ -71,8 +61,17 @@ public class InternalMNode extends MNode implements IMNode {
   /** check whether the MNode has a child with the name */
   @Override
   public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name))
-        || (aliasChildren != null && aliasChildren.containsKey(name));
+    return (children != null && children.containsKey(name));
+  }
+
+  /** get the child with the name */
+  @Override
+  public IMNode getChild(String name) {
+    IMNode child = null;
+    if (children != null) {
+      child = children.get(name);
+    }
+    return child;
   }
 
   /**
@@ -137,35 +136,44 @@ public class InternalMNode extends MNode implements IMNode {
     }
   }
 
-  /** delete the alias of a child */
+  /**
+   * replace a child of this mnode
+   *
+   * @param oldChildName measurement name
+   * @param newChildNode new child node
+   */
   @Override
-  public void deleteAliasChild(String alias) {
-    if (aliasChildren != null) {
-      aliasChildren.remove(alias);
+  public void replaceChild(String oldChildName, IMNode newChildNode) {
+    IMNode oldChildNode = this.getChild(oldChildName);
+    if (oldChildNode == null) {
+      return;
     }
-  }
 
-  @Override
-  public Template getDeviceTemplate() {
-    return deviceTemplate;
-  }
-
-  @Override
-  public void setDeviceTemplate(Template deviceTemplate) {
-    this.deviceTemplate = deviceTemplate;
-  }
-
-  /** get the child with the name */
-  @Override
-  public IMNode getChild(String name) {
-    IMNode child = null;
-    if (children != null) {
-      child = children.get(name);
+    // newChildNode builds parent-child relationship
+    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
+    if (!grandChildren.isEmpty()) {
+      newChildNode.setChildren(grandChildren);
+      grandChildren.forEach(
+          (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
     }
-    if (child != null) {
-      return child;
+
+    if (newChildNode.isEntity() && oldChildNode.isEntity()) {
+      Map<String, IMeasurementMNode> grandAliasChildren =
+          ((IEntityMNode) oldChildNode).getAliasChildren();
+      if (!grandAliasChildren.isEmpty()) {
+        ((IEntityMNode) newChildNode).setAliasChildren(grandAliasChildren);
+        grandAliasChildren.forEach(
+            (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
+      }
+      ((IEntityMNode) newChildNode).setUseTemplate(oldChildNode.isUseTemplate());
     }
-    return aliasChildren == null ? null : aliasChildren.get(name);
+
+    newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
+
+    newChildNode.setParent(this);
+
+    this.deleteChild(oldChildName);
+    this.addChild(newChildNode.getName(), newChildNode);
   }
 
   @Override
@@ -187,6 +195,47 @@ public class InternalMNode extends MNode implements IMNode {
     return node;
   }
 
+  @Override
+  public Map<String, IMNode> getChildren() {
+    if (children == null) {
+      return Collections.emptyMap();
+    }
+    return children;
+  }
+
+  @Override
+  public void setChildren(Map<String, IMNode> children) {
+    this.children = children;
+  }
+
+  /**
+   * get upper template of this node, remember we get nearest template alone this node to root
+   *
+   * @return upper template
+   */
+  @Override
+  public Template getUpperTemplate() {
+    IMNode cur = this;
+    while (cur != null) {
+      if (cur.getSchemaTemplate() != null) {
+        return cur.getSchemaTemplate();
+      }
+      cur = cur.getParent();
+    }
+
+    return null;
+  }
+
+  @Override
+  public Template getSchemaTemplate() {
+    return schemaTemplate;
+  }
+
+  @Override
+  public void setSchemaTemplate(Template schemaTemplate) {
+    this.schemaTemplate = schemaTemplate;
+  }
+
   /** get the count of all MeasurementMNode whose ancestor is current node */
   @Override
   public int getMeasurementMNodeCount() {
@@ -198,46 +247,6 @@ public class InternalMNode extends MNode implements IMNode {
       measurementMNodeCount += child.getMeasurementMNodeCount();
     }
     return measurementMNodeCount;
-  }
-
-  /** add an alias */
-  @Override
-  public boolean addAlias(String alias, IMNode child) {
-    if (aliasChildren == null) {
-      // double check, alias children volatile
-      synchronized (this) {
-        if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
-        }
-      }
-    }
-
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren() {
-    if (children == null) {
-      return Collections.emptyMap();
-    }
-    return children;
-  }
-
-  @Override
-  public Map<String, IMNode> getAliasChildren() {
-    if (aliasChildren == null) {
-      return Collections.emptyMap();
-    }
-    return aliasChildren;
-  }
-
-  @Override
-  public void setChildren(Map<String, IMNode> children) {
-    this.children = children;
-  }
-
-  public void setAliasChildren(Map<String, IMNode> aliasChildren) {
-    this.aliasChildren = aliasChildren;
   }
 
   @Override
@@ -258,63 +267,5 @@ public class InternalMNode extends MNode implements IMNode {
 
   public static InternalMNode deserializeFrom(MNodePlan plan) {
     return new InternalMNode(null, plan.getName());
-  }
-
-  /**
-   * replace a child of this mnode
-   *
-   * @param measurement measurement name
-   * @param newChildNode new child node
-   */
-  @Override
-  public void replaceChild(String measurement, IMNode newChildNode) {
-    IMNode oldChildNode = this.getChild(measurement);
-    if (oldChildNode == null) {
-      return;
-    }
-
-    // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
-    newChildNode.setChildren(grandChildren);
-    grandChildren.forEach(
-        (grandChildName, grandChildNode) -> grandChildNode.setParent(newChildNode));
-
-    Map<String, IMNode> grandAliasChildren = oldChildNode.getAliasChildren();
-    newChildNode.setAliasChildren(grandAliasChildren);
-    grandAliasChildren.forEach(
-        (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
-
-    newChildNode.setParent(this);
-
-    this.deleteChild(measurement);
-    this.addChild(newChildNode.getName(), newChildNode);
-  }
-
-  /**
-   * get upper template of this node, remember we get nearest template alone this node to root
-   *
-   * @return upper template
-   */
-  @Override
-  public Template getUpperTemplate() {
-    IMNode cur = this;
-    while (cur != null) {
-      if (cur.getDeviceTemplate() != null) {
-        return cur.getDeviceTemplate();
-      }
-      cur = cur.getParent();
-    }
-
-    return null;
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
   }
 }

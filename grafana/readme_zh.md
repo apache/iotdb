@@ -51,6 +51,7 @@ Grafana是开源的指标量监测和可视化工具，可用于展示时序数�
 * 插件名称: simple-json-datasource
 * 下载地址: https://github.com/grafana/simple-json-datasource
 
+#### windows系统
 具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugins\`（Windows系统，启动Grafana后会自动创建`data\plugins`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
 
 执行下面的命令：
@@ -58,7 +59,29 @@ Grafana是开源的指标量监测和可视化工具，可用于展示时序数�
 ```
 Shell > git clone https://github.com/grafana/simple-json-datasource.git
 ```
+
+#### linux系统
+建议使用grafana-cli安装该插件，具体安装命令如下
+
+```
+sudo grafana-cli plugins install grafana-simple-json-datasource
+sudo service grafana-server restart
+```
+
+#### 后续操作
 然后重启Grafana服务器，在浏览器中登录Grafana，在“Add data source”页面中“Type”选项出现“SimpleJson”即为安装成功。
+
+如果出现如下报错
+```
+Unsigned plugins were found during plugin initialization. Grafana Labs cannot guarantee the integrity of these plugins. We recommend only using signed plugins.
+The following plugins are disabled and not shown in the list below:
+```
+
+请找到相关的grafana的配置文件（例如windows下的customer.ini，linux下rpm安装后为/etc/grafana/grafana.ini），并进行如下的配置
+
+```
+allow_loading_unsigned_plugins = "grafana-simple-json-datasource"
+```
 
 ### 启动Grafana
 进入Grafana的安装目录，使用以下命令启动Grafana：

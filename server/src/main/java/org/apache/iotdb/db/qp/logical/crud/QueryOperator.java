@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -45,6 +46,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -403,9 +405,16 @@ public class QueryOperator extends Operator {
       throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     Set<PartialPath> filterPaths = new HashSet<>();
-    for (PartialPath device : devices) {
+    Iterator<PartialPath> deviceIterator = devices.iterator();
+    while (deviceIterator.hasNext()) {
+      PartialPath device = deviceIterator.next();
       FilterOperator newOperator = operator.copy();
-      concatFilterPath(device, newOperator, filterPaths);
+      try {
+        concatFilterPath(device, newOperator, filterPaths);
+      } catch (PathNotExistException e) {
+        deviceIterator.remove();
+        continue;
+      }
       // transform to a list so it can be indexed
       List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
       try {
@@ -426,14 +435,20 @@ public class QueryOperator extends Operator {
   }
 
   private void concatFilterPath(
-      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths)
+      throws PathNotExistException {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
       }
       return;
     }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+    FunctionOperator basicOperator;
+    if (operator instanceof InOperator) {
+      basicOperator = (InOperator) operator;
+    } else {
+      basicOperator = (BasicFunctionOperator) operator;
+    }
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
@@ -444,8 +459,12 @@ public class QueryOperator extends Operator {
     }
 
     PartialPath concatPath = prefix.concatPath(filterPath);
-    filterPaths.add(concatPath);
-    basicOperator.setSinglePath(concatPath);
+    if (IoTDB.metaManager.isPathExist(concatPath)) {
+      filterPaths.add(concatPath);
+      basicOperator.setSinglePath(concatPath);
+    } else {
+      throw new PathNotExistException(concatPath.getFullPath());
+    }
   }
 
   protected Set<PartialPath> getMatchedDevices(PartialPath path) throws MetadataException {

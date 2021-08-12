@@ -52,35 +52,31 @@ public interface IMNode extends Serializable {
 
   IMNode addChild(IMNode child);
 
-  boolean addAlias(String alias, IMNode child);
-
   void deleteChild(String name);
 
-  void deleteAliasChild(String alias);
-
-  void replaceChild(String measurement, IMNode newChildNode);
+  void replaceChild(String oldChildName, IMNode newChildNode);
 
   IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
 
   Map<String, IMNode> getChildren();
 
-  Map<String, IMNode> getAliasChildren();
-
   void setChildren(Map<String, IMNode> children);
-
-  void setAliasChildren(Map<String, IMNode> aliasChildren);
 
   boolean isUseTemplate();
 
-  void setUseTemplate(boolean useTemplate);
-
   Template getUpperTemplate();
 
-  Template getDeviceTemplate();
+  Template getSchemaTemplate();
 
-  void setDeviceTemplate(Template deviceTemplate);
+  void setSchemaTemplate(Template schemaTemplate);
 
   int getMeasurementMNodeCount();
+
+  boolean isStorageGroup();
+
+  boolean isEntity();
+
+  boolean isMeasurement();
 
   void serializeTo(MLogWriter logWriter) throws IOException;
 }
