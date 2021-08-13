@@ -1,21 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.iotdb.tsfile.read.filter.operator;
 
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -30,14 +12,8 @@ import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/**
- * Like.
- *
- * @param <T> comparable data type
- */
-public class Like<T extends Comparable<T>> implements Filter {
-
-  private static final long serialVersionUID = 2171102599229260789L;
+/** @Author: Architect @Date: 2021-08-13 14:01 */
+public class Regexp<T extends Comparable<T>> implements Filter {
 
   protected String value;
 
@@ -45,17 +21,13 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   protected Pattern pattern;
 
-  private Like() {}
+  private Regexp() {}
 
-  public Like(String value, FilterType filterType) {
+  public Regexp(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
     try {
-      StringBuilder patternStrBuild = new StringBuilder();
-      if (!value.startsWith("%") && !value.startsWith("_")) patternStrBuild.append("^");
-      patternStrBuild.append(this.value.replace("%", "[\\s\\S]*").replace("_", "[\\s\\S]{1}"));
-      if (!value.endsWith("%") && !value.startsWith("_")) patternStrBuild.append("$");
-      this.pattern = Pattern.compile(patternStrBuild.toString());
+      this.pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
     }
@@ -86,7 +58,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public Filter copy() {
-    return new Like(value, filterType);
+    return new Regexp(value, filterType);
   }
 
   @Override
@@ -113,6 +85,6 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   @Override
   public FilterSerializeId getSerializeId() {
-    return FilterSerializeId.LIKE;
+    return FilterSerializeId.REGEXP;
   }
 }

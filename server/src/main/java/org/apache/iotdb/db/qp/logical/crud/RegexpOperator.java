@@ -1,21 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -35,12 +17,12 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-/** fuzzy query structure LikeOperator. */
-public class LikeOperator extends FunctionOperator {
+/** @Author: Architect @Date: 2021-08-13 10:53 */
+public class RegexpOperator extends FunctionOperator {
 
   protected String value;
 
-  public LikeOperator(FilterType filterType, PartialPath path, String value) {
+  public RegexpOperator(FilterType filterType, PartialPath path, String value) {
     super(filterType);
     this.singlePath = path;
     this.value = value;
@@ -59,12 +41,12 @@ public class LikeOperator extends FunctionOperator {
     }
     IUnaryExpression ret;
     if (type != TEXT) {
-      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Like'");
+      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Regexp'");
     } else if (value.startsWith("\"") && value.endsWith("\"")) {
       throw new LogicalOperatorException(value, "Please use single quotation marks");
     } else {
       ret =
-          Like.getUnaryExpression(
+          RegexpOperator.Regexp.getUnaryExpression(
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
                   ? value.substring(1, value.length() - 1)
@@ -73,14 +55,14 @@ public class LikeOperator extends FunctionOperator {
     return new Pair<>(ret, singlePath.getFullPath());
   }
 
-  private static class Like {
+  private static class Regexp {
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         PartialPath path, String value) {
-      return new SingleSeriesExpression(path, ValueFilter.like(value));
+      return new SingleSeriesExpression(path, ValueFilter.regexp(value));
     }
 
     public <T extends Comparable<T>> Filter getValueFilter(String value) {
-      return ValueFilter.like(value);
+      return ValueFilter.regexp(value);
     }
   }
 
@@ -90,14 +72,14 @@ public class LikeOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.getFullPath(), getFilterSymbol(), value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), value, ", single\n");
     return sc.toString();
   }
 
   @Override
-  public LikeOperator copy() {
-    LikeOperator ret =
-        new LikeOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+  public RegexpOperator copy() {
+    RegexpOperator ret =
+        new RegexpOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -109,7 +91,7 @@ public class LikeOperator extends FunctionOperator {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    LikeOperator that = (LikeOperator) o;
+    RegexpOperator that = (RegexpOperator) o;
     return Objects.equals(value, that.value);
   }
 
@@ -120,6 +102,6 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + singlePath.getFullPath() + getFilterSymbol() + value + "]";
+    return "[" + singlePath.getFullPath() + value + "]";
   }
 }

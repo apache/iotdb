@@ -547,7 +547,7 @@ public class IoTDBQueryDemoIT {
   }
 
   @Test
-  public void LikeTest() throws ClassNotFoundException {
+  public void RegexpTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
           "1509465600000,v2,true,", "1509465660000,v2,true,", "1509465720000,v1,false,",
@@ -564,7 +564,7 @@ public class IoTDBQueryDemoIT {
       // Matches a string consisting of one lowercase letter and one digit. such as: "v1","v2"
       boolean hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like '^[a-z][0-9]$' and time < 1509465780000");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp '^[a-z][0-9]$' and time < 1509465780000");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -608,7 +608,7 @@ public class IoTDBQueryDemoIT {
           };
       hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like 'v*' ");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp 'v*' ");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -644,7 +644,7 @@ public class IoTDBQueryDemoIT {
   }
 
   @Test
-  public void LikeNonExistTest() throws ClassNotFoundException {
+  public void RegexpNonExistTest() throws ClassNotFoundException {
 
     // Match nonexistent string.'s.' is indicates that the starting with s and the last is any
     // single character
@@ -669,7 +669,7 @@ public class IoTDBQueryDemoIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select hardware,status from root.ln.wf02.wt02 where hardware like 's.' ");
+              "select hardware,status from root.ln.wf02.wt02 where hardware regexp 's.' ");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
