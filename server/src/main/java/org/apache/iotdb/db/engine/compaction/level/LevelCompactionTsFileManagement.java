@@ -671,11 +671,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       logger.debug("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
         List<TsFileResource> currLevelTsFileResource = mergeResources.get(i);
-        logger.info(
-            "{} the number of tsfile in level {} is {}",
-            storageGroupName,
-            i,
-            currLevelTsFileResource.size());
         if (currMaxFileNumInEachLevel <= currLevelTsFileResource.size()) {
           // just merge part of the file
           isMergeExecutedInCurrentTask = true;
@@ -694,8 +689,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             List<TsFileResource> toMergeTsFiles =
                 mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
-            logger.info(
-                "{} compacting {} tsfile in level {}", storageGroupName, toMergeTsFiles.size(), i);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
               mergeResource.setMerging(true);
