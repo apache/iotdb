@@ -75,7 +75,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
     if (logger.isDebugEnabled()) {
-      logger.debug("{} is opened.", file.getName());
+      logger.debug("{} is opened", file.getName());
     }
     this.file = file;
     this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
