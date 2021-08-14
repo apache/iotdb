@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.cluster.client.async;
 
-import org.apache.iotdb.cluster.client.async.AsyncMetaHeartbeatClient.FactoryAsync;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -51,7 +49,8 @@ public class AsyncMetaHeartbeatClientTest {
 
   @Test
   public void test() throws IOException {
-    FactoryAsync factoryAsync = new FactoryAsync(new Factory());
+    AsyncMetaHeartbeatClient.Factory factoryAsync =
+        new AsyncMetaHeartbeatClient.Factory(new TBinaryProtocol.Factory());
     AsyncClient asyncClient = factoryAsync.getAsyncClient(TestUtils.getNode(0), null);
     Assert.assertEquals(
         "AsyncMetaHeartbeatClient{node=Node(internalIp:192.168.0.0, metaPort:9003, "

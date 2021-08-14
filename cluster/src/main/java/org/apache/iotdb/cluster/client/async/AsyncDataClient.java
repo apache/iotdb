@@ -25,7 +25,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
-
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.async.TAsyncMethodCall;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -98,9 +97,9 @@ public class AsyncDataClient extends AsyncClient {
     ___currentMethod = null;
   }
 
-  public static class FactoryAsync extends AsyncClientFactory {
+  public static class Factory extends AsyncClientFactory {
 
-    public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
 

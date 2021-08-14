@@ -26,7 +26,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
-
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TSocket;
@@ -94,11 +93,11 @@ public class SyncDataClient extends Client implements Closeable {
     putBack();
   }
 
-  public static class FactorySync implements SyncClientFactory {
+  public static class Factory implements SyncClientFactory {
 
     private TProtocolFactory protocolFactory;
 
-    public FactorySync(TProtocolFactory protocolFactory) {
+    public Factory(TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
 

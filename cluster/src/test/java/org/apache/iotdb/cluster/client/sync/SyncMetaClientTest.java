@@ -4,13 +4,11 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient.Factory;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.rpc.TSocketWrapper;
-
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -41,7 +39,8 @@ public class SyncMetaClientTest {
     listenThread.start();
 
     try {
-      SyncClientPool syncClientPool = new SyncClientPool(new FactorySync(new Factory()));
+      SyncClientPool syncClientPool =
+          new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
       SyncMetaClient client;
       client = (SyncMetaClient) syncClientPool.getClient(node);
 
@@ -84,7 +83,8 @@ public class SyncMetaClientTest {
     listenThread.start();
 
     try {
-      SyncClientPool syncClientPool = new SyncClientPool(new FactorySync(new Factory()));
+      SyncClientPool syncClientPool =
+          new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
       SyncMetaClient clientOut;
       try (SyncMetaClient clientIn = (SyncMetaClient) syncClientPool.getClient(node); ) {
         assertEquals(node, clientIn.getNode());

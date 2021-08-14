@@ -21,13 +21,13 @@ package org.apache.iotdb.cluster.client;
 
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.Factory;
 import org.apache.iotdb.cluster.client.sync.SyncClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 
@@ -45,16 +45,18 @@ public class DataClientProvider {
 
   public DataClientProvider(TProtocolFactory factory) {
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      dataSyncClientPool = new SyncClientPool(new SyncDataClient.FactorySync(factory));
+      dataSyncClientPool = new SyncClientPool(new SyncDataClient.Factory(factory));
     } else {
-      dataAsyncClientPool = new AsyncClientPool(new FactoryAsync(factory));
+      dataAsyncClientPool = new AsyncClientPool(new Factory(factory));
     }
   }
 
+  @TestOnly
   AsyncClientPool getDataAsyncClientPool() {
     return dataAsyncClientPool;
   }
 
+  @TestOnly
   SyncClientPool getDataSyncClientPool() {
     return dataSyncClientPool;
   }
@@ -66,7 +68,7 @@ public class DataClientProvider {
    * @param timeout timeout threshold of connection
    */
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
+    AsyncDataClient client = (AsyncDataClient) dataAsyncClientPool.getClient(node);
     if (client == null) {
       throw new IOException("can not get client for node=" + node);
     }
@@ -85,7 +87,7 @@ public class DataClientProvider {
    * @param timeout timeout threshold of connection
    */
   public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
-    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
+    SyncDataClient client = (SyncDataClient) dataSyncClientPool.getClient(node);
     if (client == null) {
       throw new TException("can not get client for node=" + node);
     }

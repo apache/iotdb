@@ -68,7 +68,6 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
-import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.server.monitor.Timer;
@@ -96,7 +95,6 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
@@ -234,10 +232,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) {
     super(
         "Meta",
-        new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
+        new AsyncClientPool(new AsyncMetaClient.Factory(factory)),
+        new SyncClientPool(new SyncMetaClient.Factory(factory)),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.Factory(factory)),
+        new SyncClientPool(new SyncMetaHeartbeatClient.Factory(factory)));
     allNodes = new PartitionGroup();
     initPeerMap();
 
@@ -252,7 +250,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     loadIdentifier();
     allNodes.add(thisNode);
 
-    Factory dataMemberFactory = new Factory(factory, this);
+    DataGroupMember.Factory dataMemberFactory = new DataGroupMember.Factory(factory, this);
 
     startUpStatus = getNewStartUpStatus();
 

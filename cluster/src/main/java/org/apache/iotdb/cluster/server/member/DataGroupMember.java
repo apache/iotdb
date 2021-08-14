@@ -95,7 +95,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,10 +192,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getId()
             + "",
-        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
+        new AsyncClientPool(new AsyncDataClient.Factory(factory)),
+        new SyncClientPool(new SyncDataClient.Factory(factory)),
+        new AsyncClientPool(new AsyncDataHeartbeatClient.Factory(factory)),
+        new SyncClientPool(new SyncDataHeartbeatClient.Factory(factory)),
         new AsyncClientPool(new SingleManagerFactory(factory)));
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;

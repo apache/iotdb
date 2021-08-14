@@ -24,7 +24,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
-
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 
@@ -53,9 +52,9 @@ public class AsyncMetaHeartbeatClient extends AsyncMetaClient {
     this.pool = pool;
   }
 
-  public static class FactoryAsync extends AsyncClientFactory {
+  public static class Factory extends AsyncClientFactory {
 
-    public FactoryAsync(TProtocolFactory protocolFactory) {
+    public Factory(TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
 

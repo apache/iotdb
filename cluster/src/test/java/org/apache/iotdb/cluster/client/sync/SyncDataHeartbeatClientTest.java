@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient.FactorySync;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
@@ -51,7 +49,8 @@ public class SyncDataHeartbeatClientTest {
     listenThread.start();
 
     try {
-      FactorySync factoryAsync = new FactorySync(new Factory());
+      SyncDataHeartbeatClient.Factory factoryAsync =
+          new SyncDataHeartbeatClient.Factory(new Factory());
       SyncDataHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
           "SyncHeartbeatDataClient{node=Node(internalIp:localhost, metaPort:0, nodeIdentifier:0,"

@@ -18,17 +18,17 @@
  */
 package org.apache.iotdb.db.conf;
 
+import com.google.common.net.InetAddresses;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -812,6 +812,9 @@ public class IoTDBDescriptor {
 
       // set tsfile-format config
       loadTsFileProps(properties);
+
+      // make RPCTransportFactory taking effect.
+      RpcTransportFactory.reInit();
 
       // UDF
       loadUDFProps(properties);

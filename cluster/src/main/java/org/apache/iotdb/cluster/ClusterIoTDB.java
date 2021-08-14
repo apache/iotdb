@@ -247,59 +247,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   public void activeStartNodeMode() {
     try {
-      stopRaftInfoReport();
-
-      startServerCheck();
-      preStartCustomize();
-
-      iotdb.active();
-      JMXService.registerMBean(this, mbeanName);
-      // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
-      // cluster moduel.
-      // TODO fixme it is better to remove coordinator out of metaGroupEngine
-
-      registerManager.register(metaGroupEngine);
-      registerManager.register(dataGroupEngine);
-
-      // rpc service initialize
-      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupEngine);
-        MetaRaftHeartBeatService.getInstance().initAsyncedServiceImpl(metaAsyncService);
-        MetaRaftService.getInstance().initAsyncedServiceImpl(metaAsyncService);
-        DataRaftService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
-        DataRaftHeartBeatService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
-      } else {
-        MetaSyncService syncService = new MetaSyncService(metaGroupEngine);
-        MetaRaftHeartBeatService.getInstance().initSyncedServiceImpl(syncService);
-        MetaRaftService.getInstance().initSyncedServiceImpl(syncService);
-        DataRaftService.getInstance().initSyncedServiceImpl(dataGroupEngine);
-        DataRaftHeartBeatService.getInstance().initSyncedServiceImpl(dataGroupEngine);
-      }
-      // start RPC service
-      logger.info("start Meta Heartbeat RPC service... ");
-      registerManager.register(MetaRaftHeartBeatService.getInstance());
-      // TODO: better to start the Meta RPC service untill the heartbeatservice has elected the
-      // leader.
-      // and quorum of followers have caught up.
-      logger.info("start Meta RPC service... ");
-      registerManager.register(MetaRaftService.getInstance());
-
+      preInitCluster();
       metaGroupEngine.buildCluster();
-      logger.info("start Data Heartbeat RPC service... ");
-      registerManager.register(DataRaftHeartBeatService.getInstance());
-      logger.info("start Data RPC service... ");
-      registerManager.register(DataRaftService.getInstance());
-      // RPC based DBA API
-      registerManager.register(ClusterInfoServer.getInstance());
-      // JMX based DBA API
-      registerManager.register(ClusterMonitor.INSTANCE);
-      // we must wait until the metaGroup established.
-      // So that the ClusterRPCService can work.
-      ClusterTSServiceImpl clusterRPCServiceImpl = new ClusterTSServiceImpl();
-      clusterRPCServiceImpl.setCoordinator(coordinator);
-      clusterRPCServiceImpl.setExecutor(metaGroupEngine);
-      ClusterRPCService.getInstance().initSyncedServiceImpl(clusterRPCServiceImpl);
-      registerManager.register(ClusterRPCService.getInstance());
+      postInitCluster();
+      startClientRPC();
     } catch (StartupException
         | StartUpCheckFailureException
         | ConfigInconsistentException
@@ -309,33 +260,84 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
+  private void preInitCluster() throws StartupException {
+    stopRaftInfoReport();
+    startServerCheck();
+    preStartCustomize();
+    iotdb.active();
+    JMXService.registerMBean(this, mbeanName);
+    // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
+    // cluster moduel.
+    // TODO fixme it is better to remove coordinator out of metaGroupEngine
+
+    registerManager.register(metaGroupEngine);
+    registerManager.register(dataGroupEngine);
+
+    // rpc service initialize
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      MetaAsyncService metaAsyncService = new MetaAsyncService(metaGroupEngine);
+      MetaRaftHeartBeatService.getInstance().initAsyncedServiceImpl(metaAsyncService);
+      MetaRaftService.getInstance().initAsyncedServiceImpl(metaAsyncService);
+      DataRaftService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
+      DataRaftHeartBeatService.getInstance().initAsyncedServiceImpl(dataGroupEngine);
+    } else {
+      MetaSyncService syncService = new MetaSyncService(metaGroupEngine);
+      MetaRaftHeartBeatService.getInstance().initSyncedServiceImpl(syncService);
+      MetaRaftService.getInstance().initSyncedServiceImpl(syncService);
+      DataRaftService.getInstance().initSyncedServiceImpl(dataGroupEngine);
+      DataRaftHeartBeatService.getInstance().initSyncedServiceImpl(dataGroupEngine);
+    }
+    // start RPC service
+    logger.info("start Meta Heartbeat RPC service... ");
+    registerManager.register(MetaRaftHeartBeatService.getInstance());
+    // TODO: better to start the Meta RPC service untill the heartbeatservice has elected the
+    // leader.
+    // and quorum of followers have caught up.
+    logger.info("start Meta RPC service... ");
+    registerManager.register(MetaRaftService.getInstance());
+  }
+
+  private void postInitCluster() throws StartupException, QueryProcessException {
+    logger.info("start Data Heartbeat RPC service... ");
+    registerManager.register(DataRaftHeartBeatService.getInstance());
+    logger.info("start Data RPC service... ");
+    registerManager.register(DataRaftService.getInstance());
+    // RPC based DBA API
+    registerManager.register(ClusterInfoServer.getInstance());
+    // JMX based DBA API
+    registerManager.register(ClusterMonitor.INSTANCE);
+  }
+
+  private void startClientRPC() throws QueryProcessException, StartupException {
+    // we must wait until the metaGroup established.
+    // So that the ClusterRPCService can work.
+    ClusterTSServiceImpl clusterRPCServiceImpl = new ClusterTSServiceImpl();
+    clusterRPCServiceImpl.setCoordinator(coordinator);
+    clusterRPCServiceImpl.setExecutor(metaGroupEngine);
+    ClusterRPCService.getInstance().initSyncedServiceImpl(clusterRPCServiceImpl);
+    registerManager.register(ClusterRPCService.getInstance());
+  }
+
   public void activeAddNodeMode() {
-    //    try {
-    //      long startTime = System.currentTimeMillis();
-    //      metaServer = new RaftTSMetaServiceImpl();
-    //      preStartCustomize();
-    //      metaServer.start();
-    //      metaServer.joinCluster();
-    //      dataEngine.pullSnapshots();
-    //      // Currently, we do not register ClusterInfoService as a JMX Bean,
-    //      // so we use startService() rather than start()
-    //      ClusterInfoServer.getInstance().startService();
-    //      // JMX based DBA API
-    //      registerManager.register(ClusterMonitor.INSTANCE);
-    //      // finally, we start the RPC service
-    //      registerManager.register(ClusterRPCService.getInstance());
-    //      logger.info(
-    //          "Adding this node {} to cluster costs {} ms",
-    //          metaServer.getMember().getThisNode(),
-    //          (System.currentTimeMillis() - startTime));
-    //    } catch (TTransportException
-    //        | StartupException
-    //        | QueryProcessException
-    //        | StartUpCheckFailureException
-    //        | ConfigInconsistentException e) {
-    //      stop();
-    //      logger.error("Fail to join cluster", e);
-    //    }
+    try {
+      long startTime = System.currentTimeMillis();
+
+      preInitCluster();
+      metaGroupEngine.joinCluster();
+      postInitCluster();
+      dataGroupEngine.pullSnapshots();
+      startClientRPC();
+      logger.info(
+          "Adding this node {} to cluster costs {} ms",
+          thisNode,
+          (System.currentTimeMillis() - startTime));
+    } catch (StartupException
+        | QueryProcessException
+        | StartUpCheckFailureException
+        | ConfigInconsistentException e) {
+      stop();
+      logger.error("Fail to join cluster", e);
+    }
   }
 
   private void startServerCheck() throws StartupException {
