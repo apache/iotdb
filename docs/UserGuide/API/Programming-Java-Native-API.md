@@ -290,7 +290,7 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
+For examples of aligned timeseries and measurement template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
 
@@ -412,7 +412,7 @@ void createSchemaTemplate(
       List<CompressionType> compressors)
 ```
 
-Create a device template, the param description at above
+Create a measurement template, the param description at above
 
 ``` 
 
@@ -420,7 +420,7 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 ```
 
-Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+Set the measurement template named 'templateName' at path 'prefixPath'. You should firstly create the template using
 
 ```
 
