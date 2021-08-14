@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.sender.transfer;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -37,14 +38,9 @@ import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recover.SyncSenderLogger;
 import org.apache.iotdb.db.utils.SyncUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -134,8 +130,6 @@ public class SyncClient implements ISyncClient {
   private SyncClient() {
     init();
   }
-
-  private TConfiguration tConfiguration = TConfigurationConst.defaultTConfiguration;
 
   public static SyncClient getInstance() {
     return InstanceHolder.INSTANCE;
@@ -297,9 +291,7 @@ public class SyncClient implements ISyncClient {
     RpcTransportFactory.setDefaultBufferCapacity(ioTDBConfig.getThriftDefaultBufferSize());
     RpcTransportFactory.setThriftMaxFrameSize(ioTDBConfig.getThriftMaxFrameSize());
     try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              TSocketWrapper.wrap(tConfiguration, serverIp, serverPort, TIMEOUT_MS));
+      transport = RpcTransportFactory.INSTANCE.getTransport(serverIp, serverPort, TIMEOUT_MS);
       TProtocol protocol;
       if (ioTDBConfig.isRpcThriftCompressionEnable()) {
         protocol = new TCompactProtocol(transport);
@@ -595,7 +587,7 @@ public class SyncClient implements ISyncClient {
   }
 
   /**
-   * Make snapshot<hard link> for new tsfile and its .restore file.
+   * Make snapshot hard link for new tsfile and its .restore file.
    *
    * @param file new tsfile to be synced
    */

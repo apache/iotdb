@@ -24,11 +24,9 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.Closeable;
@@ -45,22 +43,21 @@ public class SyncDataClient extends Client implements Closeable {
   Node node;
   SyncClientPool pool;
 
-  public SyncDataClient(TProtocol prot) {
+  SyncDataClient(TProtocol prot) {
     super(prot);
   }
 
-  public SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  private SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
 
     // the difference of the two clients lies in the port
     super(
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    node.getInternalIp(),
-                    node.getDataPort(),
-                    ClusterConstant.getConnectionTimeoutInMS()))));
+                node.getInternalIp(),
+                node.getDataPort(),
+                ClusterConstant.getConnectionTimeoutInMS())));
+
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

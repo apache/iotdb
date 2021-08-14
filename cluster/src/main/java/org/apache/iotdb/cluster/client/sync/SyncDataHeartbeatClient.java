@@ -23,9 +23,7 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -40,11 +38,9 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
     super(
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    node.getInternalIp(),
-                    node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-                    ClusterConstant.getConnectionTimeoutInMS()))));
+                node.getInternalIp(),
+                node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+                ClusterConstant.getConnectionTimeoutInMS())));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

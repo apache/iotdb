@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc;
 
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
@@ -46,6 +47,15 @@ public class RpcTransportFactory extends TTransportFactory {
   @Override
   public TTransport getTransport(TTransport trans) throws TTransportException {
     return inner.getTransport(trans);
+  }
+
+  public TTransport getTransportWithNoTimeout(String ip, int port) throws TTransportException {
+    return inner.getTransport(new TSocket(TConfigurationConst.defaultTConfiguration, ip, port));
+  }
+
+  public TTransport getTransport(String ip, int port, int timeout) throws TTransportException {
+    return inner.getTransport(
+        new TSocket(TConfigurationConst.defaultTConfiguration, ip, port, timeout));
   }
 
   public static boolean isUseSnappy() {

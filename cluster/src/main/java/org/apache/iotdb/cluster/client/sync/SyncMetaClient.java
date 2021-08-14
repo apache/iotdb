@@ -24,10 +24,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.Closeable;
@@ -47,16 +45,14 @@ public class SyncMetaClient extends Client implements Closeable {
     super(prot);
   }
 
-  public SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  private SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
       throws TTransportException {
     super(
         protocolFactory.getProtocol(
             RpcTransportFactory.INSTANCE.getTransport(
-                new TSocket(
-                    TConfigurationConst.defaultTConfiguration,
-                    node.getInternalIp(),
-                    node.getMetaPort(),
-                    ClusterConstant.getConnectionTimeoutInMS()))));
+                node.getInternalIp(),
+                node.getMetaPort(),
+                ClusterConstant.getConnectionTimeoutInMS())));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();
