@@ -23,13 +23,9 @@
 
 ### Problem scenario
 
-An automotive equipment provider provides an automotive assembler with its own on-board sensor kit, which consists of around 30 individual sensors of the same model, that is, each component contains the same individual sensor.The total number of supported components is about 1 million, and the equipment provider needs to store, query, and analyze the data collected by these sensors to achieve commercial value.
+When faced with a large number of entities of the same type and the measurements of these entities are the same, registering time series for each measurent will result in the following problems. On the one hand, the metadata of time series will occupy a lot of memory resources; on the other hand, the maintenance of a large number of time series will be very complex.
 
-If we create timeseries for each measurement in this scenario, according to practical experience, the memory usage of each measurement node is about 300 bytes, and the total memory usage will reach 9GB.In the case of good I/O performance, IoTDB metadata occupies only 10% of the total heap memory. In this scenario, the total physical memory size is required to reach 90GB.
-
-Thinking deeply about the actual production context, the key point is that "these components are all of the same model", which means that the type of sensor in each component is exactly the same. Creating and saving time series for each sensor in each component is actually a kind of memory redundancy.
-
-A reasonable way is to save precious memory by storing only one copy of the same metadata. This is what measurement templates do.
+In order to enable different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements, IoTDB introduces the measurement template function.
 
 ### Concept
 
