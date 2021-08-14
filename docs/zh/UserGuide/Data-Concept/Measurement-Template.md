@@ -72,4 +72,6 @@ void createSchemaTemplate(
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
+挂载好物理量模板后，即可进行数据的写入。例如存储组为root.sg，模板t1(s1,s2)被挂载到了节点root.sg.car，那么可直接向时间序列（如root.sg.car.d1.s1和root.sg.car.d1.s2）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+
 使用物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。

@@ -75,6 +75,6 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 ```
 
-
+After setting measurement template，data could be inserted directly to the according timeseries. For example, suppose there's storage group root.sg and template t1(s1,s2) has been set to root.sg.car，then timeseries like root.sg.car.d1.s1 and root.sg.car.d1.s2 are available and data can be inserted。
 
 For examples of measurement template, you can refer to example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java
