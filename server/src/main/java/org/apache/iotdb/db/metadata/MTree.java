@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalParameterOfPathException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -42,6 +40,8 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -91,13 +91,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.LOSS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_DEV;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MAX_TIME;
-import static org.apache.iotdb.db.conf.IoTDBConstant.SDT_COMP_MIN_TIME;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -285,7 +280,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    MetaFormatUtils.checkTimeseries(path);
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
@@ -324,9 +319,7 @@ public class MTree implements Serializable {
           path.getFullPath() + " ( which is incompatible with template )");
     }
 
-    if (props != null && props.containsKey(LOSS) && props.get(LOSS).equals(SDT)) {
-      checkSDTFormat(path.getFullPath(), props);
-    }
+    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
     String leafName = nodeNames[nodeNames.length - 1];
 
@@ -375,10 +368,8 @@ public class MTree implements Serializable {
     if (deviceNodeNames.length <= 1 || !deviceNodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(devicePath.getFullPath());
     }
-    checkTimeseries(devicePath.getFullPath());
-    for (String measurement : measurements) {
-      checkTimeseries(measurement);
-    }
+    MetaFormatUtils.checkTimeseries(devicePath);
+    MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     IMNode cur = root;
     boolean hasSetStorageGroup = false;
     // e.g, devicePath = root.sg.d1, create internal nodes and set cur to d1 node
@@ -430,61 +421,6 @@ public class MTree implements Serializable {
               null);
       entityMNode.addChild(leafName, measurementMNode);
     }
-  }
-
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
-      throw new IllegalPathException(
-          String.format("The timeseries name contains unsupported character. %s", timeseries));
-    }
-  }
-
-  // check if sdt parameters are valid
-  private void checkSDTFormat(String path, Map<String, String> props)
-      throws IllegalParameterOfPathException {
-    if (!props.containsKey(SDT_COMP_DEV)) {
-      throw new IllegalParameterOfPathException("SDT compression deviation is required", path);
-    }
-
-    try {
-      double d = Double.parseDouble(props.get(SDT_COMP_DEV));
-      if (d < 0) {
-        throw new IllegalParameterOfPathException(
-            "SDT compression deviation cannot be negative", path);
-      }
-    } catch (NumberFormatException e) {
-      throw new IllegalParameterOfPathException("SDT compression deviation formatting error", path);
-    }
-
-    long compMinTime = sdtCompressionTimeFormat(SDT_COMP_MIN_TIME, props, path);
-    long compMaxTime = sdtCompressionTimeFormat(SDT_COMP_MAX_TIME, props, path);
-
-    if (compMaxTime <= compMinTime) {
-      throw new IllegalParameterOfPathException(
-          "SDT compression maximum time needs to be greater than compression minimum time", path);
-    }
-  }
-
-  private long sdtCompressionTimeFormat(String compTime, Map<String, String> props, String path)
-      throws IllegalParameterOfPathException {
-    boolean isCompMaxTime = compTime.equals(SDT_COMP_MAX_TIME);
-    long time = isCompMaxTime ? Long.MAX_VALUE : 0;
-    String s = isCompMaxTime ? "maximum" : "minimum";
-    if (props.containsKey(compTime)) {
-      try {
-        time = Long.parseLong(props.get(compTime));
-        if (time < 0) {
-          throw new IllegalParameterOfPathException(
-              String.format("SDT compression %s time cannot be negative", s), path);
-        }
-      } catch (IllegalParameterOfPathException e) {
-        throw new IllegalParameterOfPathException(
-            String.format("SDT compression %s time formatting error", s), path);
-      }
-    } else {
-      logger.info("{} enabled SDT but did not set compression {} time", path, s);
-    }
-    return time;
   }
 
   /**
@@ -562,7 +498,7 @@ public class MTree implements Serializable {
    */
   void setStorageGroup(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    checkStorageGroup(path.getFullPath());
+    MetaFormatUtils.checkStorageGroup(path.getFullPath());
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -607,15 +543,6 @@ public class MTree implements Serializable {
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         cur.addChild(nodeNames[i], storageGroupMNode);
       }
-    }
-  }
-
-  private void checkStorageGroup(String storageGroup) throws IllegalPathException {
-    if (!IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(storageGroup).matches()) {
-      throw new IllegalPathException(
-          String.format(
-              "The storage group name can only be characters, numbers and underscores. %s",
-              storageGroup));
     }
   }
 

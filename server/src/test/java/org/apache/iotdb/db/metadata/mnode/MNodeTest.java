@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.junit.Before;
