@@ -386,19 +386,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-      return new IoTDBJDBCResultSet(
-          stmt,
-          columnNameList,
-          columnTypeList,
-          columnNameIndex,
-          false,
-          client,
-          null,
-          0,
-          sessionId,
-          null,
-          (long) 60 * 1000,
-          true);
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
