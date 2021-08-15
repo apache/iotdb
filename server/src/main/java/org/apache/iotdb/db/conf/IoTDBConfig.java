@@ -553,7 +553,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 100;
+  private int concurrentWritingTimePartition = Integer.MAX_VALUE;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -710,10 +710,6 @@ public class IoTDBConfig {
 
   public int getConcurrentWritingTimePartition() {
     return concurrentWritingTimePartition;
-  }
-
-  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
-    this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
