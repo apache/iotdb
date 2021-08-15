@@ -27,6 +27,10 @@
 
 为了实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理，IoTDB引入物理量模板功能。
 
+下图展示了一个燃油车场景的数据模型，各地区的多台燃油车的速度、油量、加速度、角速度四个物理量将会被采集，显然这些燃油车实体具备相同的物理量。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_without_template.png?raw=true" alt="example without template">
+
 ### 概念定义
 
 物理量模板（Measurement template，v0.13 起支持）
@@ -36,6 +40,10 @@
 将物理量模版挂载在树形数据模式的任意节点上，表示该节点下的所有实体具有相同的物理量集合。
 
 目前每一条路径节点仅允许挂载一个物理量模板，即当一个节点被挂载物理量模板后，它的祖先节点和后代节点都不能再挂载物理量模板。实体将使用其自身或祖先的物理量模板作为有效模板。
+
+使用物理量模板后，问题背景中示例的燃油车数据模型将会转变至下图所示的形式。所有的物理量元数据仅在模板中保存一份，所有的实体共享模板中的元数据。
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
 ### 使用
 

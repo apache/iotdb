@@ -27,6 +27,10 @@ When faced with a large number of entities of the same type and the measurements
 
 In order to enable different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements, IoTDB introduces the measurement template function.
 
+The following picture illustrates the data model of petrol vehicle scenario. The velocity, fuel amount, acceleration, and angular velocity of each petrol vehicle spread over cities will be collected. Obviously, the measurements of single petrol vehicle are the same as those of another.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_without_template.png?raw=true" alt="example without template">
+
 ### Concept
 
 Supported from v0.13
@@ -36,6 +40,10 @@ In the actual scenario, many entities collect the same measurements, that is, th
 Currently you can only set one measurement template on a specific path. If there's one measurement template on one node, it will be forbidden to set any measurement template on the ancestors or descendants of this node. An entity will use it's own measurement template or ancestor's measurement template.
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
+
+After applying measurement template, the following picture illustrates the new data model of petrol vehicle scenario. All petrol vehicles share the schemas defined in template. There are no redundancy storage of measurement schemas.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
 ### Usage
 
