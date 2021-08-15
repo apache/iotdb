@@ -1,0 +1,70 @@
+[
+  {
+    "group": "iotdb",
+    "name": "iotdb",
+    "className": "org.apache.zeppelin.iotdb.IoTDBInterpreter",
+    "properties": {
+      "iotdb.host": {
+        "envName": null,
+        "propertyName": "iotdb.host",
+        "defaultValue": "127.0.0.1",
+        "description": "IoTDB server host to connect to, Default = 127.0.0.1",
+        "type": "string"
+      },
+      "iotdb.port": {
+        "envName": null,
+        "propertyName": "iotdb.port",
+        "defaultValue": "6667",
+        "description": "IoTDB server port to connect to, Default = 6667",
+        "type": "number"
+      },
+      "iotdb.username": {
+        "envName": null,
+        "propertyName": "iotdb.username",
+        "defaultValue": "root",
+        "description": "Username for authentication, Default = 'root'",
+        "type": "string"
+      },
+      "iotdb.password": {
+        "envName": null,
+        "propertyName": "iotdb.password",
+        "defaultValue": "root",
+        "description": "Password for authentication, Default = 'root'",
+        "type": "password"
+      },
+      "iotdb.fetchSize": {
+        "envName": null,
+        "propertyName": "iotdb.fetchSize",
+        "defaultValue": "10000",
+        "description": "query default fetch size. Default = 10000",
+        "type": "number"
+      },
+      "iotdb.zoneId": {
+        "envName": null,
+        "propertyName": "iotdb.zoneId",
+        "defaultValue": null,
+        "description": "time zone id of data point. Default = null",
+        "type": "string"
+      },
+      "iotdb.enable.rpc.compression": {
+        "envName": null,
+        "propertyName": "iotdb.enable.rpc.compression",
+        "defaultValue": false,
+        "description": "whether enable rpc compression. Default = null",
+        "type": "checkbox"
+      },
+      "iotdb.time.display.type": {
+        "envName": null,
+        "propertyName": "iotdb.time.display.type",
+        "defaultValue": "default",
+        "description": "the time format to display. Default = default",
+        "type": "string"
+      }
+    },
+    "editor": {
+      "language": "sql",
+      "editOnDblClick": false,
+      "completionKey": "TAB"
+    }
+  }
+]
