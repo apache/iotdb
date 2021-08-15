@@ -59,7 +59,11 @@ public class IoTDBSessionTimeoutIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Thread.sleep(SESSION_TIMEOUT + 10000);
+      try {
+        Thread.sleep(SESSION_TIMEOUT + 10000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
       statement.execute("show storage group");
       fail("session did not timeout as expected");
     } catch (IoTDBSQLException e) {

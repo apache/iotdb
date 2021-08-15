@@ -78,6 +78,7 @@ public class SessionConnection {
   private EndPoint endPoint;
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
+  private Random random = new Random();
 
   // TestOnly
   public SessionConnection() {}
@@ -747,7 +748,6 @@ public class SessionConnection {
 
   private boolean reconnect() {
     boolean connectedSuccess = false;
-    Random random = new Random();
     for (int i = 1; i <= Config.RETRY_NUM; i++) {
       if (transport != null) {
         transport.close();
