@@ -89,9 +89,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
+    // this.identifier contains the storage group name + tsfile name.
     FLUSH_BUFFER_THREAD_POOL =
-        IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            "Flush-WAL-Thread-" + SystemFileFactory.INSTANCE.getFile(logDirectory).getName());
+        IoTDBThreadPoolFactory.newSingleThreadExecutor("Flush-WAL-Thread-" + this.identifier);
   }
 
   @Override
