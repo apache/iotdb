@@ -382,7 +382,8 @@ public class StorageGroupProcessor {
             .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
 
     ScheduledExecutorService executorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("WAL-trimTask");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            String.format("WAL-trimTask-%s/%s", logicalStorageGroupName, virtualStorageGroupId));
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
