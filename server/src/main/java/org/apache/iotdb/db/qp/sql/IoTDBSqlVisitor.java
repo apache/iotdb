@@ -156,6 +156,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListRolePrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MergeContext;
@@ -976,24 +977,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLoadFiles(LoadFilesContext ctx) {
-    if (ctx.autoCreateSchema() != null) {
-      if (ctx.autoCreateSchema().INT() != null) {
-        return new LoadFilesOperator(
+    LoadFilesOperator loadFilesOperator =
+        new LoadFilesOperator(
             new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            Integer.parseInt(ctx.autoCreateSchema().INT().getText()));
-      } else {
-        return new LoadFilesOperator(
-            new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-      }
-    } else {
-      return new LoadFilesOperator(
-          new File(removeStringQuote(ctx.stringLiteral().getText())),
-          true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+            true,
+            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true);
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
     }
+    return loadFilesOperator;
   }
 
   @Override
@@ -2170,6 +2163,31 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
                   + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
                   + "refer to user document for more info.",
               timestampStr));
+    }
+  }
+
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param operator the result operator, setting by clause context
+   * @param ctx context of property statement
+   */
+  private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
+    if (ctx.AUTOREGISTER() != null) {
+      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else if (ctx.SGLEVEL() != null) {
+      operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
+    } else if (ctx.VERIFY() != null) {
+      operator.setVerifyMetadata(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 }

@@ -130,6 +130,7 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -1045,6 +1046,12 @@ public class PlanExecutor implements IPlanExecutor {
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
         reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+        if (plan.getVerifyMetadata()) {
+          loadNewTsFileVerifyMetadata(reader);
+        }
+      } catch (IOException e) {
+        logger.warn("can not get timeseries metadata from {}.", file.getAbsoluteFile());
+        throw new QueryProcessException(e.getMessage());
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);
@@ -1080,6 +1087,35 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (Exception e) {
       throw new QueryProcessException(
           String.format("Cannot load file %s because %s", file.getAbsolutePath(), e.getMessage()));
+    }
+  }
+
+  private void loadNewTsFileVerifyMetadata(TsFileSequenceReader tsFileSequenceReader)
+      throws MetadataException, QueryProcessException, IOException {
+    Map<String, List<TimeseriesMetadata>> metadataSet =
+        tsFileSequenceReader.getAllTimeseriesMetadata();
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry : metadataSet.entrySet()) {
+      String deviceId = entry.getKey();
+      PartialPath devicePath = new PartialPath(deviceId);
+      if (!IoTDB.metaManager.isPathExist(devicePath)) {
+        continue;
+      }
+      for (TimeseriesMetadata metadata : entry.getValue()) {
+        PartialPath fullPath =
+            new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
+        if (IoTDB.metaManager.isPathExist(fullPath)) {
+          TSDataType dataType = IoTDB.metaManager.getSeriesSchema(fullPath).getType();
+          if (dataType != metadata.getTSDataType()) {
+            throw new QueryProcessException(
+                fullPath.getFullPath()
+                    + " is "
+                    + metadata.getTSDataType().name()
+                    + " in the loading TsFile but is "
+                    + dataType.name()
+                    + " in IoTDB.");
+          }
+        }
+      }
     }
   }
 
