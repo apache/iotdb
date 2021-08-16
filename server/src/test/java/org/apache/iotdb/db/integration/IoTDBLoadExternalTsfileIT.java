@@ -651,7 +651,7 @@ public class IoTDBLoadExternalTsfileIT {
   }
 
   @Test
-  public void loadTsFileTestWithMetadataCheck() throws Exception {
+  public void loadTsFileTestWithVerifyMetadata() throws Exception {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -724,7 +724,8 @@ public class IoTDBLoadExternalTsfileIT {
         hasError = true;
         assertTrue(
             e.getMessage()
-                .contains("loading tsfile metadata is inconsistent with existing timeseries."));
+                .contains(
+                    "because root.vehicle.d0.s0 is INT32 in the loading TsFile but is INT64 in IoTDB."));
       }
       assertTrue(hasError);
 
@@ -744,7 +745,8 @@ public class IoTDBLoadExternalTsfileIT {
         hasError = true;
         assertTrue(
             e.getMessage()
-                .contains("loading tsfile metadata is inconsistent with existing timeseries."));
+                .contains(
+                    "because root.test.d0.s0 is INT32 in the loading TsFile but is FLOAT in IoTDB."));
       }
       assertTrue(hasError);
 
