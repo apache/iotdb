@@ -451,7 +451,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    Field[] fields = new Field[1];
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
