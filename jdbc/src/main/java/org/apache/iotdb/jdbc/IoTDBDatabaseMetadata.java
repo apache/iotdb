@@ -357,8 +357,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[21];
       fields[0] = new Field("", "TYPE_CAT", "TEXT");
       fields[1] = new Field("", "TYPE_SCHEM", "TEXT");
@@ -386,24 +385,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -412,8 +407,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[8];
       fields[0] = new Field("", "SCOPE", "INT32");
       fields[1] = new Field("", "COLUMN_NAME", "TEXT");
@@ -429,25 +423,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -462,48 +451,45 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getCatalogs() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
     Field[] fields = new Field[1];
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
     List<List<Map>> bigpaths = new ArrayList<List<Map>>();
     ListDataSet dataSet = new ListDataSet();
-    while (rs.next()) {
-      List<Map> paths = new ArrayList<Map>();
-      Map<String, Object> m = new HashMap<>();
-      m.put("type", TSDataType.TEXT);
-      m.put("val", rs.getString(1));
-      paths.add(m);
-      bigpaths.add(paths);
-    }
-    addToDataSet(bigpaths, dataSet);
-    columnNameList.add("TYPE_CAT");
-    columnTypeList.add("TEXT");
-    columnNameIndex.put("TYPE_CAT", 0);
-    TSQueryDataSet tsdataset = null;
-    try {
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ")) {
+      while (rs.next()) {
+        List<Map> paths = new ArrayList<Map>();
+        Map<String, Object> m = new HashMap<>();
+        m.put("type", TSDataType.TEXT);
+        m.put("val", rs.getString(1));
+        paths.add(m);
+        bigpaths.add(paths);
+      }
+      addToDataSet(bigpaths, dataSet);
+      columnNameList.add("TYPE_CAT");
+      columnTypeList.add("TEXT");
+      columnNameIndex.put("TYPE_CAT", 0);
+      TSQueryDataSet tsdataset = null;
       tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
@@ -667,8 +653,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+    
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
     fields[1] = new Field("", "MAX_LEN", "INT32");
@@ -694,35 +679,33 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     bigproperties.add(properties);
     addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+    
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ")) {
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
   public ResultSet getColumnPrivileges(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
@@ -745,7 +728,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && columnNamePattern.length() > 0) {
       sql = sql + "." + columnNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
+    
     Field[] fields = new Field[8];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -775,50 +758,48 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i < 4) {
-          m.put("val", rs.getString(1));
-        } else if (i == 5) {
-          m.put("val", getUserName());
-        } else if (i == 6) {
-          m.put("val", "");
-        } else if (i == 7) {
-          m.put("val", "NO");
-        } else {
-          m.put("val", "");
-        }
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i < 4) {
+            m.put("val", rs.getString(1));
+          } else if (i == 5) {
+            m.put("val", getUserName());
+          } else if (i == 6) {
+            m.put("val", "");
+          } else if (i == 7) {
+            m.put("val", "NO");
+          } else {
+            m.put("val", "");
+          }
 
-        properties.add(m);
+          properties.add(m);
+        }
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -833,8 +814,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[14];
       fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
       fields[1] = new Field("", "PKTABLE_SCHEM", "TEXT");
@@ -855,24 +835,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -946,8 +922,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[14];
       fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
       fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
@@ -968,24 +943,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -1000,8 +971,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       java.lang.String functionNamePattern,
       java.lang.String columnNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery("show functions");
+    
     Field[] fields = new Field[17];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1049,52 +1019,49 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i == 2) {
-          m.put("val", rs.getString(1));
-        } else if (fields[i].getSqlType().equals("INT32")) {
-          m.put("val", 0);
-        } else {
-          m.put("val", "");
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery("show functions")) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i == 2) {
+            m.put("val", rs.getString(1));
+          } else if (fields[i].getSqlType().equals("INT32")) {
+            m.put("val", 0);
+          } else {
+            m.put("val", "");
+          }
+          properties.add(m);
         }
-        properties.add(m);
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
   public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
-    ResultSet rs = stmt.executeQuery("show functions");
+    
     Field[] fields = new Field[6];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1120,46 +1087,44 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i == 2) {
-          m.put("val", rs.getString(1));
-        } else if (i == 4) {
-          m.put("val", 0);
-        } else {
-          m.put("val", "");
-        }
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery("show functions")) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i == 2) {
+            m.put("val", rs.getString(1));
+          } else if (i == 4) {
+            m.put("val", 0);
+          } else {
+            m.put("val", "");
+          }
 
-        properties.add(m);
+          properties.add(m);
+        }
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -1172,8 +1137,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[14];
       fields[0] = new Field("", "PKTABLE_CAT", "TEXT");
       fields[1] = new Field("", "PKTABLE_SCHEM", "INT32");
@@ -1194,24 +1158,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -1220,8 +1180,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[14];
       fields[0] = new Field("", "TABLE_CAT", "TEXT");
       fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1242,24 +1201,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -1384,14 +1339,11 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getNumericFunctions() {
-    ResultSet resultSet = null;
-    Statement statement = null;
+  public String getNumericFunctions() throws SQLException {
     String result = "";
-    try {
-      statement = connection.createStatement();
+    try (Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show functions")) {
       StringBuilder str = new StringBuilder("");
-      resultSet = statement.executeQuery("show functions");
       List<String> listfunction = Arrays.asList("MAX_TIME", "MIN_TIME", "TIME_DIFFERENCE", "NOW");
       while (resultSet.next()) {
         if (listfunction.contains(resultSet.getString(1))) {
@@ -1403,17 +1355,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       if (result.length() > 0) {
         result = result.substring(0, result.length() - 1);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(resultSet, statement);
     }
     return result;
   }
 
   @Override
   public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-    Statement stmt = connection.createStatement();
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
@@ -1453,28 +1400,25 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       bigproperties.add(properties);
     }
     addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+    try (Statement stmt = connection.createStatement()) {
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -1483,8 +1427,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
 
       Field[] fields = new Field[20];
       fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
@@ -1512,24 +1455,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -1542,8 +1481,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[6];
       fields[0] = new Field("", "PROCEDURE_CAT", "TEXT");
       fields[1] = new Field("", "PROCEDURE_SCHEM", "TEXT");
@@ -1556,31 +1494,27 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
+    
   }
 
   @Override
   public ResultSet getPseudoColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = connection.createStatement();
     Field[] fields = new Field[12];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1628,28 +1562,25 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     bigproperties.add(properties);
     addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+    try (Statement stmt = connection.createStatement()) {
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -1679,8 +1610,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getSchemas() throws SQLException {
-    Statement stmt = this.connection.createStatement();
-    ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ");
+    
     Field[] fields = new Field[2];
     fields[0] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
@@ -1695,39 +1625,37 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        m.put("val", rs.getString(1));
-        properties.add(m);
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ")) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          m.put("val", rs.getString(1));
+          properties.add(m);
+        }
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -1741,7 +1669,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
-  public String getStringFunctions() {
+  public String getStringFunctions() throws SQLException {
     return getSystemFunctions();
   }
 
@@ -1751,8 +1679,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[4];
       fields[0] = new Field("", "TABLE_CAT", "TEXT");
       fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1763,24 +1690,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -1789,8 +1712,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[6];
       fields[0] = new Field("", "TABLE_CAT", "TEXT");
       fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1803,35 +1725,28 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
-  public String getSystemFunctions() {
+  public String getSystemFunctions() throws SQLException {
     String result = "";
-    Statement statement = null;
-    ResultSet resultSet = null;
-    try {
-      statement = connection.createStatement();
+    try (Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery("show functions")) {
       StringBuilder str = new StringBuilder("");
-      resultSet = statement.executeQuery("show functions");
       while (resultSet.next()) {
         str.append(resultSet.getString(1)).append(",");
       }
@@ -1839,10 +1754,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       if (result.length() > 0) {
         result = result.substring(0, result.length() - 1);
       }
-    } catch (Exception ex) {
-      ex.printStackTrace();
-    } finally {
-      close(resultSet, statement);
     }
     return result;
   }
@@ -1850,7 +1761,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
@@ -1865,7 +1775,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       sql = sql + "." + tableNamePattern;
     }
 
-    ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[8];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -1895,55 +1804,54 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i < 4) {
-          m.put("val", rs.getString(1));
-        } else if (i == 5) {
-          m.put("val", getUserName());
-        } else if (i == 6) {
-          m.put("val", "");
-        } else if (i == 7) {
-          m.put("val", "NO");
-        } else {
-          m.put("val", "");
-        }
+    
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i < 4) {
+            m.put("val", rs.getString(1));
+          } else if (i == 5) {
+            m.put("val", getUserName());
+          } else if (i == 6) {
+            m.put("val", "");
+          } else if (i == 7) {
+            m.put("val", "NO");
+          } else {
+            m.put("val", "");
+          }
 
-        properties.add(m);
+          properties.add(m);
+        }
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
+    
   }
 
   @Override
   public ResultSet getTableTypes() throws SQLException {
-    Statement stmt = this.connection.createStatement();
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
@@ -1959,35 +1867,31 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     columnNameList.add("TABLE_TYPE");
     columnTypeList.add("TEXT");
     columnNameIndex.put("TABLE_TYPE", 0);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+    try (Statement stmt = this.connection.createStatement()) {
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
   public ResultSet getColumns(
       String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW STORAGE GROUP";
     if (catalog != null && catalog.length() > 0) {
@@ -2010,7 +1914,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && columnNamePattern.length() > 0) {
       sql = sql + "." + columnNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[24];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -2073,100 +1976,82 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i < 4) {
-          m.put("val", rs.getString(1));
-        } else if (i == 4) {
-          m.put("val", getSQLType(fields[i].getSqlType()));
-        } else if (i == 6) {
-          m.put("val", getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 7) {
-          m.put("val", 0);
-        } else if (i == 8) {
-          m.put("val", getTypeScale(fields[i].getSqlType()));
-        } else if (i == 9) {
-          m.put("val", 10);
-        } else if (i == 10) {
-          m.put("val", 0);
-        } else if (i == 11) {
-          m.put("val", "");
-        } else if (i == 12) {
-          m.put("val", "");
-        } else if (i == 13) {
-          m.put("val", 0);
-        } else if (i == 14) {
-          m.put("val", 0);
-        } else if (i == 15) {
-          m.put("val", getTypePrecision(fields[i].getSqlType()));
-        } else if (i == 16) {
-          m.put("val", 1);
-        } else if (i == 17) {
-          m.put("val", "NO");
-        } else if (i == 18) {
-          m.put("val", "");
-        } else if (i == 19) {
-          m.put("val", "");
-        } else if (i == 20) {
-          m.put("val", "");
-        } else if (i == 21) {
-          m.put("val", 0);
-        } else if (i == 22) {
-          m.put("val", "NO");
-        } else if (i == 23) {
-          m.put("val", "NO");
-        } else {
-          m.put("val", "");
+
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i < 4) {
+            m.put("val", rs.getString(1));
+          } else if (i == 4) {
+            m.put("val", getSQLType(fields[i].getSqlType()));
+          } else if (i == 6) {
+            m.put("val", getTypePrecision(fields[i].getSqlType()));
+          } else if (i == 7) {
+            m.put("val", 0);
+          } else if (i == 8) {
+            m.put("val", getTypeScale(fields[i].getSqlType()));
+          } else if (i == 9) {
+            m.put("val", 10);
+          } else if (i == 10) {
+            m.put("val", 0);
+          } else if (i == 11) {
+            m.put("val", "");
+          } else if (i == 12) {
+            m.put("val", "");
+          } else if (i == 13) {
+            m.put("val", 0);
+          } else if (i == 14) {
+            m.put("val", 0);
+          } else if (i == 15) {
+            m.put("val", getTypePrecision(fields[i].getSqlType()));
+          } else if (i == 16) {
+            m.put("val", 1);
+          } else if (i == 17) {
+            m.put("val", "NO");
+          } else if (i == 18) {
+            m.put("val", "");
+          } else if (i == 19) {
+            m.put("val", "");
+          } else if (i == 20) {
+            m.put("val", "");
+          } else if (i == 21) {
+            m.put("val", 0);
+          } else if (i == 22) {
+            m.put("val", "NO");
+          } else if (i == 23) {
+            m.put("val", "NO");
+          } else {
+            m.put("val", "");
+          }
+
+          properties.add(m);
         }
-
-        properties.add(m);
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(rs, stmt);
+      throw new SQLException (e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
-  }
-
-  private void close(ResultSet rs, Statement stmt) {
-
-    try {
-      if (rs != null) {
-        rs.close();
-      }
-    } catch (Exception ex) {
-      rs = null;
-    }
-    try {
-      if (stmt != null) {
-        stmt.close();
-      }
-    } catch (Exception ex) {
-      stmt = null;
-    }
+    
   }
 
   public int getTypeScale(String columnType) {
@@ -2231,7 +2116,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public ResultSet getTables(
       String catalog, String schemaPattern, String tableNamePattern, String[] types)
       throws SQLException {
-    Statement stmt = this.connection.createStatement();
 
     String sql = "SHOW timeseries";
     if (catalog != null && catalog.length() > 0) {
@@ -2245,7 +2129,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && tableNamePattern.length() > 0) {
       sql = sql + "." + tableNamePattern;
     }
-    ResultSet rs = stmt.executeQuery(sql);
     Field[] fields = new Field[10];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -2280,45 +2163,46 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    while (rs.next()) {
-      List<Map> properties = new ArrayList<Map>();
-      for (int i = 0; i < fields.length; i++) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("type", listType.get(i));
-        if (i < 2) {
-          m.put("val", rs.getString(3));
-        } else if (i == 2) {
-          m.put("val", rs.getString(1));
-        } else if (i == 3) {
-          m.put("val", "TABLE");
-        } else {
-          m.put("val", "");
+
+    try (Statement stmt = this.connection.createStatement();
+        ResultSet rs = stmt.executeQuery(sql)) {
+      while (rs.next()) {
+        List<Map> properties = new ArrayList<Map>();
+        for (int i = 0; i < fields.length; i++) {
+          Map<String, Object> m = new HashMap<>();
+          m.put("type", listType.get(i));
+          if (i < 2) {
+            m.put("val", rs.getString(3));
+          } else if (i == 2) {
+            m.put("val", rs.getString(1));
+          } else if (i == 3) {
+            m.put("val", "TABLE");
+          } else {
+            m.put("val", "");
+          }
+          properties.add(m);
         }
-        properties.add(m);
+        bigproperties.add(properties);
       }
-      bigproperties.add(properties);
-    }
-    addToDataSet(bigproperties, dataSet);
-    TSQueryDataSet tsdataset = null;
-    try {
-      tsdataset =
+      addToDataSet(bigproperties, dataSet);
+      TSQueryDataSet tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -2328,7 +2212,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getTypeInfo() throws SQLException {
-    Statement stmt = connection.createStatement();
     Field[] fields = new Field[18];
     fields[0] = new Field("", "TYPE_NAME", "TEXT");
     fields[1] = new Field("", "DATA_TYPE", "INT32");
@@ -2514,27 +2397,25 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     addToDataSet(bigproperties, dataSet);
     TSQueryDataSet tsdataset = null;
-    try {
+    try (Statement stmt = connection.createStatement()) {
       tsdataset =
           convertQueryDataSetByFetchSize(dataSet, stmt.getFetchSize(), getWatermarkEncoder());
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          true,
+          client,
+          null,
+          0,
+          sessionId,
+          tsdataset,
+          (long) 60 * 1000,
+          false);
     } catch (IOException e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      throw new SQLException(e);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        true,
-        client,
-        null,
-        0,
-        sessionId,
-        tsdataset,
-        (long) 60 * 1000,
-        false);
   }
 
   @Override
@@ -2544,8 +2425,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[7];
       fields[0] = new Field("", "TABLE_CAT", "TEXT");
       fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -2559,24 +2439,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
@@ -2596,8 +2472,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     List<String> columnNameList = new ArrayList<String>();
     List<String> columnTypeList = new ArrayList<String>();
     Map<String, Integer> columnNameIndex = new HashMap<String, Integer>();
-    Statement stmt = connection.createStatement();
-    try {
+    try (Statement stmt = connection.createStatement()) {
       Field[] fields = new Field[8];
       fields[0] = new Field("", "SCOPE", "INT32");
       fields[1] = new Field("", "COLUMN_NAME", "TEXT");
@@ -2612,24 +2487,20 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         columnTypeList.add(fields[i].getSqlType());
         columnNameIndex.put(fields[i].getName(), i);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-      close(null, stmt);
+      return new IoTDBJDBCResultSet(
+          stmt,
+          columnNameList,
+          columnTypeList,
+          columnNameIndex,
+          false,
+          client,
+          null,
+          0,
+          sessionId,
+          null,
+          (long) 60 * 1000,
+          true);
     }
-    return new IoTDBJDBCResultSet(
-        stmt,
-        columnNameList,
-        columnTypeList,
-        columnNameIndex,
-        false,
-        client,
-        null,
-        0,
-        sessionId,
-        null,
-        (long) 60 * 1000,
-        true);
   }
 
   @Override
