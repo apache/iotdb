@@ -57,7 +57,9 @@ public class Like<T extends Comparable<T>> implements Filter {
           this.value
               .replaceAll("(?<!\\\\)%", "[\\\\s\\\\S]*")
               .replaceAll("(?<!\\\\)_", "[\\\\s\\\\S]{1}"));
-      if (!value.endsWith("\\\\%") && !value.endsWith("\\\\_")) patternStrBuild.append("$");
+      if ((!value.endsWith("%") && !value.endsWith("_"))
+          || value.endsWith("\\%")
+          || value.endsWith("\\_")) patternStrBuild.append("$");
       this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
