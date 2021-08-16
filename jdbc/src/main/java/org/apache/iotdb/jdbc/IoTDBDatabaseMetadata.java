@@ -653,7 +653,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getClientInfoProperties() throws SQLException {
-    
+
     Field[] fields = new Field[4];
     fields[0] = new Field("", "NAME", "TEXT");
     fields[1] = new Field("", "MAX_LEN", "INT32");
@@ -679,7 +679,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     }
     bigproperties.add(properties);
     addToDataSet(bigproperties, dataSet);
-    
+
     try (Statement stmt = this.connection.createStatement();
         ResultSet rs = stmt.executeQuery("SHOW STORAGE GROUP ")) {
       TSQueryDataSet tsdataset =
@@ -728,7 +728,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         && columnNamePattern.length() > 0) {
       sql = sql + "." + columnNamePattern;
     }
-    
+
     Field[] fields = new Field[8];
     fields[0] = new Field("", "TABLE_CAT", "TEXT");
     fields[1] = new Field("", "TABLE_SCHEM", "TEXT");
@@ -971,7 +971,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       java.lang.String functionNamePattern,
       java.lang.String columnNamePattern)
       throws SQLException {
-    
+
     Field[] fields = new Field[17];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1061,7 +1061,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
       throws SQLException {
-    
+
     Field[] fields = new Field[6];
     fields[0] = new Field("", "FUNCTION_CAT ", "TEXT");
     fields[1] = new Field("", "FUNCTION_SCHEM", "TEXT");
@@ -1508,7 +1508,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           (long) 60 * 1000,
           true);
     }
-    
   }
 
   @Override
@@ -1610,7 +1609,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public ResultSet getSchemas() throws SQLException {
-    
+
     Field[] fields = new Field[2];
     fields[0] = new Field("", "TABLE_SCHEM", "TEXT");
     fields[1] = new Field("", "TABLE_CATALOG", "TEXT");
@@ -1804,7 +1803,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       columnTypeList.add(fields[i].getSqlType());
       columnNameIndex.put(fields[i].getName(), i);
     }
-    
+
     try (Statement stmt = this.connection.createStatement();
         ResultSet rs = stmt.executeQuery(sql)) {
       while (rs.next()) {
@@ -1847,7 +1846,6 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       throw new SQLException(e);
     }
-    
   }
 
   @Override
@@ -2049,9 +2047,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
           (long) 60 * 1000,
           false);
     } catch (IOException e) {
-      throw new SQLException (e);
+      throw new SQLException(e);
     }
-    
   }
 
   public int getTypeScale(String columnType) {
