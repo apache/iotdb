@@ -52,10 +52,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class CompactionSchedulerTest {
   static final Logger LOGGER = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
+  static final long MAX_WAITING_TIME = 120_000;
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",
@@ -109,6 +111,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test1() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test1");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -150,23 +153,46 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    LOGGER.warn("Schedule Compaction for time partition 0");
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
+      if (totalWaitingTime > MAX_WAITING_TIME) {
+        fail();
+        break;
+      }
     }
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+    LOGGER.warn("Try running cross space compaction");
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
         Thread.sleep(10);
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -193,6 +219,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test2() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test2");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -234,17 +261,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+    LOGGER.warn("Try running cross space compaction");
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -271,6 +317,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test3() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test3");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -312,18 +359,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -391,9 +456,18 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -460,26 +534,54 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    LOGGER.warn("Waiting for cross space compaction");
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -505,6 +607,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test6() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -546,17 +649,35 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -623,17 +744,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    LOGGER.warn("Waiting for cross space compaction");
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -658,6 +798,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test8() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test8");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -699,9 +840,18 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -727,6 +877,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test9() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test9");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -768,18 +919,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 50) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 75) {
+      LOGGER.warn(
+          "The size of unsequence file list is {}",
+          tsFileResourceManager.getTsFileList(false).size());
       try {
-        Thread.sleep(10);
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -805,6 +974,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test10() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test10");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -846,18 +1016,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 50) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 25) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -882,6 +1070,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test11() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test11");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -923,18 +1112,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 50) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 25) {
+      LOGGER.warn(
+          "The size of unsequence file list is {}",
+          tsFileResourceManager.getTsFileList(false).size());
       try {
-        Thread.sleep(10);
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1002,18 +1209,36 @@ public class CompactionSchedulerTest {
 
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 96) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1039,6 +1264,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test13() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test13");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1080,18 +1306,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 99) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 98) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1117,6 +1361,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test14() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test14");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1158,18 +1403,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 99) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1195,6 +1458,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test15() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test15");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1236,18 +1500,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 99) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 98) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of sequence file list is {}",
+            tsFileResourceManager.getTsFileList(true).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1273,6 +1555,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test16() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test16");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1314,18 +1597,36 @@ public class CompactionSchedulerTest {
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 96) {
       try {
-        Thread.sleep(10);
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
