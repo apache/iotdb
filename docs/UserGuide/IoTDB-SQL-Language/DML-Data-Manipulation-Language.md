@@ -984,7 +984,7 @@ It costs 0.017s
 When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
 ```
-select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constant]…)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
 
@@ -1003,7 +1003,7 @@ Detailed descriptions of all parameters are given in Table 3-6.
 Here we give an example of filling null values using the value method. The SQL statement is as follows:
 
 ```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [value, 2.0])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
 ```
 which means:
 
