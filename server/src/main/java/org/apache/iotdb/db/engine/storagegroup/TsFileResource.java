@@ -178,7 +178,7 @@ public class TsFileResource {
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
-  /** unsealed TsFile */
+  /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
@@ -187,7 +187,7 @@ public class TsFileResource {
     this.processor = processor;
   }
 
-  /** unsealed TsFile */
+  /** unsealed TsFile, for query */
   public TsFileResource(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
@@ -479,7 +479,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices();
+    return timeIndex.getDevices(file.getPath());
   }
 
   public boolean endTimeEmpty() {

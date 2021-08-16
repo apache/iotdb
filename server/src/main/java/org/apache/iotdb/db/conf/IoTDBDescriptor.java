@@ -253,14 +253,22 @@ public class IoTDBDescriptor {
                   "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
       logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
-      long tsfileSizeThreshold =
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =
@@ -1048,14 +1056,22 @@ public class IoTDBDescriptor {
       // update WAL conf
       loadWALProps(properties);
 
-      long tsfileSizeThreshold =
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =

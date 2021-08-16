@@ -594,7 +594,7 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException {
+      throws IOException, StorageGroupProcessorException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -642,10 +642,18 @@ public class StorageGroupProcessor {
         }
       }
     }
+
     tsFiles.sort(this::compareFileName);
+    if (!tsFiles.isEmpty()) {
+      checkTsFileTime(tsFiles.get(tsFiles.size() - 1));
+    }
     List<TsFileResource> ret = new ArrayList<>();
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
+
     upgradeFiles.sort(this::compareFileName);
+    if (!upgradeFiles.isEmpty()) {
+      checkTsFileTime(upgradeFiles.get(upgradeFiles.size() - 1));
+    }
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
@@ -668,6 +676,24 @@ public class StorageGroupProcessor {
           tempResource.renameTo(originResource);
         }
       }
+    }
+  }
+
+  /** check if the tsfile's time is smaller than system current time */
+  private void checkTsFileTime(File tsFile) throws StorageGroupProcessorException {
+    String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long fileTime = Long.parseLong(items[0]);
+    long currentTime = System.currentTimeMillis();
+    if (fileTime > currentTime) {
+      throw new StorageGroupProcessorException(
+          String.format(
+              "virtual storage group %s[%s] is down, because the time of tsfile %s is larger than system current time, "
+                  + "file time is %d while system current time is %d, please check it.",
+              logicalStorageGroupName,
+              virtualStorageGroupId,
+              tsFile.getAbsolutePath(),
+              fileTime,
+              currentTime));
     }
   }
 
@@ -2095,6 +2121,7 @@ public class StorageGroupProcessor {
       return;
     }
     for (TsFileResource resource : resources) {
+      resource.writeLock();
       try {
         UpgradeUtils.moveUpgradedFiles(resource);
         tsFileResourceManager.addAll(resource.getUpgradedResources(), isseq);
@@ -2108,6 +2135,8 @@ public class StorageGroupProcessor {
             resource.getTsFile().getAbsolutePath() + "," + UpgradeCheckStatus.UPGRADE_SUCCESS);
       } catch (IOException e) {
         logger.error("Unable to load {}, caused by ", resource, e);
+      } finally {
+        resource.writeUnlock();
       }
     }
     // delete upgrade folder when it is empty

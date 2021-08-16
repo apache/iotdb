@@ -147,7 +147,7 @@
                                         <option>-DTHRIFT_COMPILER_HTML=OFF</option>
                                         <option>-DTHRIFT_COMPILER_JAVA=ON</option>
                                         <option>-DTHRIFT_COMPILER_JAVAME=ON</option>
-                                        <option>-DTHRIFT_COMPILER_JS=ON</option>
+                                        <option>-DTHRIFT_COMPILER_JAVASCRIPT=OFF</option>
                                         <option>-DTHRIFT_COMPILER_JSON=OFF</option>
                                         <option>-DTHRIFT_COMPILER_LUA=OFF</option>
                                         <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
@@ -170,6 +170,7 @@
                                         <!-- Don't build Java, as the libs are available via Maven -->
                                         <option>-DBUILD_JAVA=OFF</option>
                                         <option>-DBUILD_PYTHON=${thrift.with.python}</option>
+                                        <option>-DBUILD_JAVASCRIPT=OFF</option>
                                         <option>-DBUILD_HASKELL=OFF</option>
                                         <option>-DWITH_SHARED_LIB=OFF</option>
                                         <!-- Generate libthrift.a to compile IoTDB Session -->

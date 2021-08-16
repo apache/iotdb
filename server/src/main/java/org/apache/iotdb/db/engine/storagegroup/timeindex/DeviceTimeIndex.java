@@ -146,7 +146,7 @@ public class DeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices() {
+  public Set<String> getDevices(String tsFilePath) {
     return deviceToIndex.keySet();
   }
 

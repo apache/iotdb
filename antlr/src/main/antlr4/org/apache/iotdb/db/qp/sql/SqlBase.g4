@@ -211,6 +211,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
+    | (suffixPath | fullPath) LIKE stringLiteral
     ;
 
 inClause
@@ -311,6 +312,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET valueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -320,6 +322,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+valueClause
+    : VALUE (COMMA constant)?
     ;
 
 previousUntilLastClause
@@ -815,6 +821,10 @@ FILL
 
 LINEAR
     : L I N E A R
+    ;
+
+VALUE
+    : V A L U E
     ;
 
 PREVIOUS

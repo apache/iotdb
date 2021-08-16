@@ -38,7 +38,7 @@ public class UpgradeSevice implements IService {
 
   private ExecutorService upgradeThreadPool;
   private AtomicInteger threadCnt = new AtomicInteger();
-  private static int cntUpgradeFileNum;
+  private static AtomicInteger cntUpgradeFileNum = new AtomicInteger();
 
   private UpgradeSevice() {}
 
@@ -63,7 +63,7 @@ public class UpgradeSevice implements IService {
             updateThreadNum, r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
     UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
-    if (cntUpgradeFileNum == 0) {
+    if (cntUpgradeFileNum.get() == 0) {
       stop();
       return;
     }
@@ -87,22 +87,8 @@ public class UpgradeSevice implements IService {
     return ServiceType.UPGRADE_SERVICE;
   }
 
-  public static void setCntUpgradeFileNum(int cntUpgradeFileNum) {
-    UpgradeUtils.getCntUpgradeFileLock().writeLock().lock();
-    try {
-      UpgradeSevice.cntUpgradeFileNum = cntUpgradeFileNum;
-    } finally {
-      UpgradeUtils.getCntUpgradeFileLock().writeLock().unlock();
-    }
-  }
-
-  public static int getCntUpgradeFileNum() {
-    UpgradeUtils.getCntUpgradeFileLock().readLock().lock();
-    try {
-      return cntUpgradeFileNum;
-    } finally {
-      UpgradeUtils.getCntUpgradeFileLock().readLock().unlock();
-    }
+  public static AtomicInteger getTotalUpgradeFileNum() {
+    return cntUpgradeFileNum;
   }
 
   public void submitUpgradeTask(UpgradeTask upgradeTask) {
@@ -110,7 +96,7 @@ public class UpgradeSevice implements IService {
   }
 
   private static void countUpgradeFiles() {
-    cntUpgradeFileNum = StorageEngine.getInstance().countUpgradeFiles();
+    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles());
     logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
   }
 
