@@ -1576,7 +1576,8 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       }
     } else if (ctx.specificValueClause() != null) {
       if (ctx.specificValueClause().constant() != null) {
-        fillTypes.put(dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
+        fillTypes.put(
+            dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
       } else {
         throw new SQLParserException("fill value cannot be null");
       }
