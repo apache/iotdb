@@ -30,7 +30,11 @@ import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-/** @Author: Architect @Date: 2021-08-13 14:01 */
+/**
+ * Regexp.
+ *
+ * @param <T> comparable data type
+ */
 public class Regexp<T extends Comparable<T>> implements Filter {
 
   protected String value;
