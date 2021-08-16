@@ -101,7 +101,7 @@ public class BasicFunctionOperator extends FunctionOperator {
         ret = funcToken.getUnaryExpression(singlePath, Double.valueOf(value));
         break;
       case TEXT:
-        if (funcToken.name().equals("EQ") || funcToken.name().equals("NOTEQUAL")) {
+        if (funcToken == BasicOperatorType.EQ || funcToken == BasicOperatorType.NOTEQUAL) {
           ret =
               funcToken.getUnaryExpression(
                   singlePath,
