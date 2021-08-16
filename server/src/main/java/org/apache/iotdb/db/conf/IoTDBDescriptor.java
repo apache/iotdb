@@ -604,7 +604,7 @@ public class IoTDBDescriptor {
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
       conf.setTimeIndexLevel(
-          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel()))); 
+          properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(

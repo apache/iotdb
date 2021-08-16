@@ -32,6 +32,7 @@
 * add JMX monitor to all ThreadPools in the server module 
 
 ## Improvements
+* [IOTDB-1566] Do not restrict concurrent write partitions
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
