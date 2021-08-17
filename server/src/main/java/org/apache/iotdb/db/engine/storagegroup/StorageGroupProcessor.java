@@ -1934,10 +1934,11 @@ public class StorageGroupProcessor {
       // remember to close mod file
       tsFileResource.getModFile().close();
       logger.info(
-          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file.",
+          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
           deletion.getPath(),
           deletion.getStartTime(),
-          deletion.getEndTime());
+          deletion.getEndTime(),
+          tsFileResource.getModFile().getFilePath());
 
       tsFileResource.updatePlanIndexes(planIndex);
 
