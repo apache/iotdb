@@ -29,7 +29,8 @@ public class SetSystemModeOperator extends Operator {
   private boolean isReadOnly;
 
   /**
-   * The operator for set system to readonly / writable statement 
+   * The operator for set system to readonly / writable statement
+   *
    * @param tokenIntType
    * @param isReadOnly
    */
