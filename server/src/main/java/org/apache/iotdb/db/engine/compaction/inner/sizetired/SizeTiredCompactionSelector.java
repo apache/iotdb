@@ -107,6 +107,11 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         }
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
+        LOGGER.warn(
+            "Add tsfile {}, current select file num is {}, size is {}",
+            currentFile,
+            selectedFileList.size(),
+            selectedFileSize);
         // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
