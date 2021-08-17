@@ -39,13 +39,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
-  private ExecutorService pool;
+  private ScheduledThreadPoolExecutor pool;
+  private boolean available = true;
   // TODO: record the task in time partition
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
@@ -59,9 +61,10 @@ public class CompactionTaskManager implements IService {
   public void start() {
     if (pool == null) {
       this.pool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
-              ThreadName.COMPACTION_SERVICE.getName());
+          (ScheduledThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newScheduledThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
+                  ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
@@ -88,8 +91,9 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
+    available = false;
     if (pool != null) {
-      while (CompactionScheduler.currentTaskNum.get() > 0) {
+      while (pool.getActiveCount() > 0) {
         // wait
         try {
           Thread.sleep(200);
@@ -105,6 +109,7 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
+    available = false;
     while (!pool.isTerminated()) {
       int timeMillis = 0;
       try {
@@ -128,6 +133,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private void awaitTermination(ExecutorService service, long milliseconds) {
+    available = false;
     try {
       service.shutdown();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
@@ -146,7 +152,7 @@ public class CompactionTaskManager implements IService {
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
+    if (pool != null && !pool.isTerminated() && available) {
       CompactionScheduler.currentTaskNum.incrementAndGet();
       logger.info(
           "submitted a compaction task, currentTaskNum={}",
@@ -178,6 +184,6 @@ public class CompactionTaskManager implements IService {
   }
 
   public boolean isTerminated() {
-    return pool == null || pool.isTerminated();
+    return pool == null || pool.isTerminated() || !available;
   }
 }
