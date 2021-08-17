@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -37,7 +38,7 @@ public class MetaUtils {
 
   private MetaUtils() {}
 
-  static String getNodeRegByIdx(int idx, String[] nodes) {
+  public static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 

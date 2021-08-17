@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -1260,6 +1261,11 @@ public class MManager {
       }
       return node;
     } catch (StorageGroupAlreadySetException e) {
+      if (e.isHasChild()) {
+        // if setStorageGroup failure is because of child, the deviceNode should not be created.
+        // Timeseries can't be create under a deviceNode without storageGroup.
+        throw e;
+      }
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       if (!(node.isStorageGroup())) {

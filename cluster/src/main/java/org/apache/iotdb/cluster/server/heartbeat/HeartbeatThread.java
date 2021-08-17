@@ -205,7 +205,6 @@ public class HeartbeatThread implements Runnable {
   }
 
   void sendHeartbeatSync(Node node) {
-    Client client = localMember.getSyncHeartbeatClient(node);
     HeartbeatHandler heartbeatHandler = new HeartbeatHandler(localMember, node);
     HeartBeatRequest req = new HeartBeatRequest();
     req.setCommitLogTerm(request.commitLogTerm);
@@ -221,11 +220,12 @@ public class HeartbeatThread implements Runnable {
       req.partitionTableBytes = request.partitionTableBytes;
       req.setPartitionTableBytesIsSet(true);
     }
-    if (client != null) {
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
                 try {
                   logger.debug("{}: Sending heartbeat to {}", memberName, node);
                   HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
@@ -247,8 +247,8 @@ public class HeartbeatThread implements Runnable {
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
   }
 
   /**
@@ -410,13 +410,13 @@ public class HeartbeatThread implements Runnable {
   }
 
   private void requestVoteSync(Node node, ElectionHandler handler, ElectionRequest request) {
-    Client client = localMember.getSyncHeartbeatClient(node);
-    if (client != null) {
-      logger.info("{}: Requesting a vote from {}", memberName, node);
-      localMember
-          .getSerialToParallelPool()
-          .submit(
-              () -> {
+    localMember
+        .getSerialToParallelPool()
+        .submit(
+            () -> {
+              Client client = localMember.getSyncHeartbeatClient(node);
+              if (client != null) {
+                logger.info("{}: Requesting a vote from {}", memberName, node);
                 try {
                   long result = client.startElection(request);
                   handler.onComplete(result);
@@ -430,7 +430,7 @@ public class HeartbeatThread implements Runnable {
                 } finally {
                   ClientUtils.putBackSyncHeartbeatClient(client);
                 }
-              });
-    }
+              }
+            });
   }
 }
