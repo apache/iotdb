@@ -200,6 +200,13 @@ public class CompactionSchedulerTest {
       }
     }
     LOGGER.warn("Try running cross space compaction");
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 0) {
@@ -314,6 +321,13 @@ public class CompactionSchedulerTest {
 
       }
     }
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 0) {
@@ -416,6 +430,14 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
+
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
@@ -499,6 +521,13 @@ public class CompactionSchedulerTest {
       CompactionFileGeneratorUtils.writeChunkToTsFile(
           fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
       tsFileResourceManager.add(tsFileResource, false);
+    }
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
     }
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
@@ -627,6 +656,14 @@ public class CompactionSchedulerTest {
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
+      }
+    }
+
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
       }
     }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
@@ -841,6 +878,13 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     LOGGER.warn("Waiting for cross space compaction");
     totalWaitingTime = 0;
@@ -925,6 +969,13 @@ public class CompactionSchedulerTest {
       tsFileResourceManager.add(tsFileResource, false);
     }
 
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 0) {
