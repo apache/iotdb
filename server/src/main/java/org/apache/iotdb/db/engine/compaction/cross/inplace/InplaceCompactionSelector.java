@@ -76,7 +76,10 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         LOGGER.warn("End selection because cross compaction is not enable");
       } else {
         LOGGER.warn(
-            "End selection because {}-{} is compacting", logicalStorageGroupName, virtualGroupId);
+            "End selection because {}-{} is compacting, task num in CompactionTaskManager is {}",
+            logicalStorageGroupName,
+            virtualGroupId,
+            CompactionTaskManager.getInstance().getTaskCount());
       }
       return false;
     }
