@@ -163,6 +163,7 @@ public class LastQueryExecutor {
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
     try {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
+        System.out.println("Read Last From File " + nonCachedPaths.get(i));
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
                 .getQueryDataSource(nonCachedPaths.get(i), context, null);
@@ -263,7 +264,8 @@ public class LastQueryExecutor {
       try {
         node = (IMeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
       } catch (MetadataException e) {
-        TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path);
+        // cluster mode may not get remote node
+        TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path, null);
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -272,7 +274,7 @@ public class LastQueryExecutor {
       if (node == null) {
         return null;
       }
-      return node.getCachedLast();
+      return IoTDB.metaManager.getLastCache(path, node);
     }
 
     public void write(TimeValuePair pair) {

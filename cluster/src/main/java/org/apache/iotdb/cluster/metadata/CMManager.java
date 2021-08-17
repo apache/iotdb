@@ -423,13 +423,13 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
+  public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
       return measurementMNode.getCachedLast();
     }
 
-    return super.getLastCache(seriesPath);
+    return super.getLastCache(seriesPath, node);
   }
 
   @Override

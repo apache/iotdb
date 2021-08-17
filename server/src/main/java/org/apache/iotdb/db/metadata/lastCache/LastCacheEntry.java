@@ -16,12 +16,12 @@ public class LastCacheEntry implements ILastCacheEntry {
 
   @Override
   public TimeValuePair getCachedLast() {
-    return null;
+    return lastCacheValue == null ? null : lastCacheValue.getTimeValuePair();
   }
 
   @Override
   public TimeValuePair getCachedLast(int index) {
-    return null;
+    return lastCacheValue == null ? null : lastCacheValue.getTimeValuePair(index);
   }
 
   @Override
@@ -75,7 +75,9 @@ public class LastCacheEntry implements ILastCacheEntry {
       Long latestFlushedTime) {}
 
   @Override
-  public void resetCache() {}
+  public void resetCache() {
+    lastCacheValue = null;
+  }
 
   @Override
   public boolean isEmpty() {

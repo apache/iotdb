@@ -1951,7 +1951,8 @@ public class StorageGroupProcessor {
       for (IMNode measurementNode : node.getChildren().values()) {
         if (measurementNode != null
             && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-          TimeValuePair lastPair = ((IMeasurementMNode) measurementNode).getCachedLast();
+          TimeValuePair lastPair =
+              IoTDB.metaManager.getLastCache(null, (IMeasurementMNode) measurementNode);
           if (lastPair != null
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {

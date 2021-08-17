@@ -761,10 +761,7 @@ public class MTree implements Serializable {
         if (schema == null) {
           throw new PathNotExistException(path.getFullPath(), true);
         }
-        IMeasurementMNode result =
-            new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
-        result.setLastCacheEntry(((IEntityMNode) cur).getLastCacheEntry(realName));
-        return result;
+        return new MeasurementMNode(cur, schema.getMeasurementId(), schema, null);
       }
       cur = next;
     }

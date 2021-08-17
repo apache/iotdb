@@ -1667,26 +1667,41 @@ public class MManager {
       boolean highPriorityUpdate,
       Long latestFlushedTime,
       IMeasurementMNode node) {
-    if (node != null) {
-      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
+    if (node == null) {
       try {
-        IMeasurementMNode node1 = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
       } catch (MetadataException e) {
         logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+        return;
       }
     }
+
+    checkIsEntityLastCache(node);
+
+    node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
+  public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     try {
-      IMeasurementMNode node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+      if (node == null) {
+        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+      }
+
+      checkIsEntityLastCache(node);
+
       return node.getCachedLast();
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
     }
     return null;
+  }
+
+  private void checkIsEntityLastCache(IMeasurementMNode node) {
+    IEntityMNode entityMNode = node.getParent();
+    String measurement = node.getName();
+    if (!entityMNode.hasChild(measurement)) {
+      node.setLastCacheEntry(entityMNode.getLastCacheEntry(measurement));
+    }
   }
 
   /** get schema for device. Attention!!! Only support insertPlan */
@@ -1897,12 +1912,10 @@ public class MManager {
       if (schema != null) {
         IMeasurementMNode result = null;
         if (schema instanceof MeasurementSchema) {
-          result = new MeasurementMNode(deviceMNode, measurement, schema, null);
+          return new MeasurementMNode(deviceMNode, measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          result = new MeasurementMNode(deviceMNode, vectorId, schema, null);
+          return new MeasurementMNode(deviceMNode, vectorId, schema, null);
         }
-        result.setLastCacheEntry(((IEntityMNode) deviceMNode).getLastCacheEntry(measurement));
-        return result;
       }
       return null;
     }

@@ -166,7 +166,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public TimeValuePair getCachedLast() {
-    return lastCacheEntry.getCachedLast();
+    return lastCacheEntry == null ? null : lastCacheEntry.getCachedLast();
   }
 
   /**

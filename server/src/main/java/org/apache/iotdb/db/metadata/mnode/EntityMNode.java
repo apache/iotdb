@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheEntry;
 
 import java.util.Collections;
 import java.util.Map;
@@ -115,10 +116,11 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   public ILastCacheEntry getLastCacheEntry(String measurementId) {
-    return lastCacheMap == null ? null : lastCacheMap.get(measurementId);
+    checkLastCacheMap();
+    return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheEntry());
   }
 
-  public void addLastCacheEntry(String measurementId, ILastCacheEntry entry) {
+  private void checkLastCacheMap() {
     if (lastCacheMap == null) {
       synchronized (this) {
         if (lastCacheMap == null) {
@@ -126,7 +128,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
         }
       }
     }
-    lastCacheMap.putIfAbsent(measurementId, entry);
   }
 
   @Override
