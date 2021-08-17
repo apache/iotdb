@@ -156,6 +156,7 @@ public abstract class Operator {
     SET_DEVICE_TEMPLATE,
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
-    LIKE
+    LIKE,
+    SET_READONLY
   }
 }

@@ -91,6 +91,7 @@ import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetReadOnlyPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
@@ -308,6 +309,9 @@ public class PlanExecutor implements IPlanExecutor {
       case TRACING:
         operateTracing((TracingPlan) plan);
         return true;
+      case SET_READONLY:
+        operateSetReadOnly((SetReadOnlyPlan) plan);
+        return true;
       case CLEAR_CACHE:
         operateClearCache();
         return true;
@@ -455,6 +459,10 @@ public class PlanExecutor implements IPlanExecutor {
         TracingManager.getInstance().openTracingWriteStream();
       }
     }
+  }
+
+  private void operateSetReadOnly(SetReadOnlyPlan plan) {
+    IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

@@ -150,6 +150,7 @@ public class Planner {
       case FLUSH:
       case MERGE:
       case TRACING:
+      case SET_READONLY:
       case CLEAR_CACHE:
       case NULL:
       case SHOW_MERGE_STATUS:
