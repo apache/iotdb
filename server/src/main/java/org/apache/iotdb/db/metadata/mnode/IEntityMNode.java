@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
+
 import java.util.Map;
 
 public interface IEntityMNode extends IMNode {
@@ -33,6 +35,10 @@ public interface IEntityMNode extends IMNode {
   boolean isUseTemplate();
 
   void setUseTemplate(boolean useTemplate);
+
+  ILastCacheEntry getLastCacheEntry(String measurementId);
+
+  void addLastCacheEntry(String measurementId, ILastCacheEntry entry);
 
   static IEntityMNode setToEntity(IMNode node) {
     IEntityMNode entityMNode;

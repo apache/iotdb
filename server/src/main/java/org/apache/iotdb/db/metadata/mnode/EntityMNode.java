@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +35,8 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
   private volatile boolean useTemplate = false;
+
+  private Map<String, ILastCacheEntry> lastCacheMap = null;
 
   /**
    * Constructor of MNode.
@@ -108,6 +112,21 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @Override
   public void setUseTemplate(boolean useTemplate) {
     this.useTemplate = useTemplate;
+  }
+
+  public ILastCacheEntry getLastCacheEntry(String measurementId) {
+    return lastCacheMap == null ? null : lastCacheMap.get(measurementId);
+  }
+
+  public void addLastCacheEntry(String measurementId, ILastCacheEntry entry) {
+    if (lastCacheMap == null) {
+      synchronized (this) {
+        if (lastCacheMap == null) {
+          lastCacheMap = new ConcurrentHashMap<>();
+        }
+      }
+    }
+    lastCacheMap.putIfAbsent(measurementId, entry);
   }
 
   @Override

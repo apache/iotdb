@@ -20,6 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -55,7 +57,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
 
   /** last value cache */
-  private TimeValuePair cachedLastValuePair = null;
+  private ILastCacheEntry lastCacheEntry = null;
 
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
@@ -153,8 +155,18 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
+  public ILastCacheEntry getLastCacheEntry() {
+    return lastCacheEntry;
+  }
+
+  @Override
+  public void setLastCacheEntry(ILastCacheEntry lastCacheEntry) {
+    this.lastCacheEntry = lastCacheEntry;
+  }
+
+  @Override
   public TimeValuePair getCachedLast() {
-    return cachedLastValuePair;
+    return lastCacheEntry.getCachedLast();
   }
 
   /**
@@ -167,28 +179,18 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) {
-      return;
+    if (lastCacheEntry == null) {
+      lastCacheEntry = new LastCacheEntry();
     }
-
-    if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
-      // update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
-      }
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
+    if (lastCacheEntry.isEmpty()) {
+      lastCacheEntry.init(schema.getMeasurementCount());
     }
+    lastCacheEntry.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   @Override
   public void resetCache() {
-    cachedLastValuePair = null;
+    lastCacheEntry.resetCache();
   }
 
   @Override

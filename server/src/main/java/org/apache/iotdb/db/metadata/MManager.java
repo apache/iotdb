@@ -1895,11 +1895,14 @@ public class MManager {
       }
 
       if (schema != null) {
+        IMeasurementMNode result = null;
         if (schema instanceof MeasurementSchema) {
-          return new MeasurementMNode(deviceMNode, measurement, schema, null);
+          result = new MeasurementMNode(deviceMNode, measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
-          return new MeasurementMNode(deviceMNode, vectorId, schema, null);
+          result = new MeasurementMNode(deviceMNode, vectorId, schema, null);
         }
+        result.setLastCacheEntry(((IEntityMNode) deviceMNode).getLastCacheEntry(measurement));
+        return result;
       }
       return null;
     }
