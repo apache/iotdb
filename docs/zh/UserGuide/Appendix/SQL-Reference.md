@@ -1028,6 +1028,13 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+## 设置系统为只读/可写入状态
+
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## 标识符列表
 
