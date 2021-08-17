@@ -50,6 +50,8 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private ScheduledExecutorService executorService;
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  // For fixing too many warn logs when system changes to read-only mode
   private boolean firstReadOnly = true;
 
   private void forceTask() {
