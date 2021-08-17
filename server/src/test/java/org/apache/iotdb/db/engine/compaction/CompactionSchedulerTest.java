@@ -123,9 +123,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDeInnerCompactionMergeTestscriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);

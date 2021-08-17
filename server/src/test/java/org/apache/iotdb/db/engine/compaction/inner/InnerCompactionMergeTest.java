@@ -45,6 +45,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,6 +57,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 
 public class InnerCompactionMergeTest extends InnerCompactionTest {
+  private static final Logger LOGGER = LoggerFactory.getLogger(InnerCompactionMergeTest.class);
 
   File tempSGDir;
   boolean compactionMergeWorking = false;
@@ -200,6 +203,11 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long waitingTime = 0;
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+
+    }
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
       try {
@@ -208,6 +216,10 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
 
       }
       waitingTime += 100;
+      if (waitingTime % 1000 == 0) {
+        LOGGER.warn("testCompactionModsByOffsetAfterMerge has wait for {} s", waitingTime / 1000);
+      }
+
       if (waitingTime > MAX_WAITING_TIME) {
         Assert.fail();
         break;
