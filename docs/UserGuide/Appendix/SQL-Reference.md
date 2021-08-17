@@ -716,9 +716,9 @@ In this situation, it will throws an exception if * corresponds to multiple sens
 
 ```
 
-* Like Statement
+* Regexp Statement
 
-Fuzzy query only supports regular expressions with data type of text and Java standard library style when matching
+Regexp Statement only supports regular expressions with data type of text and Java standard library style when matching
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
@@ -728,10 +728,28 @@ andExpression : predicate (OPERATOR_AND predicate)*
 predicate : (suffixPath | fullPath) LIKE stringLiteral
 stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
 
-Eg. select s1 from root.sg.d1 where s1 like 'Regex'
-Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp 'Regexp'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp 'regexp' and s2 regexp 'Regexp'
+Eg. select * from root.sg.d1 where s1 regexp 'Regexp'
+Eg. select * from root.sg.d1 where s1 regexp 'Regexp' and time > 100
+```
+
+* Like Statement
+
+The usage of Like Statement similar with mysql, but only support the regular expressions with data type of text
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE stringLiteral
+stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+
+Eg. select * from root.sg.d1 where s1 like 'String'
+Eg. select * from root.sg.d1 where s1 like 'String%'
+Eg. select * from root.sg.d1 where s1 like 'String_'
+Eg. select * from root.sg.d1 where s1 like 'String\%'
 ```
 
 ## Database Management Statement

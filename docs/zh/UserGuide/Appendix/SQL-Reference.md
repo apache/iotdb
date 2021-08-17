@@ -705,9 +705,9 @@ E.g. select * as temperature from root.sg.d1
 这种情况如果 * 匹配多个传感器，则无法正常显示。
 
 ```
-* Like 语句
+* Regexp 语句
 
-模糊查询，仅支持数据类型为 TEXT，匹配时为 Java 标准库风格的正则表达式
+Regexp语句仅支持数据类型为 TEXT，匹配时为 Java 标准库风格的正则表达式
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
@@ -717,10 +717,28 @@ andExpression : predicate (OPERATOR_AND predicate)*
 predicate : (suffixPath | fullPath) LIKE stringLiteral
 stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
 
-Eg. select s1 from root.sg.d1 where s1 like 'Regex'
-Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp 'Regexp'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp 'regexp' and s2 regexp 'Regexp'
+Eg. select * from root.sg.d1 where s1 regexp 'Regexp'
+Eg. select * from root.sg.d1 where s1 regexp 'Regexp' and time > 100
+```
+
+* Like 语句
+
+Like语句的用法和mysql相同, 但是仅支持数据类型为 TEXT
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE stringLiteral
+stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+
+Eg. select * from root.sg.d1 where s1 like 'String'
+Eg. select * from root.sg.d1 where s1 like 'String%'
+Eg. select * from root.sg.d1 where s1 like 'String_'
+Eg. select * from root.sg.d1 where s1 like 'String\%'
 ```
 
 ## 数据库管理语句
