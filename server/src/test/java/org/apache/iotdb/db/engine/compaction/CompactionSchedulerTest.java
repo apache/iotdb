@@ -307,6 +307,13 @@ public class CompactionSchedulerTest {
       }
     }
     LOGGER.warn("Try running cross space compaction");
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+    }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 0) {
