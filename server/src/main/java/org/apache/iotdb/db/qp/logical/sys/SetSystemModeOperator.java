@@ -16,27 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.Collections;
-import java.util.List;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-public class SetReadOnlyPlan extends PhysicalPlan {
-
+public class SetSystemModeOperator extends RootOperator {
   private boolean isReadOnly;
 
-  public SetReadOnlyPlan(boolean isReadOnly) {
-    super(false, OperatorType.SET_READONLY);
+  public SetSystemModeOperator(int tokenIntType, boolean isReadOnly) {
+    super(tokenIntType);
     this.isReadOnly = isReadOnly;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+    operatorType = OperatorType.SET_SYSTEM_MODE;
   }
 
   public boolean isReadOnly() {

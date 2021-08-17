@@ -51,7 +51,7 @@ IoTDB> CLEAR CACHE
 
 ### SET STSTEM TO READONLY / WRITABLE
 
-Manually set IoTDB system to read-only or writable status.
+Manually set IoTDB system to read-only or writable mode.
 
 ```sql
 IoTDB> SET SYSTEM TO READONLY

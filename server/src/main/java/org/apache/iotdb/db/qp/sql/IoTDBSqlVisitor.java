@@ -64,7 +64,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetReadOnlyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
@@ -928,12 +928,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitSetSystemToReadOnly(SetSystemToReadOnlyContext ctx) {
-    return new SetReadOnlyOperator(SQLConstant.TOK_SET_READONLY, true);
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
   }
 
   @Override
   public Operator visitSetSystemToWritable(SetSystemToWritableContext ctx) {
-    return new SetReadOnlyOperator(SQLConstant.TOK_SET_READONLY, false);
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
   }
 
   @Override

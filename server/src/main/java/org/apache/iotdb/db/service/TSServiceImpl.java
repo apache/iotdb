@@ -67,7 +67,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetReadOnlyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
@@ -1134,7 +1134,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (!(plan instanceof SetReadOnlyPlan)
+    if (!(plan instanceof SetSystemModePlan)
         && !(plan instanceof FlushPlan)
         && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(

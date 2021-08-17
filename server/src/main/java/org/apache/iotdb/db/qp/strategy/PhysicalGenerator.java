@@ -58,7 +58,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
-import org.apache.iotdb.db.qp.logical.sys.SetReadOnlyOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
@@ -110,7 +110,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetReadOnlyPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
@@ -262,9 +262,9 @@ public class PhysicalGenerator {
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
         return new TracingPlan(tracingOperator.isTracingOn());
-      case SET_READONLY:
-        SetReadOnlyOperator setReadOnlyOperator = (SetReadOnlyOperator) operator;
-        return new SetReadOnlyPlan(setReadOnlyOperator.isReadOnly());
+      case SET_SYSTEM_MODE:
+        SetSystemModeOperator setSystemModeOperator = (SetSystemModeOperator) operator;
+        return new SetSystemModePlan(setSystemModeOperator.isReadOnly());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);

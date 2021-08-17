@@ -1063,7 +1063,7 @@ E.g. KILL QUERY 2
 
 ## SET STSTEM TO READONLY / WRITABLE
 
-Set IoTDB system to read-only or writable status.
+Set IoTDB system to read-only or writable mode.
 
 ```
 IoTDB> SET SYSTEM TO READONLY
