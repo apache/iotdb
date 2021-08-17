@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,6 +58,7 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
 
   File tempSGDir;
   boolean compactionMergeWorking = false;
+  final long MAX_WAITING_TIME = 120_000;
 
   @Override
   @Before
@@ -81,8 +83,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -119,8 +132,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     } catch (InterruptedException e) {
 
     }
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     QueryContext context = new QueryContext();
     PartialPath path =
@@ -175,8 +199,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     QueryContext context = new QueryContext();
     IBatchReader tsFilesReader =
@@ -215,8 +250,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     TsFileResource newTsFileResource =
         tsFileResourceManager.getSequenceListByTimePartition(0L).getArrayList().get(0);
@@ -245,8 +291,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     TsFileResource newTsFileResource =
         tsFileResourceManager.getSequenceListByTimePartition(0L).getArrayList().get(0);
@@ -302,8 +359,19 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     assertEquals(count, 1);
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    long waitingTime = 0;
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+        break;
+      }
     }
     context = new QueryContext();
     tsFilesReader =

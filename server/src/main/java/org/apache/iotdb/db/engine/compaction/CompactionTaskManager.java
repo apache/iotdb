@@ -93,7 +93,7 @@ public class CompactionTaskManager implements IService {
   public void waitAllCompactionFinish() {
     available = false;
     if (pool != null) {
-      while (pool.getActiveCount() > 0) {
+      while (pool.getActiveCount() > 0 || pool.getQueue().size() > 0) {
         // wait
         try {
           Thread.sleep(200);
