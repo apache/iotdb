@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
@@ -626,7 +626,7 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-    while (CompactionScheduler.currentTaskNum.get() > 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
       // wait
       try {
         Thread.sleep(100);
