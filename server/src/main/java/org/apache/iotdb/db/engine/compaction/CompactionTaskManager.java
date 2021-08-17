@@ -47,7 +47,6 @@ public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
   private ScheduledThreadPoolExecutor pool;
-  private boolean available = true;
   // TODO: record the task in time partition
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
@@ -91,7 +90,6 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
-    available = false;
     if (pool != null) {
       while (pool.getActiveCount() > 0 || pool.getQueue().size() > 0) {
         // wait
@@ -109,7 +107,6 @@ public class CompactionTaskManager implements IService {
 
   private void waitTermination() {
     long startTime = System.currentTimeMillis();
-    available = false;
     while (!pool.isTerminated()) {
       int timeMillis = 0;
       try {
@@ -133,7 +130,6 @@ public class CompactionTaskManager implements IService {
   }
 
   private void awaitTermination(ExecutorService service, long milliseconds) {
-    available = false;
     try {
       service.shutdown();
       service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
@@ -152,7 +148,7 @@ public class CompactionTaskManager implements IService {
   public synchronized void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated() && available) {
+    if (pool != null && !pool.isTerminated()) {
       CompactionScheduler.currentTaskNum.incrementAndGet();
       logger.info(
           "submitted a compaction task, currentTaskNum={}",
@@ -184,6 +180,6 @@ public class CompactionTaskManager implements IService {
   }
 
   public boolean isTerminated() {
-    return pool == null || pool.isTerminated() || !available;
+    return pool == null || pool.isTerminated();
   }
 }
