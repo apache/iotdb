@@ -312,7 +312,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET valueClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -324,8 +324,8 @@ previousClause
     : PREVIOUS (COMMA DURATION)?
     ;
 
-valueClause
-    : VALUE (COMMA constant)?
+specificValueClause
+    : constant?
     ;
 
 previousUntilLastClause
@@ -821,10 +821,6 @@ FILL
 
 LINEAR
     : L I N E A R
-    ;
-
-VALUE
-    : V A L U E
     ;
 
 PREVIOUS

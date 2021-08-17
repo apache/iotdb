@@ -815,7 +815,7 @@ It costs 0.017s
 当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```
-select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constant]…)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 
 表3-6中给出了所有参数的详细说明。
@@ -837,7 +837,7 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constan
 在这里，我们举一个使用特定值方法填充空值的示例。 SQL语句如下：
 
 ```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [value, 2.0])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
 ```
 
 意思是：
