@@ -157,6 +157,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET SYSTEM TO READONLY");
+      statement.execute("FLUSH");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
