@@ -57,7 +57,7 @@ import static org.junit.Assert.fail;
 public class CompactionSchedulerTest {
   static final Logger LOGGER = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
-  static final long MAX_WAITING_TIME = 120_000;
+  static final long MAX_WAITING_TIME = 240_000;
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",
