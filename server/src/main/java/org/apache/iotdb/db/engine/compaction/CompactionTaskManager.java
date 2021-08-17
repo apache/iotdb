@@ -159,7 +159,12 @@ public class CompactionTaskManager implements IService {
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())
           .add(future);
+      logger.warn("A CompactionTask is submitted to CompactionTaskManager");
+      return;
     }
+    logger.warn(
+        "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
+        pool == null ? "pool is null" : "pool is terminated");
   }
 
   /**
@@ -181,5 +186,9 @@ public class CompactionTaskManager implements IService {
 
   public boolean isTerminated() {
     return pool == null || pool.isTerminated();
+  }
+
+  public int getTaskCount() {
+    return pool.getActiveCount() + pool.getQueue().size();
   }
 }

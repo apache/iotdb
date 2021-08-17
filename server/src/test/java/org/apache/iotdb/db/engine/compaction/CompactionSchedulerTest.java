@@ -157,9 +157,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
       } catch (InterruptedException e) {
@@ -173,9 +178,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -188,12 +198,23 @@ public class CompactionSchedulerTest {
     }
     LOGGER.warn("Try running cross space compaction");
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
-        Thread.sleep(10);
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
+        Thread.sleep(100);
+        totalWaitingTime += 100;
+        if (totalWaitingTime > MAX_WAITING_TIME) {
+          fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -264,9 +285,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -362,9 +388,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -380,9 +411,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -459,9 +495,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -537,9 +578,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -555,9 +601,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -573,9 +624,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -652,9 +708,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -669,9 +730,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -747,9 +813,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 1) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -765,9 +836,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -843,9 +919,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 0) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -922,9 +1003,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 50) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -939,9 +1025,14 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 75) {
-      LOGGER.warn(
-          "The size of unsequence file list is {}",
-          tsFileResourceManager.getTsFileList(false).size());
+      if (totalWaitingTime % 2000 == 0) {
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        LOGGER.warn(
+            "Current task num in compaction task manager is {}",
+            CompactionTaskManager.getInstance().getTaskCount());
+      }
       try {
         Thread.sleep(100);
         totalWaitingTime += 100;
@@ -1019,9 +1110,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 50) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1037,9 +1133,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 25) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1115,9 +1216,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 50) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1132,9 +1238,14 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 25) {
-      LOGGER.warn(
-          "The size of unsequence file list is {}",
-          tsFileResourceManager.getTsFileList(false).size());
+      if (totalWaitingTime % 2000 == 0) {
+        LOGGER.warn(
+            "The size of unsequence file list is {}",
+            tsFileResourceManager.getTsFileList(false).size());
+        LOGGER.warn(
+            "Current task num in compaction task manager is {}",
+            CompactionTaskManager.getInstance().getTaskCount());
+      }
       try {
         Thread.sleep(100);
         totalWaitingTime += 100;
@@ -1212,9 +1323,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1230,9 +1346,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 96) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1309,9 +1430,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 99) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1327,9 +1453,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 98) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1406,9 +1537,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 99) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1424,9 +1560,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1503,9 +1644,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 99) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1521,9 +1667,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(true).size() != 98) {
       try {
-        LOGGER.warn(
-            "The size of sequence file list is {}",
-            tsFileResourceManager.getTsFileList(true).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1600,9 +1751,14 @@ public class CompactionSchedulerTest {
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 98) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
@@ -1618,9 +1774,14 @@ public class CompactionSchedulerTest {
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() != 96) {
       try {
-        LOGGER.warn(
-            "The size of unsequence file list is {}",
-            tsFileResourceManager.getTsFileList(false).size());
+        if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of unsequence file list is {}",
+              tsFileResourceManager.getTsFileList(false).size());
+          LOGGER.warn(
+              "Current task num in compaction task manager is {}",
+              CompactionTaskManager.getInstance().getTaskCount());
+        }
         Thread.sleep(100);
         totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
