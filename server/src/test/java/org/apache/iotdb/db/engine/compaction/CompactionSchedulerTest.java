@@ -155,7 +155,7 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     LOGGER.warn("Schedule Compaction for time partition 0");
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -176,7 +176,7 @@ public class CompactionSchedulerTest {
       }
     }
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -199,7 +199,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Try running cross space compaction");
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -283,7 +283,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -306,7 +306,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Try running cross space compaction");
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         LOGGER.warn(
             "The size of unsequence file list is {}",
@@ -386,7 +386,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -409,7 +409,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -493,7 +493,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -576,7 +576,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -599,7 +599,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -622,7 +622,7 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     LOGGER.warn("Waiting for cross space compaction");
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -706,7 +706,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -728,7 +728,7 @@ public class CompactionSchedulerTest {
     }
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -811,7 +811,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 1) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 1) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -834,7 +834,7 @@ public class CompactionSchedulerTest {
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     LOGGER.warn("Waiting for cross space compaction");
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -917,7 +917,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 0) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 0) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1001,7 +1001,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 50) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 50) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1024,7 +1024,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 75) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 75) {
       if (totalWaitingTime % 2000 == 0) {
         LOGGER.warn(
             "The size of unsequence file list is {}",
@@ -1108,7 +1108,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 50) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 50) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1131,7 +1131,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 25) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 25) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1214,7 +1214,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 50) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 50) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1237,7 +1237,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 25) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 25) {
       if (totalWaitingTime % 2000 == 0) {
         LOGGER.warn(
             "The size of unsequence file list is {}",
@@ -1286,7 +1286,7 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(0);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
@@ -1318,10 +1318,9 @@ public class CompactionSchedulerTest {
       tsFileResourceManager.add(tsFileResource, false);
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 98) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1344,7 +1343,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 96) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 96) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1428,7 +1427,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 99) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 99) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1451,7 +1450,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 98) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1535,7 +1534,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 99) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 99) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1558,7 +1557,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 98) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1642,7 +1641,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 99) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 99) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1665,7 +1664,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(true).size() != 98) {
+    while (tsFileResourceManager.getTsFileList(true).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1749,7 +1748,7 @@ public class CompactionSchedulerTest {
 
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     long totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 98) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
@@ -1772,7 +1771,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(true).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() != 96) {
+    while (tsFileResourceManager.getTsFileList(false).size() > 96) {
       try {
         if (totalWaitingTime % 2000 == 0) {
           LOGGER.warn(
