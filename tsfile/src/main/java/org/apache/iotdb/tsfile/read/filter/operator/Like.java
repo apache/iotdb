@@ -55,7 +55,7 @@ public class Like<T extends Comparable<T>> implements Filter {
       if (!value.startsWith("%")) patternStrBuild.append("^");
       patternStrBuild.append(
           this.value
-              //Replace '[' to '\[' to avoid the content become the Regexp rules
+              // Replace '[' to '\[' to avoid the content become the Regexp rules
               .replace("[", "\\[")
               .replaceAll("(?<!\\\\)%", "[\\\\s\\\\S]*")
               .replaceAll("(?<!\\\\)_", "[\\\\s\\\\S]{1}"));
