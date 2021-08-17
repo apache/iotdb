@@ -26,13 +26,14 @@ import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class SetSystemModeOperator extends Operator {
+
   private boolean isReadOnly;
 
   /**
-   * The operator for set system to readonly / writable statement
+   * The operator for set system to readonly / writable statement.
    *
-   * @param tokenIntType
-   * @param isReadOnly
+   * @param tokenIntType tokenIntType.
+   * @param isReadOnly isReadOnly.
    */
   public SetSystemModeOperator(int tokenIntType, boolean isReadOnly) {
     super(tokenIntType);
