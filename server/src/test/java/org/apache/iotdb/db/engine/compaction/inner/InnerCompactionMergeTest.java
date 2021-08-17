@@ -114,6 +114,11 @@ public class InnerCompactionMergeTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+    try {
+      Thread.sleep(100);
+    } catch (InterruptedException e) {
+
+    }
     while (CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG, 0)) {
       // wait
     }

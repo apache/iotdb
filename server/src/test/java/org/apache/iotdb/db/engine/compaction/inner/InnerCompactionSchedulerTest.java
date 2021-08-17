@@ -41,6 +41,7 @@ import java.util.List;
 public class InnerCompactionSchedulerTest {
 
   private long originFileSize;
+  long MAX_WAITING_TIME = 120_000L;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -74,9 +75,16 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
+
+    long waitingTime = 0;
     while (CompactionScheduler.getCount() != 0) {
       try {
-        Thread.sleep(10);
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -103,9 +111,16 @@ public class InnerCompactionSchedulerTest {
         tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
+
+    long waitingTime = 0;
     while (CompactionScheduler.getCount() != 0) {
       try {
-        Thread.sleep(10);
+        Thread.sleep(100);
+        waitingTime += 100;
+        if (waitingTime > MAX_WAITING_TIME) {
+          Assert.fail();
+          break;
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

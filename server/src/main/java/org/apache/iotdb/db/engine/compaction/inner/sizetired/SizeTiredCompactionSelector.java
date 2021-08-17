@@ -76,9 +76,11 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
-    LOGGER.info(
-        "{} [Compaction] SizeTiredCompactionSelector start to select",
-        logicalStorageGroupName + "-" + virtualStorageGroupName);
+    LOGGER.warn(
+        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, target file num is {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupName,
+        IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum());
     int submitTaskNum = 0;
     try {
       // traverse the tsfile from new to old
@@ -94,7 +96,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           return taskSubmitted;
         }
         // the file size reach threshold
-        // or meet a unchoosable file
+        // or meet an unelectable file
         // submit a task
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
@@ -116,7 +118,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           selectedFileSize = 0L;
         }
       }
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
           logicalStorageGroupName + "-" + virtualStorageGroupName,
           submitTaskNum);
@@ -138,7 +140,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             sequence);
     for (TsFileResource resource : selectedFileList) {
       resource.setMerging(true);
-      LOGGER.info(
+      LOGGER.warn(
           "{}-{} [Compaction] start to compact TsFile {}",
           logicalStorageGroupName,
           virtualStorageGroupName,
@@ -147,7 +149,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     CompactionTaskManager.getInstance()
         .submitTask(
             logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
-    LOGGER.info(
+    LOGGER.warn(
         "{}-{} [Compaction] submit a inner compaction task of {} files",
         logicalStorageGroupName,
         virtualStorageGroupName,
