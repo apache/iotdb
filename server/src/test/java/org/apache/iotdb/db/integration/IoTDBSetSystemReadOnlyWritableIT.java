@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -28,6 +26,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -39,10 +38,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class IoTDBSetSystemReadOnlyWritableIT {
@@ -60,7 +56,7 @@ public class IoTDBSetSystemReadOnlyWritableIT {
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509465960000,false)",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509466020000,false)",
         "insert into root.ln.wf01.wt01(timestamp,status) values(1509466080000,false)",
-  };
+      };
 
   private static final String[] sqls2 =
       new String[] {
@@ -124,7 +120,6 @@ public class IoTDBSetSystemReadOnlyWritableIT {
         "flush"
       };
 
-
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
@@ -166,18 +161,21 @@ public class IoTDBSetSystemReadOnlyWritableIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    try (
-        Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.ln.wf01.wt01(timestamp,status) values(1509466140000,false)");
+      statement.execute(
+          "insert into root.ln.wf01.wt01(timestamp,status) values(1509466140000,false)");
       fail();
     } catch (Exception e) {
-      Assert.assertEquals("411: Current system mode is read-only, does not support non-query operation", e.getMessage());
+      Assert.assertEquals(
+          "411: Current system mode is read-only, does not support non-query operation",
+          e.getMessage());
     }
-    try (
-        Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET SYSTEM TO WRITABLE");
     } catch (Exception e) {

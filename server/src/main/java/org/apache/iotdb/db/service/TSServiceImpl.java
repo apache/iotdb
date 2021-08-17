@@ -1133,7 +1133,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (!(plan instanceof SetReadOnlyPlan) && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (!(plan instanceof SetReadOnlyPlan)
+        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
     }
