@@ -718,38 +718,38 @@ In this situation, it will throws an exception if * corresponds to multiple sens
 
 * Regexp Statement
 
-Regexp Statement only supports regular expressions with data type of text and Java standard library style when matching
+Regexp Statement only supports regular expressions with Java standard library style on timeseries which is TEXT data type
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
 WhereClause : andExpression (OPERATOR_OR andExpression)*
 andExpression : predicate (OPERATOR_AND predicate)*
-predicate : (suffixPath | fullPath) LIKE stringLiteral
-stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
 
-Eg. select s1 from root.sg.d1 where s1 regexp 'Regexp'
-Eg. select s1, s2 FROM root.sg.d1 where s1 regexp 'regexp' and s2 regexp 'Regexp'
-Eg. select * from root.sg.d1 where s1 regexp 'Regexp'
-Eg. select * from root.sg.d1 where s1 regexp 'Regexp' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp '1'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '1' and s2 regexp '2'
+Eg. select * from root.sg.d1 where s1 regexp '1'
+Eg. select * from root.sg.d1 where s1 regexp '1' and time > 100
 ```
 
 * Like Statement
 
-The usage of Like Statement similar with mysql, but only support the regular expressions with data type of text
+The usage of LIKE Statement similar with mysql, but only support timeseries which is TEXT data type
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
 WhereClause : andExpression (OPERATOR_OR andExpression)*
 andExpression : predicate (OPERATOR_AND predicate)*
-predicate : (suffixPath | fullPath) LIKE stringLiteral
-stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
 
-Eg. select * from root.sg.d1 where s1 like 'String'
-Eg. select * from root.sg.d1 where s1 like 'String%'
-Eg. select * from root.sg.d1 where s1 like 'String_'
-Eg. select * from root.sg.d1 where s1 like 'String\%'
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'a%bc'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%' and time > 100
 ```
 
 ## Database Management Statement

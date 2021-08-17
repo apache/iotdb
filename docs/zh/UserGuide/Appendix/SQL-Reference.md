@@ -707,38 +707,38 @@ E.g. select * as temperature from root.sg.d1
 ```
 * Regexp 语句
 
-Regexp语句仅支持数据类型为 TEXT，匹配时为 Java 标准库风格的正则表达式
+Regexp语句仅支持数据类型为 TEXT的列进行过滤，传入的过滤条件为 Java 标准库风格的正则表达式
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
 WhereClause : andExpression (OPERATOR_OR andExpression)*
 andExpression : predicate (OPERATOR_AND predicate)*
-predicate : (suffixPath | fullPath) LIKE stringLiteral
-stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
 
-Eg. select s1 from root.sg.d1 where s1 regexp 'Regexp'
-Eg. select s1, s2 FROM root.sg.d1 where s1 regexp 'regexp' and s2 regexp 'Regexp'
-Eg. select * from root.sg.d1 where s1 regexp 'Regexp'
-Eg. select * from root.sg.d1 where s1 regexp 'Regexp' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp '1'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '1' and s2 regexp '2'
+Eg. select * from root.sg.d1 where s1 regexp '1'
+Eg. select * from root.sg.d1 where s1 regexp '1' and time > 100
 ```
 
 * Like 语句
 
-Like语句的用法和mysql相同, 但是仅支持数据类型为 TEXT
+Like语句的用法和mysql相同, 但是仅支持对数据类型为 TEXT的列进行过滤
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
 WhereClause : andExpression (OPERATOR_OR andExpression)*
 andExpression : predicate (OPERATOR_AND predicate)*
-predicate : (suffixPath | fullPath) LIKE stringLiteral
-stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
 
-Eg. select * from root.sg.d1 where s1 like 'String'
-Eg. select * from root.sg.d1 where s1 like 'String%'
-Eg. select * from root.sg.d1 where s1 like 'String_'
-Eg. select * from root.sg.d1 where s1 like 'String\%'
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'abc%'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%'
 ```
 
 ## 数据库管理语句
