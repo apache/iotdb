@@ -362,7 +362,8 @@ public class PhysicalGenerator {
             ((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES,
             ((LoadFilesOperator) operator).isAutoCreateSchema(),
-            ((LoadFilesOperator) operator).getSgLevel());
+            ((LoadFilesOperator) operator).getSgLevel(),
+            ((LoadFilesOperator) operator).isVerifyMetadata());
       case REMOVE_FILE:
         return new OperateFilePlan(
             ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);

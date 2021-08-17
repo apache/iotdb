@@ -33,6 +33,7 @@
 * add JMX monitor to all ThreadPools in the server module 
 
 ## Improvements
+* [IOTDB-1566] Do not restrict concurrent write partitions
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
@@ -58,6 +59,7 @@
 * [IoTDB-1501] Fix compaction recover delete tsfile bug
 * [IOTDB-1529] Fix mlog recover idx bug and synchronize setStorageGroup
 * [IOTDB-1537] fix insertTablet permission
+* [IOTDB-1539] Fix delete operation with value filter is abnormal
 * [IOTDB-1540] Bug Fix: 500 when using IN operator
 * [IOTDB-1541] Fix query result not right due to non-precise time index of resource
 * [IOTDB-1542] Cpp client segment fault: char[] buffer overflow caused by long exception message

@@ -382,7 +382,8 @@ public class StorageGroupProcessor {
             .getTsFileManagement(logicalStorageGroupName, storageGroupSysDir.getAbsolutePath());
 
     ScheduledExecutorService executorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("WAL-trimTask");
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            String.format("WAL-trimTask-%s/%s", logicalStorageGroupName, virtualStorageGroupId));
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
@@ -1117,21 +1118,7 @@ public class StorageGroupProcessor {
     TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
 
     if (null == res) {
-      // we have to remove oldest processor to control the num of the memtables
-      // TODO: use a method to control the number of memtables
-      if (tsFileProcessorTreeMap.size()
-          >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
-        Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-        logger.info(
-            "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
-            sequence,
-            tsFileProcessorTreeMap.size(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
-            logicalStorageGroupName);
-        asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
-      }
-
-      // build new processor
+      // build new processor, memory control module will control the number of memtables
       res = newTsFileProcessor(sequence, timeRangeId);
       tsFileProcessorTreeMap.put(timeRangeId, res);
       tsFileManagement.add(res.getTsFileResource(), sequence);
@@ -1211,11 +1198,11 @@ public class StorageGroupProcessor {
   private String getNewTsFileName(long timePartitionId) {
     long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
     partitionMaxFileVersions.put(timePartitionId, version);
-    return getNewTsFileName(System.currentTimeMillis(), version, 0);
+    return getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
   }
 
-  private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return TsFileResource.getNewTsFileName(System.currentTimeMillis(), version, 0, 0);
+  private String getNewTsFileName(long time, long version, int mergeCnt, int unSeqMergeCnt) {
+    return TsFileResource.getNewTsFileName(time, version, mergeCnt, unSeqMergeCnt);
   }
 
   public void syncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
@@ -2179,42 +2166,37 @@ public class StorageGroupProcessor {
       List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
 
       int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
-      if (insertPos == POS_ALREADY_EXIST) {
-        return;
-      }
+      String newFileName, renameInfo;
+      LoadTsFileType tsFileType;
 
       // loading tsfile by type
       if (insertPos == POS_OVERLAP) {
-        loadTsFileByType(
-            LoadTsFileType.LOAD_UNSEQUENCE,
-            tsfileToBeInserted,
-            newTsFileResource,
-            newFilePartitionId);
+        newFileName =
+            getNewTsFileName(
+                System.currentTimeMillis(),
+                getAndSetNewVersion(newFilePartitionId, newTsFileResource),
+                0,
+                0);
+        renameInfo = IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+        tsFileType = LoadTsFileType.LOAD_UNSEQUENCE;
+        newTsFileResource.setSeq(false);
       } else {
-
         // check whether the file name needs to be renamed.
-        if (!tsFileManagement.isEmpty(true)) {
-          String newFileName =
-              getFileNameForLoadingFile(
-                  tsfileToBeInserted.getName(),
-                  insertPos,
-                  newTsFileResource.getTimePartition(),
-                  sequenceList);
-          if (!newFileName.equals(tsfileToBeInserted.getName())) {
-            logger.info(
-                "Tsfile {} must be renamed to {} for loading into the sequence list.",
-                tsfileToBeInserted.getName(),
-                newFileName);
-            newTsFileResource.setFile(
-                fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
-          }
-        }
-        loadTsFileByType(
-            LoadTsFileType.LOAD_SEQUENCE,
-            tsfileToBeInserted,
-            newTsFileResource,
-            newFilePartitionId);
+        newFileName = getFileNameForSequenceLoadingFile(insertPos, newTsFileResource, sequenceList);
+        renameInfo = IoTDBConstant.SEQUENCE_FLODER_NAME;
+        tsFileType = LoadTsFileType.LOAD_SEQUENCE;
+        newTsFileResource.setSeq(true);
       }
+
+      if (!newFileName.equals(tsfileToBeInserted.getName())) {
+        logger.info(
+            "TsFile {} must be renamed to {} for loading into the " + renameInfo + " list.",
+            tsfileToBeInserted.getName(),
+            newFileName);
+        newTsFileResource.setFile(
+            fsFactory.getFile(tsfileToBeInserted.getParentFile(), newFileName));
+      }
+      loadTsFileByType(tsFileType, tsfileToBeInserted, newTsFileResource, newFilePartitionId);
       resetLastCacheWhenLoadingTsfile(newTsFileResource);
 
       // update latest time map
@@ -2228,9 +2210,13 @@ public class StorageGroupProcessor {
           tsfileToBeInserted.getParentFile().getName());
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
-    } catch (IllegalPathException | WriteProcessException | IOException e) {
+    } catch (IllegalPathException | WriteProcessException e) {
       logger.error(
           "Failed to reset last cache when loading file {}", newTsFileResource.getTsFilePath());
+      throw new LoadFileException(e);
+    } catch (IOException e) {
+      logger.error(
+          "Failed to add tsfile {} to tsfile management", tsfileToBeInserted.getAbsolutePath());
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
@@ -2263,7 +2249,6 @@ public class StorageGroupProcessor {
       TsFileResource newTsFileResource,
       long newFilePartitionId,
       List<TsFileResource> sequenceList) {
-    File tsfileToBeInserted = newTsFileResource.getTsFile();
 
     int insertPos = -1;
 
@@ -2271,15 +2256,9 @@ public class StorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
       long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-      if (localPartitionId == newFilePartitionId
-          && localFile.getTsFile().getName().equals(tsfileToBeInserted.getName())) {
-        return POS_ALREADY_EXIST;
-      }
 
-      if (i == sequenceList.size() - 1 && localFile.endTimeEmpty()
-          || newFilePartitionId > localPartitionId) {
-        // skip files that are in the previous partition and the last empty file, as the all data
-        // in those files must be older than the new file
+      if (newFilePartitionId > localPartitionId) {
+        insertPos = i;
         continue;
       }
 
@@ -2424,36 +2403,31 @@ public class StorageGroupProcessor {
 
   /**
    * Get an appropriate filename to ensure the order between files. The tsfile is named after
-   * ({systemTime}-{versionNum}-{mergeNum}.tsfile).
+   * ({systemTime}-{versionNum}-{in_space_compaction_num}-{cross_space_compaction_num}.tsfile).
    *
    * <p>The sorting rules for tsfile names @see {@link this#compareFileName}, we can restore the
    * list based on the file name and ensure the correctness of the order, so there are three cases.
    *
-   * <p>1. The tsfile is to be inserted in the first place of the list. If the timestamp in the file
-   * name is less than the timestamp in the file name of the first tsfile in the list, then the file
-   * name is legal and the file name is returned directly. Otherwise, its timestamp can be set to
-   * half of the timestamp value in the file name of the first tsfile in the list , and the version
-   * number is the version number in the file name of the first tsfile in the list.
+   * <p>1. The tsfile is to be inserted in the first place of the list. Timestamp can be set to half
+   * of the timestamp value in the file name of the first tsfile in the list , and the version
+   * number will be updated to the largest number in this time partition.
    *
-   * <p>2. The tsfile is to be inserted in the last place of the list. If the timestamp in the file
-   * name is lager than the timestamp in the file name of the last tsfile in the list, then the file
-   * name is legal and the file name is returned directly. Otherwise, the file name is generated by
+   * <p>2. The tsfile is to be inserted in the last place of the list. The file name is generated by
    * the system according to the naming rules and returned.
    *
-   * <p>3. This file is inserted between two files. If the timestamp in the name of the file
-   * satisfies the timestamp between the timestamps in the name of the two files, then it is a legal
-   * name and returns directly; otherwise, the time stamp is the mean of the timestamps of the two
-   * files, the version number is the version number in the tsfile with a larger timestamp.
+   * <p>3. This file is inserted between two files. The time stamp is the mean of the timestamps of
+   * the two files, the version number will be updated to the largest number in this time partition.
    *
-   * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
    *     1]
    * @return appropriate filename
    */
-  private String getFileNameForLoadingFile(
-      String tsfileName, int insertIndex, long timePartitionId, List<TsFileResource> sequenceList) {
-    long currentTsFileTime = Long.parseLong(tsfileName.split(FILE_NAME_SEPARATOR)[0]);
-    long preTime;
+  private String getFileNameForSequenceLoadingFile(
+      int insertIndex, TsFileResource newTsFileResource, List<TsFileResource> sequenceList)
+      throws LoadFileException {
+    long timePartitionId = newTsFileResource.getTimePartition();
+    long preTime, subsequenceTime;
+
     if (insertIndex == -1) {
       preTime = 0L;
     } else {
@@ -2461,22 +2435,26 @@ public class StorageGroupProcessor {
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == tsFileManagement.size(true) - 1) {
-      if (preTime < currentTsFileTime) {
-        return tsfileName;
-      } else {
-        return getNewTsFileName(timePartitionId);
-      }
+      subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
+    } else {
+      String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
+      subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
     }
 
-    String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
-    long subsequenceTime = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[0]);
-    long subsequenceVersion = Long.parseLong(subsequenceName.split(FILE_NAME_SEPARATOR)[1]);
-    if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
-      return tsfileName;
+    long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
+    if (insertIndex != tsFileManagement.size(true) - 1 && meanTime == subsequenceTime) {
+      throw new LoadFileException("can not load TsFile because of can not find suitable location");
     }
 
-    return TsFileResource.getNewTsFileName(
-        preTime + ((subsequenceTime - preTime) >> 1), subsequenceVersion, 0, 0);
+    return getNewTsFileName(
+        meanTime, getAndSetNewVersion(timePartitionId, newTsFileResource), 0, 0);
+  }
+
+  private long getAndSetNewVersion(long timePartitionId, TsFileResource tsFileResource) {
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, -1L) + 1;
+    partitionMaxFileVersions.put(timePartitionId, version);
+    tsFileResource.setVersion(version);
+    return version;
   }
 
   /**
@@ -2517,7 +2495,7 @@ public class StorageGroupProcessor {
    * @return load the file successfully @UsedBy sync module, load external tsfile module.
    */
   private boolean loadTsFileByType(
-      LoadTsFileType type, File syncedTsFile, TsFileResource tsFileResource, long filePartitionId)
+      LoadTsFileType type, File tsFileToLoad, TsFileResource tsFileResource, long filePartitionId)
       throws LoadFileException, DiskSpaceInsufficientException, IOException {
     File targetFile;
     switch (type) {
@@ -2540,7 +2518,7 @@ public class StorageGroupProcessor {
         tsFileManagement.add(tsFileResource, false);
         logger.info(
             "Load tsfile in unsequence list, move file from {} to {}",
-            syncedTsFile.getAbsolutePath(),
+            tsFileToLoad.getAbsolutePath(),
             targetFile.getAbsolutePath());
         break;
       case LOAD_SEQUENCE:
@@ -2562,7 +2540,7 @@ public class StorageGroupProcessor {
         tsFileManagement.add(tsFileResource, true);
         logger.info(
             "Load tsfile in sequence list, move file from {} to {}",
-            syncedTsFile.getAbsolutePath(),
+            tsFileToLoad.getAbsolutePath(),
             targetFile.getAbsolutePath());
         break;
       default:
@@ -2574,37 +2552,69 @@ public class StorageGroupProcessor {
       targetFile.getParentFile().mkdirs();
     }
     try {
-      FileUtils.moveFile(syncedTsFile, targetFile);
+      FileUtils.moveFile(tsFileToLoad, targetFile);
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading tsfile. Origin: {}, Target: {}",
-          syncedTsFile.getAbsolutePath(),
+          tsFileToLoad.getAbsolutePath(),
           targetFile.getAbsolutePath(),
           e);
       throw new LoadFileException(
           String.format(
               "File renaming failed when loading tsfile. Origin: %s, Target: %s, because %s",
-              syncedTsFile.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
+              tsFileToLoad.getAbsolutePath(), targetFile.getAbsolutePath(), e.getMessage()));
     }
 
-    File syncedResourceFile =
-        fsFactory.getFile(syncedTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
+    File resourceFileToLoad =
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     File targetResourceFile =
         fsFactory.getFile(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
     try {
-      FileUtils.moveFile(syncedResourceFile, targetResourceFile);
+      FileUtils.moveFile(resourceFileToLoad, targetResourceFile);
     } catch (IOException e) {
       logger.error(
           "File renaming failed when loading .resource file. Origin: {}, Target: {}",
-          syncedResourceFile.getAbsolutePath(),
+          resourceFileToLoad.getAbsolutePath(),
           targetResourceFile.getAbsolutePath(),
           e);
       throw new LoadFileException(
           String.format(
               "File renaming failed when loading .resource file. Origin: %s, Target: %s, because %s",
-              syncedResourceFile.getAbsolutePath(),
+              resourceFileToLoad.getAbsolutePath(),
               targetResourceFile.getAbsolutePath(),
               e.getMessage()));
+    }
+
+    File modFileToLoad =
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    if (modFileToLoad.exists()) {
+      // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
+      // dir, so we can add a suffix to find the old modification file.
+      File targetModFile =
+          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+      try {
+        Files.deleteIfExists(targetFile.toPath());
+      } catch (IOException e) {
+        logger.warn("Cannot delete localModFile {}", targetModFile, e);
+      }
+      try {
+        FileUtils.moveFile(modFileToLoad, targetModFile);
+      } catch (IOException e) {
+        logger.error(
+            "File renaming failed when loading .mod file. Origin: {}, Target: {}",
+            resourceFileToLoad.getAbsolutePath(),
+            targetModFile.getAbsolutePath(),
+            e);
+        throw new LoadFileException(
+            String.format(
+                "File renaming failed when loading .mod file. Origin: %s, Target: %s, because %s",
+                resourceFileToLoad.getAbsolutePath(),
+                targetModFile.getAbsolutePath(),
+                e.getMessage()));
+      } finally {
+        // ModFile will be updated during the next call to `getModFile`
+        tsFileResource.setModFile(null);
+      }
     }
 
     updatePartitionFileVersion(filePartitionId, tsFileResource.getVersion());
