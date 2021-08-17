@@ -266,10 +266,10 @@ public class IoTDBConfig {
   private String indexRootFolder = "data" + File.separator + "index";
 
   /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long unSeqTsFileSize = 1L;
+  private long unSeqTsFileSize = 536870912L;
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long seqTsFileSize = 1L;
+  private long seqTsFileSize = 536870912L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
@@ -292,19 +292,19 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** LEVEL_COMPACTION, NO_COMPACTION */
-  private CompactionStrategy compactionStrategy = CompactionStrategy.LEVEL_COMPACTION;
+  private CompactionStrategy compactionStrategy = CompactionStrategy.NO_COMPACTION;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to merge unseq files into seq
    * files or not.
    */
-  private boolean enableUnseqCompaction = true;
+  private boolean enableUnseqCompaction = false;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. Whether to start next compaction task
    * automatically after finish one compaction task
    */
-  private boolean enableContinuousCompaction = true;
+  private boolean enableContinuousCompaction = false;
 
   /**
    * Works when the compaction_strategy is LEVEL_COMPACTION. The max seq file num of each level.
