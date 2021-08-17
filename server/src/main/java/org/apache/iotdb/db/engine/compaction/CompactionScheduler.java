@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * CompactionScheduler schedules and submits the compaction task periodically, and it counts the
@@ -50,7 +49,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompactionScheduler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CompactionScheduler.class);
-  public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // fullStorageGroupName -> timePartition -> compactionCount
   private static volatile Map<String, Map<Long, Long>> compactionCountInPartition =
@@ -61,7 +59,8 @@ public class CompactionScheduler {
     LOGGER.info(
         "{} [Compaction] start to schedule compaction",
         tsFileResourceManager.getStorageGroupName());
-    if (currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
+    if (CompactionTaskManager.getInstance().getTaskCount()
+        >= config.getConcurrentCompactionThread()) {
       return;
     }
     tsFileResourceManager.readLock();
@@ -114,7 +113,8 @@ public class CompactionScheduler {
       TsFileResourceList unsequenceFileList) {
     boolean taskSubmitted = true;
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
-    while (taskSubmitted && currentTaskNum.get() < concurrentCompactionThread) {
+    while (taskSubmitted
+        && CompactionTaskManager.getInstance().getTaskCount() < concurrentCompactionThread) {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
               logicalStorageGroupName,
@@ -261,10 +261,6 @@ public class CompactionScheduler {
                 unsequenceFileList,
                 taskFactory);
     return crossSpaceCompactionSelector.selectAndSubmit();
-  }
-
-  public static int getCount() {
-    return currentTaskNum.get();
   }
 
   public static Map<String, Map<Long, Long>> getCompactionCountInPartition() {

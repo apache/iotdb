@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
@@ -93,10 +92,10 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
-        if ((CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread)
+        if ((CompactionTaskManager.getInstance().getTaskCount() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
-          if (CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread) {
+          if (CompactionTaskManager.getInstance().getTaskCount() >= concurrentCompactionThread) {
             LOGGER.warn("Return selection because too many compaction thread");
           } else {
             LOGGER.warn("Return selection because compaction is not enable");

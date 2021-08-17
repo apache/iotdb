@@ -79,7 +79,7 @@ public class InnerCompactionSchedulerTest {
         new FakedInnerSpaceCompactionTaskFactory());
 
     long waitingTime = 0;
-    while (CompactionScheduler.getCount() != 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
       try {
         Thread.sleep(100);
         waitingTime += 100;
@@ -115,7 +115,7 @@ public class InnerCompactionSchedulerTest {
         new FakedInnerSpaceCompactionTaskFactory());
 
     long waitingTime = 0;
-    while (CompactionScheduler.getCount() != 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
       try {
         Thread.sleep(100);
         waitingTime += 100;

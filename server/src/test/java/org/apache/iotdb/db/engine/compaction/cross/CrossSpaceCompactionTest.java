@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
@@ -426,7 +425,6 @@ public class CrossSpaceCompactionTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     fileSelector.getConcurrentMergeNum());
-            CompactionScheduler.currentTaskNum.incrementAndGet();
             compactionTask.call();
             CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources);
             CompactionClearUtils.clearAllCompactionFiles();
@@ -720,7 +718,6 @@ public class CrossSpaceCompactionTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     fileSelector.getConcurrentMergeNum());
-            CompactionScheduler.currentTaskNum.incrementAndGet();
             compactionTask.call();
             CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources.subList(1, 4));
             CompactionClearUtils.clearAllCompactionFiles();

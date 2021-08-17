@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1052,7 +1052,7 @@ public class IoTDBNewTsFileCompactionIT {
 
     long startTime = System.nanoTime();
     // get the size of level 1's tsfile list to judge whether merge is finished
-    while (CompactionScheduler.currentTaskNum.get() != 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
       TimeUnit.MILLISECONDS.sleep(100);
       // wait too long, just break
       if ((System.nanoTime() - startTime) >= MAX_WAIT_TIME_FOR_MERGE) {

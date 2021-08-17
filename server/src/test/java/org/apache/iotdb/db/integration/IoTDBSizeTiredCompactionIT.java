@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -27,7 +27,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
@@ -1070,10 +1074,10 @@ public class IoTDBSizeTiredCompactionIT {
       }
       int compactionCount = 0;
       while (compactionCount < 3) {
-        while (CompactionScheduler.currentTaskNum.get() == 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
           // wait for schedule
         }
-        while (CompactionScheduler.currentTaskNum.get() > 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
           // wait for compaction to finish
         }
         compactionCount++;
@@ -1123,10 +1127,10 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      while (CompactionScheduler.currentTaskNum.get() == 0) {
+      while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
         // wait for schedule
       }
-      while (CompactionScheduler.currentTaskNum.get() > 0) {
+      while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
         // wait for compaction to finish
       }
       try {
@@ -1187,10 +1191,10 @@ public class IoTDBSizeTiredCompactionIT {
       }
       int compactionCount = 0;
       while (compactionCount < 3) {
-        while (CompactionScheduler.currentTaskNum.get() == 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
           // wait for schedule
         }
-        while (CompactionScheduler.currentTaskNum.get() > 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
           // wait for compaction to finish
         }
         compactionCount++;
@@ -1248,10 +1252,10 @@ public class IoTDBSizeTiredCompactionIT {
       }
       int compactionCount = 0;
       while (compactionCount < 2) {
-        while (CompactionScheduler.currentTaskNum.get() == 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
           // wait for schedule
         }
-        while (CompactionScheduler.currentTaskNum.get() > 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
           // wait for compaction to finish
         }
         compactionCount++;
@@ -1312,10 +1316,10 @@ public class IoTDBSizeTiredCompactionIT {
       }
       int compactionCount = 0;
       while (compactionCount < 2) {
-        while (CompactionScheduler.currentTaskNum.get() == 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
           // wait for schedule
         }
-        while (CompactionScheduler.currentTaskNum.get() > 0) {
+        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
           // wait for compaction to finish
         }
         compactionCount++;

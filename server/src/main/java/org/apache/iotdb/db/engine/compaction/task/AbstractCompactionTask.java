@@ -26,8 +26,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.db.engine.compaction.CompactionScheduler.currentTaskNum;
-
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
  * compaction. AbstractCompactionTask uses a template method, it execute the abstract function
@@ -53,8 +51,6 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      CompactionScheduler.currentTaskNum.decrementAndGet();
-      LOGGER.info("a compaction task is finished, currentTaskNum={}", currentTaskNum.get());
       CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
     }
     return null;

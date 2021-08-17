@@ -66,11 +66,13 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
   @Override
   public boolean selectAndSubmit() {
     boolean taskSubmitted = false;
-    if ((CompactionScheduler.currentTaskNum.get() >= config.getConcurrentCompactionThread())
+    if ((CompactionTaskManager.getInstance().getTaskCount()
+            >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())
         || CompactionScheduler.isPartitionCompacting(
             logicalStorageGroupName + "-" + virtualGroupId, timePartition)) {
-      if (CompactionScheduler.currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
+      if (CompactionTaskManager.getInstance().getTaskCount()
+          >= config.getConcurrentCompactionThread()) {
         LOGGER.warn("End selection because too many threads");
       } else if (!config.isEnableCrossSpaceCompaction()) {
         LOGGER.warn("End selection because cross compaction is not enable");
