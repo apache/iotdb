@@ -52,14 +52,13 @@ public class Like<T extends Comparable<T>> implements Filter {
     this.filterType = filterType;
     try {
       StringBuilder patternStrBuild = new StringBuilder();
-      if (!value.startsWith("%") && !value.startsWith("_")) patternStrBuild.append("^");
+      if (!value.startsWith("%")) patternStrBuild.append("^");
       patternStrBuild.append(
           this.value
+              .replace("[", "\\[")
               .replaceAll("(?<!\\\\)%", "[\\\\s\\\\S]*")
               .replaceAll("(?<!\\\\)_", "[\\\\s\\\\S]{1}"));
-      if ((!value.endsWith("%") && !value.endsWith("_"))
-          || value.endsWith("\\%")
-          || value.endsWith("\\_")) patternStrBuild.append("$");
+      if (!value.endsWith("%") || value.endsWith("\\%")) patternStrBuild.append("$");
       this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
