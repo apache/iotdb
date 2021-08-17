@@ -123,7 +123,12 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
-    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDeInnerCompactionMergeTestscriptor.getInstance()
+        .getConfig()
+        .setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1278,6 +1283,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test12() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test12");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1318,11 +1324,23 @@ public class CompactionSchedulerTest {
       tsFileResourceManager.add(tsFileResource, false);
     }
 
+    LOGGER.warn("Try to schedule compaction");
+    LOGGER.warn(
+        "{} {}, current task num is {}",
+        COMPACTION_TEST_SG,
+        CompactionScheduler.isPartitionCompacting(COMPACTION_TEST_SG + "-0", 0)
+            ? "is compacting"
+            : "not compacting",
+        CompactionTaskManager.getInstance().getTaskCount());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+
     long totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 98) {
       try {
         if (totalWaitingTime % 2000 == 0) {
+          LOGGER.warn(
+              "The size of sequence file list is {}",
+              tsFileResourceManager.getTsFileList(true).size());
           LOGGER.warn(
               "The size of unsequence file list is {}",
               tsFileResourceManager.getTsFileList(false).size());

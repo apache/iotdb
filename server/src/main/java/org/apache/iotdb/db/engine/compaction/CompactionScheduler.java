@@ -53,7 +53,7 @@ public class CompactionScheduler {
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // fullStorageGroupName -> timePartition -> compactionCount
-  private static Map<String, Map<Long, Long>> compactionCountInPartition =
+  private static volatile Map<String, Map<Long, Long>> compactionCountInPartition =
       new ConcurrentHashMap<>();
 
   public static void scheduleCompaction(
@@ -155,6 +155,8 @@ public class CompactionScheduler {
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
+    LOGGER.warn("Scheduling compaction in INNER-CROSS PRIORITY");
+    LOGGER.warn("Scheduling compaction for sequence files");
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -163,6 +165,7 @@ public class CompactionScheduler {
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
+    LOGGER.warn("Scheduling compaction for unsequence files");
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -171,6 +174,7 @@ public class CompactionScheduler {
         unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
+    LOGGER.warn("Scheduling compaction for cross space");
     tryToSubmitCrossSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -293,9 +297,11 @@ public class CompactionScheduler {
   }
 
   public static boolean isPartitionCompacting(String fullStorageGroupName, long timePartition) {
-    return compactionCountInPartition
-            .computeIfAbsent(fullStorageGroupName, l -> new HashMap<>())
-            .getOrDefault(timePartition, 0L)
-        > 0L;
+    synchronized (compactionCountInPartition) {
+      return compactionCountInPartition
+              .computeIfAbsent(fullStorageGroupName, l -> new HashMap<>())
+              .getOrDefault(timePartition, 0L)
+          > 0L;
+    }
   }
 }

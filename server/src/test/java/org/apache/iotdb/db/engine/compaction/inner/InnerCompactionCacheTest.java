@@ -105,7 +105,6 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
             tsFileResourceManager.getSequenceListByTimePartition(0),
             seqResources,
             true);
-    CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
     sizeTiredCompactionTask.call();
 
     firstChunkMetadata.setFilePath(null);

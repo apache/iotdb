@@ -70,6 +70,14 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         || (!config.isEnableCrossSpaceCompaction())
         || CompactionScheduler.isPartitionCompacting(
             logicalStorageGroupName + "-" + virtualGroupId, timePartition)) {
+      if (CompactionScheduler.currentTaskNum.get() >= config.getConcurrentCompactionThread()) {
+        LOGGER.warn("End selection because too many threads");
+      } else if (!config.isEnableCrossSpaceCompaction()) {
+        LOGGER.warn("End selection because cross compaction is not enable");
+      } else {
+        LOGGER.warn(
+            "End selection because {}-{} is compacting", logicalStorageGroupName, virtualGroupId);
+      }
       return false;
     }
     Iterator<TsFileResource> seqIterator = sequenceFileList.iterator();
@@ -104,6 +112,10 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
             budget);
         return false;
       }
+      LOGGER.warn(
+          "select files for cross compaction, sequence files: {}, unsequence files {}",
+          mergeFiles[0],
+          mergeFiles[1]);
       // avoid pending tasks holds the metadata and streams
       mergeResource.clear();
       // do not cache metadata until true candidates are chosen, or too much metadata will be
@@ -133,7 +145,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
           .submitTask(
               logicalStorageGroupName + "-" + virtualGroupId, timePartition, compactionTask);
       taskSubmitted = true;
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] submit a task with {} sequence file and {} unseq files",
           logicalStorageGroupName + "-" + virtualGroupId,
           mergeResource.getSeqFiles().size(),

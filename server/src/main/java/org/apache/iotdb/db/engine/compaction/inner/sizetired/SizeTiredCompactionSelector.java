@@ -75,6 +75,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
+    LOGGER.warn("Trying to get the read lock for tsFileResources");
     tsFileResources.readLock();
     LOGGER.warn(
         "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, target file num is {}",
@@ -85,14 +86,21 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     try {
       // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+      LOGGER.warn("Get TsFileResourceList reverse iterator");
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
+        LOGGER.warn("Current File is {}", currentFile);
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
         if ((CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
+          if (CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread) {
+            LOGGER.warn("Return selection because too many compaction thread");
+          } else {
+            LOGGER.warn("Return selection because compaction is not enable");
+          }
           return taskSubmitted;
         }
         // the file size reach threshold
@@ -101,6 +109,13 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
+          if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
+            LOGGER.warn("Selected file list is clear because current file is too large");
+          } else {
+            LOGGER.warn(
+                "Selected file list is clear because current file is {}",
+                currentFile.isMerging() ? "merging" : "not closed");
+          }
           selectedFileList.clear();
           selectedFileSize = 0L;
           continue;
@@ -115,6 +130,9 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
+          LOGGER.warn(
+              "Submit a compaction task because {}",
+              selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
           createAndSubmitTask(selectedFileList);
           taskSubmitted = true;
