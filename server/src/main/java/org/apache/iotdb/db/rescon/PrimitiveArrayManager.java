@@ -171,7 +171,7 @@ public class PrimitiveArrayManager {
       int newLimit = (int) (limitBase * ratios[i]);
       LIMITS[i] = newLimit;
 
-      if (LOGGER.isInfoEnabled()) {
+      if (LOGGER.isInfoEnabled() && oldLimit != newLimit) {
         LOGGER.info(
             "limit of {} array deque size updated: {} -> {}",
             TSDataType.deserialize((byte) i).name(),
@@ -180,11 +180,16 @@ public class PrimitiveArrayManager {
       }
     }
 
+    long oldLimitUpdateThreshold = limitUpdateThreshold;
     // limitUpdateThreshold = ∑(LIMITS[i])
     limitUpdateThreshold = 0;
     for (int limit : LIMITS) {
       limitUpdateThreshold += limit;
     }
+    LOGGER.info(
+        "limitUpdateThreshold of PrimitiveArrayManager updated: {} -> {}",
+        oldLimitUpdateThreshold,
+        limitUpdateThreshold);
 
     for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
       allocationRequestCount.set(0);
