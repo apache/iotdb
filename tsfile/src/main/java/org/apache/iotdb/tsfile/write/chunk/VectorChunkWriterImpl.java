@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -53,7 +54,9 @@ public class VectorChunkWriterImpl implements IChunkWriter {
     for (int i = 0; i < valueMeasurementIdList.size(); i++) {
       valueChunkWriterList.add(
           new ValueChunkWriter(
-              valueMeasurementIdList.get(i),
+              schema.getMeasurementId()
+                  + TsFileConstant.PATH_SEPARATOR
+                  + valueMeasurementIdList.get(i),
               schema.getCompressor(),
               valueTSDataTypeList.get(i),
               valueTSEncodingList.get(i),

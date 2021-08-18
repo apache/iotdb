@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -320,8 +320,8 @@ public class IoTDBSessionSimpleIT {
 
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d1.s1"));
     assertNull(mNode.getSchema().getProps());
 
     session.close();

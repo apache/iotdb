@@ -160,11 +160,10 @@ public class TsFileProcessor {
       StorageGroupInfo storageGroupInfo,
       CloseFileListener closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback,
-      boolean sequence,
-      int deviceNumInLastClosedTsFile)
+      boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.tsFileResource = new TsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
+    this.tsFileResource = new TsFileResource(tsfile, this);
     this.storageGroupInfo = storageGroupInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
@@ -210,16 +209,18 @@ public class TsFileProcessor {
       }
     }
 
+    long[] memIncrements = null;
     if (enableMemControl) {
-      checkMemCostAndAddToTspInfo(insertRowPlan);
+      memIncrements = checkMemCostAndAddToTspInfo(insertRowPlan);
     }
-
-    workMemTable.insert(insertRowPlan);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
       } catch (Exception e) {
+        if (enableMemControl && memIncrements != null) {
+          rollbackMemoryInfo(memIncrements);
+        }
         throw new WriteProcessException(
             String.format(
                 "%s: %s write WAL failed",
@@ -227,6 +228,8 @@ public class TsFileProcessor {
             e);
       }
     }
+
+    workMemTable.insert(insertRowPlan);
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
@@ -262,9 +265,10 @@ public class TsFileProcessor {
       }
     }
 
+    long[] memIncrements = null;
     try {
       if (enableMemControl) {
-        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+        memIncrements = checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -272,8 +276,8 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
+
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
         insertTabletPlan.setEnd(end);
@@ -283,8 +287,21 @@ public class TsFileProcessor {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
+      if (enableMemControl && memIncrements != null) {
+        rollbackMemoryInfo(memIncrements);
+      }
       throw new WriteProcessException(e);
     }
+
+    try {
+      workMemTable.insertTablet(insertTabletPlan, start, end);
+    } catch (WriteProcessException e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
@@ -301,7 +318,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
+  private long[] checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
@@ -348,12 +365,13 @@ public class TsFileProcessor {
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
+  private long[] checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
     if (start >= end) {
-      return;
+      return new long[] {0, 0, 0};
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
@@ -389,6 +407,7 @@ public class TsFileProcessor {
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return memIncrements;
   }
 
   private void updateMemCost(
@@ -493,6 +512,19 @@ public class TsFileProcessor {
     workMemTable.addTextDataSize(textDataIncrement);
   }
 
+  private void rollbackMemoryInfo(long[] memIncrements) {
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+
+    memTableIncrement += textDataIncrement;
+    storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+    tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
+    SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+    workMemTable.releaseTVListRamCost(memTableIncrement);
+    workMemTable.releaseTextDataSize(textDataIncrement);
+  }
+
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
    * <= 'timestamp' in the deletion. <br>
@@ -568,7 +600,8 @@ public class TsFileProcessor {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold();
+    long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
+
     if (fileSize >= fileSizeThreshold) {
       logger.info(
           "{} fileSize {} >= fileSizeThreshold {}",
@@ -1298,6 +1331,11 @@ public class TsFileProcessor {
 
   public long getWorkMemTableRamCost() {
     return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
+  }
+
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableCreatedTime() {
+    return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
   }
 
   public boolean isSequence() {

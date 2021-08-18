@@ -192,9 +192,8 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     List<TsFileResource> newUnseqResources = new ArrayList<>();
     newUnseqResources.add(largeUnseqTsFileResource);
 
-    long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    MergeResource mergeResource =
-        new MergeResource(seqResources, newUnseqResources, timeLowerBound);
+    long ttlLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+    MergeResource mergeResource = new MergeResource(seqResources, newUnseqResources, ttlLowerBound);
     assertEquals(5, mergeResource.getSeqFiles().size());
     assertEquals(1, mergeResource.getUnseqFiles().size());
     mergeResource.clear();

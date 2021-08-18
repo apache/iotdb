@@ -64,6 +64,11 @@ public class BitMap {
     return (bits[position / Byte.SIZE] & BIT_UTIL[position % Byte.SIZE]) != 0;
   }
 
+  /** mark as 1 at all positions. */
+  public void markAll() {
+    Arrays.fill(bits, (byte) 0XFF);
+  }
+
   /** mark as 1 at the given bit position. */
   public void mark(int position) {
     bits[position / Byte.SIZE] |= BIT_UTIL[position % Byte.SIZE];

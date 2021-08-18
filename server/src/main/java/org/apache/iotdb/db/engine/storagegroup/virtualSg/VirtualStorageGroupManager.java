@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -40,6 +40,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class VirtualStorageGroupManager {
 
@@ -52,11 +56,26 @@ public class VirtualStorageGroupManager {
   /** all virtual storage group processor */
   StorageGroupProcessor[] virtualStorageGroupProcessor;
 
+  /**
+   * recover status of each virtual storage group processor, null if this logical storage group is
+   * new created
+   */
+  private AtomicBoolean[] isVsgReady;
+
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
   public VirtualStorageGroupManager() {
+    this(false);
+  }
+
+  public VirtualStorageGroupManager(boolean needRecovering) {
     virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
+    isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
+    boolean recoverReady = !needRecovering;
+    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
+      isVsgReady[i] = new AtomicBoolean(recoverReady);
+    }
   }
 
   /** push forceCloseAllWorkingTsFileProcessors down to all sg */
@@ -86,6 +105,15 @@ public class VirtualStorageGroupManager {
     }
   }
 
+  /** push check memtable flush interval down to all sg */
+  public void timedFlushMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushMemTable();
+      }
+    }
+  }
+
   /**
    * get processor from device id
    *
@@ -95,14 +123,14 @@ public class VirtualStorageGroupManager {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public StorageGroupProcessor getProcessor(
-      PartialPath partialPath, StorageGroupMNode storageGroupMNode)
+      PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
     StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
       // if finish recover
-      if (StorageEngine.getInstance().isAllSgReady()) {
+      if (isVsgReady[loc].get()) {
         synchronized (storageGroupMNode) {
           processor = virtualStorageGroupProcessor[loc];
           if (processor == null) {
@@ -116,7 +144,9 @@ public class VirtualStorageGroupManager {
       } else {
         // not finished recover, refuse the request
         throw new StorageEngineException(
-            "the sg " + partialPath + " may not ready now, please wait and retry later",
+            String.format(
+                "the virtual storage group %s[%d] may not ready now, please wait and retry later",
+                storageGroupMNode.getFullPath(), loc),
             TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
@@ -125,53 +155,39 @@ public class VirtualStorageGroupManager {
   }
 
   /**
-   * recover
+   * async recover all virtual storage groups in this logical storage group
    *
    * @param storageGroupMNode logical sg mnode
+   * @param pool thread pool to run virtual storage group recover task
+   * @param futures virtual storage group recover tasks
    */
-  public void recover(StorageGroupMNode storageGroupMNode) {
-    List<Thread> threadList = new ArrayList<>(partitioner.getPartitionCount());
+  public void asyncRecover(
+      IStorageGroupMNode storageGroupMNode, ExecutorService pool, List<Future<Void>> futures) {
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
       int cur = i;
-      Thread recoverThread =
-          new Thread(
-              new Runnable() {
-                @Override
-                public void run() {
-                  StorageGroupProcessor processor = null;
-                  try {
-                    processor =
-                        StorageEngine.getInstance()
-                            .buildNewStorageGroupProcessor(
-                                storageGroupMNode.getPartialPath(),
-                                storageGroupMNode,
-                                String.valueOf(cur));
-                  } catch (StorageGroupProcessorException e) {
-                    logger.error(
-                        "failed to recover storage group processor in "
-                            + storageGroupMNode.getFullPath()
-                            + " virtual storage group id is "
-                            + cur);
-                  }
-                  virtualStorageGroupProcessor[cur] = processor;
-                }
-              });
-
-      threadList.add(recoverThread);
-      recoverThread.start();
-    }
-
-    for (int i = 0; i < partitioner.getPartitionCount(); i++) {
-      try {
-        threadList.get(i).join();
-      } catch (InterruptedException e) {
-        logger.error(
-            "failed to recover storage group processor in "
-                + storageGroupMNode.getFullPath()
-                + " virtual storage group id is "
-                + i);
-        Thread.currentThread().interrupt();
-      }
+      Callable<Void> recoverVsgTask =
+          () -> {
+            isVsgReady[cur].set(false);
+            StorageGroupProcessor processor = null;
+            try {
+              processor =
+                  StorageEngine.getInstance()
+                      .buildNewStorageGroupProcessor(
+                          storageGroupMNode.getPartialPath(),
+                          storageGroupMNode,
+                          String.valueOf(cur));
+            } catch (StorageGroupProcessorException e) {
+              logger.error(
+                  "failed to recover virtual storage group {}[{}]",
+                  storageGroupMNode.getFullPath(),
+                  cur,
+                  e);
+            }
+            virtualStorageGroupProcessor[cur] = processor;
+            isVsgReady[cur].set(true);
+            return null;
+          };
+      futures.add(pool.submit(recoverVsgTask));
     }
   }
 

@@ -48,6 +48,8 @@ public class ClusterConfig {
 
   @ClusterConsistent private int replicationNum = 1;
 
+  @ClusterConsistent private int multiRaftFactor = 1;
+
   @ClusterConsistent private String clusterName = "default";
 
   @ClusterConsistent private boolean useAsyncServer = false;
@@ -167,6 +169,12 @@ public class ClusterConfig {
    */
   private long maxReadLogLag = 1000L;
 
+  /**
+   * When a follower tries to sync log with the leader, sync will fail if the log Lag exceeds
+   * maxSyncLogLag.
+   */
+  private long maxSyncLogLag = 100000L;
+
   private boolean openServerRpcPort = false;
 
   /**
@@ -242,6 +250,14 @@ public class ClusterConfig {
 
   public void setReplicationNum(int replicationNum) {
     this.replicationNum = replicationNum;
+  }
+
+  public int getMultiRaftFactor() {
+    return multiRaftFactor;
+  }
+
+  public void setMultiRaftFactor(int multiRaftFactor) {
+    this.multiRaftFactor = multiRaftFactor;
   }
 
   void setClusterName(String clusterName) {
@@ -462,6 +478,14 @@ public class ClusterConfig {
 
   public void setMaxReadLogLag(long maxReadLogLag) {
     this.maxReadLogLag = maxReadLogLag;
+  }
+
+  public long getMaxSyncLogLag() {
+    return maxSyncLogLag;
+  }
+
+  public void setMaxSyncLogLag(long maxSyncLogLag) {
+    this.maxSyncLogLag = maxSyncLogLag;
   }
 
   public String getInternalIp() {

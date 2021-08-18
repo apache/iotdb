@@ -27,7 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The schema of timeseries that exist in this file. The deviceTemplates is a simplified manner to
+ * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
  * batch create schema of timeseries.
  */
 public class Schema implements Serializable {
@@ -39,7 +39,7 @@ public class Schema implements Serializable {
   private Map<Path, IMeasurementSchema> registeredTimeseries;
 
   /** template name -> (measurement -> MeasurementSchema) */
-  private Map<String, Map<String, IMeasurementSchema>> deviceTemplates;
+  private Map<String, Map<String, IMeasurementSchema>> schemaTemplates;
 
   public Schema() {
     this.registeredTimeseries = new LinkedHashMap<>();
@@ -53,29 +53,29 @@ public class Schema implements Serializable {
     this.registeredTimeseries.put(path, descriptor);
   }
 
-  public void registerDeviceTemplate(
+  public void registerSchemaTemplate(
       String templateName, Map<String, IMeasurementSchema> template) {
-    if (deviceTemplates == null) {
-      deviceTemplates = new HashMap<>();
+    if (schemaTemplates == null) {
+      schemaTemplates = new HashMap<>();
     }
-    this.deviceTemplates.put(templateName, template);
+    this.schemaTemplates.put(templateName, template);
   }
 
   public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
-    if (deviceTemplates == null) {
-      deviceTemplates = new HashMap<>();
+    if (schemaTemplates == null) {
+      schemaTemplates = new HashMap<>();
     }
     Map<String, IMeasurementSchema> template =
-        this.deviceTemplates.getOrDefault(templateName, new HashMap<>());
+        this.schemaTemplates.getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
-    this.deviceTemplates.put(templateName, template);
+    this.schemaTemplates.put(templateName, template);
   }
 
   public void registerDevice(String deviceId, String templateName) {
-    if (!deviceTemplates.containsKey(templateName)) {
+    if (!schemaTemplates.containsKey(templateName)) {
       return;
     }
-    Map<String, IMeasurementSchema> template = deviceTemplates.get(templateName);
+    Map<String, IMeasurementSchema> template = schemaTemplates.get(templateName);
     for (Map.Entry<String, IMeasurementSchema> entry : template.entrySet()) {
       Path path = new Path(deviceId, entry.getKey());
       registerTimeseries(path, entry.getValue());
@@ -93,8 +93,8 @@ public class Schema implements Serializable {
     return registeredTimeseries.get(path).getType();
   }
 
-  public Map<String, Map<String, IMeasurementSchema>> getDeviceTemplates() {
-    return deviceTemplates;
+  public Map<String, Map<String, IMeasurementSchema>> getSchemaTemplates() {
+    return schemaTemplates;
   }
 
   /** check if this schema contains a measurement named measurementId. */

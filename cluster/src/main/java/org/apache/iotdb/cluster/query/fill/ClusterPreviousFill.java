@@ -32,15 +32,16 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +155,8 @@ public class ClusterPreviousFill extends PreviousFill {
       QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
     try {
       fillHandler.onComplete(
           localDataMember
@@ -244,8 +246,13 @@ public class ClusterPreviousFill extends PreviousFill {
         metaGroupMember
             .getClientProvider()
             .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-      byteBuffer = syncDataClient.previousFill(request);
+      try {
+        byteBuffer = syncDataClient.previousFill(request);
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.getInputProtocol().getTransport().close();
+        throw e;
+      }
     } catch (Exception e) {
       logger.error(
           "{}: Cannot perform previous fill of {} to {}",

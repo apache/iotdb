@@ -22,6 +22,8 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 
@@ -76,6 +78,14 @@ public class QueryTimeManager implements IService {
     queryScheduledTaskMap.put(queryId, scheduledFuture);
   }
 
+  public void registerQuery(
+      long queryId, long startTime, String sql, long timeout, PhysicalPlan plan) {
+    if (plan instanceof ShowQueryProcesslistPlan) {
+      return;
+    }
+    registerQuery(queryId, startTime, sql, timeout);
+  }
+
   public void killQuery(long queryId) {
     if (queryInfoMap.get(queryId) == null) {
       return;
@@ -94,9 +104,15 @@ public class QueryTimeManager implements IService {
           if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
           }
+          SessionTimeoutManager.getInstance()
+              .refresh(SessionManager.getInstance().getSessionIdByQueryId(queryId));
           return null;
         });
     return successRemoved;
+  }
+
+  public AtomicBoolean unRegisterQuery(long queryId, PhysicalPlan plan) {
+    return plan instanceof ShowQueryProcesslistPlan ? null : unRegisterQuery(queryId);
   }
 
   public static void checkQueryAlive(long queryId) {

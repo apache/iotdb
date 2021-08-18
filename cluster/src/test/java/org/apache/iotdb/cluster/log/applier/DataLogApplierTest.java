@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
@@ -55,11 +56,14 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -110,7 +114,7 @@ public class DataLogApplierTest extends IoTDBTest {
         }
 
         @Override
-        public DataGroupMember getLocalDataMember(Node header, Object request) {
+        public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
           return testDataGroupMember;
         }
 
@@ -175,7 +179,7 @@ public class DataLogApplierTest extends IoTDBTest {
             return new AsyncDataClient(null, null, node, null) {
               @Override
               public void getAllPaths(
-                  Node header,
+                  RaftNode header,
                   List<String> path,
                   boolean withAlias,
                   AsyncMethodCallback<GetAllPathsResult> resultHandler) {
@@ -264,7 +268,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[] {"1.0"});
     insertPlan.setNeedInferType(true);
-    insertPlan.setMeasurementMNodes(new MeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+    insertPlan.setMeasurementMNodes(new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -297,8 +301,43 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
-        "Storage group is not set for current seriesPath: [root.test16]",
+        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
+  }
+
+  @Test
+  public void testApplyBatchInsert()
+      throws MetadataException, QueryProcessException, StorageEngineException, IOException,
+          InterruptedException, QueryFilterOptimizationException {
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    PhysicalPlanLog log = new PhysicalPlanLog();
+    log.setPlan(insertRowsPlan);
+
+    for (int i = 1; i <= 4; i++) {
+      InsertRowPlan insertPlan = new InsertRowPlan();
+      insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setTime(1);
+      insertPlan.setNeedInferType(true);
+      insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+      insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
+      insertPlan.setValues(new Object[] {"1.0"});
+      insertPlan.setNeedInferType(true);
+      insertPlan.setMeasurementMNodes(
+          new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(0)});
+      insertRowsPlan.addOneInsertRowPlan(insertPlan, i - 1);
+    }
+
+    applier.apply(log);
+
+    for (int i = 1; i <= 4; i++) {
+      QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(i, 0)), null);
+      assertTrue(dataSet.hasNext());
+      RowRecord record = dataSet.next();
+      assertEquals(1, record.getTimestamp());
+      assertEquals(1, record.getFields().size());
+      assertEquals(1.0, record.getFields().get(0).getDoubleV(), 0.00001);
+      assertFalse(dataSet.hasNext());
+    }
   }
 
   @Test
@@ -372,5 +411,21 @@ public class DataLogApplierTest extends IoTDBTest {
     applier.apply(log);
     assertTrue(IoTDB.metaManager.getAllStorageGroupPaths().contains(new PartialPath("root.sg2")));
     assertNull(log.getException());
+  }
+
+  @Test
+  public void testApplyClearCache() {
+    ClearCachePlan clearCachePlan = new ClearCachePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(clearCachePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
+  }
+
+  @Test
+  public void testApplyMerge() {
+    MergePlan mergePlan = new MergePlan();
+    PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog(mergePlan);
+    applier.apply(physicalPlanLog);
+    assertNull(physicalPlanLog.getException());
   }
 }

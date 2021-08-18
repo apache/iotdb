@@ -46,6 +46,36 @@ Some configurations in the iotdb-engines.properties will be ignored
 
 * `is_sync_enable` is always considered as `false`.
 
+## Cluster scalability
+In the process of cluster running, users can add new nodes to the cluster or delete existing nodes. 
+At present, it only supports node by node cluster scalability, and multi node cluster scalability can be 
+transformed into a series of single node cluster scalability operations. The cluster will hanlde new 
+cluster extension operations only after the last cluster scalability operation is completed.
+
+### add node
+Start the following script on the new node to join the cluster to add a new node:
+```bash
+# Unix/OS X
+> nohup sbin/add-node.sh [printgc] [<conf_path>] >/dev/null 2>&1 &
+
+# Windows
+> sbin\add-node.bat [printgc] [<conf_path>] 
+```
+`printgc` means whether enable the gc and print gc logs when start the node,  
+`<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file.
+
+### remove node
+Start the following script on any node in the cluster to delete a node:
+```bash
+# Unix/OS X
+> sbin/remove-node.sh <internal_ip> <internal_meta_port>
+
+# Windows
+> sbin\remove-node.bat <internal_ip> <internal_meta_port>
+```
+`internal_ip` means the IP address of the node to be deleted
+`internal_meta_port` means the meta port of the node to be deleted
+
 ## Cluster Configuration Items
 Before starting to use IoTDB, you need to config the configuration files first. 
 For your convenience, we have already set the default config in the files.
@@ -137,6 +167,15 @@ The configuration items described below are in the `iotdb-cluster.properties` fi
 |Description|Number of cluster replicas of timeseries schema and data. Storage group info is always fully replicated in all nodes.|
 |Type|Int32|
 |Default|3|
+|Effective| After restart system, shall NOT change after cluster is up|
+
+* multi\_raft\_factor
+
+|Name|multi\_raft\_factor|
+|:---:|:---|
+|Description|Number of raft group instances started by each data group. By default, each data group starts one raft group|
+|Type|Int32|
+|Default|1|
 |Effective| After restart system, shall NOT change after cluster is up|
 
 * cluster\_name

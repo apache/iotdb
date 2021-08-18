@@ -59,10 +59,15 @@ IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
 
 
-## Kill Query
+## Timeout
 
-When using IoTDB, you may encounter the following situations: you have entered a query statement, but can not get the result for a long time, as this query contains too much data or some other reasons, and have to wait until the query ends.
-Since version 0.12, IoTDB has provided two solutions for queries with long execution time: query timeout and query abort.
+IoTDB supports session and query level timeout.
+
+### Session timeout
+
+Session timeout controls when idle sessions are closed. An idle session is one that had not initiated any query or non-query operations for a period of time.
+
+Session timeout is disabled by default and can be set using the `session_timeout_threshold` parameter in IoTDB configuration file.
 
 ### Query timeout
 
@@ -73,7 +78,7 @@ IoTDB> select * from root;
 Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
 ```
 
-The default timeout of the system is 60000 ms，which can be customized in the configuration file through the `query_timeout_threshold` parameter.
+The default timeout of a query is 60000 ms，which can be customized in the configuration file through the `query_timeout_threshold` parameter.
 
 If you use JDBC or Session, we also support setting a timeout for a single query（Unit: ms）：
 

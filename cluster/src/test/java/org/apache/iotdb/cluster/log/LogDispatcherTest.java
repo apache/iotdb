@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -131,7 +132,7 @@ public class LogDispatcherTest {
             };
           }
         };
-    List<Node> allNodes = new ArrayList<>();
+    PartitionGroup allNodes = new PartitionGroup();
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }

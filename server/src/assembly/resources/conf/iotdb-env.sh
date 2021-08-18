@@ -137,7 +137,7 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
-#GC log path has to be defined here because it needs to access CASSANDRA_HOME
+#GC log path has to be defined here because it needs to access IOTDB_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
     # Java 8
     MAJOR_VERSION=${version_arr[1]}

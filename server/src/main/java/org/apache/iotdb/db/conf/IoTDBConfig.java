@@ -291,9 +291,26 @@ public class IoTDBConfig {
 
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
   private long tsFileSizeThreshold = 1L;
+  /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long unSeqTsFileSize = 1L;
+
+  /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
+  private long seqTsFileSize = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
   private long memtableSizeThreshold = 1024 * 1024 * 1024L;
+
+  /** Whether to timed flush unsequence tsfiles' memtables. */
+  private boolean enableTimedFlushUnseqMemtable = false;
+
+  /**
+   * When a memTable's created time is older than current time minus this, the memtable is flushed
+   * to disk.(only check unsequence tsfiles' memtables) Unit: ms
+   */
+  private long unseqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+
+  /** The interval to check whether the memtable needs flushing. Unit: ms */
+  private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -406,6 +423,9 @@ public class IoTDBConfig {
 
   /** the max executing time of query in ms. Unit: millisecond */
   private int queryTimeoutThreshold = 60000;
+
+  /** the max time to live of a session in ms. Unit: millisecond */
+  private int sessionTimeoutThreshold = 0;
 
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
@@ -530,6 +550,30 @@ public class IoTDBConfig {
    */
   private int compactionThreadNum = 10;
 
+  /*
+   * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
+   */
+  private int continuousQueryThreadNum =
+      Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
+  /*
+   * Maximum number of continuous query tasks that can be pending for execution. When <= 0, the value is
+   * 64 by default.
+   */
+  private int maxPendingContinuousQueryTasks = 64;
+
+  /*
+   * Minimum every interval to perform continuous query.
+   * The every interval of continuous query instances should not be lower than this limit.
+   */
+  private long continuousQueryMinimumEveryInterval = 1000;
+
+  /**
+   * The maximum number of rows can be processed in insert-tablet-plan when executing select-into
+   * statements.
+   */
+  private int selectIntoInsertTabletPlanRowLimit = 10000;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -576,7 +620,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 1;
+  private int concurrentWritingTimePartition = 500;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -607,7 +651,10 @@ public class IoTDBConfig {
    */
   private int mtreeSnapshotThresholdTime = 3600;
 
-  /** Time range for partitioning data inside each storage group. Unit: second */
+  /**
+   * Time range for partitioning data inside each storage group, the unit is second. Default time is
+   * a week.
+   */
   private long partitionInterval = 604800;
 
   /**
@@ -1100,12 +1147,20 @@ public class IoTDBConfig {
     this.maxPendingWindowEvaluationTasks = maxPendingWindowEvaluationTasks;
   }
 
-  public long getTsFileSizeThreshold() {
-    return tsFileSizeThreshold;
+  public long getSeqTsFileSize() {
+    return seqTsFileSize;
   }
 
-  public void setTsFileSizeThreshold(long tsFileSizeThreshold) {
-    this.tsFileSizeThreshold = tsFileSizeThreshold;
+  public void setSeqTsFileSize(long seqTsFileSize) {
+    this.seqTsFileSize = seqTsFileSize;
+  }
+
+  public long getUnSeqTsFileSize() {
+    return unSeqTsFileSize;
+  }
+
+  public void setUnSeqTsFileSize(long unSeqTsFileSize) {
+    this.unSeqTsFileSize = unSeqTsFileSize;
   }
 
   public boolean isEnableStatMonitor() {
@@ -1194,6 +1249,14 @@ public class IoTDBConfig {
 
   public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
+  }
+
+  public int getSessionTimeoutThreshold() {
+    return sessionTimeoutThreshold;
+  }
+
+  public void setSessionTimeoutThreshold(int sessionTimeoutThreshold) {
+    this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
   public boolean isReadOnly() {
@@ -1420,6 +1483,38 @@ public class IoTDBConfig {
     this.compactionThreadNum = compactionThreadNum;
   }
 
+  public int getContinuousQueryThreadNum() {
+    return continuousQueryThreadNum;
+  }
+
+  public void setContinuousQueryThreadNum(int continuousQueryThreadNum) {
+    this.continuousQueryThreadNum = continuousQueryThreadNum;
+  }
+
+  public int getMaxPendingContinuousQueryTasks() {
+    return maxPendingContinuousQueryTasks;
+  }
+
+  public void setMaxPendingContinuousQueryTasks(int maxPendingContinuousQueryTasks) {
+    this.maxPendingContinuousQueryTasks = maxPendingContinuousQueryTasks;
+  }
+
+  public long getContinuousQueryMinimumEveryInterval() {
+    return continuousQueryMinimumEveryInterval;
+  }
+
+  public void setContinuousQueryMinimumEveryInterval(long minimumEveryInterval) {
+    this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
+  }
+
+  public int getSelectIntoInsertTabletPlanRowLimit() {
+    return selectIntoInsertTabletPlanRowLimit;
+  }
+
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  }
+
   public int getMergeWriteThroughputMbPerSec() {
     return mergeWriteThroughputMbPerSec;
   }
@@ -1442,6 +1537,30 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public boolean isEnableTimedFlushUnseqMemtable() {
+    return enableTimedFlushUnseqMemtable;
+  }
+
+  public void setEnableTimedFlushUnseqMemtable(boolean enableTimedFlushUnseqMemtable) {
+    this.enableTimedFlushUnseqMemtable = enableTimedFlushUnseqMemtable;
+  }
+
+  public long getUnseqMemtableFlushInterval() {
+    return unseqMemtableFlushInterval;
+  }
+
+  public void setUnseqMemtableFlushInterval(long unseqMemtableFlushInterval) {
+    this.unseqMemtableFlushInterval = unseqMemtableFlushInterval;
+  }
+
+  public long getUnseqMemtableFlushCheckInterval() {
+    return unseqMemtableFlushCheckInterval;
+  }
+
+  public void setUnseqMemtableFlushCheckInterval(long unseqMemtableFlushCheckInterval) {
+    this.unseqMemtableFlushCheckInterval = unseqMemtableFlushCheckInterval;
   }
 
   public int getAvgSeriesPointNumberThreshold() {

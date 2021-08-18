@@ -109,7 +109,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-    defaultInstaller.install(snapshot, 0);
+    defaultInstaller.install(snapshot, 0, false);
     // after installation, the slot should be available again
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
@@ -152,7 +152,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
       SnapshotInstaller<FileSnapshot> defaultInstaller =
           snapshot.getDefaultInstaller(dataGroupMember);
       dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-      defaultInstaller.install(snapshot, 0);
+      defaultInstaller.install(snapshot, 0, false);
       // after installation, the slot should be available again
       assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
@@ -201,7 +201,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         fileSnapshot.getDefaultInstaller(dataGroupMember);
     dataGroupMember.getSlotManager().setToPulling(0, TestUtils.getNode(0));
-    defaultInstaller.install(fileSnapshot, 0);
+    defaultInstaller.install(fileSnapshot, 0, false);
     // after installation, the slot should be available again
     assertEquals(SlotStatus.NULL, dataGroupMember.getSlotManager().getStatus(0));
 
@@ -245,7 +245,7 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshotMap.get(0).getDefaultInstaller(dataGroupMember);
-    defaultInstaller.install(snapshotMap);
+    defaultInstaller.install(snapshotMap, false);
 
     for (int j = 0; j < 10; j++) {
       StorageGroupProcessor processor =
@@ -288,19 +288,19 @@ public class FileSnapshotTest extends DataSnapshotTest {
 
     SnapshotInstaller<FileSnapshot> defaultInstaller =
         snapshot.getDefaultInstaller(dataGroupMember);
-    defaultInstaller.install(snapshot, 0);
+    defaultInstaller.install(snapshot, 0, false);
 
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
     StorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
-    assertEquals(9, processor.getPartitionMaxFileVersions(0));
+    assertEquals(10, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
     assertEquals(tsFileResources.size(), loadedFiles.size());
     for (int i = 0; i < 9; i++) {
       assertEquals(i, loadedFiles.get(i).getMaxPlanIndex());
     }
-    assertEquals(0, processor.getUnSequenceFileList().size());
+    assertEquals(1, processor.getUnSequenceFileList().size());
   }
 }

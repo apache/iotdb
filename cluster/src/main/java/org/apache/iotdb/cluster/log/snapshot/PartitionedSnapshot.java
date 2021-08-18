@@ -143,13 +143,13 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     }
 
     @Override
-    public void install(PartitionedSnapshot snapshot, int slot)
+    public void install(PartitionedSnapshot snapshot, int slot, boolean isDataMigration)
         throws SnapshotInstallationException {
       installPartitionedSnapshot(snapshot);
     }
 
     @Override
-    public void install(Map<Integer, PartitionedSnapshot> snapshotMap) {
+    public void install(Map<Integer, PartitionedSnapshot> snapshotMap, boolean isDataMigration) {
       throw new IllegalStateException("Method unimplemented");
     }
 
@@ -203,7 +203,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
       }
       SnapshotInstaller<T> defaultInstaller =
           (SnapshotInstaller<T>) snapshot.getDefaultInstaller(dataGroupMember);
-      defaultInstaller.install(snapshot, slot);
+      defaultInstaller.install(snapshot, slot, false);
     }
   }
 

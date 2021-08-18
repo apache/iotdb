@@ -35,7 +35,7 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
 
   @Override
   public String getMeasurementId() {
-    return "s1.time";
+    return "vectorName";
   }
 
   @Override
@@ -124,5 +124,15 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
     return 0;
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 0;
+  }
+
+  @Override
+  public boolean isCompatible(String measurementId) {
+    return false;
   }
 }

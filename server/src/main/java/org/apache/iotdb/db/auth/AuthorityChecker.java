@@ -73,7 +73,6 @@ public class AuthorityChecker {
     } else {
       return checkOnePath(username, null, permission);
     }
-
     return true;
   }
 
@@ -132,10 +131,12 @@ public class AuthorityChecker {
       case LAST:
       case FILL:
       case GROUP_BY_FILL:
+      case SELECT_INTO:
         return PrivilegeType.READ_TIMESERIES.ordinal();
       case INSERT:
       case LOAD_DATA:
       case CREATE_INDEX:
+      case BATCH_INSERT:
         return PrivilegeType.INSERT_TIMESERIES.ordinal();
       case LIST_ROLE:
       case LIST_ROLE_USERS:
@@ -157,6 +158,10 @@ public class AuthorityChecker {
         return PrivilegeType.START_TRIGGER.ordinal();
       case STOP_TRIGGER:
         return PrivilegeType.STOP_TRIGGER.ordinal();
+      case CREATE_CONTINUOUS_QUERY:
+        return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
+      case DROP_CONTINUOUS_QUERY:
+        return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

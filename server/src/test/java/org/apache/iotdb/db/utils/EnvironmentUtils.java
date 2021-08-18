@@ -24,11 +24,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
@@ -37,6 +39,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IoTDB;
@@ -73,7 +76,8 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = 1;
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static final long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
+  private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -92,7 +96,8 @@ public class EnvironmentUtils {
     try {
       UDFRegistrationService.getInstance().deregisterAll();
       TriggerRegistrationService.getInstance().deregisterAll();
-    } catch (UDFRegistrationException | TriggerManagementException e) {
+      ContinuousQueryService.getInstance().deregisterAll();
+    } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }
 
@@ -150,9 +155,13 @@ public class EnvironmentUtils {
     // clear system info
     SystemInfo.getInstance().close();
 
+    // clear memtable manager info
+    MemTableManager.getInstance().close();
+
     // delete all directory
     cleanAllDir();
-    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    config.setSeqTsFileSize(oldSeqTsFileSize);
+    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 
@@ -255,7 +264,7 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 

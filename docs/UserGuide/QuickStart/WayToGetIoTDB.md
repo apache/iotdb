@@ -72,31 +72,28 @@ After build, the IoTDB server will be at the folder "server/target/iotdb-server-
 ### Installation by Docker (Dockerfile)
 
 Apache IoTDB' Docker image is released on [https://hub.docker.com/r/apache/iotdb](https://hub.docker.com/r/apache/iotdb),
-Using `docker pull apache/iotdb:latest` can get the latest docker image.
 
-Users can also build a docker image themselves.
 
-Now a Dockerfile has been written at docker/src/main/Dockerfile.
+1. **Get IoTDB docker image**
+   - **Recommended:** Using `docker pull apache/iotdb:latest` can get the latest docker image.
+   - Users can also build a docker image themselves. Now a Dockerfile has been written at docker/src/main/Dockerfile.
+     - Way 1: `$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker`
+     - Way 2: 
+     ```shell
+      $ git clone https://github.com/apache/iotdb
+      $ cd iotdb
+      $ cd docker
+      $ docker build -t iotdb:base .
+		```
 
-1. You can build a docker image by:
-```shell
-$ docker build -t iotdb:base git://github.com/apache/iotdb#master:docker
-```
-Or:
-```shell
-$ git clone https://github.com/apache/iotdb
-$ cd iotdb
-$ cd docker
-$ docker build -t iotdb:base .
-```
 Once the docker image has been built locally (the tag is iotdb:base in this example), you are almost done!
 
-2. create docker volume for data files and logs:
+2. **Create docker volume for data files and logs:**
 ```shell
 $ docker volume create mydata
 $ docker volume create mylogs
 ```
-3. run a docker container:
+3. **Run a docker container:**
 ```shell
 $ docker run -p 6667:6667 -v mydata:/iotdb/data -v mylogs:/iotdb/logs -d iotdb:base /iotdb/bin/start-server.sh
 ```
@@ -111,25 +108,21 @@ $ docker container ls
 ```
 suppose the ID is <C_ID>.
 
-And get the docker IP by:
+And get the docker IP by the following, suppose the IP is <C_IP>.:
 ```shell
 $ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
 ```
-suppose the IP is <C_IP>.
+Now IoTDB server has started succesfully.
 
 4. If you just want to have a try by using iotdb-cli, you can:
 ```shell
-$ docker exec -it /bin/bash  <C_ID>
-$ (now you have enter the container): /cli/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
+$ docker exec -it <C_ID> /bin/bash
+$ (now you have enter the container): /iotdb/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 
-Or,  run a new docker container as the client:
+Or,  if you have a iotdb-cli locally, execute the following command: 
 ```shell
-$ docker run -it iotdb:base /cli/sbin/start-cli.sh -h <C_IP> -p 6667 -u root -pw root
-```
-Or,  if you have a iotdb-cli locally (e.g., you have compiled the source code by `mvn package`), and suppose your work_dir is cli/bin, then you can just run:
-```shell
-$ start-cli.sh -h localhost -p 6667 -u root -pw root
+$ /%IOTDB_HOME%/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 5. If you want to write codes to insert data and query data, please add the following dependence:
 ```xml
@@ -140,5 +133,3 @@ $ start-cli.sh -h localhost -p 6667 -u root -pw root
         </dependency>
 ```
 Some examples about how to use IoTDB with IoTDB-JDBC can be found at: https://github.com/apache/iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb
-
-6. Now enjoy it!

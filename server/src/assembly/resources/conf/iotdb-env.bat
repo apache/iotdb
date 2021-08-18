@@ -77,6 +77,11 @@ if %desired_yg_in_mb% GTR %max_sensible_yg_in_mb% (
 	set HEAP_NEWSIZE=%max_sensible_yg_in_mb%M
 ) else set HEAP_NEWSIZE=%desired_yg_in_mb%M
 
+@REM Maximum heap size
+@REM set MAX_HEAP_SIZE="2G"
+@REM Minimum heap size
+@REM set HEAP_NEWSIZE="2G"
+
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
 	IF "%JAVA_VERSION%" == "8" (
@@ -99,7 +104,7 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
 
-set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 
 @REM You can put your env variable here
@@ -118,7 +123,5 @@ IF "%1" equ "printgc" (
 )
 
 
-@REM Maximum heap size
-@REM set MAX_HEAP_SIZE=2G
 echo Maximum memory allocation pool = %MAX_HEAP_SIZE%, initial memory allocation pool = %HEAP_NEWSIZE%
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).

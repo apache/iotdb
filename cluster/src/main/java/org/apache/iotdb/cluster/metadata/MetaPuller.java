@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
@@ -130,7 +131,7 @@ public class MetaPuller {
    * @param prefixPaths
    * @param results
    */
-  private void pullMeasurementSchemas(
+  public void pullMeasurementSchemas(
       PartitionGroup partitionGroup,
       List<PartialPath> prefixPaths,
       List<IMeasurementSchema> results) {
@@ -235,17 +236,22 @@ public class MetaPuller {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
-        // only need measurement name
-        PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
-        ByteBuffer buffer = pullSchemaResp.schemaBytes;
-        int size = buffer.getInt();
-        schemas = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-          schemas.add(
-              buffer.get() == 0
-                  ? MeasurementSchema.partialDeserializeFrom(buffer)
-                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
+        try {
+          // only need measurement name
+          PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
+          ByteBuffer buffer = pullSchemaResp.schemaBytes;
+          int size = buffer.getInt();
+          schemas = new ArrayList<>(size);
+          for (int i = 0; i < size; i++) {
+            schemas.add(
+                buffer.get() == 0
+                    ? MeasurementSchema.partialDeserializeFrom(buffer)
+                    : VectorMeasurementSchema.partialDeserializeFrom(buffer));
+          }
+        } catch (TException e) {
+          // the connection may be broken, close it to avoid it being reused
+          syncDataClient.getInputProtocol().getTransport().close();
+          throw e;
         }
       }
     }
@@ -262,7 +268,7 @@ public class MetaPuller {
    *     the same groups. If this method is called by an applier, it holds the lock of LogManager,
    *     while the pulling thread may want this lock too, resulting in a deadlock.
    */
-  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, Node ignoredGroup)
+  public void pullTimeSeriesSchemas(List<PartialPath> prefixPaths, RaftNode ignoredGroup)
       throws MetadataException {
     logger.debug(
         "{}: Pulling timeseries schemas of {}, ignored group {}",
@@ -297,16 +303,20 @@ public class MetaPuller {
         partitionGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
-      pullTimeSeriesSchemas(partitionGroup, paths);
+      pullTimeSeriesSchemas(partitionGroup, paths, null);
     }
   }
 
   /**
    * Pull timeseries schemas of "prefixPaths" from "partitionGroup". If this node is a member of
    * "partitionGroup", synchronize with the group leader and collect local schemas. Otherwise pull
-   * schemas from one node in the group. The pulled schemas will be cached in CMManager.
+   * schemas from one node in the group. If "timeseriesSchemas" is null, the pulled schemas will be
+   * cached in CMManager.
    */
-  private void pullTimeSeriesSchemas(PartitionGroup partitionGroup, List<String> prefixPaths) {
+  public void pullTimeSeriesSchemas(
+      PartitionGroup partitionGroup,
+      List<String> prefixPaths,
+      List<TimeseriesSchema> timeseriesSchemas) {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the node is in the target group, synchronize with leader should be enough
       try {
@@ -327,19 +337,20 @@ public class MetaPuller {
     // decide the node access order with the help of QueryCoordinator
     List<Node> nodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : nodes) {
-      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest)) {
+      if (tryPullTimeSeriesSchemas(node, pullSchemaRequest, timeseriesSchemas)) {
         break;
       }
     }
   }
 
   /**
-   * send the PullSchemaRequest to "node" and cache the results in CMManager if they are
-   * successfully returned.
+   * send the PullSchemaRequest to "node" and cache the results in CMManager or add the results to
+   * "timeseriesSchemas" if they are successfully returned.
    *
    * @return true if the pull succeeded, false otherwise
    */
-  private boolean tryPullTimeSeriesSchemas(Node node, PullSchemaRequest request) {
+  private boolean tryPullTimeSeriesSchemas(
+      Node node, PullSchemaRequest request, List<TimeseriesSchema> timeseriesSchemas) {
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Pulling timeseries schemas of {} and other {} paths from {}",
@@ -382,8 +393,12 @@ public class MetaPuller {
             node,
             request.getHeader());
       }
-      for (TimeseriesSchema schema : schemas) {
-        SchemaUtils.cacheTimeseriesSchema(schema);
+      if (timeseriesSchemas == null) {
+        for (TimeseriesSchema schema : schemas) {
+          SchemaUtils.cacheTimeseriesSchema(schema);
+        }
+      } else {
+        timeseriesSchemas.addAll(schemas);
       }
       return true;
     }

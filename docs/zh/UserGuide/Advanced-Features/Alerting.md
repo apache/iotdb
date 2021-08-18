@@ -155,7 +155,6 @@ route:
         owner: team-Y
       receiver: team-Y-pager
 
-
 # Inhibition rules allow to mute a set of alerts given that another alert is
 # firing.
 # We use this to mute any warning-level notifications if the same alert is
@@ -171,7 +170,6 @@ inhibit_rules:
   #   from both the source and target alerts,
   #   the inhibition rule will apply!
   equal: ['alertname']
-
 
 receivers:
 - name: 'team-X-mails'
@@ -228,10 +226,9 @@ inhibit_rules:
     equal: ['alertname']
 ````
 
-
 ### API
 `AlertManager` API 分为 `v1` 和 `v2` 两个版本，当前 `AlertManager` API 版本为 `v2` 
-(配置参见
+（配置参见
 [api/v2/openapi.yaml](https://github.com/prometheus/alertmanager/blob/master/api/v2/openapi.yaml))。
 
 默认配置的前缀为 `/api/v1` 或 `/api/v2`，
@@ -242,7 +239,6 @@ inhibit_rules:
 发送告警的 endpoint 变为 `/alertmanager/api/v1/alerts` 
 或 `/alertmanager/api/v2/alerts`。
 
-
 ## 创建 trigger
 
 ### 编写 trigger 类
@@ -250,7 +246,7 @@ inhibit_rules:
 用户通过自行创建 Java 类、编写钩子中的逻辑来定义一个触发器。
 具体配置流程以及 Sink 模块提供的 `AlertManagerSink` 相关工具类的使用方法参见 [Triggers](Triggers.md)。
 
-下面的示例创建了 `org.apache.iotdb.trigger.AlertingExample` 类,
+下面的示例创建了 `org.apache.iotdb.trigger.AlertingExample` 类，
 其 `alertManagerHandler` 
 成员变量可发送告警至地址为 `http://127.0.0.1:9093/` 的 AlertManager 实例。
 
@@ -376,10 +372,3 @@ INSERT INTO root.ln.wf01.wt01(timestamp, temperature) VALUES (5, 120);
 `(5, 120)` 后触发的告警。                    
 
 <img  alt="alerting" src="https://user-images.githubusercontent.com/34649843/115957896-a9791080-a537-11eb-9962-541412bdcee6.png">
-
-
-
-
-
-
-

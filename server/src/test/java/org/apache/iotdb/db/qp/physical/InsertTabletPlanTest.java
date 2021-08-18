@@ -30,7 +30,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -170,13 +170,13 @@ public class InsertTabletPlanTest {
   }
 
   @Test
-  public void testInsertTabletPlanWithDeviceTemplate()
+  public void testInsertTabletPlanWithSchemaTemplate()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp"));
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
 
     InsertTabletPlan tabletPlan = getInsertTabletPlan();
 
@@ -250,13 +250,13 @@ public class InsertTabletPlanTest {
   }
 
   @Test
-  public void testInsertTabletPlanWithDeviceTemplateAndAutoCreateSchema()
+  public void testInsertTabletPlanWithSchemaTemplateAndAutoCreateSchema()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
-    IoTDB.metaManager.createDeviceTemplate(plan);
-    IoTDB.metaManager.setDeviceTemplate(new SetDeviceTemplatePlan("template1", "root.isp"));
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp"));
     InsertTabletPlan tabletPlan = getInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();

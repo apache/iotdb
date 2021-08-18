@@ -156,6 +156,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_concurrent_client_num", String.valueOf(config.getMaxConcurrentClientNum()))));
 
+    config.setMultiRaftFactor(
+        Integer.parseInt(
+            properties.getProperty(
+                "multi_raft_factor", String.valueOf(config.getMultiRaftFactor()))));
+
     config.setReplicationNum(
         Integer.parseInt(
             properties.getProperty(
@@ -292,6 +297,10 @@ public class ClusterDescriptor {
     config.setMaxReadLogLag(
         Long.parseLong(
             properties.getProperty("max_read_log_lag", String.valueOf(config.getMaxReadLogLag()))));
+
+    config.setMaxSyncLogLag(
+        Long.parseLong(
+            properties.getProperty("max_sync_log_lag", String.valueOf(config.getMaxSyncLogLag()))));
 
     config.setMaxClientPerNodePerMember(
         Integer.parseInt(

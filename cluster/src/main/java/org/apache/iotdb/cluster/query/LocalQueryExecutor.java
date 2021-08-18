@@ -22,6 +22,8 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.metadata.CMManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -35,9 +37,11 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -83,11 +87,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static org.apache.iotdb.session.Config.DEFAULT_FETCH_SIZE;
 
 public class LocalQueryExecutor {
 
@@ -232,11 +235,7 @@ public class LocalQueryExecutor {
 
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(
-            request.getRequester(),
-            request.getQueryId(),
-            request.getFetchSize(),
-            request.getDeduplicatedPathNum());
+        queryManager.getQueryContext(request.getRequester(), request.getQueryId());
     logger.debug(
         DEBUG_SHOW_QUERY_ID,
         name,
@@ -252,7 +251,8 @@ public class LocalQueryExecutor {
             valueFilter,
             queryContext,
             dataGroupMember,
-            request.ascending);
+            request.ascending,
+            request.requiredSlots);
 
     // if the reader contains no data, send a special id of -1 to prevent the requester from
     // meaninglessly fetching data
@@ -335,11 +335,7 @@ public class LocalQueryExecutor {
 
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(
-            request.getRequester(),
-            request.getQueryId(),
-            request.getFetchSize(),
-            request.getDeduplicatedPathNum());
+        queryManager.getQueryContext(request.getRequester(), request.getQueryId());
     logger.debug(
         DEBUG_SHOW_QUERY_ID,
         name,
@@ -402,9 +398,7 @@ public class LocalQueryExecutor {
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
     List<TimeseriesSchema> timeseriesSchemas = new ArrayList<>();
-    for (String prefixPath : prefixPaths) {
-      getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
-    }
+    collectTimeseriesSchema(prefixPaths, timeseriesSchemas);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Collected {} schemas for {} and other {} paths",
@@ -437,8 +431,8 @@ public class LocalQueryExecutor {
    *
    * @param request
    */
-  public PullSchemaResp queryMeasurementSchema(PullSchemaRequest request)
-      throws CheckConsistencyException, IllegalPathException {
+  public PullSchemaResp queryMeasurementSchema(PullSchemaRequest request) // pullMeasurementSchemas
+      throws CheckConsistencyException, MetadataException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -447,9 +441,8 @@ public class LocalQueryExecutor {
     // the measurements in them are the full paths.
     List<String> prefixPaths = request.getPrefixPaths();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    for (String prefixPath : prefixPaths) {
-      getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
-    }
+
+    collectSeries(prefixPaths, measurementSchemas);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: Collected {} schemas for {} and other {} paths",
@@ -473,6 +466,82 @@ public class LocalQueryExecutor {
     }
     resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
     return resp;
+  }
+
+  private void collectSeries(List<String> prefixPaths, List<IMeasurementSchema> measurementSchemas)
+      throws MetadataException {
+    // Due to add/remove node, some slots may in the state of PULLING, which will not contains the
+    // corresponding schemas.
+    // In this case, we need to pull series from previous holder.
+    Map<PartitionGroup, List<PartialPath>> prePartitionGroupPathMap = new HashMap<>();
+
+    RaftNode header = dataGroupMember.getHeader();
+    Map<Integer, PartitionGroup> slotPreviousHolderMap =
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getPreviousNodeMap()
+            .get(header);
+
+    for (String prefixPath : prefixPaths) {
+      int slot =
+          ClusterUtils.getSlotByPathTimeWithSync(
+              new PartialPath(prefixPath), dataGroupMember.getMetaGroupMember());
+      if (dataGroupMember.getSlotManager().checkSlotInMetaMigrationStatus(slot)
+          && slotPreviousHolderMap.containsKey(slot)) {
+        prePartitionGroupPathMap
+            .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
+            .add(new PartialPath(prefixPath));
+      } else {
+        getCMManager().collectSeries(new PartialPath(prefixPath), measurementSchemas);
+      }
+    }
+
+    if (prePartitionGroupPathMap.isEmpty()) {
+      return;
+    }
+    for (Map.Entry<PartitionGroup, List<PartialPath>> partitionGroupListEntry :
+        prePartitionGroupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
+      List<PartialPath> paths = partitionGroupListEntry.getValue();
+      MetaPuller.getInstance().pullMeasurementSchemas(partitionGroup, paths, measurementSchemas);
+    }
+  }
+
+  private void collectTimeseriesSchema(
+      List<String> prefixPaths, List<TimeseriesSchema> timeseriesSchemas) throws MetadataException {
+    // Due to add/remove node, some slots may in the state of PULLING, which will not contains the
+    // corresponding schemas.
+    // In this case, we need to pull series from previous holder.
+    Map<PartitionGroup, List<String>> prePartitionGroupPathMap = new HashMap<>();
+
+    RaftNode header = dataGroupMember.getHeader();
+    Map<Integer, PartitionGroup> slotPreviousHolderMap =
+        ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
+            .getPreviousNodeMap()
+            .get(header);
+
+    for (String prefixPath : prefixPaths) {
+      int slot =
+          ClusterUtils.getSlotByPathTimeWithSync(
+              new PartialPath(prefixPath), dataGroupMember.getMetaGroupMember());
+      if (dataGroupMember.getSlotManager().checkSlotInMetaMigrationStatus(slot)
+          && slotPreviousHolderMap.containsKey(slot)) {
+        prePartitionGroupPathMap
+            .computeIfAbsent(slotPreviousHolderMap.get(slot), s -> new ArrayList<>())
+            .add(prefixPath);
+      } else {
+        getCMManager().collectTimeseriesSchema(prefixPath, timeseriesSchemas);
+      }
+    }
+
+    if (prePartitionGroupPathMap.isEmpty()) {
+      return;
+    }
+    for (Map.Entry<PartitionGroup, List<String>> partitionGroupListEntry :
+        prePartitionGroupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
+      List<String> paths = partitionGroupListEntry.getValue();
+      MetaPuller.getInstance().pullTimeSeriesSchemas(partitionGroup, paths, timeseriesSchemas);
+    }
   }
 
   /**
@@ -502,11 +571,7 @@ public class LocalQueryExecutor {
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(
-            request.getRequester(),
-            request.getQueryId(),
-            request.getFetchSize(),
-            request.getDeduplicatedPathNum());
+        queryManager.getQueryContext(request.getRequester(), request.getQueryId());
     logger.debug(
         DEBUG_SHOW_QUERY_ID,
         name,
@@ -515,7 +580,13 @@ public class LocalQueryExecutor {
         queryContext.getQueryId());
     IReaderByTimestamp readerByTimestamp =
         readerFactory.getReaderByTimestamp(
-            path, deviceMeasurements, dataType, queryContext, dataGroupMember, request.ascending);
+            path,
+            deviceMeasurements,
+            dataType,
+            queryContext,
+            dataGroupMember,
+            request.ascending,
+            request.requiredSlots);
     if (readerByTimestamp != null) {
       long readerId = queryManager.registerReaderByTime(readerByTimestamp);
       queryContext.registerLocalReader(readerId);
@@ -604,8 +675,7 @@ public class LocalQueryExecutor {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
     }
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(
-            request.getRequestor(), request.queryId, DEFAULT_FETCH_SIZE, -1);
+        queryManager.getQueryContext(request.getRequestor(), request.queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     boolean ascending = request.ascending;
 
@@ -796,8 +866,7 @@ public class LocalQueryExecutor {
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     boolean ascending = request.ascending;
 
-    RemoteQueryContext queryContext =
-        queryManager.getQueryContext(request.getRequestor(), queryId, DEFAULT_FETCH_SIZE, -1);
+    RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequestor(), queryId);
     LocalGroupByExecutor executor =
         getGroupByExecutor(
             path,
@@ -883,8 +952,7 @@ public class LocalQueryExecutor {
     long beforeRange = request.getBeforeRange();
     Node requester = request.getRequester();
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
-    RemoteQueryContext queryContext =
-        queryManager.getQueryContext(requester, queryId, DEFAULT_FETCH_SIZE, -1);
+    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -949,8 +1017,7 @@ public class LocalQueryExecutor {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =
-        queryManager.getQueryContext(
-            request.getRequestor(), request.getQueryId(), DEFAULT_FETCH_SIZE, -1);
+        queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
     List<PartialPath> partialPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
       partialPaths.add(new PartialPath(path));

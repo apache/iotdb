@@ -56,11 +56,32 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Initialize a Session
 
 ```java
-Session(String host, int rpcPort)
+    // use default configuration 
+    session = new Session.Builder.build();
 
-Session(String host, String rpcPort, String username, String password)
+    // initialize with a single node
+    session = 
+        new Session.Builder()
+            .host(String host)
+            .port(int port)
+            .build();
 
-Session(String host, int rpcPort, String username, String password)
+    // initialize with multiple nodes
+    session = 
+        new Session.Builder()
+            .nodeUrls(List<String> nodeUrls)
+            .build();
+
+    // other configurations
+    session = 
+        new Session.Builder()
+            .fetchSize(int fetchSize)
+            .username(String username)
+            .password(String password)
+            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+            .thriftMaxFrameSize(int thriftMaxFrameSize)
+            .enableCacheLeader(boolean enableCacheLeader)
+            .build();
 ```
 
 * Open a Session
@@ -269,7 +290,7 @@ Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-For examples of aligned timeseries and device template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
+For examples of aligned timeseries and measurement template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
 
@@ -391,7 +412,7 @@ void createSchemaTemplate(
       List<CompressionType> compressors)
 ```
 
-Create a device template, the param description at above
+Create a measurement template, the param description at above
 
 ``` 
 
@@ -399,7 +420,7 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 ```
 
-Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
+Set the measurement template named 'templateName' at path 'prefixPath'. You should firstly create the template using
 
 ```
 

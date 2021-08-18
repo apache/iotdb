@@ -24,25 +24,40 @@ import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitorMBean;
 import io.airlift.airline.Command;
 
 import java.util.Map;
+import java.util.Map.Entry;
 
 import static org.apache.iotdb.cluster.utils.nodetool.Printer.msgPrintln;
 
 @Command(name = "status", description = "Print status of all nodes")
 public class Status extends NodeToolCmd {
 
+  public static final int LIVE = 0;
+  public static final int OFFLINE = 1;
+  public static final int JOINING = 2;
+  public static final int LEAVING = 3;
+
   @Override
   public void execute(ClusterMonitorMBean proxy) {
-    Map<Node, Boolean> statusMap = proxy.getAllNodeStatus();
+    Map<Node, Integer> statusMap = proxy.getAllNodeStatus();
     if (statusMap == null) {
       msgPrintln(BUILDING_CLUSTER_INFO);
       return;
     }
     msgPrintln(String.format("%-30s  %10s", "Node", "Status"));
-    statusMap.forEach(
-        (node, status) ->
-            msgPrintln(
-                String.format(
-                    "%-30s->%10s",
-                    nodeToString(node), (Boolean.TRUE.equals(status) ? "on" : "off"))));
+    for (Entry<Node, Integer> entry : statusMap.entrySet()) {
+      Node node = entry.getKey();
+      Integer statusNum = entry.getValue();
+      String status;
+      if (statusNum.equals(LIVE)) {
+        status = "on";
+      } else if (statusNum.equals(OFFLINE)) {
+        status = "off";
+      } else if (statusNum.equals(JOINING)) {
+        status = "joining";
+      } else {
+        status = "leaving";
+      }
+      msgPrintln(String.format("%-30s->%10s", nodeToString(node), status));
+    }
   }
 }

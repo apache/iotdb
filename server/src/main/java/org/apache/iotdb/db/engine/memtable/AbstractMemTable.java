@@ -22,9 +22,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -72,6 +72,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   private long minPlanIndex = Long.MAX_VALUE;
+
+  private long createdTime = System.currentTimeMillis();
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -122,10 +124,10 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertRowPlan.getIndex());
     Object[] values = insertRowPlan.getValues();
 
-    MeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
+    IMeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
     int columnIndex = 0;
     if (insertRowPlan.isAligned()) {
-      MeasurementMNode measurementMNode = measurementMNodes[0];
+      IMeasurementMNode measurementMNode = measurementMNodes[0];
       if (measurementMNode != null) {
         // write vector
         Object[] vectorValue =
@@ -146,7 +148,7 @@ public abstract class AbstractMemTable implements IMemTable {
             vectorValue);
       }
     } else {
-      for (MeasurementMNode measurementMNode : measurementMNodes) {
+      for (IMeasurementMNode measurementMNode : measurementMNodes) {
         if (values[columnIndex] == null) {
           columnIndex++;
           continue;
@@ -306,7 +308,7 @@ public abstract class AbstractMemTable implements IMemTable {
       String deviceId,
       String measurement,
       IMeasurementSchema partialVectorSchema,
-      long timeLowerBound,
+      long ttlLowerBound,
       List<TimeRange> deletionList)
       throws IOException, QueryProcessException {
     if (partialVectorSchema.getType() == TSDataType.VECTOR) {
@@ -391,13 +393,23 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void releaseTVListRamCost(long cost) {
+    this.tvListRamCost -= cost;
+  }
+
+  @Override
   public long getTVListsRamCost() {
     return tvListRamCost;
   }
 
   @Override
-  public void addTextDataSize(long testDataSize) {
-    this.memSize += testDataSize;
+  public void addTextDataSize(long textDataSize) {
+    this.memSize += textDataSize;
+  }
+
+  @Override
+  public void releaseTextDataSize(long textDataSize) {
+    this.memSize -= textDataSize;
   }
 
   @Override
@@ -435,5 +447,10 @@ public abstract class AbstractMemTable implements IMemTable {
   void updatePlanIndexes(long index) {
     maxPlanIndex = Math.max(index, maxPlanIndex);
     minPlanIndex = Math.min(index, minPlanIndex);
+  }
+
+  @Override
+  public long getCreatedTime() {
+    return createdTime;
   }
 }
