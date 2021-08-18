@@ -69,6 +69,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private ReentrantLock lock = new ReentrantLock();
   private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
       IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon("Flush-WAL-Thread");
+  // TODO: FLUSH_BUFFER_THREAD_POOL =
+  //        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+  //            "Flush-WAL-Thread-" + SystemFileFactory.INSTANCE.getFile(logDirectory).getName());
 
   private long fileId = 0;
   private long lastFlushedId = 0;

@@ -170,6 +170,14 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   @TestOnly
   public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
+    this.name =
+        "Data-"
+            + nodes.getHeader().getNode().getInternalIp()
+            + "-"
+            + nodes.getHeader().getNode().getDataPort()
+            + "-raftId-"
+            + nodes.getId()
+            + "";
     allNodes = nodes;
     mbeanName =
         String.format(

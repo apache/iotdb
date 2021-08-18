@@ -8,6 +8,7 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient.Factory;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.rpc.TSocketWrapper;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
 

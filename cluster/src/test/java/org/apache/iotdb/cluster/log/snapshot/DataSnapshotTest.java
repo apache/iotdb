@@ -39,6 +39,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -88,7 +89,8 @@ public abstract class DataSnapshotTest {
                         () -> {
                           if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                             // insert 1 failure in every 10 requests
-                            resultHandler.onError(new Exception("Faked network failure"));
+                            resultHandler.onError(
+                                new Exception("[Ignore me in Tests] Faked network failure"));
                             return;
                           }
                           try {
