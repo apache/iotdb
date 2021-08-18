@@ -85,6 +85,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     try {
       // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
+      LOGGER.info("Current file list is {}", tsFileResources.getArrayList());
       LOGGER.warn("Get TsFileResourceList reverse iterator");
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
