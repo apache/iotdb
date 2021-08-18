@@ -1090,14 +1090,23 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    int columnIndex = 0;
-    for (int i = 0; i < mNodes.length; i++) {
-      // Don't update cached last value for vector type
-      if (mNodes[i] != null && plan.isAligned()) {
-        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
-      } else {
+    if (plan.isAligned()) {
+      for (int i = 0; i < mNodes.length; i++) {
         if (plan.getColumns()[i] == null) {
-          columnIndex++;
+          continue;
+        }
+        // Update cached last value with high priority
+        // vector lastCache update need subSensor path
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeLastTimeValuePair(i),
+            true,
+            latestFlushedTime,
+            mNodes[i]);
+      }
+    } else {
+      for (int i = 0; i < mNodes.length; i++) {
+        if (plan.getColumns()[i] == null) {
           continue;
         }
         // Update cached last value with high priority
@@ -1105,17 +1114,16 @@ public class StorageGroupProcessor {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeLastTimeValuePair(columnIndex), true, latestFlushedTime, mNodes[i]);
+              null, plan.composeLastTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
         } else {
           // measurementMNodes[i] is null, use the path to update remote cache
           IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
-              plan.composeLastTimeValuePair(columnIndex),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeLastTimeValuePair(i),
               true,
               latestFlushedTime,
               null);
         }
-        columnIndex++;
       }
     }
   }
@@ -1158,9 +1166,24 @@ public class StorageGroupProcessor {
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
     int columnIndex = 0;
-    for (IMeasurementMNode mNode : mNodes) {
-      // Don't update cached last value for vector type
-      if (!plan.isAligned()) {
+    if (plan.isAligned()) {
+      for (IMeasurementMNode mNode : mNodes) {
+        if (plan.getValues()[columnIndex] == null) {
+          columnIndex++;
+          continue;
+        }
+        // Update cached last value with high priority
+        // vector lastCache update need subSensor path
+        IoTDB.metaManager.updateLastCache(
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
+            plan.composeTimeValuePair(columnIndex),
+            true,
+            latestFlushedTime,
+            mNode);
+        columnIndex++;
+      }
+    } else {
+      for (IMeasurementMNode mNode : mNodes) {
         if (plan.getValues()[columnIndex] == null) {
           columnIndex++;
           continue;

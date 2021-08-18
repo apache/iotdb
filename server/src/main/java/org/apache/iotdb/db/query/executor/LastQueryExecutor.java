@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -163,7 +164,11 @@ public class LastQueryExecutor {
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
     try {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
-        System.out.println("Read Last From File " + nonCachedPaths.get(i));
+        System.out.println(
+            "Read Last From File "
+                + nonCachedPaths.get(i)
+                + " "
+                + (nonCachedPaths.get(i) instanceof VectorPartialPath));
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
                 .getQueryDataSource(nonCachedPaths.get(i), context, null);
@@ -257,6 +262,11 @@ public class LastQueryExecutor {
     private IMeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
+      if (seriesPath instanceof VectorPartialPath) {
+        // the seriesPath has been transformed to vector path
+        // here needs subSensor path
+        seriesPath = ((VectorPartialPath) seriesPath).getSubSensorsPathList().get(0);
+      }
       this.path = seriesPath;
     }
 

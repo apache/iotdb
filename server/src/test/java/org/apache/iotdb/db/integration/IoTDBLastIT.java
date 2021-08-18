@@ -224,7 +224,7 @@ public class IoTDBLastIT {
           "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
 
       // Last cache is updated with above insert sql
-      long time = node.getCachedLast().getTimestamp();
+      long time = IoTDB.metaManager.getLastCache(null, node).getTimestamp();
       Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
@@ -246,7 +246,7 @@ public class IoTDBLastIT {
           "insert into root.ln.wf01.wt01(time, temperature, status, id) values(600, 19.1, false, 1)");
 
       // Last cache is not updated with above insert sql
-      time = node.getCachedLast().getTimestamp();
+      time = IoTDB.metaManager.getLastCache(null, node).getTimestamp();
       Assert.assertEquals(700, time);
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");

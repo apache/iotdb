@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
@@ -413,7 +414,8 @@ public class CMManager extends MManager {
     try {
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
       if (measurementMNode != null) {
-        measurementMNode.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+        LastCacheManager.updateLastCache(
+            seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, measurementMNode);
       }
     } finally {
       cacheLock.writeLock().unlock();
@@ -426,7 +428,7 @@ public class CMManager extends MManager {
   public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
-      return measurementMNode.getCachedLast();
+      return LastCacheManager.getLastCache(seriesPath, measurementMNode);
     }
 
     return super.getLastCache(seriesPath, node);

@@ -1,7 +1,6 @@
-package org.apache.iotdb.db.metadata.lastCache;
+package org.apache.iotdb.db.metadata.lastCache.entry;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public interface ILastCacheEntry {
 
@@ -23,9 +22,6 @@ public interface ILastCacheEntry {
 
   void updateCachedLast(
       int index, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
-
-  void updateCachedLast(
-      long timestamp, TsPrimitiveType[] values, boolean highPriorityUpdate, Long latestFlushedTime);
 
   void resetCache();
 

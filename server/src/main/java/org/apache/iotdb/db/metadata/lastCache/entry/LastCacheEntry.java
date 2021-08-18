@@ -1,7 +1,9 @@
-package org.apache.iotdb.db.metadata.lastCache;
+package org.apache.iotdb.db.metadata.lastCache.entry;
 
+import org.apache.iotdb.db.metadata.lastCache.entry.value.ILastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.entry.value.MonadLastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.entry.value.VectorLastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class LastCacheEntry implements ILastCacheEntry {
 
@@ -25,7 +27,7 @@ public class LastCacheEntry implements ILastCacheEntry {
   }
 
   @Override
-  public void updateCachedLast(
+  public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
       return;
@@ -46,36 +48,32 @@ public class LastCacheEntry implements ILastCacheEntry {
   }
 
   @Override
-  public void updateCachedLast(
+  public synchronized void updateCachedLast(
       int index, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
     if (timeValuePair == null || timeValuePair.getValue() == null) {
       return;
     }
 
-    if (lastCacheValue == null) {
+    if (lastCacheValue.getTimeValuePair(index) == null) {
       // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        lastCacheValue = new VectorLastCacheValue();
-        lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
+        lastCacheValue.setTimestamp(index, timeValuePair.getTimestamp());
         lastCacheValue.setValue(index, timeValuePair.getValue());
       }
-    } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
-        || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
-      lastCacheValue.setTimestamp(timeValuePair.getTimestamp());
+    } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp(index)) {
+      lastCacheValue.setTimestamp(index, timeValuePair.getTimestamp());
       lastCacheValue.setValue(index, timeValuePair.getValue());
+    } else if (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp(index)) {
+      if (highPriorityUpdate || lastCacheValue.getValue(index) == null) {
+        lastCacheValue.setTimestamp(index, timeValuePair.getTimestamp());
+        lastCacheValue.setValue(index, timeValuePair.getValue());
+      }
     }
   }
 
   @Override
-  public void updateCachedLast(
-      long timestamp,
-      TsPrimitiveType[] values,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {}
-
-  @Override
-  public void resetCache() {
+  public synchronized void resetCache() {
     lastCacheValue = null;
   }
 

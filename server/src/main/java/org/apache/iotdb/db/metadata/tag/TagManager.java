@@ -24,9 +24,9 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.TagLogFile;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -153,7 +153,8 @@ public class TagManager {
               allMatchedNodes.stream()
                   .sorted(
                       Comparator.comparingLong(
-                              (IMeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                              (IMeasurementMNode mNode) ->
+                                  LastCacheManager.getLastTimeStamp(mNode, context))
                           .reversed()
                           .thenComparing(IMNode::getFullPath))
                   .collect(toList());

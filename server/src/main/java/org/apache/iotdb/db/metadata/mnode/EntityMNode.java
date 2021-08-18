@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.entry.LastCacheEntry;
 
 import java.util.Collections;
 import java.util.Map;

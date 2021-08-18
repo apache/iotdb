@@ -20,15 +20,14 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.lastCache.ILastCacheEntry;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.entry.LastCacheEntry;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -156,36 +155,19 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public ILastCacheEntry getLastCacheEntry() {
+    if (lastCacheEntry == null) {
+      synchronized (this) {
+        if (lastCacheEntry == null) {
+          lastCacheEntry = new LastCacheEntry();
+        }
+      }
+    }
     return lastCacheEntry;
   }
 
   @Override
   public void setLastCacheEntry(ILastCacheEntry lastCacheEntry) {
     this.lastCacheEntry = lastCacheEntry;
-  }
-
-  @Override
-  public TimeValuePair getCachedLast() {
-    return lastCacheEntry == null ? null : lastCacheEntry.getCachedLast();
-  }
-
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   */
-  @Override
-  public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (lastCacheEntry == null) {
-      lastCacheEntry = new LastCacheEntry();
-    }
-    if (lastCacheEntry.isEmpty()) {
-      lastCacheEntry.init(schema.getMeasurementCount());
-    }
-    lastCacheEntry.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   @Override

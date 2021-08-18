@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.*;
@@ -1676,9 +1677,8 @@ public class MManager {
       }
     }
 
-    checkIsEntityLastCache(node);
-
-    node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+    LastCacheManager.updateLastCache(
+        seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
   }
 
   public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
@@ -1686,22 +1686,12 @@ public class MManager {
       if (node == null) {
         node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
       }
-
-      checkIsEntityLastCache(node);
-
-      return node.getCachedLast();
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return null;
     }
-    return null;
-  }
 
-  private void checkIsEntityLastCache(IMeasurementMNode node) {
-    IEntityMNode entityMNode = node.getParent();
-    String measurement = node.getName();
-    if (!entityMNode.hasChild(measurement)) {
-      node.setLastCacheEntry(entityMNode.getLastCacheEntry(measurement));
-    }
+    return LastCacheManager.getLastCache(seriesPath, node);
   }
 
   /** get schema for device. Attention!!! Only support insertPlan */
