@@ -81,6 +81,7 @@ import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -203,6 +204,8 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SequenceClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToReadOnlyContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToWritableContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildNodesContext;
@@ -933,6 +936,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitTracingOff(TracingOffContext ctx) {
     return new TracingOperator(SQLConstant.TOK_TRACING, false);
+  }
+
+  @Override
+  public Operator visitSetSystemToReadOnly(SetSystemToReadOnlyContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+  }
+
+  @Override
+  public Operator visitSetSystemToWritable(SetSystemToWritableContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
   }
 
   @Override
