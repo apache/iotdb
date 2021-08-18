@@ -618,8 +618,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testTimedFlushSeqMemTable()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          ShutdownException {
+      throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -664,8 +663,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testTimedFlushUnseqMemTable()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          ShutdownException {
+      throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable & close
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
@@ -719,8 +717,7 @@ public class StorageGroupProcessorTest {
 
   @Test
   public void testTimedCloseTsFile()
-      throws IllegalPathException, InterruptedException, WriteProcessException,
-          ShutdownException {
+      throws IllegalPathException, InterruptedException, WriteProcessException, ShutdownException {
     // create one sequence memtable
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
