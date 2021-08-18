@@ -1054,6 +1054,7 @@ public class IoTDBSizeTiredCompactionIT {
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1076,15 +1077,17 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      int compactionCount = 0;
-      while (compactionCount < 3) {
-        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
-          // wait for schedule
+      int totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 3) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+
         }
-        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
-          // wait for compaction to finish
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
         }
-        compactionCount++;
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
@@ -1109,6 +1112,7 @@ public class IoTDBSizeTiredCompactionIT {
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1131,11 +1135,17 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
-        // wait for schedule
-      }
-      while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
-        // wait for compaction to finish
+      long totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 1) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+
+        }
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
+        }
       }
       try {
         Thread.sleep(5000);
@@ -1233,6 +1243,7 @@ public class IoTDBSizeTiredCompactionIT {
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1261,15 +1272,17 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      int compactionCount = 0;
-      while (compactionCount < 2) {
-        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
-          // wait for schedule
+      int totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 2) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+
         }
-        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
-          // wait for compaction to finish
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
         }
-        compactionCount++;
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
@@ -1294,6 +1307,7 @@ public class IoTDBSizeTiredCompactionIT {
     long oriTargetFileSize =
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    long originCompactionNum = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1325,15 +1339,17 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      int compactionCount = 0;
-      while (compactionCount < 2) {
-        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
-          // wait for schedule
+      int totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originCompactionNum < 2) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+
         }
-        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
-          // wait for compaction to finish
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
         }
-        compactionCount++;
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
