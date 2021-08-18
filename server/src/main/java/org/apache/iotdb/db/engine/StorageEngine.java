@@ -324,7 +324,8 @@ public class StorageEngine implements IService {
   private void startTimedService() {
     // timed flush sequence memtable
     if (config.isEnableTimedFlushSeqMemtable()) {
-      seqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      seqMemtableTimedFlushCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedFlushSeqMemtable");
       seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
@@ -334,7 +335,8 @@ public class StorageEngine implements IService {
     }
     // timed flush unsequence memtable
     if (config.isEnableTimedFlushUnseqMemtable()) {
-      unseqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      unseqMemtableTimedFlushCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedFlushUnSeqMemtable");
       unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
@@ -344,7 +346,8 @@ public class StorageEngine implements IService {
     }
     // timed close tsfile
     if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread = Executors.newSingleThreadScheduledExecutor();
+      tsFileTimedCloseCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("TimedCloseTsFileProcessor");
       tsFileTimedCloseCheckThread.scheduleAtFixedRate(
           this::timedCloseTsFileProcessor,
           config.getCloseTsFileCheckInterval(),
