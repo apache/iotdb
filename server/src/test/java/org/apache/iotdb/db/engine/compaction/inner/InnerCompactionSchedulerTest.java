@@ -61,6 +61,7 @@ public class InnerCompactionSchedulerTest {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     tsFileResources.add(new FakedTsFileResource(30));
     tsFileResources.add(new FakedTsFileResource(30));
@@ -102,6 +103,8 @@ public class InnerCompactionSchedulerTest {
 
   @Test
   public void testFileSelector2() {
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     tsFileResources.add(new FakedTsFileResource(30));
     tsFileResources.add(new FakedTsFileResource(40, true, true));
