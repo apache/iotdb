@@ -35,7 +35,6 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-/** @Author: Architect @Date: 2021-08-13 10:53 */
 public class RegexpOperator extends FunctionOperator {
 
   protected String value;
