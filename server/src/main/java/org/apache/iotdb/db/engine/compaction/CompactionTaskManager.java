@@ -41,12 +41,14 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger(CompactionTaskManager.class);
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
   private ScheduledThreadPoolExecutor pool;
+  public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
@@ -64,6 +66,7 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      currentTaskNum = new AtomicInteger(0);
     }
     logger.info("Compaction task manager started.");
   }

@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 
@@ -63,8 +64,9 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       TsFileResourceList unSeqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
-    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartitionId);
+      int concurrentMergeCount,
+      AtomicInteger currentTaskNum) {
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartitionId, currentTaskNum);
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.mergeResource = mergeResource;

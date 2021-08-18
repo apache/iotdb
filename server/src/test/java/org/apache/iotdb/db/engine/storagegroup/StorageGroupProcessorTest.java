@@ -638,6 +638,10 @@ public class StorageGroupProcessorTest {
       if (totalWaitingTime % 1000 == 0) {
         logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
       }
+      if (totalWaitingTime > 120_000) {
+        Assert.fail();
+        break;
+      }
     }
 
     QueryDataSource queryDataSource =

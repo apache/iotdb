@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -155,7 +156,8 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
             tempSGDir.getPath(),
             tsFileResourceManager.getSequenceListByTimePartition(0),
             recoverTsFile,
-            false);
+            false,
+            CompactionTaskManager.currentTaskNum);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
     task.call();
     context = new QueryContext();
@@ -483,7 +485,8 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
             tempSGDir.getPath(),
             tsFileResourceManager.getSequenceListByTimePartition(0),
             tsFileResourceManager.getUnsequenceRecoverTsFileResources(),
-            true)
+            true,
+            CompactionTaskManager.currentTaskNum)
         .call();
     context = new QueryContext();
     path =

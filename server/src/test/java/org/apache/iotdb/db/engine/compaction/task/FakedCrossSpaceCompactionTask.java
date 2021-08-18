@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
@@ -49,7 +50,8 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
         unSeqTsFileResourceList,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
-        concurrentMergeCount);
+        concurrentMergeCount,
+        CompactionTaskManager.currentTaskNum);
   }
 
   @Override

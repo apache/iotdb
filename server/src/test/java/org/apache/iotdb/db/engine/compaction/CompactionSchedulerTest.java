@@ -121,7 +121,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test1");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -263,7 +263,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test2");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -386,7 +386,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test3");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -508,7 +508,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test4");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -605,7 +605,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test5");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -749,7 +749,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test6");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -861,7 +861,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test7");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -980,7 +980,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test8");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1077,7 +1077,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test9");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1190,7 +1190,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test10");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1302,7 +1302,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test11");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1415,7 +1415,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test12");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1540,7 +1540,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test13");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1653,7 +1653,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test14");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1766,7 +1766,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test15");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1879,7 +1879,7 @@ public class CompactionSchedulerTest {
     LOGGER.warn("Running test16");
     LOGGER.warn(
         "Current task num in CompactionTaskManager is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.currentTaskNum.get());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);

@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   private static final Logger LOGGER =
@@ -48,7 +49,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
       int concurrentMergeCount,
-      File logFile) {
+      File logFile,
+      AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -59,7 +61,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
         unSeqTsFileResourceList,
         seqTsFileResourceList,
         unSeqTsFileResourceList,
-        concurrentMergeCount);
+        concurrentMergeCount,
+        currentTaskNum);
     this.logFile = logFile;
   }
 

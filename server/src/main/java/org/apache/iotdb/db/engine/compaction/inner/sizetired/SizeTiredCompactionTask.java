@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
@@ -62,8 +63,9 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
-    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition);
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, currentTaskNum);
     this.tsFileResourceList = tsFileResourceList;
     this.tsFileResourceManager = tsFileResourceManager;
     this.selectedTsFileResourceList = selectedTsFileResourceList;

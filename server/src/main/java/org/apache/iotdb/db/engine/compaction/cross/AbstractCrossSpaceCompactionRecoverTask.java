@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public abstract class AbstractCrossSpaceCompactionRecoverTask
     extends AbstractCrossSpaceCompactionTask {
 
-  public AbstractCrossSpaceCompactionRecoverTask(String fullStorageGroupName, long timePartition) {
-    super(fullStorageGroupName, timePartition);
+  public AbstractCrossSpaceCompactionRecoverTask(
+      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+    super(fullStorageGroupName, timePartition, currentTaskNum);
   }
 }

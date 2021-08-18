@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * AbstractCompactionTask is the base class for all compaction task, it carries out the execution of
@@ -36,10 +37,14 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractCompactionTask.class);
   protected String fullStorageGroupName;
   protected long timePartition;
+  protected final AtomicInteger currentTaskNum;
 
-  public AbstractCompactionTask(String fullStorageGroupName, long timePartition) {
+  public AbstractCompactionTask(
+      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
     this.fullStorageGroupName = fullStorageGroupName;
     this.timePartition = timePartition;
+    this.currentTaskNum = currentTaskNum;
+    this.currentTaskNum.getAndIncrement();
   }
 
   protected abstract void doCompaction() throws Exception;
@@ -52,6 +57,9 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       LOGGER.error(e.getMessage(), e);
     } finally {
       CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
+      if (this.currentTaskNum != null) {
+        this.currentTaskNum.decrementAndGet();
+      }
     }
     return null;
   }

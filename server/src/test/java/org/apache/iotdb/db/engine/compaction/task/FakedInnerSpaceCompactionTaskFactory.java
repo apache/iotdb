@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -44,6 +45,7 @@ public class FakedInnerSpaceCompactionTaskFactory extends InnerSpaceCompactionTa
         tsFileResourceManager,
         tsFileResourceList,
         selectedTsFileResourceList,
-        sequence);
+        sequence,
+        CompactionTaskManager.currentTaskNum);
   }
 }

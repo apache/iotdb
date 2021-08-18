@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
@@ -50,7 +51,8 @@ public enum InnerCompactionStrategy {
             tsFileResourceManager,
             tsFileResourceList,
             selectedTsFileResourceList,
-            sequence);
+            sequence,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 
@@ -76,7 +78,8 @@ public enum InnerCompactionStrategy {
             storageGroupDir,
             tsFileResourceList,
             recoverTsFileResources,
-            sequence);
+            sequence,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 

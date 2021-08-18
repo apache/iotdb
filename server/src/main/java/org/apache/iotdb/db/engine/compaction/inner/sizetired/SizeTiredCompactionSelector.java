@@ -93,13 +93,13 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
-        if ((CompactionTaskManager.getInstance().getTaskCount() >= concurrentCompactionThread)
+        if ((CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
-          if (CompactionTaskManager.getInstance().getTaskCount() >= concurrentCompactionThread) {
+          if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
             LOGGER.warn(
                 "Return selection because too many compaction thread, current thread num is {}",
-                CompactionTaskManager.getInstance().getTaskCount());
+                CompactionTaskManager.currentTaskNum);
           } else {
             LOGGER.warn("Return selection because compaction is not enable");
           }
