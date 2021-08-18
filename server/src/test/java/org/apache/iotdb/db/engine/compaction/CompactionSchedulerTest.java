@@ -91,13 +91,14 @@ public class CompactionSchedulerTest {
           Collections.emptyMap());
     }
     MergeManager.getINSTANCE().start();
-    LOGGER.warn("Resetting CompactionTaskManager");
-    try {
-      CompactionTaskManager.getInstance().reset();
-    } catch (InterruptedException e) {
+    CompactionTaskManager.getInstance().start();
+    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
 
+      }
     }
-    LOGGER.warn("Reset successfully");
   }
 
   @After

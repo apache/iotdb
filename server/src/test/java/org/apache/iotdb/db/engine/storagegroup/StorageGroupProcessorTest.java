@@ -626,12 +626,17 @@ public class StorageGroupProcessorTest {
 
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    long totalWaitingTime = 0;
     while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
       // wait
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
         e.printStackTrace();
+      }
+      totalWaitingTime += 100;
+      if (totalWaitingTime % 1000 == 0) {
+        logger.warn("has waited for {} seconds", totalWaitingTime / 1000);
       }
     }
 

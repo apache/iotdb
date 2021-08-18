@@ -188,15 +188,4 @@ public class CompactionTaskManager implements IService {
   public int getTaskCount() {
     return pool.getActiveCount() + pool.getQueue().size();
   }
-
-  @TestOnly
-  public void reset() throws InterruptedException {
-    this.pool.shutdown();
-    this.pool.awaitTermination(120_000L, TimeUnit.MILLISECONDS);
-    this.pool =
-        (ScheduledThreadPoolExecutor)
-            IoTDBThreadPoolFactory.newScheduledThreadPool(
-                IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
-                ThreadName.COMPACTION_SERVICE.getName());
-  }
 }
