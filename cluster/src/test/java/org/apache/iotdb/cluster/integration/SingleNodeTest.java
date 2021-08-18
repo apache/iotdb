@@ -24,6 +24,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

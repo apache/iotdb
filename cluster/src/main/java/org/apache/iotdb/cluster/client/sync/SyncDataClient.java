@@ -21,16 +21,10 @@ package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Client;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
-
-import java.io.Closeable;
-import java.net.SocketException;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
@@ -38,56 +32,30 @@ import java.net.SocketException;
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class SyncDataClient extends Client implements Closeable {
+public class SyncDataClient extends TSDataServiceClient {
 
-  Node node;
-  SyncClientPool pool;
-
-  SyncDataClient(TProtocol prot) {
+  /** @param prot this constructor just create a new instance, but do not open the connection */
+  @TestOnly
+  public SyncDataClient(TProtocol prot) {
     super(prot);
   }
 
-  private SyncDataClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  SyncDataClient(TProtocolFactory protocolFactory, Node target, SyncClientPool pool)
       throws TTransportException {
-
-    // the difference of the two clients lies in the port
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                node.getInternalIp(),
-                node.getDataPort(),
-                ClusterConstant.getConnectionTimeoutInMS())));
-
-    this.node = node;
-    this.pool = pool;
-    getInputProtocol().getTransport().open();
+        protocolFactory,
+        target.getInternalIp(),
+        target.getDataPort(),
+        ClusterConstant.getConnectionTimeoutInMS(),
+        target,
+        pool);
   }
 
-  public void setTimeout(int timeout) {
-    // the same transport is used in both input and output
-    ((TimeoutChangeableTransport) (getInputProtocol().getTransport())).setTimeout(timeout);
-  }
-
-  @TestOnly
-  public int getTimeout() throws SocketException {
-    return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
-  }
-
-  public void putBack() {
-    if (pool != null) {
-      pool.putClient(node, this);
-    } else {
-      TProtocol inputProtocol = getInputProtocol();
-      if (inputProtocol != null) {
-        inputProtocol.getTransport().close();
-      }
-    }
-  }
-
-  /** put the client to pool, instead of close client. */
   @Override
-  public void close() {
-    putBack();
+  public String toString() {
+    return String.format(
+        "SyncDataClient (ip = %s, port = %d, id = %d)",
+        target.getInternalIp(), target.getDataPort(), target.getNodeIdentifier());
   }
 
   public static class Factory implements SyncClientFactory {
@@ -106,17 +74,8 @@ public class SyncDataClient extends Client implements Closeable {
     @Override
     public String nodeInfo(Node node) {
       return String.format(
-          "DataNode (listenIp = %s, port = %d, id = %d)",
+          "DataNode (ip = %s, port = %d, id = %d)",
           node.getInternalIp(), node.getDataPort(), node.getNodeIdentifier());
     }
-  }
-
-  @Override
-  public String toString() {
-    return "DataClient{" + "node=" + node + '}';
-  }
-
-  public Node getNode() {
-    return node;
   }
 }

@@ -22,11 +22,10 @@ package org.apache.iotdb.cluster.client.sync;
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.monitor.NodeStatusManager;
 import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.iotdb.db.utils.TestOnly;
-
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,8 @@ public class SyncClientPool {
   private static final Logger logger = LoggerFactory.getLogger(SyncClientPool.class);
   private long waitClientTimeoutMS;
   private int maxConnectionForEachNode;
-  private Map<ClusterNode, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
+  // TODO should we really need a Node here? or just using its ID?
+  private Map<ClusterNode, Deque<RaftService.Client>> clientCaches = new ConcurrentHashMap<>();
   private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
   private SyncClientFactory syncClientFactory;
 
@@ -58,7 +58,7 @@ public class SyncClientPool {
    * @param node the node want to connect
    * @return if the node can connect, return the client, otherwise null
    */
-  public Client getClient(Node node) {
+  public RaftService.Client getClient(Node node) {
     return getClient(node, true);
   }
 
@@ -73,21 +73,23 @@ public class SyncClientPool {
    *     always try to connect so the node can be reactivated ASAP
    * @return if the node can connect, return the client, otherwise null
    */
-  public Client getClient(Node node, boolean activatedOnly) {
-    ClusterNode clusterNode = new ClusterNode(node);
+  public RaftService.Client getClient(Node node, boolean activatedOnly) {
     if (activatedOnly && !NodeStatusManager.getINSTANCE().isActivated(node)) {
       return null;
     }
 
+    ClusterNode clusterNode = new ClusterNode(node);
     // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    Deque<RaftService.Client> clientStack =
+        clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+
     synchronized (clientStack) {
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
           return waitForClient(clientStack, clusterNode);
         } else {
-          Client client = null;
+          RaftService.Client client = null;
           try {
             client = syncClientFactory.getSyncClient(clusterNode, this);
           } catch (TTransportException e) {
@@ -115,7 +117,8 @@ public class SyncClientPool {
   }
 
   @SuppressWarnings("squid:S2273") // synchronized outside
-  private Client waitForClient(Deque<Client> clientStack, ClusterNode clusterNode) {
+  private RaftService.Client waitForClient(
+      Deque<RaftService.Client> clientStack, ClusterNode clusterNode) {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
@@ -125,7 +128,7 @@ public class SyncClientPool {
             && System.currentTimeMillis() - waitStart >= waitClientTimeoutMS) {
           logger.warn(
               "Cannot get an available client after {}ms, create a new one", waitClientTimeoutMS);
-          Client client = syncClientFactory.getSyncClient(clusterNode, this);
+          RaftService.Client client = syncClientFactory.getSyncClient(clusterNode, this);
           nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue + 1);
           return client;
         }
@@ -155,10 +158,11 @@ public class SyncClientPool {
    * @param node connection node
    * @param client push client to pool
    */
-  public void putClient(Node node, Client client) {
+  public void putClient(Node node, RaftService.Client client) {
     ClusterNode clusterNode = new ClusterNode(node);
     // As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
+    Deque<RaftService.Client> clientStack =
+        clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (clientStack) {
       if (client.getInputProtocol() != null && client.getInputProtocol().getTransport().isOpen()) {
         clientStack.push(client);

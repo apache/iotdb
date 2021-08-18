@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.After;
 import org.junit.Assert;

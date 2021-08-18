@@ -34,7 +34,6 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -101,7 +100,7 @@ public class SerializeLogTest {
   @Test
   public void testAddNodeLog() throws UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     log.setNewNode(
@@ -126,7 +125,7 @@ public class SerializeLogTest {
   @Test
   public void testRemoveNodeLog() throws UnknownLogTypeException {
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     log.setRemovedNode(TestUtils.getNode(0));

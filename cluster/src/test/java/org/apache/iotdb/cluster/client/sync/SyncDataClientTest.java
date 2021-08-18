@@ -44,7 +44,7 @@ public class SyncDataClientTest {
       SyncDataClient client;
       client = (SyncDataClient) syncClientPool.getClient(node);
 
-      assertEquals(node, client.getNode());
+      assertEquals(node, client.getTarget());
 
       client.setTimeout(1000);
       assertEquals(1000, client.getTimeout());
@@ -54,10 +54,7 @@ public class SyncDataClientTest {
       assertEquals(client, newClient);
       assertTrue(client.getInputProtocol().getTransport().isOpen());
 
-      assertEquals(
-          "DataClient{node=ClusterNode{ internalIp='localhost', metaPort=0, nodeIdentifier=0,"
-              + " dataPort=40010, clientPort=0, clientIp='localhost'}}",
-          client.toString());
+      assertEquals("SyncDataClient (ip = localhost, port = 40010, id = 0)", client.toString());
 
       client =
           new SyncDataClient(
@@ -95,7 +92,7 @@ public class SyncDataClientTest {
           new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
       SyncDataClient clientOut;
       try (SyncDataClient clientIn = (SyncDataClient) syncClientPool.getClient(node)) {
-        assertEquals(node, clientIn.getNode());
+        assertEquals(node, clientIn.getTarget());
         clientIn.setTimeout(1000);
         clientOut = clientIn;
         assertEquals(1000, clientIn.getTimeout());
@@ -104,10 +101,7 @@ public class SyncDataClientTest {
 
       try (SyncDataClient newClient = (SyncDataClient) syncClientPool.getClient(node)) {
         assertEquals(clientOut, newClient);
-        assertEquals(
-            "DataClient{node=ClusterNode{ internalIp='localhost', metaPort=0, nodeIdentifier=0,"
-                + " dataPort=40010, clientPort=0, clientIp='localhost'}}",
-            newClient.toString());
+        assertEquals("SyncDataClient (ip = localhost, port = 40010, id = 0)", newClient.toString());
       }
 
       try (SyncDataClient clientIn =

@@ -53,9 +53,7 @@ public class SyncDataHeartbeatClientTest {
           new SyncDataHeartbeatClient.Factory(new Factory());
       SyncDataHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
-          "SyncHeartbeatDataClient{node=Node(internalIp:localhost, metaPort:0, nodeIdentifier:0,"
-              + " dataPort:40010, clientPort:0, clientIp:localhost),dataHeartbeatPort=40011}",
-          syncClient.toString());
+          "SyncDataHBClient (ip = localhost, port = 40011, id = 0)", syncClient.toString());
     } finally {
       serverSocket.close();
       listenThread.interrupt();

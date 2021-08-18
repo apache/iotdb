@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.client.sync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 
@@ -30,20 +29,28 @@ import org.apache.thrift.transport.TTransportException;
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
  * should not cache it anywhere else or there may be conflicts.
  */
-public class SyncDataHeartbeatClient extends SyncDataClient {
+public class SyncDataHeartbeatClient extends TSDataServiceClient {
 
-  private SyncDataHeartbeatClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  private SyncDataHeartbeatClient(
+      TProtocolFactory protocolFactory, Node target, SyncClientPool pool)
       throws TTransportException {
     // the difference of the two clients lies in the port
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                node.getInternalIp(),
-                node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-                ClusterConstant.getConnectionTimeoutInMS())));
-    this.node = node;
-    this.pool = pool;
-    getInputProtocol().getTransport().open();
+        protocolFactory,
+        target.getInternalIp(),
+        target.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+        ClusterConstant.getConnectionTimeoutInMS(),
+        target,
+        pool);
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "SyncDataHBClient (ip = %s, port = %d, id = %d)",
+        target.getInternalIp(),
+        target.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
+        target.getNodeIdentifier());
   }
 
   public static class Factory implements SyncClientFactory {
@@ -63,21 +70,10 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
     @Override
     public String nodeInfo(Node node) {
       return String.format(
-          "DataNode (listenIp = %s, HB port = %d, id = %d)",
+          "DataHBNode (ip = %s, port = %d, id = %d)",
           node.getInternalIp(),
           node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
           node.getNodeIdentifier());
     }
-  }
-
-  @Override
-  public String toString() {
-    return "SyncHeartbeatDataClient{"
-        + "node="
-        + super.getNode()
-        + ","
-        + "dataHeartbeatPort="
-        + (super.getNode().getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET)
-        + '}';
   }
 }

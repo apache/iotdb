@@ -53,9 +53,7 @@ public class SyncMetaHeartbeatClientTest {
           new SyncMetaHeartbeatClient.Factory(new TBinaryProtocol.Factory());
       SyncMetaHeartbeatClient syncClient = factoryAsync.getSyncClient(node, null);
       Assert.assertEquals(
-          "SyncMetaHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003,"
-              + " nodeIdentifier:0, dataPort:0, clientPort:0, clientIp:localhost),metaHeartbeatPort=9004}",
-          syncClient.toString());
+          "SyncMetaHBClient (ip = localhost, port = 9004, id = 0)", syncClient.toString());
     } finally {
       serverSocket.close();
       listenThread.interrupt();

@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 

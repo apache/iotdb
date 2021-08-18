@@ -21,14 +21,11 @@ package org.apache.iotdb.cluster.client.sync;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Client;
-import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.rpc.RpcTransportFactory;
+import org.apache.iotdb.db.utils.TestOnly;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
-
-import java.io.Closeable;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request, you
@@ -36,40 +33,30 @@ import java.io.Closeable;
  */
 // the two classes does not share a common parent and Java does not allow multiple extension
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class SyncMetaClient extends Client implements Closeable {
+public class SyncMetaClient extends TSMetaServiceClient {
 
-  Node node;
-  SyncClientPool pool;
-
+  /** @param prot this constructor just create a new instance, but do not open the connection */
+  @TestOnly
   SyncMetaClient(TProtocol prot) {
     super(prot);
   }
 
-  private SyncMetaClient(TProtocolFactory protocolFactory, Node node, SyncClientPool pool)
+  private SyncMetaClient(TProtocolFactory protocolFactory, Node target, SyncClientPool pool)
       throws TTransportException {
     super(
-        protocolFactory.getProtocol(
-            RpcTransportFactory.INSTANCE.getTransport(
-                node.getInternalIp(),
-                node.getMetaPort(),
-                ClusterConstant.getConnectionTimeoutInMS())));
-    this.node = node;
-    this.pool = pool;
-    getInputProtocol().getTransport().open();
+        protocolFactory,
+        target.getInternalIp(),
+        target.getMetaPort(),
+        ClusterConstant.getConnectionTimeoutInMS(),
+        target,
+        pool);
   }
 
-  public void putBack() {
-    if (pool != null) {
-      pool.putClient(node, this);
-    } else {
-      getInputProtocol().getTransport().close();
-    }
-  }
-
-  /** put the client to pool, instead of close client. */
   @Override
-  public void close() {
-    putBack();
+  public String toString() {
+    return String.format(
+        "SyncMetaClient (ip = %s, port = %d, id = %d)",
+        target.getInternalIp(), target.getMetaPort(), target.getNodeIdentifier());
   }
 
   public static class Factory implements SyncClientFactory {
@@ -88,19 +75,8 @@ public class SyncMetaClient extends Client implements Closeable {
     @Override
     public String nodeInfo(Node node) {
       return String.format(
-          "MetaNode (listenIp = %s, HB port = %d, id = %d)",
-          node.getInternalIp(),
-          node.getMetaPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-          node.getNodeIdentifier());
+          "MetaNode (ip = %s, port = %d, id = %d)",
+          node.getInternalIp(), node.getMetaPort(), node.getNodeIdentifier());
     }
-  }
-
-  public Node getNode() {
-    return node;
-  }
-
-  @Override
-  public String toString() {
-    return "SyncMetaClient{" + " node=" + node + ", pool=" + pool + "}";
   }
 }

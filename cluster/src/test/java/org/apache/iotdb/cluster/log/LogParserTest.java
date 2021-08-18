@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-
 import org.junit.Test;
 
 import java.io.IOException;
@@ -49,7 +48,7 @@ public class LogParserTest {
   public void testAddNodeLog() throws UnknownLogTypeException {
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(TestUtils.getNode(5));
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
 
@@ -86,7 +85,7 @@ public class LogParserTest {
   @Test
   public void testRemoveNodeLog() throws UnknownLogTypeException {
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(TestUtils.getNode(0));
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
@@ -108,7 +107,7 @@ public class LogParserTest {
 
   @Test
   public void testLogPlan() {
-    AddNodeLog log = new AddNodeLog(TestUtils.seralizePartitionTable, TestUtils.getNode(0));
+    AddNodeLog log = new AddNodeLog(TestUtils.getSeralizePartitionTable(), TestUtils.getNode(0));
     log.setMetaLogIndex(1);
     try {
       LogPlan logPlan = new LogPlan(log.serialize());

@@ -275,7 +275,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
                       context.getQueryId(),
                       queryPlan.getDeviceToMeasurements(),
                       group.getHeader(),
-                      syncDataClient.getNode()));
+                      syncDataClient.getTarget()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.getInputProtocol().getTransport().close();

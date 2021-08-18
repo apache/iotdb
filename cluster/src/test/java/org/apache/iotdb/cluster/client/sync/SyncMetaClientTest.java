@@ -8,6 +8,7 @@ import org.apache.iotdb.cluster.client.sync.SyncMetaClient.Factory;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.rpc.TSocketWrapper;
+
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
 
@@ -44,7 +45,7 @@ public class SyncMetaClientTest {
       SyncMetaClient client;
       client = (SyncMetaClient) syncClientPool.getClient(node);
 
-      assertEquals(node, client.getNode());
+      assertEquals(node, client.getTarget());
 
       client.putBack();
       Client newClient = syncClientPool.getClient(node);
@@ -87,12 +88,12 @@ public class SyncMetaClientTest {
           new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
       SyncMetaClient clientOut;
       try (SyncMetaClient clientIn = (SyncMetaClient) syncClientPool.getClient(node); ) {
-        assertEquals(node, clientIn.getNode());
+        assertEquals(node, clientIn.getTarget());
         clientOut = clientIn;
       }
 
       try (SyncMetaClient newClientIn = (SyncMetaClient) syncClientPool.getClient(node)) {
-        assertEquals(node, newClientIn.getNode());
+        assertEquals(node, newClientIn.getTarget());
         assertEquals(clientOut, newClientIn);
       }
       assertTrue(clientOut.getInputProtocol().getTransport().isOpen());

@@ -39,7 +39,6 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.After;
 import org.junit.Test;
 
@@ -88,7 +87,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
@@ -100,7 +99,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     Node node = testMetaGroupMember.getThisNode();
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(node);
     applier.apply(log);
 
