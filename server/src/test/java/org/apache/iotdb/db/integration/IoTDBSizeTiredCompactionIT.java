@@ -1088,6 +1088,10 @@ public class IoTDBSizeTiredCompactionIT {
         if (totalWaitingTime % 1000 == 0) {
           LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
         }
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
+        }
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
@@ -1145,6 +1149,10 @@ public class IoTDBSizeTiredCompactionIT {
         totalWaitingTime += 100;
         if (totalWaitingTime % 1000 == 0) {
           LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
+        }
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
         }
       }
       try {
@@ -1283,6 +1291,10 @@ public class IoTDBSizeTiredCompactionIT {
         if (totalWaitingTime % 1000 == 0) {
           LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
         }
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
+        }
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
@@ -1349,6 +1361,10 @@ public class IoTDBSizeTiredCompactionIT {
         totalWaitingTime += 100;
         if (totalWaitingTime % 1000 == 0) {
           LOGGER.warn("as waiting for {} seconds", totalWaitingTime / 1000);
+        }
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
         }
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
