@@ -131,6 +131,9 @@ public class TsFileProcessor {
   /** working memtable */
   private IMemTable workMemTable;
 
+  /** last flush time to flush the working memtable */
+  private long lastWorkMemtableFlushTime;
+
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
@@ -835,6 +838,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
+    lastWorkMemtableFlushTime = System.currentTimeMillis();
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -1336,6 +1340,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableCreatedTime() {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
+  public long getLastWorkMemtableFlushTime() {
+    return lastWorkMemtableFlushTime;
   }
 
   public boolean isSequence() {
