@@ -191,4 +191,8 @@ public class CompactionTaskManager implements IService {
   public int getTaskCount() {
     return pool.getActiveCount() + pool.getQueue().size();
   }
+
+  public long getFinishTaskNum() {
+    return pool.getCompletedTaskCount();
+  }
 }

@@ -24,8 +24,11 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -36,6 +39,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 
 public class IoTDBSizeTiredCompactionIT {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSizeTiredCompactionIT.class);
 
   @Before
   public void setUp() throws Exception {
@@ -1161,6 +1165,7 @@ public class IoTDBSizeTiredCompactionIT {
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(600);
+    long originFinishCount = CompactionTaskManager.getInstance().getFinishTaskNum();
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -1189,15 +1194,21 @@ public class IoTDBSizeTiredCompactionIT {
                 i, i + 1, i + 2, i + 3));
         statement.execute("FLUSH");
       }
-      int compactionCount = 0;
-      while (compactionCount < 3) {
-        while (CompactionTaskManager.getInstance().getTaskCount() == 0) {
-          // wait for schedule
+      long totalWaitingTime = 0;
+      while (CompactionTaskManager.getInstance().getFinishTaskNum() - originFinishCount < 3) {
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+
         }
-        while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
-          // wait for compaction to finish
+        totalWaitingTime += 100;
+        if (totalWaitingTime % 1000 == 0) {
+          LOGGER.warn("Has waiting for {} seconds", totalWaitingTime / 1000);
         }
-        compactionCount++;
+        if (totalWaitingTime > 120_000) {
+          Assert.fail();
+          break;
+        }
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         while (resultSet.next()) {
