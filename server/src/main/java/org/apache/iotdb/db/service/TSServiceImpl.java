@@ -69,7 +69,9 @@ import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -585,12 +587,12 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
+    String statement = req.getStatement();
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
-      String statement = req.getStatement();
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.getSessionId()));
 
@@ -614,9 +616,11 @@ public class TSServiceImpl implements TSIService.Iface {
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
-      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing \"" + statement + "\""));
     } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(onQueryException(e, "executing executeStatement"));
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(e, "executing \"" + statement + "\""));
     }
   }
 
@@ -2073,7 +2077,9 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+    if (!(plan instanceof SetSystemModePlan)
+        && !(plan instanceof FlushPlan)
+        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");
     }

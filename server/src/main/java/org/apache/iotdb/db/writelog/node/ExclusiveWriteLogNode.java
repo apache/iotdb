@@ -42,6 +42,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** This WriteLogNode is used to manage insert ahead logs of a TsFile. */
@@ -50,35 +51,36 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public static final String WAL_FILE_NAME = "wal";
   private static final Logger logger = LoggerFactory.getLogger(ExclusiveWriteLogNode.class);
 
-  private String identifier;
+  private final String identifier;
 
-  private String logDirectory;
+  private final String logDirectory;
 
   private ILogWriter currentFileWriter;
 
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private ByteBuffer logBufferWorking;
-  private ByteBuffer logBufferIdle;
-  private ByteBuffer logBufferFlushing;
+  private volatile ByteBuffer logBufferWorking;
+  private volatile ByteBuffer logBufferIdle;
+  private volatile ByteBuffer logBufferFlushing;
 
   // used for the convenience of deletion
-  private ByteBuffer[] bufferArray;
+  private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
-  private ReentrantLock lock = new ReentrantLock();
-  private static final ExecutorService FLUSH_BUFFER_THREAD_POOL =
-      IoTDBThreadPoolFactory.newCachedThreadPoolWithDaemon("Flush-WAL-Thread");
+
   // TODO: FLUSH_BUFFER_THREAD_POOL =
   //        IoTDBThreadPoolFactory.newSingleThreadExecutor(
   //            "Flush-WAL-Thread-" + SystemFileFactory.INSTANCE.getFile(logDirectory).getName());
+
+  private final ReentrantLock lock = new ReentrantLock();
+  private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
   private long fileId = 0;
   private long lastFlushedId = 0;
 
   private int bufferedLogNum = 0;
 
-  private boolean deleted;
+  private final AtomicBoolean deleted = new AtomicBoolean(false);
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -92,6 +94,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
+    // this.identifier contains the storage group name + tsfile name.
+    FLUSH_BUFFER_THREAD_POOL =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor("Flush-WAL-Thread-" + this.identifier);
   }
 
   @Override
@@ -103,7 +108,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void write(PhysicalPlan plan) throws IOException {
-    if (deleted) {
+    if (deleted.get()) {
       throw new IOException("WAL node deleted");
     }
     lock.lock();
@@ -139,7 +144,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     lock.lock();
     try {
       synchronized (switchBufferCondition) {
-        while (logBufferFlushing != null && !deleted) {
+        while (logBufferFlushing != null && !deleted.get()) {
           switchBufferCondition.wait();
         }
         switchBufferCondition.notifyAll();
@@ -152,7 +157,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       }
       logger.debug("Log node {} closed successfully", identifier);
     } catch (IOException e) {
-      logger.error("Cannot close log node {} because:", identifier, e);
+      logger.warn("Cannot close log node {} because:", identifier, e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Waiting for current buffer being flushed interrupted");
@@ -163,7 +168,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void forceSync() {
-    if (deleted) {
+    if (deleted.get()) {
       return;
     }
     sync();
@@ -209,9 +214,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       close();
       FileUtils.deleteDirectory(SystemFileFactory.INSTANCE.getFile(logDirectory));
-      deleted = true;
+      deleted.set(true);
       return this.bufferArray;
     } finally {
+      FLUSH_BUFFER_THREAD_POOL.shutdown();
       lock.unlock();
     }
   }
@@ -233,7 +239,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         FileUtils.forceDelete(logFile);
         logger.info("Log node {} cleaned old file", identifier);
       } catch (IOException e) {
-        logger.error("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
+        logger.warn("Old log file {} of {} cannot be deleted", logFile.getName(), identifier, e);
       }
     }
   }
@@ -246,7 +252,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
           currentFileWriter.force();
         }
       } catch (IOException e) {
-        logger.error("Log node {} force failed.", identifier, e);
+        logger.warn("Log node {} force failed.", identifier, e);
       }
     } finally {
       lock.unlock();
@@ -262,8 +268,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       switchBufferWorkingToFlushing();
       ILogWriter currWriter = getCurrentFileWriter();
       FLUSH_BUFFER_THREAD_POOL.submit(() -> flushBuffer(currWriter));
-      switchBufferIdleToWorking();
-
       bufferedLogNum = 0;
       logger.debug("Log node {} ends sync.", identifier);
     } catch (InterruptedException e) {
@@ -282,50 +286,28 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     } catch (ClosedChannelException e) {
       // ignore
     } catch (IOException e) {
-      logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
+      logger.warn("Log node {} sync failed, change system mode to read-only", identifier, e);
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return;
     }
-    logBufferFlushing.clear();
 
-    try {
-      switchBufferFlushingToIdle();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    // switch buffer flushing to idle and notify the sync thread
+    synchronized (switchBufferCondition) {
+      logBufferIdle = logBufferFlushing;
+      logBufferFlushing = null;
+      switchBufferCondition.notifyAll();
     }
   }
 
   private void switchBufferWorkingToFlushing() throws InterruptedException {
     synchronized (switchBufferCondition) {
-      while (logBufferFlushing != null && !deleted) {
-        switchBufferCondition.wait();
+      while (logBufferFlushing != null && !deleted.get()) {
+        switchBufferCondition.wait(100);
       }
       logBufferFlushing = logBufferWorking;
-      logBufferWorking = null;
-      switchBufferCondition.notifyAll();
-    }
-  }
-
-  private void switchBufferIdleToWorking() throws InterruptedException {
-    synchronized (switchBufferCondition) {
-      while (logBufferIdle == null && !deleted) {
-        switchBufferCondition.wait();
-      }
       logBufferWorking = logBufferIdle;
+      logBufferWorking.clear();
       logBufferIdle = null;
-      switchBufferCondition.notifyAll();
-    }
-  }
-
-  private void switchBufferFlushingToIdle() throws InterruptedException {
-    synchronized (switchBufferCondition) {
-      while (logBufferIdle != null && !deleted) {
-        switchBufferCondition.wait();
-      }
-      logBufferIdle = logBufferFlushing;
-      logBufferIdle.clear();
-      logBufferFlushing = null;
-      switchBufferCondition.notifyAll();
     }
   }
 

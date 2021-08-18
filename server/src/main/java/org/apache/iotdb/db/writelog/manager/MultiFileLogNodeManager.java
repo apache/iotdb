@@ -51,11 +51,18 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   private ScheduledExecutorService executorService;
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  // For fixing too many warn logs when system changes to read-only mode
+  private boolean firstReadOnly = true;
+
   private void forceTask() {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      logger.warn("system mode is read-only, the force flush WAL task is stopped");
+      if (firstReadOnly) {
+        logger.warn("system mode is read-only, the force flush WAL task is stopped");
+        firstReadOnly = false;
+      }
       return;
     }
+    firstReadOnly = true;
     if (Thread.interrupted()) {
       logger.info("WAL force thread exits.");
       return;
