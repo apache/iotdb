@@ -178,9 +178,10 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
       LOGGER.warn(
-          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
+          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}, target file {}",
           fullStorageGroupName,
-          targetFileName);
+          targetFileName,
+          targetTsFileResource.getTsFile().exists() ? "exists" : "not exists");
       if (logFile.exists()) {
         logFile.delete();
       }

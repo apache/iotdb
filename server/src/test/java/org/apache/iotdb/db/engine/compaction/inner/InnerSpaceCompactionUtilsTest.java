@@ -48,7 +48,7 @@ import java.util.HashSet;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
 
-public class InnerInnerSpaceCompactionUtilsTest extends InnerCompactionTest {
+public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
 
   File tempSGDir;
 

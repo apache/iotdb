@@ -263,6 +263,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -380,6 +383,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -483,6 +489,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test4() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test4");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -495,6 +502,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -573,6 +583,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test5() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test5");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -585,6 +596,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -723,6 +737,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -816,6 +833,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test7() throws IOException, IllegalPathException {
+    LOGGER.warn("Running test7");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -828,6 +846,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -941,6 +962,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(100);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1032,6 +1056,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1139,6 +1166,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1245,6 +1275,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1352,6 +1385,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1471,6 +1507,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1578,6 +1617,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1685,6 +1727,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
@@ -1792,6 +1837,9 @@ public class CompactionSchedulerTest {
     int prevMaxCompactionCandidateFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
     TsFileResourceManager tsFileResourceManager =
         new TsFileResourceManager(COMPACTION_TEST_SG, "0", "target");
