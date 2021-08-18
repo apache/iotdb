@@ -103,6 +103,10 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           } else {
             LOGGER.warn("Return selection because compaction is not enable");
           }
+          LOGGER.warn(
+              "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+              logicalStorageGroupName + "-" + virtualStorageGroupName,
+              submitTaskNum);
           return taskSubmitted;
         }
         // the file size reach threshold

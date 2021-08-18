@@ -91,7 +91,13 @@ public class CompactionSchedulerTest {
           Collections.emptyMap());
     }
     MergeManager.getINSTANCE().start();
-    CompactionTaskManager.getInstance().start();
+    LOGGER.warn("Resetting CompactionTaskManager");
+    try {
+      CompactionTaskManager.getInstance().reset();
+    } catch (InterruptedException e) {
+
+    }
+    LOGGER.warn("Reset successfully");
   }
 
   @After
@@ -112,6 +118,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test1() throws IOException, IllegalPathException {
     LOGGER.warn("Running test1");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -251,6 +260,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test2() throws IOException, IllegalPathException {
     LOGGER.warn("Running test2");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -371,6 +383,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test3() throws IOException, IllegalPathException {
     LOGGER.warn("Running test3");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -490,6 +505,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test4() throws IOException, IllegalPathException {
     LOGGER.warn("Running test4");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -584,6 +602,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test5() throws IOException, IllegalPathException {
     LOGGER.warn("Running test5");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -725,6 +746,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test6() throws IOException, IllegalPathException {
     LOGGER.warn("Running test6");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -834,6 +858,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test7() throws IOException, IllegalPathException {
     LOGGER.warn("Running test7");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -950,6 +977,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test8() throws IOException, IllegalPathException {
     LOGGER.warn("Running test8");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1044,6 +1074,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test9() throws IOException, IllegalPathException {
     LOGGER.warn("Running test9");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1154,6 +1187,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test10() throws IOException, IllegalPathException {
     LOGGER.warn("Running test10");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1263,6 +1299,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test11() throws IOException, IllegalPathException {
     LOGGER.warn("Running test11");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1373,6 +1412,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test12() throws IOException, IllegalPathException {
     LOGGER.warn("Running test12");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1495,6 +1537,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test13() throws IOException, IllegalPathException {
     LOGGER.warn("Running test13");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1605,6 +1650,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test14() throws IOException, IllegalPathException {
     LOGGER.warn("Running test14");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1715,6 +1763,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test15() throws IOException, IllegalPathException {
     LOGGER.warn("Running test15");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1825,6 +1876,9 @@ public class CompactionSchedulerTest {
   @Test
   public void test16() throws IOException, IllegalPathException {
     LOGGER.warn("Running test16");
+    LOGGER.warn(
+        "Current task num in CompactionTaskManager is {}",
+        CompactionTaskManager.getInstance().getTaskCount());
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
