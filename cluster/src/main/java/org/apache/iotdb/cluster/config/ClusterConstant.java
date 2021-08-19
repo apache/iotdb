@@ -26,9 +26,10 @@ public class ClusterConstant {
   /**
    * We only change the two values in tests to reduce test time, so they are essentially constant.
    */
-  private static long electionLeastTimeOutMs = 2 * 1000L;
+  private static long electionLeastTimeOutMs =
+      2 * ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs();
 
-  private static long electionRandomTimeOutMs = 3 * 1000L;
+  private static long electionRandomTimeOutMs = 50L;
 
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
@@ -47,8 +48,9 @@ public class ClusterConstant {
   }
 
   /**
-   * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
-   * interval, or a stale node may frequently issue elections and thus makes the leader step down
+   * a failed election will restart in [2*heartbeatInterval, 2*heartbeatInterval + 50ms). If this
+   * value is too small, a stale node may frequently issue elections and thus makes the leader step
+   * down.
    */
   public static long getElectionLeastTimeOutMs() {
     return electionLeastTimeOutMs;

@@ -1807,7 +1807,7 @@ public class MetaGroupMember extends RaftMember {
         new Thread(
                 () -> {
                   try {
-                    Thread.sleep(RaftServer.getHeartBeatIntervalMs());
+                    Thread.sleep(RaftServer.getHeartbeatIntervalMs());
                   } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     // ignore
