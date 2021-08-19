@@ -52,6 +52,8 @@ import java.util.Map.Entry;
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
  * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it
  * will record every TsFiles in the slot instead.
+ *
+ * <p>FilePartitionedSnapshotLogManager is used for dataGroup
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -91,7 +92,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class DataLogApplierTest extends IoTDBTest {
 
@@ -105,6 +109,8 @@ public class DataLogApplierTest extends IoTDBTest {
           try {
             // for testApplyCreateMultiTimeseiresWithPulling()
             IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg2"));
+          } catch (StorageGroupAlreadySetException e) {
+            logger.warn("[may ignore me in tests] {}", e.getMessage(), e);
           } catch (MetadataException e) {
             logger.error("Cannot set sg for test", e);
           }
@@ -266,7 +272,6 @@ public class DataLogApplierTest extends IoTDBTest {
     // this series is already created
     insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
-    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[] {"1.0"});
