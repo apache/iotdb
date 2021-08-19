@@ -40,9 +40,17 @@ public class PrimitiveArrayManager {
 
   public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 
+  /**
+   * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
+   * POOLED_ARRAYS_MEMORY_THRESHOLD, make it smaller than its actual allowed value.
+   */
+  private static final double AMPLIFICATION_FACTOR = 1.5;
+
   /** threshold total size of arrays for all data types */
   private static final double POOLED_ARRAYS_MEMORY_THRESHOLD =
-      CONFIG.getAllocateMemoryForWrite() * CONFIG.getBufferedArraysMemoryProportion();
+      CONFIG.getAllocateMemoryForWrite()
+          * CONFIG.getBufferedArraysMemoryProportion()
+          / AMPLIFICATION_FACTOR;
 
   /** TSDataType#serialize() -> ArrayDeque<Array>, VECTOR is ignored */
   private static final ArrayDeque[] POOLED_ARRAYS = new ArrayDeque[TSDataType.values().length - 1];
@@ -171,7 +179,7 @@ public class PrimitiveArrayManager {
       int newLimit = (int) (limitBase * ratios[i]);
       LIMITS[i] = newLimit;
 
-      if (LOGGER.isInfoEnabled()) {
+      if (LOGGER.isInfoEnabled() && oldLimit != newLimit) {
         LOGGER.info(
             "limit of {} array deque size updated: {} -> {}",
             TSDataType.deserialize((byte) i).name(),
@@ -180,11 +188,16 @@ public class PrimitiveArrayManager {
       }
     }
 
+    long oldLimitUpdateThreshold = limitUpdateThreshold;
     // limitUpdateThreshold = ∑(LIMITS[i])
     limitUpdateThreshold = 0;
     for (int limit : LIMITS) {
       limitUpdateThreshold += limit;
     }
+    LOGGER.info(
+        "limitUpdateThreshold of PrimitiveArrayManager updated: {} -> {}",
+        oldLimitUpdateThreshold,
+        limitUpdateThreshold);
 
     for (AtomicLong allocationRequestCount : ALLOCATION_REQUEST_COUNTS) {
       allocationRequestCount.set(0);

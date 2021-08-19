@@ -613,6 +613,13 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
+      // the num of memtables in each storage group
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_writing_time_partition",
+                  String.valueOf(conf.getConcurrentWritingTimePartition()))));
+
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
