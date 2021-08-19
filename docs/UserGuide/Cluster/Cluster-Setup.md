@@ -79,233 +79,32 @@ In total, we provide users four kinds of configurations module:
 - log configuration file (`logback.xml`). The default log configuration file, such as the log levels.
 - `iotdb-cluster.properties`. Some configurations required by IoTDB cluster. Such as replication number(`default_replica_num`), etc.
 
-For detailed description of the two configuration files `iotdb-engine.properties`, `iotdb-env.sh`/`iotdb-env.bat`, please refer to [Configuration Manual](https://github.com/apache/iotdb/blob/master/docs/UserGuide/Appendix/Config-Manual.md). The configuration items described below are in the `iotdb-cluster.properties` file, you can also review the comments in the [configuration file](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) directly.
+For detailed description of the two configuration files `iotdb-engine.properties`, `iotdb-env.sh`/`iotdb-env.bat`, please refer to [Configuration Manual](https://github.com/apache/iotdb/blob/master/docs/UserGuide/Appendix/Config-Manual.md). The configuration items of IoTDB cluster are in the `iotdb-cluster.properties` file, you can also review the comments in the [configuration file](https://github.com/apache/iotdb/blob/master/cluster/src/assembly/resources/conf/iotdb-cluster.properties) directly or you can refer to [Cluster Configuration](#Cluster Configuration).
 
+Configuration files are located at **{cluster\_root\_dir}/conf**
 
+**You are necessary to modify the following configuration items of each node to start your IoTDB cluster**：
 
-Configuration files are located at **{cluster_root_dir}/conf**
+* iotdb-engine.properties:
 
-**You are necessary to modify the following configuration items of each node to start your IoTDB cluster**
+  * rpc\_address
 
-- internal_ip
+  - rpc\_port
 
-| Name        | internal_ip                                                  |
-| ----------- | ------------------------------------------------------------ |
-| Description | IP address of internal communication between nodes in IOTDB cluster, such as heartbeat, snapshot, raft log, etc |
-| Type        | String                                                       |
-| Default     | 127.0.0.1                                                    |
-| Effective   | After restart system, shall NOT change after cluster is up   |
-| File        | iotdb-cluster.properties                                     |
+  - base\_dir
 
-- internal_meta_port
+  - data\_dirs
 
-| Name        | internal_meta_port                                           |
-| ----------- | ------------------------------------------------------------ |
-| Description | IoTDB meta service port, for meta group's  communication, which involves all nodes and manages the cluster  configuration and storage groups. **IoTDB will automatically create a heartbeat port for each meta service. The default meta service heartbeat port is `internal_meta_port+1`, please confirm that these two ports are not reserved by the system and are not occupied** |
-| Type        | Int32                                                        |
-| Default     | 9003                                                         |
-| Effective   | After restart system, shall NOT change after cluster is up   |
-| File        | iotdb-cluster.properties                                     |
+  - wal\_dir
 
-- internal_data_port
+* iotdb-cluster.properties
+  * internal\_ip
+  * internal\_meta\_port
+  * internal\_data\_port
+  * cluster\_info\_public\_port
+  * seed\_nodes
 
-| Name        | internal_data_port                                           |
-| ----------- | ------------------------------------------------------------ |
-| Description | IoTDB data service port, for data groups'  communication, each consists of one node and its replicas, managing  timeseries schemas and data. **IoTDB will automatically create a heartbeat port for each data service. The default data service heartbeat port is `internal_data_port+1`. Please confirm that these two ports are not reserved by the system and are not occupied** |
-| Type        | Int32                                                        |
-| Default     | 40010                                                        |
-| Effective   | After restart system, shall NOT change after cluster is up   |
-| File        | iotdb-cluster.properties                                     |
-
-- cluster_info_public_port
-
-| Name        | cluster_info_public_port                                     |
-| ----------- | ------------------------------------------------------------ |
-| Description | The port of RPC service that getting the cluster info (e.g., data partition) |
-| Type        | Int32                                                        |
-| Default     | 6567                                                         |
-| Effective   | After restart system                                         |
-| File        | iotdb-cluster.properties                                     |
-
-- seed_nodes
-
-| Name        | seed_nodes                                                   |
-| ----------- | ------------------------------------------------------------ |
-| Description | The address of the nodes in the cluster, `{IP/DOMAIN}:internal_meta_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed_nodes`, or the building of the initial cluster will fail. WARNING: if the  initial cluster is built, this should not be changed before the  environment is cleaned. When used by `add-node.sh(.bat)`,  this means the nodes to which that the application of joining the  cluster will be sent, as all nodes can respond to a request, this  configuration can be any nodes that already in the cluster, unnecessary  to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries. |
-| Type        | String                                                       |
-| Default     | 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007                 |
-| Effective   | After restart system                                         |
-| File        | iotdb-cluster.properties                                     |
-
-- default_replica_num
-
-| Name        | default_replica_num                                          |
-| ----------- | ------------------------------------------------------------ |
-| Description | Number of cluster replicas of timeseries schema and data. Storage group info is always fully replicated in all nodes. |
-| Type        | Int32                                                        |
-| Default     | 3                                                            |
-| Effective   | After restart system, shall NOT change after cluster is up   |
-| File        | iotdb-cluster.properties                                     |
-
-- rpc_address
-
-| Name        | rpc_address                              |
-| ----------- | ---------------------------------------- |
-| Description | The jdbc service listens on the address. |
-| Type        | String                                   |
-| Default     | "0.0.0.0"                                |
-| Effective   | After restart system                     |
-| File        | iotdb-engine.properties                  |
-
-- rpc_port
-
-| Name        | rpc_port                                                     |
-| ----------- | ------------------------------------------------------------ |
-| Description | The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied. |
-| Type        | Short Int : [0,65535]                                        |
-| Default     | 6667                                                         |
-| Effective   | After restart system                                         |
-| File        | iotdb-engine.properties                                      |
-
-- base_dir
-
-| Name        | base_dir                                                     |
-| ----------- | ------------------------------------------------------------ |
-| Description | The IoTDB system folder. It is recommended to use an absolute path. |
-| Type        | String                                                       |
-| Default     | data                                                         |
-| Effective   | After restart system                                         |
-| File        | iotdb-engine.properties                                      |
-
-- data_dirs
-
-| Name        | data_dirs                                                    |
-| ----------- | ------------------------------------------------------------ |
-| Description | The directories of data files. Multiple directories are separated by comma. The starting directory of the relative path is  related to the operating system. It is recommended to use an absolute  path. If the path does not exist, the system will automatically create  it. |
-| Type        | String[]                                                     |
-| Default     | data/data                                                    |
-| Effective   | Trigger                                                      |
-| File        | iotdb-engine.properties                                      |
-
-- wal_dir
-
-| Name        | wal_dir                                                      |
-| ----------- | ------------------------------------------------------------ |
-| Description | Write Ahead Log storage path. It is recommended to use an absolute path. |
-| Type        | String                                                       |
-| Default     | data/wal                                                     |
-| Effective   | After restart system                                         |
-| File        | iotdb-engine.properties                                      |
-
-**Other configurations about IoTDB cluster:**
-
-- rpc_thrift_compression_enable
-
-| Name        | rpc_thrift_compression_enable                                |
-| ----------- | ------------------------------------------------------------ |
-| Description | Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_thrift_compression_enable` parameter in `iotdb-engine.properties`** |
-| Type        | Boolean                                                      |
-| Default     | false                                                        |
-| Effective   | After restart system, must be changed with all other nodes   |
-
-- multi_raft_factor
-
-| Name        | multi_raft_factor                                            |
-| ----------- | ------------------------------------------------------------ |
-| Description | Number of raft group instances started by each data group. By default, each data group starts one raft group |
-| Type        | Int32                                                        |
-| Default     | 1                                                            |
-| Effective   | After restart system, shall NOT change after cluster is up   |
-
-- cluster_name
-
-| Name        | cluster_name                                                 |
-| ----------- | ------------------------------------------------------------ |
-| Description | Cluster name is used to identify different clusters, **`cluster_name` of all nodes in a cluster must be the same** |
-| Type        | String                                                       |
-| Default     | default                                                      |
-| Effective   | After restart system                                         |
-
-- connection_timeout_ms
-
-| Name        | connection_timeout_ms                                        |
-| ----------- | ------------------------------------------------------------ |
-| Description | Heartbeat timeout time period between nodes in the same raft group, in milliseconds |
-| Type        | Int32                                                        |
-| Default     | 20000                                                        |
-| Effective   | After restart system                                         |
-
-- read_operation_timeout_ms
-
-| Name        | read_operation_timeout_ms                                    |
-| ----------- | ------------------------------------------------------------ |
-| Description | Read operation timeout time period, for internal communication only, not for the entire operation, in milliseconds |
-| Type        | Int32                                                        |
-| Default     | 30000                                                        |
-| Effective   | After restart system                                         |
-
-- write_operation_timeout_ms
-
-| Name        | write_operation_timeout_ms                                   |
-| ----------- | ------------------------------------------------------------ |
-| Description | The write operation timeout period, for internal communication only, not for the entire operation, in milliseconds |
-| Type        | Int32                                                        |
-| Default     | 30000                                                        |
-| Effective   | After restart system                                         |
-
-- min_num_of_logs_in_mem
-
-| Name        | min_num_of_logs_in_mem                                       |
-| ----------- | ------------------------------------------------------------ |
-| Description | The minimum number of committed logs in memory, after  each log deletion, at most such number of logs will remain in memory.  Increasing the number will reduce the chance to use snapshot in  catch-ups, but will also increase the memory footprint |
-| Type        | Int32                                                        |
-| Default     | 100                                                          |
-| Effective   | After restart system                                         |
-
-- max_num_of_logs_in_mem
-
-| Name        | max_num_of_logs_in_mem                                       |
-| ----------- | ------------------------------------------------------------ |
-| Description | Maximum number of committed logs in memory, when  reached, a log deletion will be triggered. Increasing the number will  reduce the chance to use snapshot in catch-ups, but will also increase  memory footprint |
-| Type        | Int32                                                        |
-| Default     | 1000                                                         |
-| Effective   | After restart system                                         |
-
-- log_deletion_check_interval_second
-
-| Name        | log_deletion_check_interval_second                           |
-| ----------- | ------------------------------------------------------------ |
-| Description | The interval for checking and deleting the committed  log task, which removes oldest in-memory committed logs when their size  exceeds `min\_num\_of\_logs\_in\_mem` , in seconds |
-| Type        | Int32                                                        |
-| Default     | 60                                                           |
-| Effective   | After restart system                                         |
-
-- enable_auto_create_schema
-
-| Name        | enable_auto_create_schema                                    |
-| ----------- | ------------------------------------------------------------ |
-| Description | Whether creating schema automatically is enabled, this will replace the one in `iotdb-engine.properties` |
-| Type        | BOOLEAN                                                      |
-| Default     | true                                                         |
-| Effective   | After restart system                                         |
-
-- consistency_level
-
-| Name        | consistency_level                                            |
-| ----------- | ------------------------------------------------------------ |
-| Description | Consistency level, now three consistency levels are  supported: strong, mid, and weak. Strong consistency means the server  will first try to synchronize with the leader to get the newest data, if failed(timeout), directly report an error to the user; While mid  consistency means the server will first try to synchronize with the  leader, but if failed(timeout), it will give up and just use current  data it has cached before; Weak consistency does not synchronize with  the leader and simply use the local data |
-| Type        | strong, mid, weak                                            |
-| Default     | mid                                                          |
-| Effective   | After restart system                                         |
-
-- is_enable_raft_log_persistence
-
-| Name        | is_enable_raft_log_persistence         |
-| ----------- | -------------------------------------- |
-| Description | Whether to enable raft log persistence |
-| Type        | BOOLEAN                                |
-| Default     | true                                   |
-| Effective   | After restart system                   |
+  * default\_replica\_num
 
 ### OverWrite the configurations of Stand-alone node
 
@@ -336,11 +135,7 @@ To start the service of one of the nodes, you need to execute the following comm
 `printgc` means whether enable the gc and print gc logs when start the node,
  `<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file.
 
-
-
 **If you start all the seed nodes, and all the seed nodes can contact each other without ip/port and file directory conflicts, the cluster has successfully started.**
-
-
 
 ### Cluster scalability
 
@@ -357,7 +152,7 @@ In the process of cluster running, users can add new nodes to the cluster or del
 ```
 
 `printgc` means whether enable the gc and print gc logs when start the node,
- `<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file.
+ `<conf\_path>` use the configuration file in the `conf\_path` folder to override the default configuration file.
 
 **Start the following script on any node in the cluster to delete a node:**
 
@@ -373,7 +168,7 @@ In the process of cluster running, users can add new nodes to the cluster or del
 
 ### Use Cli
 
-please refer to [QuickStart](https://github.com/apache/iotdb/blob/master/docs/UserGuide/QuickStart/QuickStart.md). You can establish a connection with any node in the cluster according to the rpc_address and rpc_port.
+please refer to [QuickStart](https://github.com/apache/iotdb/blob/master/docs/UserGuide/QuickStart/QuickStart.md). You can establish a connection with any node in the cluster according to the rpc\_address and rpc\_port.
 
 ### **Stop Cluster**
 
@@ -404,3 +199,181 @@ sbin\start-node.bat printgc
 ```
 
 GC log is stored at `IOTDB_HOME/logs/gc.log`.
+
+
+
+## Appendix
+
+### Cluster Configuration
+
+- internal\_ip
+
+| Name        | internal\_ip                                                 |
+| ----------- | ------------------------------------------------------------ |
+| Description | IP address of internal communication between nodes in IOTDB cluster, such as heartbeat, snapshot, raft log, etc |
+| Type        | String                                                       |
+| Default     | 127.0.0.1                                                    |
+| Effective   | After restart system, shall NOT change after cluster is up   |
+
+- internal\_meta\_port
+
+| Name        | internal\_meta\_port                                         |
+| ----------- | ------------------------------------------------------------ |
+| Description | IoTDB meta service port, for meta group's  communication, which involves all nodes and manages the cluster  configuration and storage groups. **IoTDB will automatically create a heartbeat port for each meta service. The default meta service heartbeat port is `internal_meta_port+1`, please confirm that these two ports are not reserved by the system and are not occupied** |
+| Type        | Int32                                                        |
+| Default     | 9003                                                         |
+| Effective   | After restart system, shall NOT change after cluster is up   |
+
+- internal\_data\_port
+
+| Name        | internal\_data\_port                                         |
+| ----------- | ------------------------------------------------------------ |
+| Description | IoTDB data service port, for data groups'  communication, each consists of one node and its replicas, managing  timeseries schemas and data. **IoTDB will automatically create a heartbeat port for each data service. The default data service heartbeat port is `internal_data_port+1`. Please confirm that these two ports are not reserved by the system and are not occupied** |
+| Type        | Int32                                                        |
+| Default     | 40010                                                        |
+| Effective   | After restart system, shall NOT change after cluster is up   |
+
+- cluster\_info\_public\_port
+
+| Name        | cluster\_info\_public\_port                                  |
+| ----------- | ------------------------------------------------------------ |
+| Description | The port of RPC service that getting the cluster info (e.g., data partition) |
+| Type        | Int32                                                        |
+| Default     | 6567                                                         |
+| Effective   | After restart system                                         |
+
+- open\_server\_rpc\_port
+
+| Name        | open\_server\_rpc\_port                                      |
+| ----------- | ------------------------------------------------------------ |
+| Description | whether open port for server module (for debug purpose), if true, the single's server rpc\_port will be changed to `rpc_port (in iotdb-engines.properties) + 1` |
+| Type        | Boolean                                                      |
+| Default     | False                                                        |
+| Effective   | After restart system                                         |
+
+- seed\_nodes
+
+| Name        | seed\_nodes                                                  |
+| ----------- | ------------------------------------------------------------ |
+| Description | The address of the nodes in the cluster, `{IP/DOMAIN}:internal_meta_port` format, separated by commas; for the pseudo-distributed mode, you can fill in `localhost`, or `127.0.0.1` or mixed, but the real ip address cannot appear; for the distributed mode, real ip or hostname is supported, but `localhost` or `127.0.0.1` cannot appear. When used by `start-node.sh(.bat)`, this configuration means the nodes that will form the initial cluster, so every node that use `start-node.sh(.bat)` should have the same `seed\_nodes`, or the building of the initial cluster will fail. WARNING: if the  initial cluster is built, this should not be changed before the  environment is cleaned. When used by `add-node.sh(.bat)`,  this means the nodes to which that the application of joining the  cluster will be sent, as all nodes can respond to a request, this  configuration can be any nodes that already in the cluster, unnecessary  to be the nodes that were used to build the initial cluster by `start-node.sh(.bat)`. Several nodes will be picked randomly to send the request, the number of nodes picked depends on the number of retries. |
+| Type        | String                                                       |
+| Default     | 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007                 |
+| Effective   | After restart system                                         |
+
+- rpc\_thrift\_compression\_enable
+
+| Name        | rpc\_thrift\_compression\_enable                             |
+| ----------- | ------------------------------------------------------------ |
+| Description | Whether to enable thrift compression, **Note that this parameter should be consistent with each node and with the client, and also consistent with the `rpc_thrift_compression_enable` parameter in `iotdb-engine.properties`** |
+| Type        | Boolean                                                      |
+| Default     | false                                                        |
+| Effective   | After restart system, must be changed with all other nodes   |
+
+- default\_replica\_num
+
+| Name        | default\_replica\_num                                        |
+| ----------- | ------------------------------------------------------------ |
+| Description | Number of cluster replicas of timeseries schema and data. Storage group info is always fully replicated in all nodes. |
+| Type        | Int32                                                        |
+| Default     | 3                                                            |
+| Effective   | After restart system, shall NOT change after cluster is up   |
+
+- multi\_raft\_factor
+
+| Name        | multi\_raft\_factor                                          |
+| ----------- | ------------------------------------------------------------ |
+| Description | Number of raft group instances started by each data group. By default, each data group starts one raft group |
+| Type        | Int32                                                        |
+| Default     | 1                                                            |
+| Effective   | After restart system, shall NOT change after cluster is up   |
+
+- cluster\_name
+
+| Name        | cluster\_name                                                |
+| ----------- | ------------------------------------------------------------ |
+| Description | Cluster name is used to identify different clusters, **`cluster_name` of all nodes in a cluster must be the same** |
+| Type        | String                                                       |
+| Default     | default                                                      |
+| Effective   | After restart system                                         |
+
+- connection\_timeout\_ms
+
+| Name        | connection\_timeout\_ms                                      |
+| ----------- | ------------------------------------------------------------ |
+| Description | Heartbeat timeout time period between nodes in the same raft group, in milliseconds |
+| Type        | Int32                                                        |
+| Default     | 20000                                                        |
+| Effective   | After restart system                                         |
+
+- read\_operation\_timeout\_ms
+
+| Name        | read\_operation\_timeout\_ms                                 |
+| ----------- | ------------------------------------------------------------ |
+| Description | Read operation timeout time period, for internal communication only, not for the entire operation, in milliseconds |
+| Type        | Int32                                                        |
+| Default     | 30000                                                        |
+| Effective   | After restart system                                         |
+
+- write\_operation\_timeout\_ms
+
+| Name        | write\_operation\_timeout\_ms                                |
+| ----------- | ------------------------------------------------------------ |
+| Description | The write operation timeout period, for internal communication only, not for the entire operation, in milliseconds |
+| Type        | Int32                                                        |
+| Default     | 30000                                                        |
+| Effective   | After restart system                                         |
+
+- min\_num\_of\_logs\_in\_mem
+
+| Name        | min\_num\_of\_logs\_in\_mem                                  |
+| ----------- | ------------------------------------------------------------ |
+| Description | The minimum number of committed logs in memory, after  each log deletion, at most such number of logs will remain in memory.  Increasing the number will reduce the chance to use snapshot in  catch-ups, but will also increase the memory footprint |
+| Type        | Int32                                                        |
+| Default     | 100                                                          |
+| Effective   | After restart system                                         |
+
+- max\_num\_of\_logs\_in\_mem
+
+| Name        | max\_num\_of\_logs\_in\_mem                                  |
+| ----------- | ------------------------------------------------------------ |
+| Description | Maximum number of committed logs in memory, when  reached, a log deletion will be triggered. Increasing the number will  reduce the chance to use snapshot in catch-ups, but will also increase  memory footprint |
+| Type        | Int32                                                        |
+| Default     | 1000                                                         |
+| Effective   | After restart system                                         |
+
+- log\_deletion\_check\_interval\_second
+
+| Name        | log\_deletion\_check\_interval\_second                       |
+| ----------- | ------------------------------------------------------------ |
+| Description | The interval for checking and deleting the committed  log task, which removes oldest in-memory committed logs when their size  exceeds `min_num_of_logs_in_mem` , in seconds |
+| Type        | Int32                                                        |
+| Default     | 60                                                           |
+| Effective   | After restart system                                         |
+
+- enable\_auto\_create\_schema
+
+| Name        | enable\_auto\_create\_schema                                 |
+| ----------- | ------------------------------------------------------------ |
+| Description | Whether creating schema automatically is enabled, this will replace the one in `iotdb-engine.properties` |
+| Type        | BOOLEAN                                                      |
+| Default     | true                                                         |
+| Effective   | After restart system                                         |
+
+- consistency\_level
+
+| Name        | consistency\_level                                           |
+| ----------- | ------------------------------------------------------------ |
+| Description | Consistency level, now three consistency levels are  supported: strong, mid, and weak. Strong consistency means the server  will first try to synchronize with the leader to get the newest data, if failed(timeout), directly report an error to the user; While mid  consistency means the server will first try to synchronize with the  leader, but if failed(timeout), it will give up and just use current  data it has cached before; Weak consistency does not synchronize with  the leader and simply use the local data |
+| Type        | strong, mid, weak                                            |
+| Default     | mid                                                          |
+| Effective   | After restart system                                         |
+
+- is\_enable\_raft\_log\_persistence
+
+| Name        | is\_enable\_raft\_log\_persistence     |
+| ----------- | -------------------------------------- |
+| Description | Whether to enable raft log persistence |
+| Type        | BOOLEAN                                |
+| Default     | true                                   |
+| Effective   | After restart system                   |
+
