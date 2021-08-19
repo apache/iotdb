@@ -1694,6 +1694,36 @@ public class MManager {
     return LastCacheManager.getLastCache(seriesPath, node);
   }
 
+  public void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+    if (node == null) {
+      try {
+        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+      } catch (MetadataException e) {
+        logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
+        return;
+      }
+    }
+
+    LastCacheManager.resetLastCache(seriesPath, node);
+  }
+
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
+    IMNode node = getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice((IEntityMNode) node);
+    }
+  }
+
+  public void deleteLastCacheByDevice(
+      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
+      throws MetadataException {
+    IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice(
+          (IEntityMNode) node, originalPath, startTime, endTime);
+    }
+  }
+
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)

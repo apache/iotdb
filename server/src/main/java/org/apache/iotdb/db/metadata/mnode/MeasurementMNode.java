@@ -171,11 +171,6 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void resetCache() {
-    lastCacheEntry.resetCache();
-  }
-
-  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     logWriter.serializeMeasurementMNode(this);
   }

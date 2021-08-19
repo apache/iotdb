@@ -164,11 +164,6 @@ public class LastQueryExecutor {
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
     try {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
-        System.out.println(
-            "Read Last From File "
-                + nonCachedPaths.get(i)
-                + " "
-                + (nonCachedPaths.get(i) instanceof VectorPartialPath));
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
                 .getQueryDataSource(nonCachedPaths.get(i), context, null);

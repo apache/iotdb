@@ -52,6 +52,4 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheEntry getLastCacheEntry();
 
   void setLastCacheEntry(ILastCacheEntry lastCacheEntry);
-
-  void resetCache();
 }

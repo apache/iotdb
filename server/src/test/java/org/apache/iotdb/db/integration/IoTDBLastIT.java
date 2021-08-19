@@ -218,7 +218,7 @@ public class IoTDBLastIT {
       IMeasurementMNode node =
           (IMeasurementMNode)
               IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt01.temperature"));
-      node.resetCache();
+      IoTDB.metaManager.resetLastCache(null, node);
 
       statement.execute(
           "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
@@ -285,7 +285,8 @@ public class IoTDBLastIT {
 
       IMNode node =
           IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt02.temperature"));
-      ((IMeasurementMNode) node).resetCache();
+      IoTDB.metaManager.resetLastCache(null, ((IMeasurementMNode) node));
+
       boolean hasResultSet =
           statement.execute("select last temperature,status,id from root.ln.wf01.wt02");
 
@@ -325,7 +326,7 @@ public class IoTDBLastIT {
       }
       Assert.assertEquals(cnt, retArray.length);
 
-      ((IMeasurementMNode) node).resetCache();
+      IoTDB.metaManager.resetLastCache(null, (IMeasurementMNode) node);
       String[] retArray3 =
           new String[] {
             "900,root.ln.wf01.wt01.temperature,10.2",
@@ -367,9 +368,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      IMNode node =
-          IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt03.temperature"));
-      ((IMeasurementMNode) node).resetCache();
+      IoTDB.metaManager.resetLastCache(new PartialPath("root.ln.wf01.wt03.temperature"), null);
 
       statement.execute(
           "INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
@@ -416,9 +415,7 @@ public class IoTDBLastIT {
       statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
       statement.execute("flush");
 
-      IMNode node =
-          IoTDB.metaManager.getNodeByPath(new PartialPath("root.ln.wf01.wt04.temperature"));
-      ((IMeasurementMNode) node).resetCache();
+      IoTDB.metaManager.resetLastCache(new PartialPath("root.ln.wf01.wt04.temperature"), null);
 
       boolean hasResultSet = statement.execute("select last temperature from root.ln.wf01.wt04");
 

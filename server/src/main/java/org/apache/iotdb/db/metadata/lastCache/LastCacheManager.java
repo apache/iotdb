@@ -4,7 +4,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
@@ -16,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class LastCacheManager {
@@ -82,6 +85,33 @@ public class LastCacheManager {
     }
   }
 
+  public static void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+    if (node == null) {
+      return;
+    }
+
+    checkIsEntityLastCache(node);
+
+    ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
+    if (seriesPath == null) {
+      lastCacheEntry.resetLastCache();
+    } else {
+      String measurementId = seriesPath.getMeasurement();
+      if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
+        lastCacheEntry.resetLastCache();
+      } else {
+        IMeasurementSchema schema = node.getSchema();
+        if (schema instanceof VectorMeasurementSchema) {
+          if (lastCacheEntry.isEmpty()) {
+            lastCacheEntry.init(schema.getMeasurementCount());
+          }
+          lastCacheEntry.resetLastCache(
+              schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
+        }
+      }
+    }
+  }
+
   private static void checkIsEntityLastCache(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();
     String measurement = node.getName();
@@ -92,6 +122,97 @@ public class LastCacheManager {
         lastCacheEntry.init(schema.getMeasurementCount());
       }
       node.setLastCacheEntry(lastCacheEntry);
+    }
+  }
+
+  public static void deleteLastCacheByDevice(IEntityMNode node) {
+    // process lastCache of timeseries represented by measurementNode
+    for (IMNode measurementNode : node.getChildren().values()) {
+      if (measurementNode != null) {
+        ((IMeasurementMNode) measurementNode).getLastCacheEntry().resetLastCache();
+        logger.debug(
+            "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+            measurementNode.getFullPath());
+      }
+    }
+    // process lastCache of timeseries represented by template
+    for (Map.Entry<String, ILastCacheEntry> entry : node.getTemplateLastCaches().entrySet()) {
+      entry.getValue().resetLastCache();
+      logger.debug(
+          "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+          node.getPartialPath().concatNode(entry.getKey()).getFullPath());
+    }
+  }
+
+  public static void deleteLastCacheByDevice(
+      IEntityMNode node, PartialPath originalPath, long startTime, long endTime) {
+    PartialPath path;
+    IMeasurementSchema schema;
+    ILastCacheEntry lastCacheEntry;
+
+    // process lastCache of timeseries represented by measurementNode
+    IMeasurementMNode measurementMNode;
+    for (IMNode child : node.getChildren().values()) {
+      if (child == null || !child.isMeasurement()) {
+        continue;
+      }
+      path = child.getPartialPath();
+      measurementMNode = (IMeasurementMNode) child;
+      if (originalPath.matchFullPath(path)) {
+        lastCacheEntry = measurementMNode.getLastCacheEntry();
+        if (lastCacheEntry == null) {
+          continue;
+        }
+        schema = measurementMNode.getSchema();
+        deleteLastCache(path, schema, lastCacheEntry, startTime, endTime);
+      }
+    }
+
+    // process lastCache of timeseries represented by template
+    Template template = node.getUpperTemplate();
+    for (Map.Entry<String, ILastCacheEntry> entry : node.getTemplateLastCaches().entrySet()) {
+      path = node.getPartialPath().concatNode(entry.getKey());
+      if (originalPath.matchFullPath(path)) {
+        lastCacheEntry = entry.getValue();
+        if (lastCacheEntry == null) {
+          continue;
+        }
+        schema = template.getSchemaMap().get(entry.getKey());
+        deleteLastCache(path, schema, lastCacheEntry, startTime, endTime);
+      }
+    }
+  }
+
+  private static void deleteLastCache(
+      PartialPath path,
+      IMeasurementSchema schema,
+      ILastCacheEntry lastCacheEntry,
+      long startTime,
+      long endTime) {
+    TimeValuePair lastPair;
+    if (schema instanceof VectorMeasurementSchema) {
+      int index;
+      for (String measurement : schema.getValueMeasurementIdList()) {
+        index = schema.getMeasurementIdColumnIndex(measurement);
+        lastPair = lastCacheEntry.getCachedLast(index);
+        if (lastPair != null
+            && startTime <= lastPair.getTimestamp()
+            && lastPair.getTimestamp() <= endTime) {
+          lastCacheEntry.resetLastCache(index);
+          logger.info(
+              "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+              path.concatNode(measurement).getFullPath());
+        }
+      }
+    } else {
+      lastPair = lastCacheEntry.getCachedLast();
+      if (lastPair != null
+          && startTime <= lastPair.getTimestamp()
+          && lastPair.getTimestamp() <= endTime) {
+        lastCacheEntry.resetLastCache();
+        logger.info(
+            "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());
+      }
     }
   }
 

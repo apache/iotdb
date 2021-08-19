@@ -23,7 +23,9 @@ public interface ILastCacheEntry {
   void updateCachedLast(
       int index, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
-  void resetCache();
+  void resetLastCache();
+
+  void resetLastCache(int index);
 
   boolean isEmpty();
 }

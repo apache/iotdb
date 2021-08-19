@@ -55,7 +55,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -75,7 +74,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -1969,23 +1967,7 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
-
-      for (IMNode measurementNode : node.getChildren().values()) {
-        if (measurementNode != null
-            && originalPath.matchFullPath(measurementNode.getPartialPath())) {
-          TimeValuePair lastPair =
-              IoTDB.metaManager.getLastCache(null, (IMeasurementMNode) measurementNode);
-          if (lastPair != null
-              && startTime <= lastPair.getTimestamp()
-              && lastPair.getTimestamp() <= endTime) {
-            ((IMeasurementMNode) measurementNode).resetCache();
-            logger.info(
-                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                measurementNode.getFullPath());
-          }
-        }
-      }
+      IoTDB.metaManager.deleteLastCacheByDevice(deviceId, originalPath, startTime, endTime);
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
     }
@@ -2318,16 +2300,7 @@ public class StorageGroupProcessor {
       return;
     }
     try {
-      IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
-
-      for (IMNode measurementNode : node.getChildren().values()) {
-        if (measurementNode != null) {
-          ((IMeasurementMNode) measurementNode).resetCache();
-          logger.debug(
-              "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-              measurementNode.getFullPath());
-        }
-      }
+      IoTDB.metaManager.deleteLastCacheByDevice(deviceId);
     } catch (MetadataException e) {
       // the path doesn't cache in cluster mode now, ignore
     }

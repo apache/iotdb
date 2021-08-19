@@ -120,6 +120,11 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
     return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheEntry());
   }
 
+  @Override
+  public Map<String, ILastCacheEntry> getTemplateLastCaches() {
+    return lastCacheMap == null ? Collections.emptyMap() : lastCacheMap;
+  }
+
   private void checkLastCacheMap() {
     if (lastCacheMap == null) {
       synchronized (this) {

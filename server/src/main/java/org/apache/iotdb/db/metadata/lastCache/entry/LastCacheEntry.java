@@ -73,8 +73,17 @@ public class LastCacheEntry implements ILastCacheEntry {
   }
 
   @Override
-  public synchronized void resetCache() {
+  public synchronized void resetLastCache() {
     lastCacheValue = null;
+  }
+
+  @Override
+  public void resetLastCache(int index) {
+    if (lastCacheValue instanceof VectorLastCacheValue) {
+      lastCacheValue.setValue(index, null);
+    } else {
+      lastCacheValue = null;
+    }
   }
 
   @Override

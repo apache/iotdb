@@ -38,6 +38,8 @@ public interface IEntityMNode extends IMNode {
 
   ILastCacheEntry getLastCacheEntry(String measurementId);
 
+  Map<String, ILastCacheEntry> getTemplateLastCaches();
+
   static IEntityMNode setToEntity(IMNode node) {
     IEntityMNode entityMNode;
     if (node.isEntity()) {
