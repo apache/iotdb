@@ -181,6 +181,8 @@ public class SQLConstant {
 
   public static final int TOK_SELECT_INTO = 109;
 
+  public static final int TOK_SET_SYSTEM_MODE = 110;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
