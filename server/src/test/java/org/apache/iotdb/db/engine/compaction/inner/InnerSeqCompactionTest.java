@@ -463,7 +463,10 @@ public class InnerSeqCompactionTest {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                  putChunk(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
                 } else {
                   putChunk(
                       chunkPagePointsNumMerged,
@@ -502,8 +505,14 @@ public class InnerSeqCompactionTest {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                  putChunk(
+                      chunkPagePointsNumMerged,
+                      fullPaths[1],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  putChunk(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
                 } else {
                   putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
@@ -520,8 +529,14 @@ public class InnerSeqCompactionTest {
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                  putChunk(
+                      chunkPagePointsNumMerged,
+                      fullPaths[1],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  putChunk(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
                 } else {
@@ -544,11 +559,11 @@ public class InnerSeqCompactionTest {
             } else {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
+                  putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                  putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
                 } else {
                   putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
@@ -560,14 +575,14 @@ public class InnerSeqCompactionTest {
                 }
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
+                  putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  putChunk(chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                  putChunk(chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  putChunk(chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
+                  putChunk(chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
+                  putChunk(chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
                 } else {
                   putChunk(chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
@@ -728,7 +743,10 @@ public class InnerSeqCompactionTest {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 1149L);
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1149L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
                 } else {
                   putOnePageChunks(
                       chunkPagePointsNumMerged,
@@ -767,8 +785,14 @@ public class InnerSeqCompactionTest {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1200L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged,
+                      fullPaths[1],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 549L);
                 } else {
                   putOnePageChunks(
@@ -787,8 +811,14 @@ public class InnerSeqCompactionTest {
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 1200L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 1800L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged,
+                      fullPaths[1],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged,
+                      fullPaths[2],
+                      new long[] {100L, 200L, 300L, 100L, 200L, 300L, 100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 1149L);
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 549L);
                 } else {
@@ -813,11 +843,15 @@ public class InnerSeqCompactionTest {
             } else {
               if (toMergeFileNum == 2) {
                 if (compactionBeforeHasMod) {
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
                 } else {
                   putOnePageChunks(
@@ -835,14 +869,20 @@ public class InnerSeqCompactionTest {
                 }
               } else if (toMergeFileNum == 3) {
                 if (compactionBeforeHasMod) {
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[0], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[1], 600L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[0], new long[] {100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[1], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[2], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[3], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[4], 600L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[3], new long[] {100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[4], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[5], 549L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[6], 600L);
-                  putOnePageChunk(chunkPagePointsNumMerged, fullPaths[7], 600L);
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[6], new long[] {100L, 200L, 300L});
+                  putOnePageChunks(
+                      chunkPagePointsNumMerged, fullPaths[7], new long[] {100L, 200L, 300L});
                   putOnePageChunk(chunkPagePointsNumMerged, fullPaths[8], 549L);
                 } else {
                   putOnePageChunks(
