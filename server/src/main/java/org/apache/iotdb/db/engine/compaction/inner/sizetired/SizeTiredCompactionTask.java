@@ -109,7 +109,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
@@ -127,7 +127,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       compactionLogger.logSequence(sequence);
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
@@ -137,7 +137,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           compactionLogger,
           this.skippedDevicesSet,
           sequence);
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       compactionLogger.close();
     } finally {
@@ -145,7 +145,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         resource.setMerging(false);
       }
     }
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
@@ -175,15 +175,14 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       // delete the old files
       InnerSpaceCompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, fullStorageGroupName);
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);
       renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
-      LOGGER.warn(
-          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}, target file {}",
+      LOGGER.info(
+          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
           fullStorageGroupName,
-          targetFileName,
-          targetTsFileResource.getTsFile().exists() ? "exists" : "not exists");
+          targetFileName);
       if (logFile.exists()) {
         logFile.delete();
       }

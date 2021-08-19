@@ -124,7 +124,7 @@ public class CompactionTaskManager implements IService {
       timeMillis += 200;
       long time = System.currentTimeMillis() - startTime;
       if (timeMillis % 60_000 == 0) {
-        logger.warn("CompactionManager has wait for {} seconds to stop", time / 1000);
+        logger.info("CompactionManager has wait for {} seconds to stop", time / 1000);
       }
     }
     pool = null;
@@ -159,7 +159,6 @@ public class CompactionTaskManager implements IService {
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())
           .add(future);
-      logger.warn("A CompactionTask is submitted to CompactionTaskManager");
       return;
     }
     logger.warn(

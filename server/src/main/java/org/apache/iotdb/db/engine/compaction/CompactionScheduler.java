@@ -155,8 +155,6 @@ public class CompactionScheduler {
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList) {
-    LOGGER.warn("Scheduling compaction in INNER-CROSS PRIORITY");
-    LOGGER.warn("Scheduling compaction for sequence files");
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -165,7 +163,6 @@ public class CompactionScheduler {
         sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
-    LOGGER.warn("Scheduling compaction for unsequence files");
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -174,7 +171,6 @@ public class CompactionScheduler {
         unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
-    LOGGER.warn("Scheduling compaction for cross space");
     tryToSubmitCrossSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
