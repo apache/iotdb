@@ -133,6 +133,10 @@ public class LastCacheManager {
 
   private static void checkIsEntityTemplateLastCache(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();
+    if (entityMNode == null) {
+      // cluster cached remote measurementMNode doesn't have parent
+      return;
+    }
     String measurement = node.getName();
     if (!entityMNode.hasChild(measurement)) {
       ILastCacheEntry lastCacheEntry = entityMNode.getLastCacheEntry(measurement);
