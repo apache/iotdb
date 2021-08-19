@@ -313,7 +313,7 @@ public class IoTDBConfig {
   private long seqMemtableFlushCheckInterval = 60 * 60 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
-  private boolean enableTimedFlushUnseqMemtable = false;
+  private boolean enableTimedFlushUnseqMemtable = true;
 
   /**
    * If a memTable's created time is older than current time minus this, the memtable will be
@@ -325,7 +325,7 @@ public class IoTDBConfig {
   private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
 
   /** Whether to timed close tsfiles. */
-  private boolean enableTimedCloseTsFile = false;
+  private boolean enableTimedCloseTsFile = true;
 
   /**
    * If a TsfileProcessor's last working memtable flush time is older than current time minus this
