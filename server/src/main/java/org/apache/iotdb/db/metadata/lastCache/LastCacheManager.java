@@ -49,7 +49,7 @@ public class LastCacheManager {
       return null;
     }
 
-    checkIsEntityLastCache(node);
+    checkIsEntityTemplateLastCache(node);
 
     ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
@@ -79,7 +79,7 @@ public class LastCacheManager {
       return;
     }
 
-    checkIsEntityLastCache(node);
+    checkIsEntityTemplateLastCache(node);
 
     ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
@@ -109,7 +109,7 @@ public class LastCacheManager {
       return;
     }
 
-    checkIsEntityLastCache(node);
+    checkIsEntityTemplateLastCache(node);
 
     ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
@@ -131,7 +131,7 @@ public class LastCacheManager {
     }
   }
 
-  private static void checkIsEntityLastCache(IMeasurementMNode node) {
+  private static void checkIsEntityTemplateLastCache(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();
     String measurement = node.getName();
     if (!entityMNode.hasChild(measurement)) {
