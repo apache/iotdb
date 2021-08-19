@@ -86,6 +86,8 @@ statement
     | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
+    | SET SYSTEM TO READONLY #setSystemToReadOnly
+    | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
@@ -312,7 +314,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
-    | (dataType | ALL) LS_BRACKET valueClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -324,8 +326,8 @@ previousClause
     : PREVIOUS (COMMA DURATION)?
     ;
 
-valueClause
-    : VALUE (COMMA constant)?
+specificValueClause
+    : constant?
     ;
 
 previousUntilLastClause
@@ -535,6 +537,9 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -636,6 +641,9 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -823,10 +831,6 @@ LINEAR
     : L I N E A R
     ;
 
-VALUE
-    : V A L U E
-    ;
-
 PREVIOUS
     : P R E V I O U S
     ;
@@ -981,6 +985,18 @@ ON
 
 OFF
     : O F F
+    ;
+
+SYSTEM
+    : S Y S T E M
+    ;
+
+READONLY
+    : R E A D O N L Y
+    ;
+
+WRITABLE
+    : W R I T A B L E
     ;
 
 DROP
