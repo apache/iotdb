@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
@@ -79,6 +81,7 @@ import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -201,6 +204,8 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SequenceClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToReadOnlyContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToWritableContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildNodesContext;
@@ -242,6 +247,7 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
@@ -287,6 +293,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+
+  private static final String DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG =
+      "For delete statement, where clause can only contain time expressions, "
+          + "value filter is not currently supported.";
 
   // used to match "{x}", where x is a integer.
   // for create-cq clause and select-into clause.
@@ -926,6 +936,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   @Override
   public Operator visitTracingOff(TracingOffContext ctx) {
     return new TracingOperator(SQLConstant.TOK_TRACING, false);
+  }
+
+  @Override
+  public Operator visitSetSystemToReadOnly(SetSystemToReadOnlyContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+  }
+
+  @Override
+  public Operator visitSetSystemToWritable(SetSystemToWritableContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
   }
 
   @Override
@@ -1816,6 +1836,13 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
+    } else if (ctx.specificValueClause() != null) {
+      if (ctx.specificValueClause().constant() != null) {
+        fillTypes.put(
+            dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
+      } else {
+        throw new SQLParserException("fill value cannot be null");
+      }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
         long preRange =
@@ -1954,6 +1981,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {
+
+    if (filterOperator.getSinglePath() != null
+        && !IoTDBConstant.TIME.equals(filterOperator.getSinglePath().getMeasurement())) {
+      throw new SQLParserException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+    }
+
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     switch (filterOperator.getFilterType()) {
       case LESSTHAN:
@@ -2028,14 +2061,24 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private FilterOperator parsePredicate(PredicateContext ctx) {
+    PartialPath path = null;
     if (ctx.OPERATOR_NOT() != null) {
       FilterOperator notOp = new FilterOperator(FilterType.KW_NOT);
       notOp.addChildOperator(parseOrExpression(ctx.orExpression()));
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
       return parseOrExpression(ctx.orExpression());
+    } else if (ctx.LIKE() != null) {
+      if (ctx.suffixPath() != null) {
+        path = parseSuffixPath(ctx.suffixPath());
+      } else if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
+      }
+      if (path == null) {
+        throw new SQLParserException("Path is null, please check the sql.");
+      }
+      return new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
     } else {
-      PartialPath path = null;
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
       }

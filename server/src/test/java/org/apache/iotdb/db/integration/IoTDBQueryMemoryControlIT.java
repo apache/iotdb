@@ -68,9 +68,10 @@ public class IoTDBQueryMemoryControlIT {
   }
 
   private static void createTimeSeries() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }
