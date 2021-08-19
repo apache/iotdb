@@ -461,35 +461,12 @@ public class Coordinator {
     } else {
       status = forwardToMultipleGroup(planGroupMap);
     }
-    boolean hasCreated = false;
-    try {
-      if (plan instanceof InsertPlan
-          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-      }
-    } catch (MetadataException | CheckConsistencyException e) {
-      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreated) {
-      status = forwardPlan(planGroupMap, plan);
-    }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
       status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
-  }
-
-  private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
-      throws CheckConsistencyException, IllegalPathException {
-    // try to create timeseries
-    if (plan.getFailedMeasurements() != null) {
-      plan.getPlanFromFailed();
-    }
-    return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
   }
 
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
@@ -499,12 +476,15 @@ public class Coordinator {
       long startTime =
           Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
               .getOperationStartTime();
-      logger.debug(
-          "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
       result =
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
               .executeNonQueryPlan(entry.getKey());
+      logger.debug(
+          "Execute {} in a local group of {}, {}",
+          entry.getKey(),
+          entry.getValue().getHeader(),
+          result);
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
     } else {
