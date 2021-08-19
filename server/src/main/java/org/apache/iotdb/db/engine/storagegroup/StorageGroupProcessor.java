@@ -2444,7 +2444,11 @@ public class StorageGroupProcessor {
 
     long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
     if (insertIndex != tsFileManagement.size(true) - 1 && meanTime == subsequenceTime) {
-      throw new LoadFileException("can not load TsFile because of can not find suitable location");
+      throw new LoadFileException("can not load TsFile because of can not find suitable location, " +
+              "preName: " + preTime + " " +
+              "subsequenceTime: " + subsequenceTime + " " +
+              "insertIndex: " + insertIndex + " " +
+              "tsFilemanagementSize: " + tsFileManagement.size(true));
     }
 
     return getNewTsFileName(
