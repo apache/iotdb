@@ -18,7 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -33,18 +38,82 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ReadOnlyTsFileTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader fileReader;
   private ReadOnlyTsFile tsFile;
+
+  @Test
+  public void multiPagesTest() throws IOException, WriteProcessException {
+    final String filePath = "target/multiPages.tsfile";
+
+    TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+    // make multi pages in one group
+    tsFileConfig.setMaxNumberOfPointsInPage(100);
+    tsFileConfig.setGroupSizeInByte(100 * 1024 * 1024);
+    File file = new File(filePath);
+    TsFileWriter tsFileWriter = new TsFileWriter(file, new Schema(), tsFileConfig);
+
+    Path path = new Path("t", "id");
+    tsFileWriter.registerTimeseries(
+        path, new MeasurementSchema("id", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.LZ4));
+
+    for (int i = 0; i < 11000000; i++) {
+      TSRecord t = new TSRecord(i, "t");
+      if (i % 100 == 0) {
+        // Add a large max_value to the page statistics,
+        // and get a very large number of invalid pages when the query is executed
+        t.addTuple(new IntDataPoint("id", 9000001));
+      } else {
+        t.addTuple(new IntDataPoint("id", i));
+      }
+      tsFileWriter.write(t);
+    }
+    // make same value to filter
+    TSRecord t = new TSRecord(101011000000L, "t");
+    t.addTuple(new IntDataPoint("id", 8000001));
+    tsFileWriter.write(t);
+    tsFileWriter.flushAllChunkGroups();
+    tsFileWriter.close();
+
+    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(filePath));
+
+    SingleSeriesExpression filter = new SingleSeriesExpression(path, ValueFilter.eq(8000001));
+    QueryExpression queryExpression = QueryExpression.create(Arrays.asList(path), filter);
+    QueryDataSet query = readOnlyTsFile.query(queryExpression);
+
+    int i = 0;
+    Assert.assertTrue(query.hasNext());
+    while (query.hasNext()) {
+      RowRecord next = query.next();
+      if (i == 0) {
+        Assert.assertEquals(next.getTimestamp(), 8000001);
+        Assert.assertEquals(next.getFields().get(0).getIntV(), 8000001);
+        i++;
+      } else {
+        Assert.assertEquals(next.getTimestamp(), 101011000000L);
+        Assert.assertEquals(next.getFields().get(0).getIntV(), 8000001);
+      }
+    }
+
+    readOnlyTsFile.close();
+    file.delete();
+  }
 
   @Test
   public void test1() throws IOException {
