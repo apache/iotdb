@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cluster;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.iotdb.cluster.client.DataClientProvider;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
@@ -27,6 +29,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.log.LogDispatcher;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -520,23 +523,18 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   private void stopThreadPools() {
-    if (reportThread != null) {
-      reportThread.shutdownNow();
+    stopThreadPool(reportThread, "reportThread");
+    stopThreadPool(hardLinkCleanerThread, "hardLinkCleanerThread");
+  }
+
+  private void stopThreadPool(ExecutorService pool, String name) {
+    if (pool != null) {
+      pool.shutdownNow();
       try {
-        reportThread.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
+        pool.awaitTermination(THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for reportThread to end", e);
-      }
-    }
-    if (hardLinkCleanerThread != null) {
-      hardLinkCleanerThread.shutdownNow();
-      try {
-        hardLinkCleanerThread.awaitTermination(
-            THREAD_POLL_WAIT_TERMINATION_TIME_S, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
+        logger.error("Unexpected interruption when waiting for {} to end", name, e);
       }
     }
   }

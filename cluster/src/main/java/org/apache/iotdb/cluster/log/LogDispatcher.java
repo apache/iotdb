@@ -65,8 +65,11 @@ public class LogDispatcher {
   private RaftMember member;
   private boolean useBatchInLogCatchUp =
       ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
+  // each follower has a queue and a dispatch thread is attached in executorService.
   private List<BlockingQueue<SendLogRequest>> nodeLogQueues = new ArrayList<>();
   private ExecutorService executorService;
+
+  // TODO we have no way to close this pool. should change later.
   private static ExecutorService serializationService =
       IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
           Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
@@ -89,6 +92,8 @@ public class LogDispatcher {
   }
 
   public void offer(SendLogRequest log) {
+    // if nodeLogQueues.isEmpty(), then nothing to do.
+
     // do serialization here to avoid taking LogManager for too long
     if (!nodeLogQueues.isEmpty()) {
       log.serializedLogFuture =
