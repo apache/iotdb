@@ -63,10 +63,16 @@ public class ChunkCache {
             .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
             .weigher(
                 (Weigher<ChunkMetadata, Chunk>)
-                    (chunkMetadata, chunk) ->
-                        (int)
-                            (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                + RamUsageEstimator.sizeOf(chunk)))
+                    (chunkMetadata, chunk) -> {
+                      int entrySize =
+                          (int)
+                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                                  + RamUsageEstimator.sizeOf(chunk));
+                      if (entrySize > 1024 * 1024 * 10) {
+                        logger.warn(String.format("Chunk size is %d over 10M", entrySize));
+                      }
+                      return entrySize;
+                    })
             .recordStats()
             .build(
                 chunkMetadata -> {
