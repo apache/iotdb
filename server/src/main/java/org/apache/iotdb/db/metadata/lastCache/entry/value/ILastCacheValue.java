@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.lastCache.entry.value;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+// this interface declares the simplest storage operation of lastCacheValue
 public interface ILastCacheValue {
 
   long getTimestamp();

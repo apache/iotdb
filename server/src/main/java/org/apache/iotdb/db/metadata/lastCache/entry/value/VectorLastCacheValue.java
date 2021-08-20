@@ -22,8 +22,10 @@ package org.apache.iotdb.db.metadata.lastCache.entry.value;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+// this class defines the storage of vector lastCache data
 public class VectorLastCacheValue implements ILastCacheValue {
 
+  // the last point data of different subSensors may vary from each other on timestamp
   private long[] timestamps;
 
   private TsPrimitiveType[] values;

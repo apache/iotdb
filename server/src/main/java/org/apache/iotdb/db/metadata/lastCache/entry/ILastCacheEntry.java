@@ -21,12 +21,16 @@ package org.apache.iotdb.db.metadata.lastCache.entry;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+/** this interface declares the operations of LastCache data */
 public interface ILastCacheEntry {
 
+  // if vector, entry need schema size to init LastCache Value list
   void init(int size);
 
+  // get lastCache of monad timseries
   TimeValuePair getCachedLast();
 
+  // get lastCache of vector timseries
   TimeValuePair getCachedLast(int index);
 
   /**
@@ -39,12 +43,16 @@ public interface ILastCacheEntry {
   void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
+  // update lastCache for vector timseries
   void updateCachedLast(
       int index, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime);
 
+  // reset all lastCache data of one timeseries(monad or vector)
   void resetLastCache();
 
+  // reset lastCache of vector's subsensor
   void resetLastCache(int index);
 
+  // whether the entry contains lastCache Value.
   boolean isEmpty();
 }

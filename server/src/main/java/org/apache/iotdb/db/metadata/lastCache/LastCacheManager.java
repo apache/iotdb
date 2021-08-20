@@ -138,6 +138,8 @@ public class LastCacheManager {
       return;
     }
     String measurement = node.getName();
+
+    // if entityMNode doesn't have this child, the child is derived from template
     if (!entityMNode.hasChild(measurement)) {
       ILastCacheEntry lastCacheEntry = entityMNode.getLastCacheEntry(measurement);
       IMeasurementSchema schema = node.getSchema();
