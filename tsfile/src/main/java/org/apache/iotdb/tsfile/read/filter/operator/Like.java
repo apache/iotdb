@@ -55,11 +55,15 @@ public class Like<T extends Comparable<T>> implements Filter {
       if (!value.startsWith("%")) patternStrBuild.append("^");
       patternStrBuild.append(
           this.value
-              // Replace '[' to '\[' to avoid the content become the Regexp rules
+              // Replace '[' to '\[' to avoid the content become the Regexp rules (example:[\s\S]*)
+              // Replace '\\\\' to '\\' to support match '\'
               .replace("[", "\\[")
+              .replace("\\\\", "\\")
               .replaceAll("(?<!\\\\)%", "[\\\\s\\\\S]*")
+              .replaceAll("(?<=\\\\\\\\)%", "[\\\\s\\\\S]*")
               .replaceAll("(?<!\\\\)_", "[\\\\s\\\\S]{1}"));
-      if (!value.endsWith("%") || value.endsWith("\\%")) patternStrBuild.append("$");
+      if (!value.endsWith("%") || (value.endsWith("\\%") && !value.endsWith("\\\\%")))
+        patternStrBuild.append("$");
       this.pattern = Pattern.compile(patternStrBuild.toString());
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
