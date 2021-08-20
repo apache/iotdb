@@ -147,7 +147,7 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 > sbin\start-node.bat [printgc] [<conf_path>] 
 ```
 
-`printgc`表示在启动的时候，会开启 GC 日志。 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。
+`printgc`表示在启动的时候，会开启 GC 日志。 `<conf_path>`使用`conf_path`文件夹里面的配置文件覆盖默认配置文件。GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。GC 日志会被存储在`IOTDB_HOME/logs/`下面。
 
 **如果你启动了所有seed节点，并且所有seed节点可以相互通信并没有ip地址/端口和文件目录的冲突，集群就成功启动了。**
 
@@ -194,22 +194,6 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 # Windows
 > sbin\stop-node.bat
 ```
-
-## 开启 GC 日志
-
-GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上`printgc`参数：
-
-```
-nohup sbin/start-node.sh printgc >/dev/null 2>&1 &
-```
-
-或者
-
-```
-sbin\start-node.bat printgc
-```
-
-GC 日志会被存储在`IOTDB_HOME/logs/`下面。
 
 
 
