@@ -38,7 +38,7 @@ nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh >/dev/nu
 ### 使用官网发布版本：
 
 ```
-curl -O https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip
+curl -O https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip
 unzip apache-iotdb-0.12.1-cluster-bin.zip
 cd apache-iotdb-0.12.1-cluster-bin
 sed -i -e 's/^seed_nodes=127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007$/seed_nodes=127.0.0.1:9003/g' conf/iotdb-cluster.properties
@@ -56,70 +56,70 @@ nohup ./sbin/start-node.sh >/dev/null 2>&1 &
 
 ***iotdb-cluster.properties***
 
-seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
 
-default_replica_num = 1
+default\_replica\_num = 1
 
-internal_meta_port = 9003
+internal\_meta\_port = 9003
 
-internal_data_port = 40010
+internal\_data\_port = 40010
 
 ***iotdb-engine.properties***
 
-rpc_port=6667
+rpc\_port=6667
 
-system_dir=data/system
-data_dirs=data/data
-wal_dir=data/wal
-index_root_dir=data/index
-udf_root_dir=ext/udf
-tracing_dir=data/tracing
+system\_dir=data/system
+data\_dirs=data/data
+wal\_dir=data/wal
+index\_root\_dir=data/index
+udf\_root\_dir=ext/udf
+tracing\_dir=data/tracing
 
 **节点2**:
 
 ***iotdb-cluster.properties***
 
-seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
 
-default_replica_num = 1
+default\_replica\_num = 1
 
-internal_meta_port = 9005
+internal\_meta\_port = 9005
 
-internal_data_port = 40012
+internal\_data\_port = 40012
 
 ***iotdb-engine.properties***
 
-rpc_port=6669
+rpc\_port=6669
 
-system_dir=node2/system
-data_dirs=node2/data
-wal_dir=node2/wal
-index_root_dir=node2/index
-udf_root_dir=node2/ext/udf
-tracing_dir=node2/tracing
+system\_dir=node2/system
+data\_dirs=node2/data
+wal\_dir=node2/wal
+index\_root\_dir=node2/index
+udf\_root\_dir=node2/ext/udf
+tracing\_dir=node2/tracing
 
 **节点3**:
 
 ***iotdb-cluster.properties***
 
-seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
 
-default_replica_num = 1
+default\_replica\_num = 1
 
-internal_meta_port = 9007
+internal\_meta\_port = 9007
 
-internal_data_port = 40014
+internal\_data\_port = 40014
 
 ***iotdb-engine.properties***
 
-rpc_port=6671
+rpc\_port=6671
 
-system_dir=node3/system
-data_dirs=node3/data
-wal_dir=node3/wal
-index_root_dir=node3/index
-udf_root_dir=node3/ext/udf
-tracing_dir=node3/tracing
+system\_dir=node3/system
+data\_dirs=node3/data
+wal\_dir=node3/wal
+index\_root\_dir=node3/index
+udf\_root\_dir=node3/ext/udf
+tracing\_dir=node3/tracing
 
 ### 源码编译：
 
@@ -136,7 +136,7 @@ nohup ./cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/sbin/start-node.sh ./cluste
 下载发布版本:
 
 ```
-curl -O https://mirrors.tuna.tsinghua.edu.cn/apache/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip
+curl -O https://downloads.apache.org/iotdb/0.12.1/apache-iotdb-0.12.1-cluster-bin.zip
 ```
 
 解压压缩包:
@@ -151,13 +151,13 @@ unzip apache-iotdb-0.12.1-cluster-bin.zip
 cd apache-iotdb-0.12.1-cluster-bin
 ```
 
-设置 default_replica_num = 1:
+设置 default\_replica\_num = 1:
 
 ```
 sed -i -e 's/^default_replica_num=3$/default_replica_num=1/g' conf/iotdb-cluster.properties
 ```
 
-为节点2，节点3创建conf_dir:
+为节点2，节点3创建conf\_dir:
 
 ```
 cp -r conf node2_confcp -r conf node3_conf
@@ -182,7 +182,7 @@ nohup ./sbin/start-node.sh >/dev/null 2>&1 &nohup ./sbin/start-node.sh ./node2_c
 
 ## 3 节点 3 副本分布式搭建示例
 
-假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 *A_public_IP*, *B_public_IP*, and *C_public_IP*，私网 ip 分别为 *A_private_IP*, *B_private_IP*, and *C_private_IP*.
+假设我们需要在三个物理节点上部署分布式 IoTDB，这三个节点分别为 A, B 和 C，其公网 ip 分别为 A\_public\_IP*, *B\_public\_IP*, and *C\_public\_IP*，私网 ip 分别为 *A\_private\_IP*, *B\_private\_IP*, and *C\_private\_IP*.
 注：如果没有公网 ip 或者私网 ip 则两者设置成一致即可，只需要保证客户端能够访问到服务端即可。
 
 ### 配置
@@ -191,15 +191,15 @@ nohup ./sbin/start-node.sh >/dev/null 2>&1 &nohup ./sbin/start-node.sh ./node2_c
 
 ***iotdb-cluster.properties***
 
-seed_nodes = *A_private_Ip*:9003,*B_private_Ip*:9003,*C_private_Ip*:9003
+seed\_nodes = *A\_private\_Ip*:9003,*B\_private\_Ip*:9003,*C\_private\_Ip*:9003
 
-default_replica_num = 3
+default\_replica\_num = 3
 
-internal_ip = *A_private_Ip* (or *B_private_Ip*, *C_private_Ip*)
+internal\_ip = *A\_private\_Ip* (or *B\_private\_Ip*, *C\_private\_Ip*)
 
 ***iotdb-enginer.properties***
 
-rpc_port = *A_public_Ip* (or *B_private_Ip*, *C_public_Ip*)
+rpc\_address = *A\_public\_Ip* (or *B\_private\_Ip*, *C\_public\_Ip*)
 
 ### 启动IoTDB集群
 
