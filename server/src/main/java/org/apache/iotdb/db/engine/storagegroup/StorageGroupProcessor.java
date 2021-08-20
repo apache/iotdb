@@ -1421,6 +1421,92 @@ public class StorageGroupProcessor {
     }
   }
 
+  public void timedFlushSeqMemTable() {
+    writeLock("timedFlushSeqMemTable");
+    try {
+      // only check sequence tsfiles' memtables
+      List<TsFileProcessor> tsFileProcessors =
+          new ArrayList<>(workSequenceTsFileProcessors.values());
+      long timeLowerBound = System.currentTimeMillis() - config.getSeqMemtableFlushInterval();
+
+      for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
+          logger.info(
+              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void timedFlushUnseqMemTable() {
+    writeLock("timedFlushUnseqMemTable");
+    try {
+      // only check unsequence tsfiles' memtables
+      List<TsFileProcessor> tsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      long timeLowerBound = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
+
+      for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
+          logger.info(
+              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void timedCloseTsFileProcessor() {
+    writeLock("timedCloseTsFileProcessor");
+    try {
+      List<TsFileProcessor> seqTsFileProcessors =
+          new ArrayList<>(workSequenceTsFileProcessors.values());
+      long timeLowerBound =
+          System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
+      for (TsFileProcessor tsFileProcessor : seqTsFileProcessors) {
+        // working memtable is null(no more write ops) and last flush time exceeds close interval
+        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
+            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
+          logger.info(
+              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          asyncCloseOneTsFileProcessor(true, tsFileProcessor);
+        }
+      }
+
+      List<TsFileProcessor> unSeqTsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      timeLowerBound = System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
+      for (TsFileProcessor tsFileProcessor : unSeqTsFileProcessors) {
+        // working memtable is null(no more write ops) and last flush time exceeds close interval
+        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
+            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
+          logger.info(
+              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          asyncCloseOneTsFileProcessor(false, tsFileProcessor);
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
   /** This method will be blocked until all tsfile processors are closed. */
   public void syncCloseAllWorkingTsFileProcessors() {
     synchronized (closeStorageGroupCondition) {
