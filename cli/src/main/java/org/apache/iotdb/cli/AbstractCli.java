@@ -21,14 +21,16 @@ package org.apache.iotdb.cli;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.tool.ImportCsv;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.iotdb.tool.ImportCsv;
+//import org.apache.iotdb.tool.ImportCsv;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -475,8 +477,12 @@ public abstract class AbstractCli {
       return;
     }
     println(cmd.split(" ")[1]);
-    ImportCsv.importCsvFromFile(
-        host, port, username, password, cmd.split(" ")[1], connection.getTimeZone());
+    try {
+      ImportCsv.importFromTargetPath(
+          host, Integer.valueOf(port), username, password, cmd.split(" ")[1], connection.getTimeZone());
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {

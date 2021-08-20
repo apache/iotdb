@@ -55,7 +55,7 @@ public abstract class AbstractCsvTool {
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
   protected static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
-  protected static final String[] STRING_TIME_FORMAT =
+  public static final String[] STRING_TIME_FORMAT =
       new String[] {
         "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
         "yyyy/MM/dd HH:mm:ss.SSS",
@@ -93,7 +93,7 @@ public abstract class AbstractCsvTool {
   protected static String timeFormat;
   protected static Session session;
 
-  AbstractCsvTool() {}
+  public AbstractCsvTool() {}
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {

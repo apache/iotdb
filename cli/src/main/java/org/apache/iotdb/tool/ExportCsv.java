@@ -65,6 +65,12 @@ public class ExportCsv extends AbstractCsvTool {
   private static final String SQL_FILE_ARGS = "s";
   private static final String SQL_FILE_NAME = "sqlfile";
 
+  private static final String DATA_TYPE_ARGS = "datatype";
+  private static final String DATA_TYPE_NAME = "datatype";
+
+  private static final String QUERY_COMMAND_ARGS = "q";
+  private static final String QUERY_COMMAND_NAME = "queryCommand";
+
   private static final String TSFILEDB_CLI_PREFIX = "ExportCsv";
 
   private static final String DUMP_FILE_NAME_DEFAULT = "dump";
@@ -118,6 +124,7 @@ public class ExportCsv extends AbstractCsvTool {
 
       if (sqlFile == null) {
         sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
+        System.out.println(sql);
         String[] values = sql.trim().split(";");
         for (int i = 0; i < values.length; i++) {
           dumpResult(values[i], i);
@@ -147,6 +154,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
+    String optionValue = commandLine.getOptionValue(DATA_TYPE_ARGS);
     if (targetFile == null) {
       targetFile = DUMP_FILE_NAME_DEFAULT;
     }
@@ -211,6 +219,25 @@ public class ExportCsv extends AbstractCsvTool {
             .desc("Time Zone eg. +08:00 or -01:00 (optional)")
             .build();
     options.addOption(opTimeZone);
+
+    Option opDataType =
+        Option.builder(DATA_TYPE_ARGS)
+            .argName(DATA_TYPE_NAME)
+            .hasArg()
+            .desc(
+                "Will the data type of timeseries be printed in the head line of the CSV file?"
+                    + '\n'
+                    + "You can choose true) or false) . (optional)")
+            .build();
+    options.addOption(opDataType);
+
+    Option opQuery =
+        Option.builder(QUERY_COMMAND_ARGS)
+            .argName(QUERY_COMMAND_NAME)
+            .hasArg()
+            .desc("The query command that you want to execute. (optional)")
+            .build();
+    options.addOption(opQuery);
 
     Option opHelp =
         Option.builder(HELP_ARGS)
