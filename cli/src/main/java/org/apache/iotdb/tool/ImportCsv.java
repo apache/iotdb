@@ -30,7 +30,7 @@ public class ImportCsv extends AbstractCsvTool {
     private static final String FILE_NAME = "file or folder";
 
     private static final String FAILED_FILE_ARGS = "fd";
-    private static final String FAILED_FILE_NAME = "failedFile";
+    private static final String FAILED_FILE_NAME = "failed file directory";
 
     private static final String CSV_SUFFIXS = "csv";
     private static final String TXT_SUFFIXS = "txt";
@@ -39,7 +39,7 @@ public class ImportCsv extends AbstractCsvTool {
     private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
     private static String targetPath;
-    private static String failedFilePath;
+    private static String failedFileDirectory = null;
 
     /**
      * create the commandline options.
@@ -91,10 +91,13 @@ public class ImportCsv extends AbstractCsvTool {
     private static void parseSpecialParams(CommandLine commandLine) {
         timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
         targetPath = commandLine.getOptionValue(FILE_ARGS);
-        if (commandLine.getOptionValue(FAILED_FILE_ARGS) == null) {
-            failedFilePath = ".\\export0.csv.failed";
-        } else {
-            failedFilePath = commandLine.getOptionValue(FAILED_FILE_ARGS);
+        if (commandLine.getOptionValue(FAILED_FILE_ARGS) != null) {
+            failedFileDirectory = commandLine.getOptionValue(FAILED_FILE_ARGS);
+            File file = new File(failedFileDirectory);
+            if (!file.isDirectory()) {
+                file.mkdir();
+                failedFileDirectory = file.getAbsolutePath() + "/";
+            }
         }
     }
 
@@ -182,19 +185,25 @@ public class ImportCsv extends AbstractCsvTool {
     }
 
     private static void importFromSingleFile(File file) {
-        if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
+        if (file.getName().endsWith(CSV_SUFFIXS)) {
             System.out.println("Found file: " + file.getName() + '\n' + "Load data from the file ...");
             try {
                 CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
                 List<String> headerNames = csvRecords.getHeaderNames();
                 List<CSVRecord> records = csvRecords.getRecords();
                 System.out.println("Total " + records.stream().count() + " records were found.");
+                String failedFilePath = null;
+                if (failedFileDirectory == null) {
+                    failedFilePath = file.getAbsolutePath() + ".failed";
+                } else {
+                    failedFilePath = failedFileDirectory + file.getName() + ".failed";
+                }
                 if (!headerNames.contains("Device")) {
                     System.out.println("The data was aligned by time.");
-                    writeDataAlignedByTime(headerNames, records, file.getAbsolutePath()+".failed");
+                    writeDataAlignedByTime(headerNames, records, failedFilePath);
                 } else {
                     System.out.println("The data was aligned by device.");
-                    writeDataAlignedByDevice(headerNames, records, file.getAbsolutePath()+".failed");
+                    writeDataAlignedByDevice(headerNames, records, failedFilePath);
                 }
                 System.out.println("````````````````````````````````````````````````");
             } catch (IOException e) {
@@ -287,7 +296,7 @@ public class ImportCsv extends AbstractCsvTool {
         }
         if (!failedRecords.isEmpty()) {
             writeCsvFile(headerNames, failedRecords, failedFilePath);
-            System.out.println("Failed file path: " + failedFilePath);
+            System.out.println("Failed file path: " + new File(failedFilePath).getAbsolutePath());
         }
     }
 
@@ -375,7 +384,7 @@ public class ImportCsv extends AbstractCsvTool {
                 });
         if (!failedRecords.isEmpty()) {
             writeCsvFile(headerNames, failedRecords, failedFilePath);
-            System.out.println("Failed file path: " + failedFilePath);
+            System.out.println("Failed file path: " +  new File(failedFilePath).getAbsolutePath());
         }
     }
 
