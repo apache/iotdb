@@ -80,50 +80,20 @@ public class TimeSeriesMetadataCache {
             .weigher(
                 new Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
 
-                  int count = 0;
-                  int averageSize = 0;
-
                   @Override
                   public int weigh(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
-                    int currentSize;
-                    if (count < 10) {
-                      currentSize =
-                          (int)
-                              (RamUsageEstimator.shallowSizeOf(key)
-                                  + RamUsageEstimator.sizeOf(key.device)
-                                  + RamUsageEstimator.sizeOf(key.measurement)
-                                  + RamUsageEstimator.shallowSizeOf(value)
-                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                              .calculateRamSize()
-                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                                      * value.getChunkMetadataList().size()
-                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
-                      averageSize = ((averageSize * count) + currentSize) / (++count);
-                      entryAverageSize.set(averageSize);
-                    } else if (count < 100000) {
-                      count++;
-                      currentSize = averageSize;
-                    } else {
-                      averageSize =
-                          (int)
-                              (RamUsageEstimator.shallowSizeOf(key)
-                                  + RamUsageEstimator.sizeOf(key.device)
-                                  + RamUsageEstimator.sizeOf(key.measurement)
-                                  + RamUsageEstimator.shallowSizeOf(value)
-                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                              .calculateRamSize()
-                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                                      * value.getChunkMetadataList().size()
-                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
-                      count = 1;
-                      currentSize = averageSize;
-                      entryAverageSize.set(averageSize);
-                    }
-                    return currentSize;
+                    return (int)
+                        (RamUsageEstimator.shallowSizeOf(key)
+                            + RamUsageEstimator.sizeOf(key.device)
+                            + RamUsageEstimator.sizeOf(key.measurement)
+                            + RamUsageEstimator.shallowSizeOf(value)
+                            + RamUsageEstimator.sizeOf(value.getMeasurementId())
+                            + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                            + (((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                        .calculateRamSize()
+                                    + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                * value.getChunkMetadataList().size()
+                            + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
                   }
                 })
             .recordStats()
