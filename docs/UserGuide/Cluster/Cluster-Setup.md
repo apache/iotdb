@@ -168,7 +168,7 @@ In the process of cluster running, users can add new nodes to the cluster or del
 ```
 
 `printgc` means whether enable the gc and print gc logs when start the node,
- `<conf\_path>` use the configuration file in the `conf\_path` folder to override the default configuration file.
+ `<conf_path>` use the configuration file in the `conf_path` folder to override the default configuration file. GC log is off by default.  For performance tuning, you may want to collect the GC info. GC log is stored at `IOTDB_HOME/logs/gc.log`.
 
 **Start the following script on any node in the cluster to delete a node:**
 
@@ -197,24 +197,6 @@ To stop the services of all the nodes on a single machine, you need to execute t
 # Windows
 > sbin\stop-node.bat
 ```
-
-### Enable GC log
-
-GC log is off by default. For performance tuning, you may want to collect the GC info.
-
-To enable GC log, just add a parameter `printgc` when you start the server.
-
-```
-nohup sbin/start-node.sh printgc >/dev/null 2>&1 &
-```
-
-Or
-
-```
-sbin\start-node.bat printgc
-```
-
-GC log is stored at `IOTDB_HOME/logs/gc.log`.
 
 
 
