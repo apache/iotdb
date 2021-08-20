@@ -65,7 +65,7 @@ public class ImportCsv extends AbstractCsvTool {
                         .argName(FAILED_FILE_NAME)
                         .hasArg()
                         .desc(
-                                "Specifying a file to save failed lines, default export0.csv.failed (optional)"
+                                "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)"
                         ).build();
         options.addOption(opFailedFile);
 
@@ -88,6 +88,10 @@ public class ImportCsv extends AbstractCsvTool {
         return options;
     }
 
+    /**
+     * parse optional params
+     * @param commandLine
+     */
     private static void parseSpecialParams(CommandLine commandLine) {
         timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
         targetPath = commandLine.getOptionValue(FILE_ARGS);
@@ -147,6 +151,17 @@ public class ImportCsv extends AbstractCsvTool {
         importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);
     }
 
+    /**
+     *  Specifying a CSV file or a directory including CSV files that you want to import.
+     *  This method can be offered to console cli to implement importing CSV file by command.
+     * @param host
+     * @param port
+     * @param username
+     * @param password
+     * @param targetPath    a CSV file or a directory including CSV files
+     * @param timeZone
+     * @throws IoTDBConnectionException
+     */
     public static void importFromTargetPath(String host, int port, String username, String password, String targetPath, String timeZone) throws IoTDBConnectionException {
         try {
             session = new Session(host, Integer.valueOf(port), username, password, false);
@@ -184,6 +199,10 @@ public class ImportCsv extends AbstractCsvTool {
 
     }
 
+    /**
+     * import the CSV file and load headers and records.
+     * @param file  the File object of the CSV file that you want to import.
+     */
     private static void importFromSingleFile(File file) {
         if (file.getName().endsWith(CSV_SUFFIXS)) {
             System.out.println("Found file: " + file.getName() + '\n' + "Load data from the file ...");
@@ -212,6 +231,12 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * if the data is aligned by time, the data will be written by this method.
+     * @param headerNames       the header names of CSV file
+     * @param records           the records of CSV file
+     * @param failedFilePath    the directory to save the failed files
+     */
     private static void writeDataAlignedByTime(List<String> headerNames,
                                                List<CSVRecord> records,
                                                String failedFilePath) {
@@ -300,6 +325,12 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     *  if the data is aligned by device, the data will be written by this method.
+     * @param headerNames       the header names of CSV file
+     * @param records           the records of CSV file
+     * @param failedFilePath    the directory to save the failed files
+     */
     private static void writeDataAlignedByDevice(List<String> headerNames, List<CSVRecord> records, String failedFilePath) {
         HashMap<String, TSDataType> headerTypeMap = new HashMap<>();
         HashMap<String, String> headerNameMap = new HashMap<>();
@@ -388,6 +419,12 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * write data to CSV file.
+     * @param headerNames       the header names of CSV file
+     * @param records           the records of CSV file
+     * @param filePath          the directory to save the file
+     */
     private static void writeCsvFile(List<String> headerNames, List<CSVRecord> records, String filePath) {
         try {
             CSVPrinter printer = CSVFormat.DEFAULT
@@ -406,6 +443,12 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * read data from the CSV file
+     * @param path
+     * @return
+     * @throws IOException
+     */
     private static CSVParser readCsvFile(String path) throws IOException {
         return CSVFormat
                 .EXCEL
@@ -414,6 +457,13 @@ public class ImportCsv extends AbstractCsvTool {
                 .parse(new InputStreamReader(new FileInputStream(path)));
     }
 
+    /**
+     * parse deviceNames, measurementNames(aligned by time), headerType from headers
+     * @param headerNames
+     * @param deviceAndMeasurementNames
+     * @param headerTypeMap
+     * @param headerNameMap
+     */
     private static void parseHeaders(List<String> headerNames,
                                      @Nullable HashMap<String, List<String>> deviceAndMeasurementNames,
                                      HashMap<String, TSDataType> headerTypeMap,
@@ -444,6 +494,14 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * query data type of timeseries from IoTDB
+     * @param deviceNames
+     * @param headerTypeMap
+     * @param alignedType
+     * @throws IoTDBConnectionException
+     * @throws StatementExecutionException
+     */
     private static void queryType(String deviceNames, HashMap<String, TSDataType> headerTypeMap, String alignedType) throws IoTDBConnectionException, StatementExecutionException {
         String sql = "select * from " + deviceNames + " limit 1";
         SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
@@ -460,6 +518,11 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * return a suit time formatter
+     * @param time
+     * @return
+     */
     private static SimpleDateFormat formatterInit(String time) {
         try {
             Long.parseLong(time);
@@ -480,6 +543,11 @@ public class ImportCsv extends AbstractCsvTool {
         return null;
     }
 
+    /**
+     * return the TSDataType
+     * @param typeStr
+     * @return
+     */
     private static TSDataType getType(String typeStr) {
         switch (typeStr) {
             case "TEXT":
@@ -499,6 +567,11 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     * if data type of timeseries is not defined in headers of schema, this method will be called to do type inference
+     * @param value
+     * @return
+     */
     private static TSDataType typeInfer(String value) {
         if (value.contains("\"")) return TEXT;
         else if (value.equals("true") || value.equals("false")) return BOOLEAN;
@@ -516,6 +589,12 @@ public class ImportCsv extends AbstractCsvTool {
         }
     }
 
+    /**
+     *
+     * @param value
+     * @param type
+     * @return
+     */
     private static Object typeTrans(String value, TSDataType type) {
         try {
             switch (type) {
