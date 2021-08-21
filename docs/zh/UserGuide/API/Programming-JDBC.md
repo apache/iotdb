@@ -24,7 +24,7 @@
 ## JDBC
 
 *注意: 目前的JDBC实现仅是为与第三方工具连接使用的。使用JDBC（尤其是执行插入语句时）无法提供高性能吞吐。
-对于Java应用，我们推荐使用[JAVA NATIVE API](https://iotdb.apache.org/zh/UserGuide/V0.12.x/API/Programming-Native-API.html) *
+对于Java应用，我们推荐使用[JAVA NATIVE API](https://iotdb.apache.org/zh/UserGuide/V0.12.x/API/Programming-Native-API.html)*
 
 ### 依赖
 
