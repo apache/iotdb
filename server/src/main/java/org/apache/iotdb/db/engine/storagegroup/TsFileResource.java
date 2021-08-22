@@ -126,9 +126,11 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  /** manage TsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
+
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
-
 
   /**
    * load upgraded TsFile Resources to storage group processor used for upgrading v0.11.x/v2 ->
@@ -362,7 +364,6 @@ public class TsFileResource {
           modFile = new ModificationFile(modF.getPath());
         }
       }
-
     }
   }
 
@@ -493,6 +494,7 @@ public class TsFileResource {
     processor = null;
     chunkMetadataList = null;
     timeIndex.close();
+    tsFileResourceManager.registerSealedTsFileResource(this);
   }
 
   TsFileProcessor getUnsealedFileProcessor() {
@@ -851,17 +853,17 @@ public class TsFileResource {
     this.timeIndex = timeIndex;
   }
 
-  public byte getTimeIndexType() { return timeIndexType; }
+  public byte getTimeIndexType() {
+    return timeIndexType;
+  }
 
   public int compareIndexDegradePriority(TsFileResource tsFileResource) {
     return timeIndex.compareDegradePriority(tsFileResource.timeIndex);
   }
 
-
   public long releaseMemory() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
-    if ( timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX)
-      return 0;
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
     long previousMemory = calculateRamSize();
     long startTime = timeIndex.getMinStartTime();
     long endTime = Long.MIN_VALUE;
@@ -869,6 +871,7 @@ public class TsFileResource {
       endTime = Math.max(endTime, timeIndex.getEndTime(devicesId));
     }
     timeIndex = new FileTimeIndex(startTime, endTime);
+    timeIndexType = 0;
     return previousMemory - timeIndex.calculateRamSize();
   }
   // change tsFile name

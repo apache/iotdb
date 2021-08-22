@@ -124,7 +124,6 @@ public class TsFileProcessor {
   /** manage TsFileResource degrade */
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
-
   /** a lock to mutual exclude query and query */
   private final ReadWriteLock flushQueryLock = new ReentrantReadWriteLock();
   /**
@@ -1049,7 +1048,7 @@ public class TsFileProcessor {
     logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
-    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
+    //    tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
     writer.endFile();
     logger.info("Ended file {}", tsFileResource);
 

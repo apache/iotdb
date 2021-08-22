@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -190,18 +189,13 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public int compareDegradePriority(ITimeIndex timeIndex) {
-    if(timeIndex instanceof DeviceTimeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
       return 1;
-    }
-    else if(timeIndex instanceof FileTimeIndex) {
-      if(startTime < timeIndex.getMinStartTime())
-        return -1;
-      else if(startTime > timeIndex.getMinStartTime())
-        return 1;
-      else
-        return 0;
-    }
-    else {
+    } else if (timeIndex instanceof FileTimeIndex) {
+      if (startTime < timeIndex.getMinStartTime()) return -1;
+      else if (startTime > timeIndex.getMinStartTime()) return 1;
+      else return 0;
+    } else {
       logger.error("Can't get timeIndex type {}", timeIndex.getClass().getName());
       throw new RuntimeException("type of timeIndex is wrong.");
     }

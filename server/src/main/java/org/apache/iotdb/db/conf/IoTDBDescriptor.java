@@ -175,10 +175,10 @@ public class IoTDBDescriptor {
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
       conf.setTimeIndexMemoryProportion(
-              Double.parseDouble(
-                      properties.getProperty(
-                              "time_index_memory_proportion",
-                              Double.toString(conf.getTimeIndexMemoryProportion()))));
+          Double.parseDouble(
+              properties.getProperty(
+                  "time_index_memory_proportion",
+                  Double.toString(conf.getTimeIndexMemoryProportion()))));
 
       conf.setFlushProportion(
           Double.parseDouble(
@@ -696,10 +696,10 @@ public class IoTDBDescriptor {
       }
 
       conf.setTimeIndexDegradeThread(
-              Integer.parseInt(
-                      properties.getProperty(
-                              "timeIndex_degrade_thread_num",
-                              Integer.toString(conf.getTimeIndexDegradeThread()))));
+          Integer.parseInt(
+              properties.getProperty(
+                  "timeIndex_degrade_thread_num",
+                  Integer.toString(conf.getTimeIndexDegradeThread()))));
       if (conf.getTimeIndexDegradeThread() <= 0) {
         conf.setTimeIndexDegradeThread(1);
       }
