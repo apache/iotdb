@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public class MonadLastCacheValue implements ILastCacheValue {
 
+  private static final String INDEX_OPERATION_ON_MONAD_EXCEPTION =
+      "Cannot operate data on any index but 0 on MonadLastCacheValue";
+
   private long timestamp;
 
   private TsPrimitiveType value;
@@ -60,7 +63,10 @@ public class MonadLastCacheValue implements ILastCacheValue {
 
   @Override
   public long getTimestamp(int index) {
-    return index == 0 ? timestamp : 0;
+    if (index == 0) {
+      return timestamp;
+    }
+    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
   }
 
   @Override
@@ -68,6 +74,7 @@ public class MonadLastCacheValue implements ILastCacheValue {
     if (index == 0) {
       this.timestamp = timestamp;
     }
+    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
   }
 
   @Override
@@ -75,7 +82,7 @@ public class MonadLastCacheValue implements ILastCacheValue {
     if (index == 0) {
       return value;
     }
-    return null;
+    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
   }
 
   @Override
@@ -83,13 +90,17 @@ public class MonadLastCacheValue implements ILastCacheValue {
     if (index == 0) {
       this.value = value;
     }
+    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
   }
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    if (value == null || index != 0) {
+    if (index != 0) {
+      throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
+    } else if (value == null) {
       return null;
+    } else {
+      return new TimeValuePair(timestamp, value);
     }
-    return new TimeValuePair(timestamp, value);
   }
 }
