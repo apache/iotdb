@@ -21,6 +21,8 @@ package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -124,8 +126,17 @@ public class LogReplayer {
         logger.error("Cannot close the modifications file {}", modFile.getFilePath(), e);
       }
     }
-    tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
-    tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
+
+    Map<String, Map<String, IWritableMemChunk>> memTableMap = recoverMemTable.getMemTableMap();
+    for (Map.Entry<String, Map<String, IWritableMemChunk>> deviceEntry : memTableMap.entrySet()) {
+      String deviceId = deviceEntry.getKey();
+      for (Map.Entry<String, IWritableMemChunk> measurementEntry :
+          deviceEntry.getValue().entrySet()) {
+        WritableMemChunk memChunk = (WritableMemChunk) measurementEntry.getValue();
+        currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
+        currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
+      }
+    }
   }
 
   private void replayDelete(DeletePlan deletePlan) throws IOException, MetadataException {

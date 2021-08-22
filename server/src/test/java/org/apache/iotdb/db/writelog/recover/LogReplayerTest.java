@@ -194,7 +194,7 @@ public class LogReplayerTest {
       assertEquals(200, ((Deletion) mods[0]).getEndTime());
 
       assertEquals(2, tsFileResource.getStartTime("root.sg.device0"));
-      assertEquals(100, tsFileResource.getEndTime("root.sg.device0"));
+      assertEquals(2, tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
         assertEquals(i, tsFileResource.getStartTime("root.sg.device" + i));
         assertEquals(i, tsFileResource.getEndTime("root.sg.device" + i));

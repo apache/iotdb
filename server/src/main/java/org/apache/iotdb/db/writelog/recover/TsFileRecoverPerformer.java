@@ -23,6 +23,9 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -185,6 +188,8 @@ public class TsFileRecoverPerformer {
   }
 
   private void recoverResourceFromWriter(RestorableTsFileIOWriter restorableTsFileIOWriter) {
+    Map<String, Map<String, List<Deletion>>> modificationsForResource =
+        loadModificationsForResource();
     Map<String, List<ChunkMetadata>> deviceChunkMetaDataMap =
         restorableTsFileIOWriter.getDeviceChunkMetadataMap();
     for (Map.Entry<String, List<ChunkMetadata>> entry : deviceChunkMetaDataMap.entrySet()) {
@@ -206,13 +211,62 @@ public class TsFileRecoverPerformer {
           if (!chunkMetaData.getDataType().equals(dataType)) {
             continue;
           }
-          tsFileResource.updateStartTime(deviceId, chunkMetaData.getStartTime());
-          tsFileResource.updateEndTime(deviceId, chunkMetaData.getEndTime());
+
+          // calculate startTime and endTime according to chunkMetaData and modifications
+          long startTime = chunkMetaData.getStartTime();
+          long endTime = chunkMetaData.getEndTime();
+          long chunkHeaderOffset = chunkMetaData.getOffsetOfChunkHeader();
+          if (modificationsForResource.containsKey(deviceId)
+              && modificationsForResource
+                  .get(deviceId)
+                  .containsKey(chunkMetaData.getMeasurementUid())) {
+            // exist deletion for current measurement
+            for (Deletion modification :
+                modificationsForResource.get(deviceId).get(chunkMetaData.getMeasurementUid())) {
+              long fileOffset = modification.getFileOffset();
+              if (chunkHeaderOffset < fileOffset) {
+                // deletion is valid for current chunk
+                long modsStartTime = modification.getStartTime();
+                long modsEndTime = modification.getEndTime();
+                if (startTime >= modsStartTime && startTime <= modsEndTime) {
+                  startTime = modsEndTime + 1;
+                } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
+                  endTime = modsStartTime - 1;
+                } else if (startTime >= modsStartTime && endTime <= modsEndTime) {
+                  startTime = Long.MAX_VALUE;
+                  endTime = Long.MIN_VALUE;
+                }
+              }
+            }
+          }
+          tsFileResource.updateStartTime(deviceId, startTime);
+          tsFileResource.updateEndTime(deviceId, endTime);
         }
       }
     }
     tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(restorableTsFileIOWriter.getMaxPlanIndex());
+  }
+
+  // load modifications for recovering tsFileResource
+  private Map<String, Map<String, List<Deletion>>> loadModificationsForResource() {
+    Map<String, Map<String, List<Deletion>>> modificationsForResource = new HashMap<>();
+    ModificationFile modificationFile = tsFileResource.getModFile();
+    if (modificationFile.exists()) {
+      List<Modification> modifications = (List<Modification>) modificationFile.getModifications();
+      for (Modification modification : modifications) {
+        if (modification.getType().equals(Modification.Type.DELETION)) {
+          String deviceId = modification.getPath().getDevice();
+          String measurementId = modification.getPath().getMeasurement();
+          Map<String, List<Deletion>> measurementModsMap =
+              modificationsForResource.computeIfAbsent(deviceId, n -> new HashMap<>());
+          List<Deletion> list =
+              measurementModsMap.computeIfAbsent(measurementId, n -> new ArrayList<>());
+          list.add((Deletion) modification);
+        }
+      }
+    }
+    return modificationsForResource;
   }
 
   private void redoLogs(
