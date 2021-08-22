@@ -81,7 +81,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1731,6 +1730,8 @@ public abstract class RaftMember implements RaftMemberMBean {
    * @return an AppendLogResult
    */
   protected AppendLogResult sendLogToFollowers(Log log) {
+    // TODO: now requireedQuorum <= allNodes.size() / 2.
+    //  The reason? by default, this node has been sent?
     int requiredQuorum = allNodes.size() / 2;
     if (requiredQuorum <= 0) {
       // use half of the members' size as the quorum
