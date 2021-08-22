@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.tool;
 
+import jline.internal.Nullable;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.csv.QuoteMode;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -29,7 +34,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.ZoneId;
+import java.util.List;
 
 public abstract class AbstractCsvTool {
 
@@ -187,5 +194,34 @@ public abstract class AbstractCsvTool {
             .build();
     options.addOption(opPassword);
     return options;
+  }
+
+  /**
+   * write data to CSV file.
+   *
+   * @param headerNames the header names of CSV file
+   * @param records the records of CSV file
+   * @param filePath the directory to save the file
+   */
+  protected static void writeCsvFile(
+          @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
+    try {
+      CSVPrinter printer =
+              CSVFormat.DEFAULT
+                      .withFirstRecordAsHeader()
+                      .withEscape('\t')
+                      .withQuoteMode(QuoteMode.NONE)
+                      .print(new PrintWriter(filePath));
+      if (headerNames != null){
+        printer.printRecord(headerNames);
+      }
+      for (List record : records) {
+        printer.printRecord(record);
+      }
+      printer.flush();
+      printer.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 }

@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -77,6 +78,10 @@ public class ExportCsv extends AbstractCsvTool {
   private static String targetFile = DUMP_FILE_NAME_DEFAULT;
 
   private static String targetDirectory;
+
+  private static Boolean dataType;
+
+  private static String queryCommand;
 
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
@@ -116,22 +121,28 @@ public class ExportCsv extends AbstractCsvTool {
         return;
       }
 
-      String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
-      String sql;
       session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
       setTimeZone();
 
-      if (sqlFile == null) {
-        sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
-        System.out.println(sql);
-        String[] values = sql.trim().split(";");
-        for (int i = 0; i < values.length; i++) {
-          dumpResult(values[i], i);
+      if (queryCommand == null) {
+        String sqlFile = commandLine.getOptionValue(SQL_FILE_ARGS);
+        String sql;
+
+        if (sqlFile == null) {
+          sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
+          System.out.println(sql);
+          String[] values = sql.trim().split(";");
+          for (int i = 0; i < values.length; i++) {
+            dumpResult(values[i], i);
+          }
+        } else {
+          dumpFromSqlFile(sqlFile);
         }
       } else {
-        dumpFromSqlFile(sqlFile);
+        dumpResult(queryCommand, 0);
       }
+
     } catch (IOException e) {
       System.out.println("Failed to operate on file, because " + e.getMessage());
     } catch (ArgsErrorException e) {
@@ -154,7 +165,12 @@ public class ExportCsv extends AbstractCsvTool {
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-    String optionValue = commandLine.getOptionValue(DATA_TYPE_ARGS);
+    dataType = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
+    queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
+
+    if (dataType == null) {
+      dataType = true;
+    }
     if (targetFile == null) {
       targetFile = DUMP_FILE_NAME_DEFAULT;
     }
@@ -270,29 +286,36 @@ public class ExportCsv extends AbstractCsvTool {
   private static void dumpResult(String sql, int index) {
 
     final String path = targetDirectory + targetFile + index + ".csv";
-    File tf = new File(path);
+//    File tf = new File(path);
+//    try {
+//      if (!tf.exists() && !tf.createNewFile()) {
+//        System.out.println("Could not create target file for sql statement: " + sql);
+//        return;
+//      }
+//    } catch (IOException e) {
+//      System.out.println("Cannot create dump file " + path + " " + "because: " + e.getMessage());
+//      return;
+//    }
+//    System.out.println("Start to export data from sql statement: " + sql);
+//    try (BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
+//      SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+//      long startTime = System.currentTimeMillis();
+//      // write data in csv file
+//      writeMetadata(bw, sessionDataSet.getColumnNames());
+//
+//      int line = writeResultSet(sessionDataSet, bw);
+//      System.out.printf(
+//          "Statement [%s] has dumped to file %s successfully! It costs "
+//              + "%dms to export %d lines.%n",
+//          sql, path, System.currentTimeMillis() - startTime, line);
+//    } catch (IOException | StatementExecutionException | IoTDBConnectionException e) {
+//      System.out.println("Cannot dump result because: " + e.getMessage());
+//    }
     try {
-      if (!tf.exists() && !tf.createNewFile()) {
-        System.out.println("Could not create target file for sql statement: " + sql);
-        return;
-      }
-    } catch (IOException e) {
-      System.out.println("Cannot create dump file " + path + " " + "because: " + e.getMessage());
-      return;
-    }
-    System.out.println("Start to export data from sql statement: " + sql);
-    try (BufferedWriter bw = new BufferedWriter(new FileWriter(tf))) {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
-      long startTime = System.currentTimeMillis();
-      // write data in csv file
-      writeMetadata(bw, sessionDataSet.getColumnNames());
-
-      int line = writeResultSet(sessionDataSet, bw);
-      System.out.printf(
-          "Statement [%s] has dumped to file %s successfully! It costs "
-              + "%dms to export %d lines.%n",
-          sql, path, System.currentTimeMillis() - startTime, line);
-    } catch (IOException | StatementExecutionException | IoTDBConnectionException e) {
+      List<List<Object>> records = loadDataFromDataSet(sessionDataSet);
+      writeCsvFile(null, records, path);
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
   }
@@ -394,6 +417,65 @@ public class ExportCsv extends AbstractCsvTool {
       } else {
         bw.write(lastValue + "\n");
       }
+    }
+  }
+
+  public static List<List<Object>> loadDataFromDataSet(SessionDataSet sessionDataSet)
+          throws IoTDBConnectionException, StatementExecutionException {
+    List<List<Object>> records = new ArrayList<>();
+    List<Object> headers = new ArrayList<>();
+    List<String> names = sessionDataSet.getColumnNames();
+    List<String> types = sessionDataSet.getColumnTypes();
+
+    if (dataType == true) {
+      for (int i = 0; i < names.size(); i++) {
+        if (!names.get(i).equals("Time") && !names.get(i).equals("Device"))
+          headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
+        else headers.add(names.get(i));
+      }
+    } else {
+      names.forEach(name -> headers.add(name));
+    }
+    records.add(headers);
+
+    while (sessionDataSet.hasNext()) {
+      RowRecord rowRecord = sessionDataSet.next();
+      ArrayList<Object> record = new ArrayList<>();
+      record.add(timeTrans(rowRecord.getTimestamp()));
+      rowRecord
+              .getFields()
+              .forEach(
+                      field -> {
+                        String fieldStringValue = field.getStringValue();
+
+                        if (!field.getStringValue().equals("null")) {
+                          if (field.getDataType() == TSDataType.TEXT
+                                  && !fieldStringValue.startsWith("root.")) {
+                            fieldStringValue = "\"" + fieldStringValue + "\"";
+                          }
+                          record.add(fieldStringValue);
+                        } else {
+                          record.add("");
+                        }
+                      });
+      records.add(record);
+    }
+    return records;
+  }
+
+  public static String timeTrans(Long time) {
+    String timestampPrecision = "ms";
+    switch (timeFormat) {
+      case "default":
+        return RpcUtils.parseLongToDateWithPrecision(
+                DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
+      case "timestamp":
+      case "long":
+      case "number":
+        return String.valueOf(time);
+      default:
+        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), zoneId)
+                .format(DateTimeFormatter.ofPattern(timeFormat));
     }
   }
 }

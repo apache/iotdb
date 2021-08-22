@@ -264,7 +264,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     SimpleDateFormat timeFormatter = formatterInit(records.get(1).get("Time"));
 
-    ArrayList<CSVRecord> failedRecords = new ArrayList<>();
+    ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
     for (Map.Entry<String, List<String>> entry : deviceAndMeasurementNames.entrySet()) {
       String deviceId = entry.getKey();
@@ -304,7 +304,7 @@ public class ImportCsv extends AbstractCsvTool {
                           }
                         });
                 if (isFail.get()) {
-                  failedRecords.add(record);
+                  failedRecords.add(record.stream().collect(Collectors.toList()));
                 }
                 if (!measurements.isEmpty()) {
                   try {
@@ -361,7 +361,7 @@ public class ImportCsv extends AbstractCsvTool {
 
     Set<String> measurementNames = headerNameMap.keySet();
 
-    ArrayList<CSVRecord> failedRecords = new ArrayList<>();
+    ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
     devices.stream()
         .forEach(
@@ -406,7 +406,7 @@ public class ImportCsv extends AbstractCsvTool {
                                   }
                                 });
                         if (isFail.get()) {
-                          failedRecords.add(record);
+                          failedRecords.add(record.stream().collect(Collectors.toList()));
                         }
                         if (!measurements.isEmpty()) {
                           try {
@@ -430,33 +430,6 @@ public class ImportCsv extends AbstractCsvTool {
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
       System.out.println("Failed file path: " + new File(failedFilePath).getAbsolutePath());
-    }
-  }
-
-  /**
-   * write data to CSV file.
-   *
-   * @param headerNames the header names of CSV file
-   * @param records the records of CSV file
-   * @param filePath the directory to save the file
-   */
-  private static void writeCsvFile(
-      List<String> headerNames, List<CSVRecord> records, String filePath) {
-    try {
-      CSVPrinter printer =
-          CSVFormat.DEFAULT
-              .withFirstRecordAsHeader()
-              .withEscape('\t')
-              .withQuoteMode(QuoteMode.NONE)
-              .print(new PrintWriter(filePath));
-      printer.printRecord(headerNames);
-      for (CSVRecord record : records) {
-        printer.printRecord(record);
-      }
-      printer.flush();
-      printer.close();
-    } catch (IOException e) {
-      e.printStackTrace();
     }
   }
 
