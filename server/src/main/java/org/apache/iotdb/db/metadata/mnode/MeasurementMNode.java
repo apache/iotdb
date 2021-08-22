@@ -56,7 +56,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
 
   /** last value cache */
-  private ILastCacheEntry lastCacheEntry = null;
+  private volatile ILastCacheEntry lastCacheEntry = null;
 
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;

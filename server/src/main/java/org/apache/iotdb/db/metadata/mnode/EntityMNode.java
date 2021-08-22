@@ -37,7 +37,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
 
   private volatile boolean useTemplate = false;
 
-  private Map<String, ILastCacheEntry> lastCacheMap = null;
+  private volatile Map<String, ILastCacheEntry> lastCacheMap = null;
 
   /**
    * Constructor of MNode.
