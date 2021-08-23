@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.merge.manage;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,7 +46,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -68,7 +68,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeTaskPool;
   private ThreadPoolExecutor mergeChunkSubTaskPool;
-  private ScheduledExecutorService timedMergeThreadPool;
   private ScheduledExecutorService taskCleanerThreadPool;
 
   private Map<String, Set<MergeFuture>> storageGroupMainTasks = new ConcurrentHashMap<>();
@@ -143,16 +142,9 @@ public class MergeManager implements IService, MergeManagerMBean {
           new MergeThreadPool(
               threadNum * chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      long mergeInterval = IoTDBDescriptor.getInstance().getConfig().getMergeIntervalSec();
-      if (mergeInterval > 0) {
-        timedMergeThreadPool =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "TimedMergeThread"));
-        timedMergeThreadPool.scheduleAtFixedRate(
-            this::mergeAll, mergeInterval, mergeInterval, TimeUnit.SECONDS);
-      }
 
       taskCleanerThreadPool =
-          Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "MergeTaskCleaner"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MergeTaskCleaner");
       taskCleanerThreadPool.scheduleAtFixedRate(this::cleanFinishedTask, 30, 30, TimeUnit.MINUTES);
       logger.info("MergeManager started");
     }
@@ -161,10 +153,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void stop() {
     if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        timedMergeThreadPool.shutdownNow();
-        timedMergeThreadPool = null;
-      }
       taskCleanerThreadPool.shutdownNow();
       taskCleanerThreadPool = null;
       mergeTaskPool.shutdownNow();
@@ -199,10 +187,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   @Override
   public void waitAndStop(long milliseconds) {
     if (mergeTaskPool != null) {
-      if (timedMergeThreadPool != null) {
-        awaitTermination(timedMergeThreadPool, milliseconds);
-        timedMergeThreadPool = null;
-      }
       awaitTermination(taskCleanerThreadPool, milliseconds);
       taskCleanerThreadPool = null;
 

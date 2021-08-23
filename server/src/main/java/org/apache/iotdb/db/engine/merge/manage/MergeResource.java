@@ -81,7 +81,8 @@ public class MergeResource {
   private boolean filterResource(TsFileResource res) {
     return res.getTsFile().exists()
         && !res.isDeleted()
-        && (!res.isClosed() || res.stillLives(timeLowerBound));
+        && (!res.isClosed() || res.stillLives(timeLowerBound))
+        && !res.isMerging();
   }
 
   public MergeResource(

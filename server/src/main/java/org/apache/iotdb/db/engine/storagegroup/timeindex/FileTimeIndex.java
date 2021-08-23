@@ -66,11 +66,16 @@ public class FileTimeIndex implements ITimeIndex {
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(devices.size(), outputStream);
+    Set<String> stringMemoryReducedSet = new ConcurrentSet<>();
     for (String device : devices) {
+      // To reduce the String number in memory,
+      // use the deviceId from cached pool
+      stringMemoryReducedSet.add(cachedDevicePool.computeIfAbsent(device, k -> k));
       ReadWriteIOUtils.write(device, outputStream);
     }
     ReadWriteIOUtils.write(startTime, outputStream);
     ReadWriteIOUtils.write(endTime, outputStream);
+    devices = stringMemoryReducedSet;
   }
 
   @Override

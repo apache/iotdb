@@ -63,13 +63,12 @@ public abstract class TsFileManagement {
 
   public volatile boolean isUnseqMerging = false;
   public volatile boolean isSeqMerging = false;
+  public volatile boolean recovered = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   public ModificationFile mergingModification;
-
-  private long mergeStartTime;
 
   /** whether execute merge chunk in this task */
   protected boolean isMergeExecutedInCurrentTask = false;
@@ -135,11 +134,11 @@ public abstract class TsFileManagement {
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
-  protected void readLock() {
+  public void readLock() {
     compactionMergeLock.readLock().lock();
   }
 
-  protected void readUnLock() {
+  public void readUnLock() {
     compactionMergeLock.readLock().unlock();
   }
 
@@ -187,15 +186,13 @@ public abstract class TsFileManagement {
     @Override
     public Void call() {
       recover();
-      // in recover logic, we do not have to start next compaction task, and in this case the param
-      // time partition is useless, we can just pass 0L
+      // in recover logic, the param time partition is useless, we can just pass 0L
       closeCompactionMergeCallBack.call(false, 0L);
-      clearCompactionStatus();
       return null;
     }
   }
 
-  public synchronized boolean merge(
+  public boolean merge(
       boolean fullMerge,
       List<TsFileResource> seqMergeList,
       List<TsFileResource> unSeqMergeList,
@@ -203,7 +200,7 @@ public abstract class TsFileManagement {
     // wait until seq merge has finished
     while (isSeqMerging) {
       try {
-        wait(200);
+        Thread.sleep(200);
       } catch (InterruptedException e) {
         logger.error("{} [Compaction] shutdown", storageGroupName, e);
         Thread.currentThread().interrupt();
@@ -211,90 +208,94 @@ public abstract class TsFileManagement {
       }
     }
     isUnseqMerging = true;
-
-    if (seqMergeList.isEmpty()) {
-      logger.info("{} no seq files to be merged", storageGroupName);
-      isUnseqMerging = false;
-      return false;
-    }
-
-    if (unSeqMergeList.isEmpty()) {
-      logger.info("{} no unseq files to be merged", storageGroupName);
-      isUnseqMerging = false;
-      return false;
-    }
-
-    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
-      logger.info(
-          "{} too much unseq files to be merged, reduce it to {}",
-          storageGroupName,
-          maxOpenFileNumInEachUnseqCompaction);
-      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
-    }
-
-    long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-    long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
-
-    IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+    writeLock();
     try {
-      List[] mergeFiles = fileSelector.select();
-      if (mergeFiles.length == 0) {
-        logger.info(
-            "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
+      if (seqMergeList.isEmpty()) {
+        logger.info("{} no seq files to be merged", storageGroupName);
         isUnseqMerging = false;
         return false;
       }
-      // avoid pending tasks holds the metadata and streams
-      mergeResource.clear();
-      String taskName = storageGroupName + "-" + System.currentTimeMillis();
-      // do not cache metadata until true candidates are chosen, or too much metadata will be
-      // cached during selection
-      mergeResource.setCacheDeviceMeta(true);
 
-      for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
-        tsFileResource.setMerging(true);
-      }
-      for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
-        tsFileResource.setMerging(true);
+      if (unSeqMergeList.isEmpty()) {
+        logger.info("{} no unseq files to be merged", storageGroupName);
+        isUnseqMerging = false;
+        return false;
       }
 
-      mergeStartTime = System.currentTimeMillis();
-      MergeTask mergeTask =
-          new MergeTask(
-              mergeResource,
-              storageGroupDir,
-              this::mergeEndAction,
-              taskName,
-              fullMerge,
-              fileSelector.getConcurrentMergeNum(),
-              storageGroupName);
-      mergingModification =
-          new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
-      MergeManager.getINSTANCE().submitMainTask(mergeTask);
-      if (logger.isInfoEnabled()) {
+      if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
         logger.info(
-            "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+            "{} too much unseq files to be merged, reduce it to {}",
             storageGroupName,
-            taskName,
-            mergeFiles[0].size(),
-            mergeFiles[1].size());
+            maxOpenFileNumInEachUnseqCompaction);
+        unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
       }
-      // wait until unseq merge has finished
-      while (isUnseqMerging) {
-        try {
-          Thread.sleep(200);
-        } catch (InterruptedException e) {
-          logger.error("{} [Compaction] shutdown", storageGroupName, e);
-          Thread.currentThread().interrupt();
+
+      long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
+      long timeLowerBound = System.currentTimeMillis() - dataTTL;
+      MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
+
+      IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
+      try {
+        List[] mergeFiles = fileSelector.select();
+        if (mergeFiles.length == 0) {
+          logger.info(
+              "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
+          isUnseqMerging = false;
           return false;
         }
+        // avoid pending tasks holds the metadata and streams
+        mergeResource.clear();
+        String taskName = storageGroupName + "-" + System.currentTimeMillis();
+        // do not cache metadata until true candidates are chosen, or too much metadata will be
+        // cached during selection
+        mergeResource.setCacheDeviceMeta(true);
+
+        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
+          tsFileResource.setMerging(true);
+        }
+        for (TsFileResource tsFileResource : mergeResource.getUnseqFiles()) {
+          tsFileResource.setMerging(true);
+        }
+
+        long mergeStartTime = System.currentTimeMillis();
+        MergeTask mergeTask =
+            new MergeTask(
+                mergeResource,
+                storageGroupDir,
+                this::mergeEndAction,
+                taskName,
+                fullMerge,
+                fileSelector.getConcurrentMergeNum(),
+                storageGroupName);
+        mergingModification =
+            new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+        MergeManager.getINSTANCE().submitMainTask(mergeTask);
+        if (logger.isInfoEnabled()) {
+          logger.info(
+              "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+              storageGroupName,
+              taskName,
+              mergeFiles[0].size(),
+              mergeFiles[1].size());
+        }
+      } catch (MergeException | IOException e) {
+        logger.error("{} cannot select file for merge", storageGroupName, e);
+        return false;
       }
-      return true;
-    } catch (MergeException | IOException e) {
-      logger.error("{} cannot select file for merge", storageGroupName, e);
-      return false;
+    } finally {
+      writeUnlock();
     }
+    // wait until unseq merge has finished
+    while (isUnseqMerging) {
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
+        return false;
+      }
+    }
+    return true;
   }
 
   private IMergeFileSelector getMergeFileSelector(long budget, MergeResource resource) {
@@ -421,7 +422,10 @@ public abstract class TsFileManagement {
         File mergedFile =
             FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
         if (mergedFile.exists()) {
-          mergedFile.delete();
+          boolean deletionSuccess = mergedFile.delete();
+          if (!deletionSuccess) {
+            logger.warn("fail to delete {}", mergedFile);
+          }
         }
         updateMergeModification(seqFile);
       } finally {

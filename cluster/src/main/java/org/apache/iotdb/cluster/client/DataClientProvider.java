@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 
 import java.io.IOException;
@@ -42,6 +41,8 @@ public class DataClientProvider {
   private AsyncClientPool dataAsyncClientPool;
 
   private SyncClientPool dataSyncClientPool;
+
+  private static final String GET_CLIENT_FAILED_MSG = "can not get client for node=";
 
   public DataClientProvider(TProtocolFactory factory) {
     if (!ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -60,7 +61,7 @@ public class DataClientProvider {
   }
 
   /**
-   * Get a thrift client that will connect to "node" using the data port.
+   * Get a thrift client from the head of deque that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
@@ -68,7 +69,23 @@ public class DataClientProvider {
   public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
     AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClient(node);
     if (client == null) {
-      throw new IOException("can not get client for node=" + node);
+      throw new IOException(GET_CLIENT_FAILED_MSG + node);
+    }
+    client.setTimeout(timeout);
+    return client;
+  }
+
+  /**
+   * Get a thrift client from the tail of deque that will connect to "node" using the data port for
+   * refresh.
+   *
+   * @param node the node to be connected
+   * @param timeout timeout threshold of connection
+   */
+  public AsyncDataClient getAsyncDataClientForRefresh(Node node, int timeout) throws IOException {
+    AsyncDataClient client = (AsyncDataClient) getDataAsyncClientPool().getClientForRefresh(node);
+    if (client == null) {
+      throw new IOException(GET_CLIENT_FAILED_MSG + node);
     }
     client.setTimeout(timeout);
     return client;
@@ -79,15 +96,34 @@ public class DataClientProvider {
    * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
    * into the client pool, otherwise there is a risk of client leakage.
    *
-   * <p>Get a thrift client that will connect to "node" using the data port.
+   * <p>Get a thrift client from the head of deque that will connect to "node" using the data port.
    *
    * @param node the node to be connected
    * @param timeout timeout threshold of connection
    */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
+  public SyncDataClient getSyncDataClient(Node node, int timeout) throws IOException {
     SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClient(node);
     if (client == null) {
-      throw new TException("can not get client for node=" + node);
+      throw new IOException(GET_CLIENT_FAILED_MSG + node);
+    }
+    client.setTimeout(timeout);
+    return client;
+  }
+
+  /**
+   * IMPORTANT!!! After calling this function, the caller should make sure to call {@link
+   * org.apache.iotdb.cluster.utils.ClientUtils#putBackSyncClient(Client)} to put the client back
+   * into the client pool, otherwise there is a risk of client leakage.
+   *
+   * <p>Get a thrift client from the tail of deque that will connect to "node" using the data port.
+   *
+   * @param node the node to be connected
+   * @param timeout timeout threshold of connection
+   */
+  public SyncDataClient getSyncDataClientForRefresh(Node node, int timeout) throws IOException {
+    SyncDataClient client = (SyncDataClient) getDataSyncClientPool().getClientForRefresh(node);
+    if (client == null) {
+      throw new IOException(GET_CLIENT_FAILED_MSG + node);
     }
     client.setTimeout(timeout);
     return client;

@@ -258,11 +258,14 @@ public class CompactionUtils {
       CompactionLogger compactionLogger,
       Set<String> devices,
       boolean sequence,
-      List<Modification> modifications)
+      List<Modification> modifications,
+      RestorableTsFileIOWriter writer)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+    if (writer == null) {
+      writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
+    }
     try {
-      RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetResource.getTsFile());
       Map<String, List<Modification>> modificationCache = new HashMap<>();
       RateLimiter compactionWriteRateLimiter =
           MergeManager.getINSTANCE().getMergeWriteRateLimiter();
@@ -322,6 +325,11 @@ public class CompactionUtils {
             }
             // get all sensor used later
             allSensors.addAll(sensorChunkMetadataListMap.keySet());
+          }
+
+          // if there is no more chunkMetaData, merge all the sensors
+          if (!hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
+            lastSensor = Collections.max(allSensors);
           }
 
           for (String sensor : allSensors) {
@@ -423,6 +431,7 @@ public class CompactionUtils {
       writer.endFile();
       targetResource.close();
     } finally {
+      writer.close();
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
       }

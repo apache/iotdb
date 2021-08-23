@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -60,7 +61,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
     queryPlan.setPaths(pathList);
     queryPlan.setDataTypes(dataTypes);
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
       QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
@@ -86,6 +87,26 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
       assertEquals(
           IoTDB.metaManager.getAllStorageGroupNodes().get(i).getFullPath(),
           allStorageGroupNodes.get(i).getFullPath());
+    }
+  }
+
+  @Test
+  public void testShowTimeseries()
+      throws StorageEngineException, QueryFilterOptimizationException, MetadataException,
+          IOException, InterruptedException, QueryProcessException {
+    ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(pathList.get(0));
+    QueryContext context =
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    try {
+      QueryDataSet dataSet = queryExecutor.processQuery(showTimeSeriesPlan, context);
+      int count = 0;
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        count++;
+      }
+      assertEquals(count, 1);
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
   }
 }

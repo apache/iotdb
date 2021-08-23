@@ -139,8 +139,13 @@ public class UpgradeTask extends WrappedRunnable {
         }
         File virtualStorageGroupDir = fsFactory.getFile(storageGroup, "0");
         File upgradeDir = fsFactory.getFile(virtualStorageGroupDir, "upgrade");
-
+        if (upgradeDir == null) {
+          continue;
+        }
         File[] tmpPartitionDirList = upgradeDir.listFiles();
+        if (tmpPartitionDirList == null) {
+          continue;
+        }
         for (File tmpPartitionDir : tmpPartitionDirList) {
           if (tmpPartitionDir.isDirectory()) {
             try {

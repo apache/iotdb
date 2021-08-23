@@ -31,12 +31,14 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -77,7 +79,8 @@ abstract class BaseApplier implements LogApplier {
       } catch (BatchProcessException e) {
         handleBatchProcessException(e, plan);
       } catch (QueryProcessException e) {
-        if (e.getCause() instanceof StorageGroupNotSetException) {
+        if (e.getCause() instanceof StorageGroupNotSetException
+            || e.getCause() instanceof UndefinedTemplateException) {
           executeAfterSync(plan);
         } else {
           throw e;
@@ -93,6 +96,7 @@ abstract class BaseApplier implements LogApplier {
   private void handleBatchProcessException(BatchProcessException e, PhysicalPlan plan)
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     TSStatus[] failingStatus = e.getFailingStatus();
+    boolean needThrow = false;
     for (int i = 0; i < failingStatus.length; i++) {
       TSStatus status = failingStatus[i];
       // skip succeeded plans in later execution
@@ -100,6 +104,17 @@ abstract class BaseApplier implements LogApplier {
           && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && plan instanceof BatchPlan) {
         ((BatchPlan) plan).setIsExecuted(i);
+      }
+      // handle batch exception thrown by delete timeseries plan, skip timeseries not exist
+      // exception
+      if (plan instanceof DeleteTimeSeriesPlan) {
+        if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+            logger.info("{} doesn't exist, it may has been deleted.", plan.getPaths().get(i));
+          } else {
+            needThrow = true;
+          }
+        }
       }
     }
     boolean needRetry = false;
@@ -116,7 +131,9 @@ abstract class BaseApplier implements LogApplier {
       executeAfterSync(plan);
       return;
     }
-    throw e;
+    if (!(plan instanceof DeleteTimeSeriesPlan) || needThrow) {
+      throw e;
+    }
   }
 
   private void executeAfterSync(PhysicalPlan plan)

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 
-/** basic operator includes < > >= <= !=. */
+/** basic operator includes = < > >= <= !=. */
 public class BasicFunctionOperator extends FunctionOperator {
 
   protected String value;
@@ -101,13 +101,18 @@ public class BasicFunctionOperator extends FunctionOperator {
         ret = funcToken.getUnaryExpression(singlePath, Double.valueOf(value));
         break;
       case TEXT:
-        ret =
-            funcToken.getUnaryExpression(
-                singlePath,
-                (value.startsWith("'") && value.endsWith("'"))
-                        || (value.startsWith("\"") && value.endsWith("\""))
-                    ? new Binary(value.substring(1, value.length() - 1))
-                    : new Binary(value));
+        if (funcToken == BasicOperatorType.EQ || funcToken == BasicOperatorType.NOTEQUAL) {
+          ret =
+              funcToken.getUnaryExpression(
+                  singlePath,
+                  (value.startsWith("'") && value.endsWith("'"))
+                          || (value.startsWith("\"") && value.endsWith("\""))
+                      ? new Binary(value.substring(1, value.length() - 1))
+                      : new Binary(value));
+        } else {
+          throw new LogicalOperatorException(
+              "For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
+        }
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");

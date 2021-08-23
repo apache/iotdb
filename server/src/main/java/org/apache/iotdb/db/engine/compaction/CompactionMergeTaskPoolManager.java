@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -33,14 +34,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Collections;
-import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -52,8 +52,9 @@ public class CompactionMergeTaskPoolManager implements IService {
       LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
   private static final CompactionMergeTaskPoolManager INSTANCE =
       new CompactionMergeTaskPoolManager();
-  private ExecutorService pool;
-  private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private ScheduledExecutorService pool;
+  private Map<String, List<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static ConcurrentHashMap<String, Boolean> sgCompactionStatus = new ConcurrentHashMap<>();
 
@@ -64,7 +65,7 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void start() {
     if (pool == null) {
-      this.pool =
+      pool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
               ThreadName.COMPACTION_SERVICE.getName());
@@ -165,34 +166,33 @@ public class CompactionMergeTaskPoolManager implements IService {
    * corresponding storage group.
    */
   public void abortCompaction(String storageGroup) {
-    Set<Future<Void>> subTasks =
-        storageGroupTasks.getOrDefault(storageGroup, Collections.emptySet());
-    Iterator<Future<Void>> subIterator = subTasks.iterator();
-    while (subIterator.hasNext()) {
-      Future<Void> next = subIterator.next();
+    List<Future<Void>> subTasks =
+        storageGroupTasks.getOrDefault(storageGroup, Collections.emptyList());
+    for (Future<Void> next : subTasks) {
       if (!next.isDone() && !next.isCancelled()) {
         next.cancel(true);
         sgCompactionStatus.put(storageGroup, false);
       }
-      subIterator.remove();
     }
+    subTasks.clear();
   }
 
-  public synchronized void submitTask(StorageGroupCompactionTask storageGroupCompactionTask)
-      throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
-      String storageGroup = storageGroupCompactionTask.getStorageGroupName();
-      boolean isCompacting = sgCompactionStatus.computeIfAbsent(storageGroup, k -> false);
-      if (isCompacting) {
-        return;
-      }
-      storageGroupCompactionTask.setSgCompactionStatus(sgCompactionStatus);
-      sgCompactionStatus.put(storageGroup, true);
-      Future<Void> future = pool.submit(storageGroupCompactionTask);
-      storageGroupTasks
-          .computeIfAbsent(storageGroup, k -> new ConcurrentSkipListSet<>())
-          .add(future);
+  public synchronized void clearCompactionStatus(String storageGroupName) {
+    // for test
+    if (sgCompactionStatus == null) {
+      sgCompactionStatus = new ConcurrentHashMap<>();
     }
+    sgCompactionStatus.put(storageGroupName, false);
+  }
+
+  public void init(Runnable function) {
+    pool.scheduleWithFixedDelay(
+        function, 1000, config.getCompactionInterval(), TimeUnit.MILLISECONDS);
+  }
+
+  @TestOnly
+  public synchronized int getCompactionTaskNum() {
+    return ((ThreadPoolExecutor) pool).getActiveCount();
   }
 
   public boolean isTerminated() {

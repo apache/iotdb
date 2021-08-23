@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -31,6 +32,8 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -56,6 +59,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -107,6 +111,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -135,6 +140,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -256,6 +262,9 @@ public class PhysicalGenerator {
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
         return new TracingPlan(tracingOperator.isTracingOn());
+      case SET_SYSTEM_MODE:
+        SetSystemModeOperator setSystemModeOperator = (SetSystemModeOperator) operator;
+        return new SetSystemModePlan(setSystemModeOperator.isReadOnly());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
@@ -353,7 +362,8 @@ public class PhysicalGenerator {
             ((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES,
             ((LoadFilesOperator) operator).isAutoCreateSchema(),
-            ((LoadFilesOperator) operator).getSgLevel());
+            ((LoadFilesOperator) operator).getSgLevel(),
+            ((LoadFilesOperator) operator).isVerifyMetadata());
       case REMOVE_FILE:
         return new OperateFilePlan(
             ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);
@@ -777,9 +787,16 @@ public class PhysicalGenerator {
       List<PartialPath> devices, FilterOperator operator) throws QueryProcessException {
     Map<String, IExpression> deviceToFilterMap = new HashMap<>();
     Set<PartialPath> filterPaths = new HashSet<>();
-    for (PartialPath device : devices) {
+    Iterator<PartialPath> deviceIterator = devices.iterator();
+    while (deviceIterator.hasNext()) {
+      PartialPath device = deviceIterator.next();
       FilterOperator newOperator = operator.copy();
-      concatFilterPath(device, newOperator, filterPaths);
+      try {
+        concatFilterPath(device, newOperator, filterPaths);
+      } catch (PathNotExistException e) {
+        deviceIterator.remove();
+        continue;
+      }
       // transform to a list so it can be indexed
       List<PartialPath> filterPathList = new ArrayList<>(filterPaths);
       try {
@@ -816,14 +833,22 @@ public class PhysicalGenerator {
   }
 
   private void concatFilterPath(
-      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths) {
+      PartialPath prefix, FilterOperator operator, Set<PartialPath> filterPaths)
+      throws PathNotExistException {
     if (!operator.isLeaf()) {
       for (FilterOperator child : operator.getChildren()) {
         concatFilterPath(prefix, child, filterPaths);
       }
       return;
     }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
+
+    FunctionOperator basicOperator;
+    if (operator instanceof InOperator) {
+      basicOperator = (InOperator) operator;
+    } else {
+      basicOperator = (BasicFunctionOperator) operator;
+    }
+
     PartialPath filterPath = basicOperator.getSinglePath();
 
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
@@ -834,8 +859,12 @@ public class PhysicalGenerator {
     }
 
     PartialPath concatPath = prefix.concatPath(filterPath);
-    filterPaths.add(concatPath);
-    basicOperator.setSinglePath(concatPath);
+    if (IoTDB.metaManager.isPathExist(concatPath)) {
+      filterPaths.add(concatPath);
+      basicOperator.setSinglePath(concatPath);
+    } else {
+      throw new PathNotExistException(concatPath.getFullPath());
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning

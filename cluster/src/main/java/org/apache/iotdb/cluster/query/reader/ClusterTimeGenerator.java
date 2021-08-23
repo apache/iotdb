@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
@@ -79,13 +80,38 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     }
   }
 
+  @TestOnly
+  public ClusterTimeGenerator(
+      QueryContext context,
+      MetaGroupMember metaGroupMember,
+      ClusterReaderFactory clusterReaderFactory,
+      RawDataQueryPlan rawDataQueryPlan,
+      boolean onlyCheckLocalData)
+      throws StorageEngineException {
+    super(context);
+    this.queryPlan = rawDataQueryPlan;
+    this.readerFactory = clusterReaderFactory;
+    try {
+      readerFactory.syncMetaGroup();
+      if (onlyCheckLocalData) {
+        whetherHasLocalDataGroup(
+            queryPlan.getExpression(), metaGroupMember, queryPlan.isAscending());
+      } else {
+        constructNode(queryPlan.getExpression());
+      }
+    } catch (IOException | CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
   @Override
   protected IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException {
     Filter filter = expression.getFilter();
+    Filter timeFilter = getTimeFilter(filter);
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
-    ManagedSeriesReader mergeReader = null;
+    ManagedSeriesReader mergeReader;
     try {
       dataType =
           ((CMManager) IoTDB.metaManager)
@@ -97,7 +123,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
               path,
               queryPlan.getAllMeasurementsInDevice(path.getDevice()),
               dataType,
-              null,
+              timeFilter,
               filter,
               context,
               queryPlan.isAscending());
@@ -109,18 +135,6 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
 
   public boolean isHasLocalReader() {
     return hasLocalReader;
-  }
-
-  public void setHasLocalReader(boolean hasLocalReader) {
-    this.hasLocalReader = hasLocalReader;
-  }
-
-  public QueryDataSet.EndPoint getEndPoint() {
-    return endPoint;
-  }
-
-  public void setEndPoint(QueryDataSet.EndPoint endPoint) {
-    this.endPoint = endPoint;
   }
 
   @Override
@@ -161,6 +175,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
   private void checkHasLocalReader(
       SingleSeriesExpression expression, MetaGroupMember metaGroupMember) throws IOException {
     Filter filter = expression.getFilter();
+    Filter timeFilter = getTimeFilter(filter);
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     try {
@@ -184,7 +199,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
                   path,
                   queryPlan.getAllMeasurementsInDevice(path.getDevice()),
                   dataType,
-                  null,
+                  timeFilter,
                   filter,
                   context,
                   dataGroupMember,

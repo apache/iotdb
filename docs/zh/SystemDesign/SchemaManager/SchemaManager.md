@@ -207,45 +207,43 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 1. 检查临时文件`mtree.snapshot.tmp`是否存在，如果存在证明在创建快照的序列化过程中出现服务器人为或意外关闭，导致序列化失败，删除临时文件；
 2. 检查快照文件`mtree.snapshot`是否存在。如果不存在，则使用新的 MTree；否则启动反序列化过程，得到 MTree
-3. 对于`mlog.bin`中的内容，逐行读取并操作，完成 MTree 的恢复。读取过程中更新 `logNumber`，并返回，用于后面`mlog.bin`行数的记录。
+3. 对于`mlog.bin`中的内容，逐行读取并操作，完成 MTree 的恢复。
 
 ## 元数据日志管理
 
-* org.apache.iotdb.db.metadata.logfile.MLogWriter
-
 所有元数据的操作均会记录到元数据日志文件中，此文件默认为 data/system/schema/mlog.bin。
 
-系统重启时会重做 mlog 中的日志，重做之前需要标记不需要记录日志。当重启结束后，标记需要记录日志。
+系统重启时会重做 mlog.bin 中的日志，重做之前需要标记不需要记录日志。当重启结束后，标记需要记录日志。
 
-元数据日志的类型由 MetadataOperationType 类记录。mlog 直接存储字符串编码。
+mlog.bin 存储二进制编码。我们可以使用[MlogParser Tool](https://iotdb.apache.org/UserGuide/Master/System-Tools/MLogParser-Tool.html) 将mlog解析为可读的mlog.txt版本。
 
-示例 sql 及对应的 mlog 记录：
+示例元数据操作及对应的 mlog 解析后记录：
 
-* set storage group to root.turbine
+* 创建一个名为root.turbine的存储组
 
 	> mlog: 2,root.turbine
 	
 	> 格式: 2,path
 
-* delete storage group root.turbine	
+* 删除一个名为root.turbine的存储组
 	
-	> mlog: 1,root.turbine
+	> mlog: 11,root.turbine
 	
-	> 格式: 1,path
+	> 格式: 11,path
 
-* create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+* 创建时间序列 create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
 
 	> mlog: 0,root.turbine.d1.s1,3,2,1,,温度,offset
 	
 	> 格式: 0,path,TSDataType,TSEncoding,CompressionType,[properties],[alias],[tag-attribute offset]
 
-* delete timeseries root.turbine.d1.s1
+* 删除时间序列 root.turbine.d1.s1
 
 	> mlog: 1,root.turbine.d1.s1
 	
 	> 格式: 1,path	
 
-* set ttl to root.turbine 10
+* 给 root.turbine 设置时间为 10 秒的 ttl
 	
 	> mlog: 10,root.turbine,10
 		
@@ -263,12 +261,41 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
    > mlog: 13,root.turbine.d1.s1,newAlias
    
    > 格式: 13,path,[new alias]
+   
+* 创建元数据模版 create schema template temp1(
+  s1 INT32 with encoding=Gorilla and compression SNAPPY,
+  s2 FLOAT with encoding=RLE and compression=SNAPPY
+)
+   
+   > mlog:5,temp1,0,s1,1,8,1
+   
+   > mlog:5,temp1,0,s2,3,2,1
+   
+   > 格式： 5,template name,is Aligned Timeseries,measurementId,TSDataType,TSEncoding,CompressionType
+
+* 在某前缀路径上设置元数据模版 set schema template temp1 to root.turbine
+ 
+    > mlog: 6,temp1,root.turbine
+   
+    > 格式: 6,template name,path
+
+* 自动创建设备 （应用场景为在某个前缀路径上设置模版之后，写入时会自动创建设备）
+ 
+    > mlog: 4,root.turbine.d1
+   
+    > 格式: 4,path
+
+* 设置某设备正在使用模版 （应用场景为在某个设备路径上设置模版之后，表示该设备正在应用模版）
+ 
+    > mlog: 61,root.turbine.d1
+   
+    > 格式: 61,path
 
 ## 标签文件
 * org.apache.iotdb.db.metadata.TagLogFile
 
 
-所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/mlog.bin。
+所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/tlog.txt。
 
 * 每条时间序列的 tags 和 attributes 持久化总字节数为 L，在 iotdb-engine.properties 中配置。
 

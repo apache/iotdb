@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -81,6 +82,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "1.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -121,6 +123,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "1.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -153,6 +156,7 @@ public class IoTDBGroupByMonthIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -186,6 +190,7 @@ public class IoTDBGroupByMonthIT {
         "02/28/2021:00:00:00", "31.0"
       };
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 GROUP BY ([1612051200000, 1617148800000), 1mo)");
@@ -231,6 +236,7 @@ public class IoTDBGroupByMonthIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 GROUP BY ([now() - 1mo, now()), 1d)");
@@ -244,7 +250,8 @@ public class IoTDBGroupByMonthIT {
             cnt++;
           }
         }
-        Assert.assertEquals(30, cnt);
+        Assert.assertTrue(cnt >= 28);
+        Assert.assertTrue(cnt <= 31);
       }
     } catch (Exception e) {
       e.printStackTrace();

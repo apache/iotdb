@@ -27,11 +27,11 @@
 
 #### 创建存储组
 
-我们可以根据存储模型建立相应的存储组。创建存储组的SQL语句如下所示：
+我们可以根据存储模型建立相应的存储组。创建存储组支持两种SQL语句，如下所示：
 
 ```
 IoTDB > set storage group to root.ln
-IoTDB > set storage group to root.sgcc
+IoTDB > create storage group root.sgcc
 ```
 
 根据以上两条SQL语句，我们可以创建出两个存储组。
@@ -40,6 +40,8 @@ IoTDB > set storage group to root.sgcc
 
 ```
 IoTDB> set storage group to root.ln.wf01
+Msg: 300: root.ln has already been set to storage group.
+IoTDB> create storage group root.ln.wf01
 Msg: 300: root.ln has already been set to storage group.
 ```
 存储组节点名只支持中英文字符、数字、下划线和中划线的组合。
@@ -264,8 +266,8 @@ IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
 +--------------+-----+
 |        column|count|
 +--------------+-----+
-|  root.ln.wf02|    1|
-|  root.ln.wf01|    3|
+|  root.ln.wf02|    2|
+|  root.ln.wf01|    2|
 +--------------+-----+
 Total line number = 2
 It costs 0.003s
@@ -273,7 +275,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 +--------------+-----+
 |        column|count|
 +--------------+-----+
-|  root.ln.wf01|    4|
+|  root.ln.wf01|    2|
 +--------------+-----+
 Total line number = 1
 It costs 0.001s

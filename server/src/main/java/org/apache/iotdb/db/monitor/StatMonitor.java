@@ -164,7 +164,7 @@ public class StatMonitor implements StatMonitorMBean, IService {
           LastQueryExecutor.calculateLastPairForSeriesLocally(
                   Collections.singletonList(monitorSeries),
                   Collections.singletonList(TSDataType.INT64),
-                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, 1)),
+                  new QueryContext(QueryResourceManager.getInstance().assignQueryId(true)),
                   null,
                   Collections.singletonMap(
                       monitorSeries.getDevice(),
@@ -197,7 +197,9 @@ public class StatMonitor implements StatMonitorMBean, IService {
   public void updateStatGlobalValue(int successPointsNum) {
     // 0 -> TOTAL_POINTS, 1 -> REQ_SUCCESS
     globalSeriesValue.set(0, globalSeriesValue.get(0) + successPointsNum);
-    globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    if (successPointsNum != 0) {
+      globalSeriesValue.set(1, globalSeriesValue.get(1) + 1);
+    }
   }
 
   public void updateFailedStatValue() {
