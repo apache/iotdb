@@ -717,10 +717,10 @@ andExpression : predicate (OPERATOR_AND predicate)*
 predicate : (suffixPath | fullPath) REGEXP regularExpression
 regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
 
-Eg. select s1 from root.sg.d1 where s1 regexp '1'
-Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '1' and s2 regexp '2'
-Eg. select * from root.sg.d1 where s1 regexp '1'
-Eg. select * from root.sg.d1 where s1 regexp '1' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
 ```
 
 * Like 语句
@@ -739,6 +739,11 @@ Eg. select s1 from root.sg.d1 where s1 like 'abc'
 Eg. select s1, s2 from root.sg.d1 where s1 like 'abc%'
 Eg. select * from root.sg.d1 where s1 like 'abc_'
 Eg. select * from root.sg.d1 where s1 like 'abc\%'
+这种情况，'\%'表示'%'将会被转义
+结果集将显示为：
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
 ```
 
 ## 数据库管理语句

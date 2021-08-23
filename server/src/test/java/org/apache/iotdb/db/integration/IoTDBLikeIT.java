@@ -86,6 +86,8 @@ public class IoTDBLikeIT {
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466020000,'%123',18.3)");
     sqls.add(
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)");
+    sqls.add(
+        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\',10.3)");
   }
 
   private static void insertData() throws ClassNotFoundException, SQLException {
@@ -110,7 +112,7 @@ public class IoTDBLikeIT {
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals(
-        "1,14,616,626,6116,6%16,8[sS]*,%123,123%", outputResultStr(st0.getResultSet()));
+        "1,14,616,626,6116,6%16,8[sS]*,%123,123%,\\", outputResultStr(st0.getResultSet()));
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '1%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("1,14,123%", outputResultStr(st0.getResultSet()));
@@ -135,6 +137,10 @@ public class IoTDBLikeIT {
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '%\\%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("123%", outputResultStr(st0.getResultSet()));
+    hasResultSet =
+        st0.execute("select status from root.t1.wf01.wt01 where status like '%\\\\\\\\%'");
+    Assert.assertTrue(hasResultSet);
+    Assert.assertEquals("\\", outputResultStr(st0.getResultSet()));
   }
 
   @Test(expected = Exception.class)

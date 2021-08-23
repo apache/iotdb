@@ -51,20 +51,28 @@ public class Like<T extends Comparable<T>> implements Filter {
     this.value = value;
     this.filterType = filterType;
     try {
+      String regexpStr = ".^$*+?{}[]|()";
       StringBuilder patternStrBuild = new StringBuilder();
-      if (!value.startsWith("%")) patternStrBuild.append("^");
-      patternStrBuild.append(
-          this.value
-              // Replace '[' to '\[' to avoid the content become the Regexp rules (example:[\s\S]*)
-              // Replace '\\\\' to '\\' to support match '\'
-              .replace("[", "\\[")
-              .replace("\\\\", "\\")
-              .replaceAll("(?<!\\\\)%", "[\\\\s\\\\S]*")
-              .replaceAll("(?<=\\\\\\\\)%", "[\\\\s\\\\S]*")
-              .replaceAll("(?<!\\\\)_", "[\\\\s\\\\S]{1}"));
-      if (!value.endsWith("%") || (value.endsWith("\\%") && !value.endsWith("\\\\%")))
-        patternStrBuild.append("$");
-      this.pattern = Pattern.compile(patternStrBuild.toString());
+      patternStrBuild.append("^");
+      for (int i = 0; i < value.length(); i++) {
+        String ch = String.valueOf(value.charAt(i));
+        if (regexpStr.contains(ch)) ch = "\\" + value.charAt(i);
+        if ((i == 0)
+            || (i > 0 && !"\\".equals(String.valueOf(value.charAt(i - 1))))
+            || ((i >= 4)
+                && "\\\\\\\\"
+                    .equals(
+                        patternStrBuild.substring(
+                            patternStrBuild.length() - 4, patternStrBuild.length())))) {
+          String replaceStr = ch.replace("%", ".*?").replace("_", ".");
+          patternStrBuild.append(replaceStr);
+        } else {
+          patternStrBuild.append(ch);
+        }
+      }
+      patternStrBuild.append("$");
+      this.pattern = Pattern.compile(patternStrBuild.toString().replace("\\\\", "\\"));
+
     } catch (PatternSyntaxException e) {
       throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
     }
