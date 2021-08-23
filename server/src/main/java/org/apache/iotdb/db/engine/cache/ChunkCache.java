@@ -68,9 +68,6 @@ public class ChunkCache {
                           (int)
                               (RamUsageEstimator.NUM_BYTES_OBJECT_REF
                                   + RamUsageEstimator.sizeOf(chunk));
-                      if (entrySize > 1024 * 1024 * 10) {
-                        logger.warn(String.format("Chunk size is %d over 10M", entrySize));
-                      }
                       return entrySize;
                     })
             .recordStats()
