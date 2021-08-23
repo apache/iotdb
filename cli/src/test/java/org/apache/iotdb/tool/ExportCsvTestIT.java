@@ -63,14 +63,16 @@ public class ExportCsvTestIT extends AbstractScript {
             "-h",
             "127.0.0.1",
             "-p",
-            "6668",
+            "6667",
             "-u",
             "root",
             "-pw",
             "root",
             "-td",
-            "./");
-    testOutput(builder, output);
+            "./",
+            "-q",
+            "select * from root;");
+    testOutput(builder, null);
   }
 
   @Override
@@ -96,7 +98,9 @@ public class ExportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-td",
-            "./");
-    testOutput(builder, output);
+            "./",
+            "-q",
+            "select * from root;");
+    testOutput(builder, null);
   }
 }

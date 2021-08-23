@@ -18,20 +18,19 @@
  */
 package org.apache.iotdb.tool;
 
-import jline.internal.Nullable;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.csv.QuoteMode;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
 import jline.console.ConsoleReader;
+import jline.internal.Nullable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.QuoteMode;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -204,15 +203,15 @@ public abstract class AbstractCsvTool {
    * @param filePath the directory to save the file
    */
   protected static void writeCsvFile(
-          @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
+      @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
       CSVPrinter printer =
-              CSVFormat.DEFAULT
-                      .withFirstRecordAsHeader()
-                      .withEscape('\t')
-                      .withQuoteMode(QuoteMode.NONE)
-                      .print(new PrintWriter(filePath));
-      if (headerNames != null){
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withEscape('\\')
+              .withQuoteMode(QuoteMode.NONE)
+              .print(new PrintWriter(filePath));
+      if (headerNames != null) {
         printer.printRecord(headerNames);
       }
       for (List record : records) {

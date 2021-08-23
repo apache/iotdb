@@ -26,7 +26,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import jline.console.ConsoleReader;
@@ -39,10 +38,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -266,6 +263,11 @@ public class ExportCsv extends AbstractCsvTool {
     return options;
   }
 
+  /**
+   * This method will be called, if the query commands are written in a sql file.
+   * @param filePath
+   * @throws IOException
+   */
   private static void dumpFromSqlFile(String filePath) throws IOException {
     try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
       String sql;
@@ -295,8 +297,15 @@ public class ExportCsv extends AbstractCsvTool {
     }
   }
 
+  /**
+   * Load data from the result of query command.
+   * @param sessionDataSet
+   * @return
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
   public static List<List<Object>> loadDataFromDataSet(SessionDataSet sessionDataSet)
-          throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     List<List<Object>> records = new ArrayList<>();
     List<Object> headers = new ArrayList<>();
     List<String> names = sessionDataSet.getColumnNames();
@@ -318,21 +327,21 @@ public class ExportCsv extends AbstractCsvTool {
       ArrayList<Object> record = new ArrayList<>();
       record.add(timeTrans(rowRecord.getTimestamp()));
       rowRecord
-              .getFields()
-              .forEach(
-                      field -> {
-                        String fieldStringValue = field.getStringValue();
+          .getFields()
+          .forEach(
+              field -> {
+                String fieldStringValue = field.getStringValue();
 
-                        if (!field.getStringValue().equals("null")) {
-                          if (field.getDataType() == TSDataType.TEXT
-                                  && !fieldStringValue.startsWith("root.")) {
-                            fieldStringValue = "\"" + fieldStringValue + "\"";
-                          }
-                          record.add(fieldStringValue);
-                        } else {
-                          record.add("");
-                        }
-                      });
+                if (!field.getStringValue().equals("null")) {
+                  if (field.getDataType() == TSDataType.TEXT
+                      && !fieldStringValue.startsWith("root.")) {
+                    fieldStringValue = "\"" + fieldStringValue + "\"";
+                  }
+                  record.add(fieldStringValue);
+                } else {
+                  record.add("");
+                }
+              });
       records.add(record);
     }
     return records;
@@ -343,14 +352,14 @@ public class ExportCsv extends AbstractCsvTool {
     switch (timeFormat) {
       case "default":
         return RpcUtils.parseLongToDateWithPrecision(
-                DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
+            DateTimeFormatter.ISO_OFFSET_DATE_TIME, time, zoneId, timestampPrecision);
       case "timestamp":
       case "long":
       case "number":
         return String.valueOf(time);
       default:
         return ZonedDateTime.ofInstant(Instant.ofEpochMilli(time), zoneId)
-                .format(DateTimeFormatter.ofPattern(timeFormat));
+            .format(DateTimeFormatter.ofPattern(timeFormat));
     }
   }
 }

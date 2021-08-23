@@ -1,15 +1,16 @@
 package org.apache.iotdb.tool;
 
-import jline.console.ConsoleReader;
-import org.apache.commons.cli.*;
-import org.apache.commons.csv.*;
-import org.apache.commons.lang.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import jline.console.ConsoleReader;
+import org.apache.commons.cli.*;
+import org.apache.commons.csv.*;
+import org.apache.commons.lang.StringUtils;
 import org.apache.thrift.annotation.Nullable;
 
 import java.io.*;
@@ -262,7 +263,7 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("The type of header was defined in the file or schema.");
     }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(1).get("Time"));
+    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get("Time"));
 
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
 
@@ -308,7 +309,11 @@ public class ImportCsv extends AbstractCsvTool {
                 }
                 if (!measurements.isEmpty()) {
                   try {
-                    times.add(timeFormatter.parse(record.get("Time")).getTime());
+                    if (timeFormatter == null) {
+                      times.add(Long.valueOf(record.get("Time")));
+                    } else {
+                      times.add(timeFormatter.parse(record.get("Time")).getTime());
+                    }
                   } catch (ParseException e) {
                     e.printStackTrace();
                   }
@@ -357,7 +362,7 @@ public class ImportCsv extends AbstractCsvTool {
       System.out.println("The type of header was defined in the file or schema.");
     }
 
-    SimpleDateFormat timeFormatter = formatterInit(records.get(1).get("Time"));
+    SimpleDateFormat timeFormatter = formatterInit(records.get(0).get("Time"));
 
     Set<String> measurementNames = headerNameMap.keySet();
 
@@ -444,6 +449,7 @@ public class ImportCsv extends AbstractCsvTool {
     return CSVFormat.EXCEL
         .withFirstRecordAsHeader()
         .withQuote('\'')
+        .withEscape('\\')
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 
@@ -598,7 +604,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          return value.replace("\"", "");
+          return value.substring(1, value.length()-1);
         case BOOLEAN:
           return Boolean.valueOf(value);
         case INT32:
