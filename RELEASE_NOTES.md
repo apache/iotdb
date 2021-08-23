@@ -78,6 +78,7 @@
 * [ISSUE-3545] Fix Time interval value is disorder in group by month
 * [ISSUE-3653] fix Max_time and last return inconsistent result
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
+* [ISSUE-3805] OOM caused by Chunk cache
 *  Fix DataMigrationExample OOM if migrate too many timeseries 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
