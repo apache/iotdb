@@ -558,10 +558,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -696,8 +696,8 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
@@ -1357,10 +1357,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1489,8 +1489,8 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],

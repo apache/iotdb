@@ -102,7 +102,7 @@ public class QueryFileManager {
         queryId,
         (k, v) -> {
           for (TsFileResource tsFile : v) {
-            FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, true);
+            FileReaderManager.getInstance().decreaseFileReaderReference(tsFile, false);
           }
           return null;
         });
