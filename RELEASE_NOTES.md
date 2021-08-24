@@ -73,6 +73,7 @@
 * [IOTDB-1552] Only allow equivalent filter for TEXT data type
 * [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 * [IOTDB-1574] Deleted file handler leak
+* [IOTDB-1580] Error result of order by time desc when enable time partition
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries
