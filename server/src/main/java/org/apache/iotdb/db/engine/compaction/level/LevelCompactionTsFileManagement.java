@@ -43,13 +43,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
@@ -74,10 +74,14 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final boolean enableUnseqCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqCompaction();
 
-  // First map is partition list; Second list is level list; Third list is file list in level;
+  /**
+   * Long -> partition list. Use treemap to keep the small partition in front.
+   * List<SortedSet<TsFileResource>> -> File level list<file list in each level>
+   */
   private final Map<Long, List<SortedSet<TsFileResource>>> sequenceTsFileResources =
-      new HashMap<>();
-  private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new HashMap<>();
+      new TreeMap<>();
+
+  private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new TreeMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
   private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
