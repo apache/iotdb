@@ -1,24 +1,3 @@
-<!--
-
-    Licensed to the Apache Software Foundation (ASF) under one
-    or more contributor license agreements.  See the NOTICE file
-    distributed with this work for additional information
-    regarding copyright ownership.  The ASF licenses this file
-    to you under the Apache License, Version 2.0 (the
-    "License"); you may not use this file except in compliance
-    with the License.  You may obtain a copy of the License at
-    
-        http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing,
-    software distributed under the License is distributed on an
-    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, either express or implied.  See the License for the
-    specific language governing permissions and limitations
-    under the License.
-
--->
-
 # CSV Tool
 
 The CSV tool can help you import data in CSV format to IoTDB or export data from IoTDB to a CSV file.
@@ -38,18 +17,18 @@ The CSV tool can help you import data in CSV format to IoTDB or export data from
 Description:
 
 * `-datatype`:
-    - true (by default): print the data type of timesries in the head line of CSV file. i.e., `Time, root.sg1.d1.s1(INT32), root.sg1.d1.s2(INT64)`.
-    - false: only print the timeseries name in the head line of the CSV file. i.e., `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
+  - true (by default): print the data type of timesries in the head line of CSV file. i.e., `Time, root.sg1.d1.s1(INT32), root.sg1.d1.s2(INT64)`.
+  - false: only print the timeseries name in the head line of the CSV file. i.e., `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
 * `-q <query command>`:
-    - specifying a query command that you want to execute
-    - example: `select * from root limit 100`, or `select * from root limit 100 align by device`
+  - specifying a query command that you want to execute
+  - example: `select * from root limit 100`, or `select * from root limit 100 align by device`
 * `-s <sql file>`:
-    - specifying a SQL file which can consist of more than one sql. If there are multiple SQLs in one SQL file, the SQLs should be separated by line breaks. And, for each SQL, a output CSV file will be generated.
+  - specifying a SQL file which can consist of more than one sql. If there are multiple SQLs in one SQL file, the SQLs should be separated by line breaks. And, for each SQL, a output CSV file will be generated.
 * `-td <directory>`:
-    - specifying  the directory that the data will be exported
+  - specifying  the directory that the data will be exported
 * `-tf <time-format>`:
-    - specifying a time format that you want. The time format have to obey [ISO 8601](https://calendars.wikia.org/wiki/ISO_8601) standard. If you want to save the time as the timestamp, then setting `-tf timestamp`
-    - example: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
+  - specifying a time format that you want. The time format have to obey [ISO 8601](https://calendars.wikia.org/wiki/ISO_8601) standard. If you want to save the time as the timestamp, then setting `-tf timestamp`
+  - example: `-tf yyyy-MM-dd\ HH:mm:ss` or `-tf timestamp`
 
 More, if you don't use one of `-s` and `-q`, you need to enter some queries after running the export script. The results of the different query will be saved to different CSV files.
 
@@ -181,31 +160,25 @@ Time,Device,str(TEXT),int(INT32)
 Description:
 
 * `-f`:
-    - the CSV file that you want to import
-    - example: `-f filename.csv`
+  - the CSV file that you want to import
+  - example: `-f filename.csv`
 
 * `-fd`:
-    - specifying a directory to save files which save failed lines. If you don't use this parameter, the failed file will be saved at original directory, and the filename will be the source filename with suffix `.failed`.
-    - example: `-fd ./failed/`
+  - specifying a directory to save files which save failed lines. If you don't use this parameter, the failed file will be saved at original directory, and the filename will be the source filename with suffix `.failed`.
+  - example: `-fd ./failed/`
 
 ### Example
 
 ```sh
 # Unix/OS X
-> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd failed-filename.csv
+> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 # or
-> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd failed-filename.csv -policy 2
-# or
-> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd failed-filename.csv -policy 2 
--table-aligned device
+> tools/import-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd ./failed
 
 # Windows
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 # or
-> tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd failed-filename.csv -policy 2
-# or
-> tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd failed-filename.csv -policy 2 
--table-aligned device
+> tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv -fd .\failed
 ```
 
 ### Note
