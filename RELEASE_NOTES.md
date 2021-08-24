@@ -37,6 +37,7 @@
 
 ## Improvements
 * [IOTDB-1566] Do not restrict concurrent write partitions
+* [IOTDB-1585] ModificationFile‘s write interface blocking
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
