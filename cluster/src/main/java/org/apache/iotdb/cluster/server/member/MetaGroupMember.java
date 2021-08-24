@@ -498,23 +498,22 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void refreshClientOnceSync(Node receiver) {
-    RaftService.Client client;
+    RaftService.Client client = null;
     try {
       client =
           getClientProvider()
               .getSyncDataClientForRefresh(receiver, RaftServer.getWriteOperationTimeoutMS());
-    } catch (TException e) {
-      return;
-    }
-    try {
       RefreshReuqest req = new RefreshReuqest();
       client.refreshConnection(req);
+    } catch (IOException ignored) {
     } catch (TException e) {
       logger.warn("encounter refreshing client timeout, throw broken connection", e);
       // the connection may be broken, close it to avoid it being reused
       client.getInputProtocol().getTransport().close();
     } finally {
-      ClientUtils.putBackSyncClient(client);
+      if (client != null) {
+        ClientUtils.putBackSyncClient(client);
+      }
     }
   }
 
@@ -536,7 +535,7 @@ public class MetaGroupMember extends RaftMember {
 
   private void generateNodeReport() {
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         NodeReport report = genNodeReport();
         logger.debug(report.toString());
       }

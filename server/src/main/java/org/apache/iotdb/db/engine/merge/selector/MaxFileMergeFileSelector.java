@@ -155,7 +155,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
       }
-      boolean isClosed = checkClosed(unseqFile);
+      boolean isClosed = checkChoosable(unseqFile);
       if (!isClosed) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
@@ -206,18 +206,19 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     return false;
   }
 
-  private boolean checkClosed(TsFileResource unseqFile) {
-    boolean isClosed = unseqFile.isClosed();
-    if (!isClosed) {
+  private boolean checkChoosable(TsFileResource unseqFile) {
+    boolean choosable = unseqFile.isClosed() && !unseqFile.isMerging();
+    if (!choosable) {
       return false;
     }
     for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (!resource.getSeqFiles().get(seqIdx).isClosed()) {
-        isClosed = false;
+      if (!resource.getSeqFiles().get(seqIdx).isClosed()
+          || resource.getSeqFiles().get(seqIdx).isMerging()) {
+        choosable = false;
         break;
       }
     }
-    return isClosed;
+    return choosable;
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {

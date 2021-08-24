@@ -522,7 +522,7 @@ public class TsFileResource {
     this.deleted = deleted;
   }
 
-  boolean isMerging() {
+  public boolean isMerging() {
     return isMerging;
   }
 

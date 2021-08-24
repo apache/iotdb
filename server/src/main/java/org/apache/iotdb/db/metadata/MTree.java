@@ -73,6 +73,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
@@ -216,7 +217,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path.getFullPath());
+    checkTimeseries(path);
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();
@@ -283,10 +284,26 @@ public class MTree implements Serializable {
     }
   }
 
-  private void checkTimeseries(String timeseries) throws IllegalPathException {
-    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries).matches()) {
+  private void checkTimeseries(PartialPath timeseries) throws MetadataException {
+    if (!IoTDBConfig.NODE_PATTERN.matcher(timeseries.getFullPath()).matches()) {
       throw new IllegalPathException(
           String.format("The timeseries name contains unsupported character. %s", timeseries));
+    }
+
+    // filter special id, including "time" and "timeseries"
+    for (String nodeName : timeseries.getNodes()) {
+      nodeName = nodeName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(nodeName) || "timestamp".equals(nodeName)) {
+        throw new IllegalPathException(timeseries.getFullPath());
+      }
+    }
+
+    String measurementId = timeseries.getMeasurement();
+    // check measurementId syntax
+    // only measurementId may be named separately from fullPath by user via API
+    if (measurementId.contains(".")
+        && !(measurementId.startsWith("\"") && measurementId.endsWith("\""))) {
+      throw new MetadataException(String.format("%s is an illegal measurementId", measurementId));
     }
   }
 
@@ -415,18 +432,23 @@ public class MTree implements Serializable {
       cur = cur.getChild(nodeNames[i]);
       i++;
     }
-    if (cur.hasChild(nodeNames[i])) {
-      // node b has child sg
-      if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
-        throw new StorageGroupAlreadySetException(path.getFullPath());
+
+    // synchronize check and add, we need addChild become atomic operation
+    // only write on mtree will be synchronized
+    synchronized (this) {
+      if (cur.hasChild(nodeNames[i])) {
+        // node b has child sg
+        if (cur.getChild(nodeNames[i]) instanceof StorageGroupMNode) {
+          throw new StorageGroupAlreadySetException(path.getFullPath());
+        } else {
+          throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        }
       } else {
-        throw new StorageGroupAlreadySetException(path.getFullPath(), true);
+        StorageGroupMNode storageGroupMNode =
+            new StorageGroupMNode(
+                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+        cur.addChild(nodeNames[i], storageGroupMNode);
       }
-    } else {
-      StorageGroupMNode storageGroupMNode =
-          new StorageGroupMNode(
-              cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      cur.addChild(nodeNames[i], storageGroupMNode);
     }
   }
 
@@ -1705,6 +1727,42 @@ public class MTree implements Serializable {
         nodeStack.push(child);
         depthStack.push(depth);
       }
+    }
+  }
+
+  /**
+   * check whether there is template on given path and the subTree has template return true,
+   * otherwise false
+   */
+  void checkTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    MNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return;
+    }
+    if (cur.getDeviceTemplate() != null) {
+      throw new MetadataException("Template already exists on " + cur.getFullPath());
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+    }
+
+    checkTemplateOnSubtree(cur);
+  }
+
+  // traverse  all the  descendant of the given path node
+  private void checkTemplateOnSubtree(MNode node) throws MetadataException {
+    for (MNode child : node.getChildren().values()) {
+      if (child.getDeviceTemplate() != null) {
+        throw new MetadataException("Template already exists on " + child.getFullPath());
+      }
+      checkTemplateOnSubtree(child);
     }
   }
 }

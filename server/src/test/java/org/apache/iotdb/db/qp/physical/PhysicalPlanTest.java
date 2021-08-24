@@ -990,34 +990,58 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true", filePath);
+    metadata = String.format("load \"%s\" autoregister=true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" false", filePath);
+    metadata = String.format("load \"%s\" autoregister=false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
 
-    metadata = String.format("load \"%s\" true 3", filePath);
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, operatorType=LOAD_FILES}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=true, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=false", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=false, "
+                + "operatorType=LOAD_FILES}",
+            filePath),
+        plan.toString());
+
+    metadata = String.format("load \"%s\" autoregister=true,sglevel=3,verify=true", filePath);
+    processor = new Planner();
+    plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals(
+        String.format(
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=3, verify=true, "
+                + "operatorType=LOAD_FILES}",
             filePath),
         plan.toString());
   }
@@ -1030,7 +1054,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, operatorType=REMOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=REMOVE_FILE}",
             filePath),
         plan.toString());
   }
@@ -1044,7 +1068,7 @@ public class PhysicalPlanTest {
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(
         String.format(
-            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, operatorType=MOVE_FILE}",
+            "OperateFilePlan{file=%s, targetDir=%s, autoCreateSchema=false, sgLevel=0, verify=false, operatorType=MOVE_FILE}",
             filePath, targetDir),
         plan.toString());
   }
@@ -1232,5 +1256,22 @@ public class PhysicalPlanTest {
     String sqlStr = "CREATE STORAGE GROUP root.sg";
     SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals("SetStorageGroup{root.sg}", plan.toString());
+  }
+
+  @Test
+  public void testLikeQuery() throws QueryProcessException, MetadataException {
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d5.s1"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 LIKE 'string*'";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
+    IExpression expect =
+        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
+    assertEquals(expect.toString(), queryFilter.toString());
   }
 }

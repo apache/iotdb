@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -78,6 +77,7 @@ public class SessionManager {
 
   public long requestSessionId(String username, String zoneId) {
     long sessionId = sessionIdGenerator.incrementAndGet();
+
     currSessionId.set(sessionId);
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
@@ -88,10 +88,15 @@ public class SessionManager {
   public boolean releaseSessionResource(long sessionId) {
     sessionIdToZoneId.remove(sessionId);
 
-    for (long statementId :
-        sessionIdToStatementId.getOrDefault(sessionId, Collections.emptySet())) {
-      for (long queryId : statementIdToQueryId.getOrDefault(statementId, Collections.emptySet())) {
-        releaseQueryResourceNoExceptions(queryId);
+    Set<Long> statementIdSet = sessionIdToStatementId.remove(sessionId);
+    if (statementIdSet != null) {
+      for (Long statementId : statementIdSet) {
+        Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
+        if (queryIdSet != null) {
+          for (Long queryId : queryIdSet) {
+            releaseQueryResourceNoExceptions(queryId);
+          }
+        }
       }
     }
 
@@ -109,7 +114,7 @@ public class SessionManager {
   public void closeStatement(long sessionId, long statementId) {
     Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
     if (queryIdSet != null) {
-      for (long queryId : queryIdSet) {
+      for (Long queryId : queryIdSet) {
         releaseQueryResourceNoExceptions(queryId);
       }
     }
@@ -119,18 +124,16 @@ public class SessionManager {
     }
   }
 
-  public long requestQueryId(
-      Long statementId, boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    long queryId = requestQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(Long statementId, boolean isDataQuery) {
+    long queryId = requestQueryId(isDataQuery);
     statementIdToQueryId
         .computeIfAbsent(statementId, k -> new CopyOnWriteArraySet<>())
         .add(queryId);
     return queryId;
   }
 
-  public long requestQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
-    return QueryResourceManager.getInstance()
-        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
+  public long requestQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
   public void releaseQueryResource(long queryId) throws StorageEngineException {

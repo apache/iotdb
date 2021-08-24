@@ -683,6 +683,23 @@ E.g. select * as temperature from root.sg.d1
 这种情况如果 * 匹配多个传感器，则无法正常显示。
 
 ```
+* Like 语句
+
+模糊查询，仅支持数据类型为 TEXT，匹配时为 Java 标准库风格的正则表达式
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE stringLiteral
+stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+
+Eg. select s1 from root.sg.d1 where s1 like 'Regex'
+Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
+```
 
 ## 数据库管理语句
 
@@ -1011,6 +1028,13 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+## 设置系统为只读/可写入模式
+
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## 标识符列表
 

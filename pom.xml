@@ -632,6 +632,7 @@
                             </importOrder>
                             <removeUnusedImports/>
                         </java>
+                        <lineEndings>UNIX</lineEndings>
                     </configuration>
                     <executions>
                         <execution>

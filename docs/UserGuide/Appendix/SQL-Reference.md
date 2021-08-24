@@ -694,6 +694,24 @@ In this situation, it will throws an exception if * corresponds to multiple sens
 
 ```
 
+* Like Statement
+
+Fuzzy query only supports regular expressions with data type of text and Java standard library style when matching
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE stringLiteral
+stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+
+Eg. select s1 from root.sg.d1 where s1 like 'Regex'
+Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex'
+Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
+```
+
 ## Database Management Statement
 
 * Create User
@@ -1043,6 +1061,14 @@ E.g. KILL QUERY
 E.g. KILL QUERY 2
 ```
 
+## SET STSTEM TO READONLY / WRITABLE
+
+Set IoTDB system to read-only or writable mode.
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
+```
 
 ## Identifiers
 

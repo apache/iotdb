@@ -111,9 +111,10 @@ public class IoTDBUDTFHybridQueryIT {
             "select count(*), counter(s1, \"%s\"=\"%s\") from root.vehicle.d1",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
@@ -131,9 +132,10 @@ public class IoTDBUDTFHybridQueryIT {
             "select temperature, counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
@@ -149,9 +151,10 @@ public class IoTDBUDTFHybridQueryIT {
             "select last counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {
@@ -166,9 +169,10 @@ public class IoTDBUDTFHybridQueryIT {
             "select adder(temperature), counter(temperature, \"%s\"=\"%s\") from root.sgcc.wf03.wt01 align by device",
             ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
 
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
     } catch (SQLException throwable) {

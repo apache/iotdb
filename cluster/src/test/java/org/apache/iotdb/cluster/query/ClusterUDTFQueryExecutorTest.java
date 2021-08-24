@@ -62,7 +62,7 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       executor = new ClusterUDTFQueryExecutor(udtfPlan, testMetaMember);
       QueryDataSet queryDataSet = executor.executeWithoutValueFilterAlignByTime(context);
@@ -82,7 +82,7 @@ public class ClusterUDTFQueryExecutorTest extends BaseQueryTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault(), 1024);
     UDTFPlan udtfPlan = (UDTFPlan) plan;
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       executor = new ClusterUDTFQueryExecutor(udtfPlan, testMetaMember);
       QueryDataSet queryDataSet = executor.executeWithoutValueFilterAlignByTime(context);

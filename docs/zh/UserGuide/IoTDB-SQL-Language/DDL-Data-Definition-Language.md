@@ -266,8 +266,8 @@ IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
 +--------------+-----+
 |        column|count|
 +--------------+-----+
-|  root.ln.wf02|    1|
-|  root.ln.wf01|    3|
+|  root.ln.wf02|    2|
+|  root.ln.wf01|    2|
 +--------------+-----+
 Total line number = 2
 It costs 0.003s
@@ -275,7 +275,7 @@ IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
 +--------------+-----+
 |        column|count|
 +--------------+-----+
-|  root.ln.wf01|    4|
+|  root.ln.wf01|    2|
 +--------------+-----+
 Total line number = 1
 It costs 0.001s

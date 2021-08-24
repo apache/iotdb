@@ -36,7 +36,7 @@ public class SimpleFileVersionController implements VersionController {
   public static final String UPGRADE_DIR = "upgrade";
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
-   * is set to currVersion. When recovering from file, the version number is automatically increased
+   * is set to currVersion. When recovered from file, the version number is automatically increased
    * by saveInterval to avoid conflicts.
    */
   private static long saveInterval = 100;

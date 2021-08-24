@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -96,12 +97,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -208,8 +209,8 @@ public class MManager {
 
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread =
-          Executors.newSingleThreadScheduledExecutor(
-              r -> new Thread(r, "timedCreateMTreeSnapshotThread"));
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedCreateMTreeSnapshotThread");
+
       timedCreateMTreeSnapshotThread.scheduleAtFixedRate(
           this::checkMTreeModified,
           MTREE_SNAPSHOT_THREAD_CHECK_TIME,
@@ -286,18 +287,22 @@ public class MManager {
 
   private int applyMlog(MLogReader mLogReader) {
     int idx = 0;
+    PhysicalPlan plan;
     while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
       try {
         plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        operation(plan);
         idx++;
       } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
+        logger.error("Parse mlog error at lineNumber {} because:", idx, e);
+        break;
+      }
+      if (plan == null) {
+        continue;
+      }
+      try {
+        operation(plan);
+      } catch (MetadataException | IOException e) {
+        logger.error("Can not operate cmd {} for err:", plan.getOperatorType(), e);
       }
     }
     return idx;
@@ -1093,6 +1098,11 @@ public class MManager {
       }
       return node;
     } catch (StorageGroupAlreadySetException e) {
+      if (e.isHasChild()) {
+        // if setStorageGroup failure is because of child, the deviceNode should not be created.
+        // Timeseries can't be create under a deviceNode without storageGroup.
+        throw e;
+      }
       // ignore set storage group concurrently
       node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       if (!(node.left instanceof StorageGroupMNode)) {
@@ -2034,7 +2044,10 @@ public class MManager {
 
   public void createDeviceTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+      checkTemplateSchemaNames(plan.getSchemaNames());
+
       Template template = new Template(plan);
+
       if (templateMap.putIfAbsent(plan.getName(), template) != null) {
         // already have template
         throw new DuplicatedTemplateException(plan.getName());
@@ -2049,6 +2062,20 @@ public class MManager {
     }
   }
 
+  private void checkTemplateSchemaNames(List<String> schemaNames) throws MetadataException {
+    // check schema name.
+    String processedName;
+    for (String schemaName : schemaNames) {
+      processedName = schemaName.trim().toLowerCase(Locale.ENGLISH);
+      if ("time".equals(processedName)
+          || "timestamp".equals(processedName)
+          || (schemaName.contains(".")
+              && !(schemaName.startsWith("\"") && schemaName.endsWith("\"")))) {
+        throw new MetadataException(String.format("%s is an illegal schema name", schemaName));
+      }
+    }
+  }
+
   public void setDeviceTemplate(SetDeviceTemplatePlan plan) throws MetadataException {
     try {
       Template template = templateMap.get(plan.getTemplateName());
@@ -2056,11 +2083,12 @@ public class MManager {
       if (template == null) {
         throw new UndefinedTemplateException(plan.getTemplateName());
       }
-
+      PartialPath path = new PartialPath(plan.getPrefixPath());
       // get mnode and update template should be atomic
       synchronized (this) {
-        Pair<MNode, Template> node =
-            getDeviceNodeWithAutoCreate(new PartialPath(plan.getPrefixPath()));
+        mtree.checkTemplateOnPath(path);
+
+        Pair<MNode, Template> node = getDeviceNodeWithAutoCreate(path);
 
         if (node.left.getDeviceTemplate() != null) {
           if (node.left.getDeviceTemplate().equals(template)) {
@@ -2068,10 +2096,6 @@ public class MManager {
           } else {
             throw new MetadataException("Specified node already has template");
           }
-        }
-
-        if (!isTemplateCompatible(node.right, template)) {
-          throw new MetadataException("Incompatible template");
         }
 
         node.left.setDeviceTemplate(template);
@@ -2086,34 +2110,20 @@ public class MManager {
     }
   }
 
-  public boolean isTemplateCompatible(Template upper, Template current) {
-    if (upper == null) {
-      return true;
-    }
-
-    Map<String, MeasurementSchema> upperMap = new HashMap<>(upper.getSchemaMap());
-    Map<String, MeasurementSchema> currentMap = new HashMap<>(current.getSchemaMap());
-
-    for (String name : currentMap.keySet()) {
-      MeasurementSchema upperSchema = upperMap.remove(name);
-      if (upperSchema != null) {
-        MeasurementSchema currentSchema = currentMap.get(name);
-        if (!upperSchema.equals(currentSchema)) {
-          return false;
-        }
-      }
-    }
-
-    // current template must contains all measurements of upper template
-    return upperMap.isEmpty();
-  }
-
   public void autoCreateDeviceMNode(AutoCreateDeviceMNodePlan plan) throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath(), config.getDefaultStorageGroupLevel());
   }
 
   private void setUsingDeviceTemplate(SetUsingDeviceTemplatePlan plan) throws MetadataException {
-    getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    try {
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    } catch (PathNotExistException e) {
+      // the order of SetUsingDeviceTemplatePlan and AutoCreateDeviceMNodePlan cannot be guaranteed
+      // during writing currently, so we need a auto-create mechanism here
+      mtree.getDeviceNodeWithAutoCreating(
+          plan.getPrefixPath(), config.getDefaultStorageGroupLevel());
+      getDeviceNode(plan.getPrefixPath()).setUseTemplate(true);
+    }
   }
 
   public long getTotalSeriesNumber() {

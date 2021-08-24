@@ -37,6 +37,7 @@ public class IoTDBConstant {
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+  public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
   public static final long GB = 1024 * 1024 * 1024L;

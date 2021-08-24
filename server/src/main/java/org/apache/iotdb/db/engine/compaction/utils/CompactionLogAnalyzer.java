@@ -39,8 +39,8 @@ public class CompactionLogAnalyzer {
   public static final String STR_DEVICE_OFFSET_SEPARATOR = " ";
 
   private File logFile;
-  private Set<String> deviceSet = new HashSet<>();
-  private long offset = 0;
+  private List<String> deviceList = new ArrayList<>();
+  private List<Long> offsets = new ArrayList<>();
   private List<String> sourceFiles = new ArrayList<>();
   private String targetFile = null;
   private boolean isSeq = false;
@@ -78,8 +78,8 @@ public class CompactionLogAnalyzer {
             break;
           default:
             int separatorIndex = currLine.lastIndexOf(STR_DEVICE_OFFSET_SEPARATOR);
-            deviceSet.add(currLine.substring(0, separatorIndex));
-            offset = Long.parseLong(currLine.substring(separatorIndex + 1));
+            deviceList.add(currLine.substring(0, separatorIndex));
+            offsets.add(Long.parseLong(currLine.substring(separatorIndex + 1)));
             break;
         }
       }
@@ -87,11 +87,19 @@ public class CompactionLogAnalyzer {
   }
 
   public Set<String> getDeviceSet() {
-    return deviceSet;
+    if (offsets.size() < 2) {
+      return new HashSet<>();
+    } else {
+      return new HashSet<>(deviceList.subList(0, deviceList.size() - 1));
+    }
   }
 
   public long getOffset() {
-    return offset;
+    if (offsets.size() > 2) {
+      return offsets.get(offsets.size() - 2);
+    } else {
+      return 0;
+    }
   }
 
   public List<String> getSourceFiles() {

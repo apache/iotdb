@@ -28,12 +28,15 @@ public class LoadFilesOperator extends RootOperator {
   private File file;
   private boolean autoCreateSchema;
   private int sgLevel;
+  private boolean verifyMetadata;
 
-  public LoadFilesOperator(File file, boolean autoCreateSchema, int sgLevel) {
+  public LoadFilesOperator(
+      File file, boolean autoCreateSchema, int sgLevel, boolean verifyMetadata) {
     super(SQLConstant.TOK_LOAD_FILES);
     this.file = file;
     this.autoCreateSchema = autoCreateSchema;
     this.sgLevel = sgLevel;
+    this.verifyMetadata = verifyMetadata;
     this.operatorType = OperatorType.LOAD_FILES;
   }
 
@@ -47,5 +50,21 @@ public class LoadFilesOperator extends RootOperator {
 
   public int getSgLevel() {
     return sgLevel;
+  }
+
+  public boolean isVerifyMetadata() {
+    return verifyMetadata;
+  }
+
+  public void setAutoCreateSchema(boolean autoCreateSchema) {
+    this.autoCreateSchema = autoCreateSchema;
+  }
+
+  public void setSgLevel(int sgLevel) {
+    this.sgLevel = sgLevel;
+  }
+
+  public void setVerifyMetadata(boolean verifyMetadata) {
+    this.verifyMetadata = verifyMetadata;
   }
 }

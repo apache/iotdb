@@ -225,9 +225,8 @@ public class IoTDBAggregationSmallDataIT {
         fail();
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(
-            e.toString()
-                .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+            e.toString().contains("500: [INTERNAL_SERVER_ERROR] Exception occurred while executing")
+                && e.toString().contains("Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =

@@ -1323,7 +1323,6 @@ public abstract class RaftMember {
       if (header != null) {
         req.setHeader(header);
       }
-
       TSStatus tsStatus = client.executeNonQueryPlan(req);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
