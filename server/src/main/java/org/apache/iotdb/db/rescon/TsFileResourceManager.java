@@ -10,6 +10,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
@@ -22,14 +23,6 @@ public class TsFileResourceManager {
   /** threshold total memory for all TimeIndex */
   private static double TIME_INDEX_MEMORY_THRESHOLD =
       CONFIG.getAllocateMemoryForRead() * CONFIG.getTimeIndexMemoryProportion();
-
-  /** thread number for timeIndex degradation */
-  private static int TIME_INDEX_DEGRADE_THREAD = CONFIG.getTimeIndexDegradeThread();
-
-  /** thread pool to implement the degrade task */
-  private ExecutorService degradeThreadPool =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          TIME_INDEX_DEGRADE_THREAD, "TimeIndex_Degrade_Pool");
 
   /** store the sealed TsFileResource, sorted by priority of TimeIndex */
   private PriorityQueue<TsFileResource> sealedTsFileResources =
@@ -44,6 +37,12 @@ public class TsFileResourceManager {
             CONFIG.getAllocateMemoryForRead() * timeIndexMemoryProportion;
   }
 
+  @TestOnly
+  public static double getTimeIndexMemoryThreshold() {
+    return TIME_INDEX_MEMORY_THRESHOLD;
+
+  }
+
   /**
    * add the closed TsFileResource into priorityQueue and increase memory cost of timeIndex, once
    * memory cost is larger than threshold, degradation is triggered.
@@ -51,7 +50,7 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     sealedTsFileResources.add(tsFileResource);
     totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-    System.out.println("memory used " + totalTimeIndexMemCost + " " + TIME_INDEX_MEMORY_THRESHOLD);
+//    System.out.println("memory used in manager " + totalTimeIndexMemCost + " " + TIME_INDEX_MEMORY_THRESHOLD);
     chooseTsFileResourceToDegrade();
   }
 
@@ -77,6 +76,14 @@ public class TsFileResourceManager {
       long memoryReduce = tsFileResource.releaseMemory();
       releaseTimeIndexMemCost(memoryReduce);
     }
+  }
+
+  /** function for clearing TsFileManager */
+  public synchronized void clear() {
+    if (this.sealedTsFileResources != null) {
+      this.sealedTsFileResources.clear();
+    }
+    this.totalTimeIndexMemCost = 0;
   }
 
   private TsFileResourceManager() {}

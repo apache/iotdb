@@ -257,9 +257,6 @@ public class IoTDBConfig {
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can be used when timeIndex degrades . When <= 0, set to 1. */
-  private int timeIndexDegradeThread = 1;
-
   /**
    * Max number of window evaluation tasks that can be pending for execution. When <= 0, the value
    * is 64 by default.
@@ -1138,14 +1135,6 @@ public class IoTDBConfig {
 
   public void setConcurrentWindowEvaluationThread(int concurrentWindowEvaluationThread) {
     this.concurrentWindowEvaluationThread = concurrentWindowEvaluationThread;
-  }
-
-  public int getTimeIndexDegradeThread() {
-    return timeIndexDegradeThread;
-  }
-
-  public void setTimeIndexDegradeThread(int timeIndexDegradeThread) {
-    this.timeIndexDegradeThread = timeIndexDegradeThread;
   }
 
   public int getMaxPendingWindowEvaluationTasks() {

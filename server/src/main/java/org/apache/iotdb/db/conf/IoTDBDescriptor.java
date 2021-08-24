@@ -695,15 +695,6 @@ public class IoTDBDescriptor {
         conf.setConcurrentWindowEvaluationThread(Runtime.getRuntime().availableProcessors());
       }
 
-      conf.setTimeIndexDegradeThread(
-          Integer.parseInt(
-              properties.getProperty(
-                  "timeIndex_degrade_thread_num",
-                  Integer.toString(conf.getTimeIndexDegradeThread()))));
-      if (conf.getTimeIndexDegradeThread() <= 0) {
-        conf.setTimeIndexDegradeThread(1);
-      }
-
       conf.setMaxPendingWindowEvaluationTasks(
           Integer.parseInt(
               properties.getProperty(

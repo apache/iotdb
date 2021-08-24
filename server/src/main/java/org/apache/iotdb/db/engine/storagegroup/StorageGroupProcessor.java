@@ -63,6 +63,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -228,6 +229,8 @@ public class StorageGroupProcessor {
 
   /** manage seqFileList and unSeqFileList */
   private TsFileManagement tsFileManagement;
+  /** manage tsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
   /**
    * time partition id -> version controller which assigns a version for each MemTable and
    * deletion/update such that after they are persisted, the order of insertions, deletions and
@@ -753,6 +756,7 @@ public class StorageGroupProcessor {
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
+        tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor;
