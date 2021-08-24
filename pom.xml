@@ -106,6 +106,7 @@
         <module>compile-tools</module>
         <module>client-cpp</module>
         <module>metrics</module>
+        <module>integration</module>
     </modules>
     <!-- Properties Management -->
     <properties>
