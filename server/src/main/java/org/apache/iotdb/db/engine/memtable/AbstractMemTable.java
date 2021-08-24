@@ -71,6 +71,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
+  private long createdTime = System.currentTimeMillis();
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -358,5 +360,10 @@ public abstract class AbstractMemTable implements IMemTable {
   void updatePlanIndexes(long index) {
     maxPlanIndex = Math.max(index, maxPlanIndex);
     minPlanIndex = Math.min(index, minPlanIndex);
+  }
+
+  @Override
+  public long getCreatedTime() {
+    return createdTime;
   }
 }

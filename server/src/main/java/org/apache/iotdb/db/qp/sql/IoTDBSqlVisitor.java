@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.api.TriggerEvent;
 import org.apache.iotdb.db.exception.index.UnsupportedIndexTypeException;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -155,6 +157,7 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListRolePrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ListUserPrivilegesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadConfigurationStatementContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadFilesContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.LoadStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.MergeContext;
@@ -179,6 +182,8 @@ import org.apache.iotdb.db.qp.sql.SqlBaseParser.RootOrIdContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SelectStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SequenceClauseContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetStorageGroupContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToReadOnlyContext;
+import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetSystemToWritableContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.sql.SqlBaseParser.ShowChildNodesContext;
@@ -256,6 +261,11 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
+
+  private static final String DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG =
+      "For delete statement, where clause can only contain time expressions, "
+          + "value filter is not currently supported.";
+
   private ZoneId zoneId;
   QueryOperator queryOp;
 
@@ -917,6 +927,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   @Override
+  public Operator visitSetSystemToReadOnly(SetSystemToReadOnlyContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, true);
+  }
+
+  @Override
+  public Operator visitSetSystemToWritable(SetSystemToWritableContext ctx) {
+    return new SetSystemModeOperator(SQLConstant.TOK_SET_SYSTEM_MODE, false);
+  }
+
+  @Override
   public Operator visitCountTimeseries(CountTimeseriesContext ctx) {
     PrefixPathContext pathContext = ctx.prefixPath();
     PartialPath path =
@@ -970,24 +990,16 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
   @Override
   public Operator visitLoadFiles(LoadFilesContext ctx) {
-    if (ctx.autoCreateSchema() != null) {
-      if (ctx.autoCreateSchema().INT() != null) {
-        return new LoadFilesOperator(
+    LoadFilesOperator loadFilesOperator =
+        new LoadFilesOperator(
             new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            Integer.parseInt(ctx.autoCreateSchema().INT().getText()));
-      } else {
-        return new LoadFilesOperator(
-            new File(removeStringQuote(ctx.stringLiteral().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
-      }
-    } else {
-      return new LoadFilesOperator(
-          new File(removeStringQuote(ctx.stringLiteral().getText())),
-          true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+            true,
+            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel(),
+            true);
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFilesOperator, ctx.loadFilesClause());
     }
+    return loadFilesOperator;
   }
 
   @Override
@@ -1568,9 +1580,10 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval));
       }
-    } else if (ctx.valueClause() != null) {
-      if (ctx.valueClause().constant() != null) {
-        fillTypes.put(dataType, new ValueFill(ctx.valueClause().constant().getText(), dataType));
+    } else if (ctx.specificValueClause() != null) {
+      if (ctx.specificValueClause().constant() != null) {
+        fillTypes.put(
+            dataType, new ValueFill(ctx.specificValueClause().constant().getText(), dataType));
       } else {
         throw new SQLParserException("fill value cannot be null");
       }
@@ -1713,6 +1726,12 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
   }
 
   private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {
+
+    if (filterOperator.getSinglePath() != null
+        && !IoTDBConstant.TIME.equals(filterOperator.getSinglePath().getMeasurement())) {
+      throw new SQLParserException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+    }
+
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     switch (filterOperator.getTokenIntType()) {
       case SQLConstant.LESSTHAN:
@@ -2157,6 +2176,31 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
                   + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
                   + "refer to user document for more info.",
               timestampStr));
+    }
+  }
+
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param operator the result operator, setting by clause context
+   * @param ctx context of property statement
+   */
+  private void parseLoadFiles(LoadFilesOperator operator, LoadFilesClauseContext ctx) {
+    if (ctx.AUTOREGISTER() != null) {
+      operator.setAutoCreateSchema(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else if (ctx.SGLEVEL() != null) {
+      operator.setSgLevel(Integer.parseInt(ctx.INT().getText()));
+    } else if (ctx.VERIFY() != null) {
+      operator.setVerifyMetadata(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(operator, ctx.loadFilesClause());
     }
   }
 }

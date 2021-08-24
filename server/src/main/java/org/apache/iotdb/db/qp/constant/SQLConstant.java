@@ -180,6 +180,8 @@ public class SQLConstant {
 
   public static final int TOK_LOCK_INFO = 105;
 
+  public static final int TOK_SET_SYSTEM_MODE = 106;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

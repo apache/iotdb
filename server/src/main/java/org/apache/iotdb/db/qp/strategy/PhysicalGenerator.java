@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildNodesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
@@ -110,6 +111,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildNodesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -260,6 +262,9 @@ public class PhysicalGenerator {
       case TRACING:
         TracingOperator tracingOperator = (TracingOperator) operator;
         return new TracingPlan(tracingOperator.isTracingOn());
+      case SET_SYSTEM_MODE:
+        SetSystemModeOperator setSystemModeOperator = (SetSystemModeOperator) operator;
+        return new SetSystemModePlan(setSystemModeOperator.isReadOnly());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query, fetchSize);
@@ -357,7 +362,8 @@ public class PhysicalGenerator {
             ((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES,
             ((LoadFilesOperator) operator).isAutoCreateSchema(),
-            ((LoadFilesOperator) operator).getSgLevel());
+            ((LoadFilesOperator) operator).getSgLevel(),
+            ((LoadFilesOperator) operator).isVerifyMetadata());
       case REMOVE_FILE:
         return new OperateFilePlan(
             ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);

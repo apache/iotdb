@@ -17,29 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.modification.io;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-import java.io.IOException;
+public class SetSystemModeOperator extends RootOperator {
+  private boolean isReadOnly;
 
-/**
- * ModificationWriter provides methods for writing a modification to a persistent medium like file
- * system.
- */
-public interface ModificationWriter {
+  public SetSystemModeOperator(int tokenIntType, boolean isReadOnly) {
+    super(tokenIntType);
+    this.isReadOnly = isReadOnly;
+    operatorType = OperatorType.SET_SYSTEM_MODE;
+  }
 
-  /**
-   * Write a new modification to the persistent medium. Notice that after calling write(), a
-   * fileWriter is opened.
-   *
-   * @param mod the modification to be written.
-   */
-  void write(Modification mod) throws IOException;
-
-  /** Release resources like streams. */
-  void close() throws IOException;
-
-  /** Abort last modification. Notice that after calling abort(), a fileWriter is opened. */
-  void abort() throws IOException;
+  public boolean isReadOnly() {
+    return isReadOnly;
+  }
 }

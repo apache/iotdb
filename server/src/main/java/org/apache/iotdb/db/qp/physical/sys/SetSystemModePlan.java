@@ -16,30 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.db.engine.modification.io;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import org.apache.iotdb.db.engine.modification.Modification;
+import java.util.Collections;
+import java.util.List;
 
-import java.io.IOException;
+public class SetSystemModePlan extends PhysicalPlan {
 
-/**
- * ModificationWriter provides methods for writing a modification to a persistent medium like file
- * system.
- */
-public interface ModificationWriter {
+  private boolean isReadOnly;
 
-  /**
-   * Write a new modification to the persistent medium. Notice that after calling write(), a
-   * fileWriter is opened.
-   *
-   * @param mod the modification to be written.
-   */
-  void write(Modification mod) throws IOException;
+  public SetSystemModePlan(boolean isReadOnly) {
+    super(false, OperatorType.SET_SYSTEM_MODE);
+    this.isReadOnly = isReadOnly;
+  }
 
-  /** Release resources like streams. */
-  void close() throws IOException;
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
 
-  /** Abort last modification. Notice that after calling abort(), a fileWriter is opened. */
-  void abort() throws IOException;
+  public boolean isReadOnly() {
+    return isReadOnly;
+  }
 }

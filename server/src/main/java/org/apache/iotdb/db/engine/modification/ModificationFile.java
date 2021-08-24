@@ -47,6 +47,7 @@ public class ModificationFile implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(ModificationFile.class);
   public static final String FILE_SUFFIX = ".mods";
 
+  // lazy loaded, set null when closed
   private List<Modification> modifications;
   private ModificationWriter writer;
   private ModificationReader reader;
@@ -88,8 +89,8 @@ public class ModificationFile implements AutoCloseable {
 
   public void abort() throws IOException {
     synchronized (this) {
-      if (!modifications.isEmpty()) {
-        writer.abort();
+      writer.abort();
+      if (modifications != null && !modifications.isEmpty()) {
         modifications.remove(modifications.size() - 1);
       }
     }
@@ -104,9 +105,10 @@ public class ModificationFile implements AutoCloseable {
    */
   public void write(Modification mod) throws IOException {
     synchronized (this) {
-      checkInit();
       writer.write(mod);
-      modifications.add(mod);
+      if (modifications != null) {
+        modifications.add(mod);
+      }
     }
   }
 

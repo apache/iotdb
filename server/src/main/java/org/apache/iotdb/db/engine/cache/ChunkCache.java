@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
@@ -63,50 +62,25 @@ public class ChunkCache {
         Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
             .weigher(
-                new Weigher<ChunkMetadata, Chunk>() {
-
-                  int count = 0;
-                  int averageSize = 0;
-
-                  @Override
-                  public int weigh(ChunkMetadata chunkMetadata, Chunk chunk) {
-                    int currentSize;
-                    if (count < 10) {
-                      currentSize =
+                (Weigher<ChunkMetadata, Chunk>)
+                    (chunkMetadata, chunk) -> {
+                      int entrySize =
                           (int)
                               (RamUsageEstimator.NUM_BYTES_OBJECT_REF
                                   + RamUsageEstimator.sizeOf(chunk));
-                      averageSize = ((averageSize * count) + currentSize) / (++count);
-                      entryAverageSize.set(averageSize);
-                    } else if (count < 100000) {
-                      count++;
-                      currentSize = averageSize;
-                    } else {
-                      averageSize =
-                          (int)
-                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                  + RamUsageEstimator.sizeOf(chunk));
-                      count = 1;
-                      currentSize = averageSize;
-                      entryAverageSize.set(averageSize);
-                    }
-                    return currentSize;
-                  }
-                })
+                      return entrySize;
+                    })
             .recordStats()
             .build(
-                new CacheLoader<ChunkMetadata, Chunk>() {
-                  @Override
-                  public Chunk load(ChunkMetadata chunkMetadata) throws Exception {
-                    try {
-                      TsFileSequenceReader reader =
-                          FileReaderManager.getInstance()
-                              .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
-                      return reader.readMemChunk(chunkMetadata);
-                    } catch (IOException e) {
-                      logger.error("Something wrong happened in reading {}", chunkMetadata, e);
-                      throw e;
-                    }
+                chunkMetadata -> {
+                  try {
+                    TsFileSequenceReader reader =
+                        FileReaderManager.getInstance()
+                            .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
+                    return reader.readMemChunk(chunkMetadata);
+                  } catch (IOException e) {
+                    logger.error("Something wrong happened in reading {}", chunkMetadata, e);
+                    throw e;
                   }
                 });
   }
