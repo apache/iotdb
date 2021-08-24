@@ -1919,7 +1919,7 @@ public class StorageGroupProcessor {
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
       tsFileResource.getModFile().close();
-      logger.info(
+      logger.debug(
           "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
           deletion.getPath(),
           deletion.getStartTime(),
@@ -1956,9 +1956,11 @@ public class StorageGroupProcessor {
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((IMeasurementMNode) measurementNode).resetCache();
-            logger.info(
-                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                measurementNode.getFullPath());
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                  measurementNode.getFullPath());
+            }
           }
         }
       }
