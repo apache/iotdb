@@ -47,8 +47,10 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   private Like() {}
 
-  // The main idea of this part comes from
-  // https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+  /**
+   * The main idea of this part comes from
+   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
+   */
   public Like(String value, FilterType filterType) {
     this.value = value;
     this.filterType = filterType;
@@ -135,6 +137,10 @@ public class Like<T extends Comparable<T>> implements Filter {
     return FilterSerializeId.LIKE;
   }
 
+  /**
+   * This Method is for unescaping strings except '\' before special string '%', '_', '\', because
+   * we need to use '\' to judege whether to replace this to regexp string
+   */
   public String unescapeString(String value) {
     String out = "";
     for (int i = 0; i < value.length(); i++) {
