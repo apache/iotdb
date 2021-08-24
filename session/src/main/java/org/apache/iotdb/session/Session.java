@@ -84,7 +84,7 @@ public class Session {
    * Timeout of query can be set by users. If not set, default value 0 will be used, which will use
    * server configuration.
    */
-  private long timeout = 0;
+  private long queryTimeoutInMs = 0;
 
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
@@ -170,7 +170,7 @@ public class Session {
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
         Config.DEFAULT_CACHE_LEADER_MODE);
-    this.timeout = timeoutInMs;
+    this.queryTimeoutInMs = timeoutInMs;
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
@@ -537,18 +537,18 @@ public class Session {
 
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.checkTimeseriesExists(path, timeout);
+    return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
-  public void setTimeout(long timeoutInMs) throws StatementExecutionException {
+  public void setQueryTimeout(long timeoutInMs) throws StatementExecutionException {
     if (timeoutInMs < 0) {
       throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
-    this.timeout = timeoutInMs;
+    this.queryTimeoutInMs = timeoutInMs;
   }
 
-  public long getTimeout() {
-    return timeout;
+  public long getQueryTimeout() {
+    return queryTimeoutInMs;
   }
 
   /**
@@ -559,7 +559,7 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return executeStatementMayRedirect(sql, timeout);
+    return executeStatementMayRedirect(sql, queryTimeoutInMs);
   }
 
   /**
@@ -601,7 +601,7 @@ public class Session {
             e.getEndPoint());
         // retry
         try {
-          return defaultSessionConnection.executeQueryStatement(sql, timeout);
+          return defaultSessionConnection.executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
           logger.error("{} redirect twice", sql, redirectException);
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
