@@ -202,7 +202,7 @@ public abstract class AbstractCsvTool {
    * @param records the records of CSV file
    * @param filePath the directory to save the file
    */
-  protected static void writeCsvFile(
+  public static void writeCsvFile(
       @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
       CSVPrinter printer =
