@@ -57,6 +57,8 @@ public class BatchData {
 
   protected TSDataType dataType;
 
+  protected BatchDataType batchDataType = BatchDataType.Ordinary;
+
   // outer list index for read
   protected int readCurListIndex;
   // inner array index for read
@@ -160,6 +162,10 @@ public class BatchData {
 
   public TSDataType getDataType() {
     return dataType;
+  }
+
+  public BatchDataType getBatchDataType() {
+    return batchDataType;
   }
 
   /**
@@ -598,5 +604,32 @@ public class BatchData {
    */
   public BatchData flip() {
     return this;
+  }
+
+  public enum BatchDataType {
+    Ordinary,
+    DescRead,
+    DescReadWrite;
+
+    BatchDataType() {}
+
+    /**
+     * give an integer to return a BatchType type.
+     *
+     * @param type -param to judge enum type
+     * @return -enum type
+     */
+    public static BatchData deserialize(byte type, TSDataType dataType) {
+      switch (type) {
+        case 0:
+          return new BatchData(dataType);
+        case 1:
+          return new DescReadBatchData(dataType);
+        case 2:
+          return new DescReadWriteBatchData(dataType);
+        default:
+          throw new IllegalArgumentException("Invalid input: " + type);
+      }
+    }
   }
 }
