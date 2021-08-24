@@ -325,7 +325,7 @@ public class SessionPool {
     try {
       wrapper.sessionDataSet.closeOperationHandle();
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      removeSession();
+      tryConstructNewSession();
       putback = false;
     } finally {
       Session session = occupied.remove(wrapper.session);
@@ -336,13 +336,29 @@ public class SessionPool {
   }
 
   @SuppressWarnings({"squid:S2446"})
-  private synchronized void removeSession() {
-    logger.warn("Remove a broken Session {}, {}, {}", ip, port, user);
-    size--;
-    // we do not need to notifyAll as any waited thread can continue to work after waked up.
-    this.notify();
-    if (logger.isDebugEnabled()) {
-      logger.debug("remove a broken session and notify others..., queue.size = {}", queue.size());
+  private void tryConstructNewSession() {
+    Session session = new Session(ip, port, user, password, fetchSize, zoneId, enableCacheLeader);
+    try {
+      session.open(enableCompression);
+      // avoid someone has called close() the session pool
+      synchronized (this) {
+        if (closed) {
+          // have to release the connection...
+          session.close();
+          throw new IoTDBConnectionException(SESSION_POOL_IS_CLOSED);
+        }
+        queue.push(session);
+        this.notify();
+      }
+    } catch (IoTDBConnectionException e) {
+      synchronized (this) {
+        size--;
+        // we do not need to notifyAll as any waited thread can continue to work after waked up.
+        this.notify();
+        if (logger.isDebugEnabled()) {
+          logger.debug("open session failed, reduce the count and notify others...");
+        }
+      }
     }
   }
 
@@ -360,7 +376,7 @@ public class SessionPool {
   private void cleanSessionAndMayThrowConnectionException(
       Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
-    removeSession();
+    tryConstructNewSession();
     if (times == FINAL_RETRY) {
       throw new IoTDBConnectionException(
           String.format(
