@@ -854,7 +854,11 @@ public class CMManager extends MManager {
     }
     if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()
-        && result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        && result.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()
+        && !(result.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+            && result.getSubStatus().stream()
+                .allMatch(
+                    s -> s.getCode() == TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()))) {
       logger.error(
           "{} failed to execute create timeseries {}: {}",
           metaGroupMember.getThisNode(),

@@ -455,8 +455,7 @@ public class Coordinator {
     // e.g., an InsertTabletPlan contains 3 rows, row1 and row3 belong to NodeA and row2
     // belongs to NodeB, when NodeA returns a success while NodeB returns a failure, the
     // failure and success should be placed into proper positions in TSStatus.subStatus
-    if (plan instanceof InsertTabletPlan
-        || plan instanceof InsertMultiTabletPlan
+    if (plan instanceof InsertMultiTabletPlan
         || plan instanceof CreateMultiTimeSeriesPlan
         || plan instanceof InsertRowsPlan) {
       status = forwardMultiSubPlan(planGroupMap, plan);
@@ -464,20 +463,6 @@ public class Coordinator {
       status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
       status = forwardToMultipleGroup(planGroupMap);
-    }
-    boolean hasCreated = false;
-    try {
-      if (plan instanceof InsertPlan
-          && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-      }
-    } catch (MetadataException | CheckConsistencyException e) {
-      logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-    if (hasCreated) {
-      status = forwardPlan(planGroupMap, plan);
     }
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.isSetRedirectNode()) {
@@ -487,15 +472,6 @@ public class Coordinator {
     return status;
   }
 
-  private boolean createTimeseriesForFailedInsertion(InsertPlan plan)
-      throws CheckConsistencyException, IllegalPathException {
-    // try to create timeseries
-    if (plan.getFailedMeasurements() != null) {
-      plan.getPlanFromFailed();
-    }
-    return ((CMManager) IoTDB.metaManager).createTimeseries(plan);
-  }
-
   private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
     TSStatus result;
     if (entry.getValue().contains(thisNode)) {
@@ -503,12 +479,15 @@ public class Coordinator {
       long startTime =
           Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
               .getOperationStartTime();
-      logger.debug(
-          "Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
       result =
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
               .executeNonQueryPlan(entry.getKey());
+      logger.debug(
+          "Execute {} in a local group of {}, {}",
+          entry.getKey(),
+          entry.getValue().getHeader(),
+          result);
       Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
           .calOperationCostTimeFromStart(startTime);
     } else {

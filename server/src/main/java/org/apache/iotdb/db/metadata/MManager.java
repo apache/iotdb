@@ -71,6 +71,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -1842,11 +1843,19 @@ public class MManager {
           }
         }
       } catch (MetadataException e) {
-        logger.warn(
-            "meet error when check {}.{}, message: {}",
-            deviceId,
-            measurementList[i],
-            e.getMessage());
+        if (IoTDB.isClusterMode()) {
+          logger.debug(
+              "meet error when check {}.{}, message: {}",
+              deviceId,
+              measurementList[i],
+              e.getMessage());
+        } else {
+          logger.warn(
+              "meet error when check {}.{}, message: {}",
+              deviceId,
+              measurementList[i],
+              e.getMessage());
+        }
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
           plan.markFailedMeasurementInsertion(i, e);

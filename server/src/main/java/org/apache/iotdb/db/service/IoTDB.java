@@ -55,6 +55,7 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
+  private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -72,6 +73,14 @@ public class IoTDB implements IoTDBMBean {
 
   public static void setMetaManager(MManager metaManager) {
     IoTDB.metaManager = metaManager;
+  }
+
+  public static void setClusterMode() {
+    IoTDB.clusterMode = true;
+  }
+
+  public static boolean isClusterMode() {
+    return IoTDB.clusterMode;
   }
 
   public void active() {
