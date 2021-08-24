@@ -38,6 +38,7 @@
 ## Improvements
 * [IOTDB-1566] Do not restrict concurrent write partitions
 * [IOTDB-1585] ModificationFile‘s write interface blocking
+* [IOTDB-1587] SessionPool optimization: a more aggressive Session creation strategy
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
