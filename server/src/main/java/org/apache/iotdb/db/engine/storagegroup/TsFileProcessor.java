@@ -451,11 +451,6 @@ public class TsFileProcessor {
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-          logger.info(
-              "[Deletion] Delete in-memory data with deletion path: {}, time:{}-{}.",
-              deletion.getPath(),
-              deletion.getStartTime(),
-              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
