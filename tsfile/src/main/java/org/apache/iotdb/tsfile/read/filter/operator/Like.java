@@ -47,7 +47,7 @@ public class Like<T extends Comparable<T>> implements Filter {
 
   private Like() {}
 
-  // The main idea comes from
+  // The main idea of this part comes from
   // https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
   public Like(String value, FilterType filterType) {
     this.value = value;
