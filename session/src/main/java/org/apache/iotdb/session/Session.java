@@ -159,7 +159,12 @@ public class Session {
   }
 
   public Session(
-      String host, int rpcPort, String username, String password, int fetchSize, long timeoutInMs) {
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      long queryTimeoutInMs) {
     this(
         host,
         rpcPort,
@@ -170,7 +175,7 @@ public class Session {
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
         Config.DEFAULT_CACHE_LEADER_MODE);
-    this.queryTimeoutInMs = timeoutInMs;
+    this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
