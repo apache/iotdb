@@ -56,7 +56,7 @@ public abstract class AbstractScript {
       System.out.println(s);
     }
 
-    if (output != null){
+    if (output != null) {
       for (int i = 0; i < output.length; i++) {
         assertEquals(output[output.length - 1 - i], outputList.get(outputList.size() - 1 - i));
       }

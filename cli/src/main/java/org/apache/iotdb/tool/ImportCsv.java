@@ -623,7 +623,7 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       switch (type) {
         case TEXT:
-          return value.substring(1, value.length()-1);
+          return value.substring(1, value.length() - 1);
         case BOOLEAN:
           return Boolean.valueOf(value);
         case INT32:

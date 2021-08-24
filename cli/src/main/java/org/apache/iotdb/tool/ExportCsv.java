@@ -265,6 +265,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   /**
    * This method will be called, if the query commands are written in a sql file.
+   *
    * @param filePath
    * @throws IOException
    */
@@ -300,6 +301,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   /**
    * Load data from the result of query command.
+   *
    * @param sessionDataSet
    * @return
    * @throws IoTDBConnectionException
