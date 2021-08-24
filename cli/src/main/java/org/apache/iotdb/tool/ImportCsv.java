@@ -101,7 +101,7 @@ public class ImportCsv extends AbstractCsvTool {
       File file = new File(failedFileDirectory);
       if (!file.isDirectory()) {
         file.mkdir();
-        failedFileDirectory = file.getAbsolutePath() + "/";
+        failedFileDirectory = file.getAbsolutePath() + File.separator;
       }
     }
   }
@@ -331,7 +331,7 @@ public class ImportCsv extends AbstractCsvTool {
     }
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
-      System.out.println("Failed file path: " + new File(failedFilePath).getAbsolutePath());
+      System.out.println("Failed file path: " + failedFilePath);
     }
   }
 
@@ -434,7 +434,7 @@ public class ImportCsv extends AbstractCsvTool {
             });
     if (!failedRecords.isEmpty()) {
       writeCsvFile(headerNames, failedRecords, failedFilePath);
-      System.out.println("Failed file path: " + new File(failedFilePath).getAbsolutePath());
+      System.out.println("Failed file path: " + failedFilePath);
     }
   }
 
