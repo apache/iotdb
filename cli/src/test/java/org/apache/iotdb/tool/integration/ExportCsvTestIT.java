@@ -69,9 +69,7 @@ public class ExportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-td",
-            "./",
-            "-q",
-            "select * from root;");
+            "./");
     testOutput(builder, output);
   }
 
@@ -98,9 +96,7 @@ public class ExportCsvTestIT extends AbstractScript {
             "-pw",
             "root",
             "-td",
-            "./",
-            "-q",
-            "select * from root;");
+            "./");
     testOutput(builder, output);
   }
 }
