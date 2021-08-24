@@ -195,8 +195,8 @@ public class SessionUT {
   @Test
   public void setTimeout() throws StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root", 10000, 20000);
-    Assert.assertEquals(20000, session.getTimeout());
-    session.setTimeout(60000);
-    Assert.assertEquals(60000, session.getTimeout());
+    Assert.assertEquals(20000, session.getQueryTimeout());
+    session.setQueryTimeout(60000);
+    Assert.assertEquals(60000, session.getQueryTimeout());
   }
 }

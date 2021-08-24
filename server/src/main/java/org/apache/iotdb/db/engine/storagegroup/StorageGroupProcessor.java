@@ -1741,14 +1741,6 @@ public class StorageGroupProcessor {
     try {
       Set<PartialPath> devicePaths = IoTDB.metaManager.getDevices(path.getDevicePath());
       for (PartialPath device : devicePaths) {
-        Long lastUpdateTime = null;
-        for (Map<String, Long> latestTimeMap : latestTimeForEachDevice.values()) {
-          Long curTime = latestTimeMap.get(device.getFullPath());
-          if (curTime != null && (lastUpdateTime == null || lastUpdateTime < curTime)) {
-            lastUpdateTime = curTime;
-          }
-        }
-
         // delete Last cache record if necessary
         tryToDeleteLastCache(device, path, startTime, endTime);
       }
@@ -1771,6 +1763,8 @@ public class StorageGroupProcessor {
       // roll back
       for (ModificationFile modFile : updatedModFiles) {
         modFile.abort();
+        // remember to close mod file
+        modFile.close();
       }
       throw new IOException(e);
     } finally {
@@ -1835,7 +1829,7 @@ public class StorageGroupProcessor {
       tsFileResource.getModFile().write(deletion);
       // remember to close mod file
       tsFileResource.getModFile().close();
-      logger.info(
+      logger.debug(
           "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
           deletion.getPath(),
           deletion.getStartTime(),
@@ -1872,9 +1866,11 @@ public class StorageGroupProcessor {
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((MeasurementMNode) measurementNode).resetCache();
-            logger.info(
-                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                measurementNode.getFullPath());
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                  measurementNode.getFullPath());
+            }
           }
         }
       }

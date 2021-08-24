@@ -37,6 +37,8 @@
 
 ## Improvements
 * [IOTDB-1566] Do not restrict concurrent write partitions
+* [IOTDB-1585] ModificationFile‘s write interface blocking
+* [IOTDB-1587] SessionPool optimization: a more aggressive Session creation strategy
 * Use StringCachedPool in TsFileResource to reduce the memory size 
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
@@ -71,6 +73,7 @@
 * [IOTDB-1552] Only allow equivalent filter for TEXT data type
 * [IOTDB-1556] Abort auto create device when meet exception in setStorageGroup
 * [IOTDB-1574] Deleted file handler leak
+* [IOTDB-1580] Error result of order by time desc when enable time partition
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries
@@ -78,6 +81,7 @@
 * [ISSUE-3545] Fix Time interval value is disorder in group by month
 * [ISSUE-3653] fix Max_time and last return inconsistent result
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
+* [ISSUE-3805] OOM caused by Chunk cache
 *  Fix DataMigrationExample OOM if migrate too many timeseries 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
