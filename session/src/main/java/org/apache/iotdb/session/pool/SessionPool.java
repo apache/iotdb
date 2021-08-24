@@ -71,22 +71,25 @@ public class SessionPool {
   private final ConcurrentLinkedDeque<Session> queue = new ConcurrentLinkedDeque<>();
   // for session whose resultSet is not released.
   private final ConcurrentMap<Session, Session> occupied = new ConcurrentHashMap<>();
-
   private int size = 0;
   private int maxSize = 0;
+  private final long waitToGetSessionTimeoutInMs;
 
+  // parameters for Session constructor
   private final String ip;
   private final int port;
   private final String user;
   private final String password;
   private final int fetchSize;
-  private final long waitToGetSessionTimeoutInMs;
+  private final ZoneId zoneId;
+  private final boolean enableCacheLeader;
+
+  // parameters for Session#open()
   private final int connectionTimeoutInMs;
   private final boolean enableCompression;
-  private final boolean enableCacheLeader;
-  private final ZoneId zoneId;
 
-  private boolean closed; // whether the queue is closed.
+  // whether the queue is closed.
+  private boolean closed;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(
