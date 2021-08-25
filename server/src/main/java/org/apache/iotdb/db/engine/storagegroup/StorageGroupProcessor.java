@@ -2204,6 +2204,7 @@ public class StorageGroupProcessor {
       updateLatestTimeMap(newTsFileResource);
       long partitionNum = newTsFileResource.getTimePartition();
       updatePartitionFileVersion(partitionNum, newTsFileResource.getVersion());
+      logger.info("TsFile {} is successfully loaded in {} list.", newFileName, renameInfo);
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
