@@ -113,6 +113,9 @@ public class TsFileProcessor {
 
   private IMemTable workMemTable;
 
+  /** last flush time to flush the working memtable */
+  private long lastWorkMemtableFlushTime;
+
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
 
@@ -448,11 +451,6 @@ public class TsFileProcessor {
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-          logger.info(
-              "[Deletion] Delete in-memory data with deletion path: {}, time:{}-{}.",
-              deletion.getPath(),
-              deletion.getStartTime(),
-              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
@@ -745,6 +743,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
+    lastWorkMemtableFlushTime = System.currentTimeMillis();
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -1215,6 +1214,15 @@ public class TsFileProcessor {
 
   public long getWorkMemTableRamCost() {
     return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
+  }
+
+  /** Return Long.MAX_VALUE if workMemTable is null */
+  public long getWorkMemTableCreatedTime() {
+    return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
+  public long getLastWorkMemtableFlushTime() {
+    return lastWorkMemtableFlushTime;
   }
 
   public boolean isSequence() {
