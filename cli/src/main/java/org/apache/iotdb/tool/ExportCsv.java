@@ -176,7 +176,7 @@ public class ExportCsv extends AbstractCsvTool {
       timeFormat = "default";
     }
     timeZoneID = commandLine.getOptionValue(TIME_ZONE_ARGS);
-    if (!targetDirectory.endsWith(File.separator)) {
+    if (!targetDirectory.endsWith("/") && !targetDirectory.endsWith("\\")) {
       targetDirectory += File.separator;
     }
   }
@@ -293,7 +293,8 @@ public class ExportCsv extends AbstractCsvTool {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
       List<List<Object>> records = loadDataFromDataSet(sessionDataSet);
       writeCsvFile(null, records, path);
-      System.out.println("The result of query was written to the file: " + path);
+      System.out.println(
+          "The result of query was written to the file: " + new File(path).getAbsolutePath());
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }
@@ -328,13 +329,14 @@ public class ExportCsv extends AbstractCsvTool {
     while (sessionDataSet.hasNext()) {
       RowRecord rowRecord = sessionDataSet.next();
       ArrayList<Object> record = new ArrayList<>();
-      record.add(timeTrans(rowRecord.getTimestamp()));
+      if (rowRecord.getTimestamp() != 0) {
+        record.add(timeTrans(rowRecord.getTimestamp()));
+      }
       rowRecord
           .getFields()
           .forEach(
               field -> {
                 String fieldStringValue = field.getStringValue();
-
                 if (!field.getStringValue().equals("null")) {
                   if (field.getDataType() == TSDataType.TEXT
                       && !fieldStringValue.startsWith("root.")) {

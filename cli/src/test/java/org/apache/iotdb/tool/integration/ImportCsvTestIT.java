@@ -20,6 +20,7 @@ package org.apache.iotdb.tool.integration;
 
 import org.apache.iotdb.cli.AbstractScript;
 
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,10 +31,15 @@ import java.io.IOException;
 public class ImportCsvTestIT extends AbstractScript {
 
   @Before
-  public void setUp() {}
+  public void setUp() {
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
+  }
 
   @After
-  public void tearDown() {}
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
   @Test
   public void test() throws IOException {

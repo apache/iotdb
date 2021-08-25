@@ -19,6 +19,7 @@
 package org.apache.iotdb.tool.integration;
 
 import org.apache.iotdb.cli.AbstractScript;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -30,30 +31,34 @@ import java.io.IOException;
 public class ExportCsvTestIT extends AbstractScript {
 
   @Before
-  public void setUp() {}
+  public void setUp() {
+    EnvironmentUtils.closeStatMonitor();
+    EnvironmentUtils.envSetUp();
+  }
 
   @After
-  public void tearDown() {}
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows("select * from root");
     } else {
-      testOnUnix();
+      testOnUnix("select * from root");
     }
   }
 
   @Override
-  protected void testOnWindows() throws IOException {
-    final String[] output = {
-      "````````````````````````````````````````````````",
-      "Starting IoTDB Client Export Script",
-      "````````````````````````````````````````````````",
-      "Connect failed because org.apache.thrift.transport.TTransportException: "
-          + "java.net.ConnectException: Connection refused"
-    };
+  protected void testOnWindows() {}
+
+  @Override
+  protected void testOnUnix() {}
+
+  protected void testOnWindows(String queryCommand) throws IOException {
+
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -63,25 +68,20 @@ public class ExportCsvTestIT extends AbstractScript {
             "-h",
             "127.0.0.1",
             "-p",
-            "6668",
+            "6667",
             "-u",
             "root",
             "-pw",
             "root",
             "-td",
-            "./");
-    testOutput(builder, output);
+            ".\\",
+            "-q",
+            queryCommand);
+    testOutput(builder, null);
   }
 
-  @Override
-  protected void testOnUnix() throws IOException {
-    final String[] output = {
-      "------------------------------------------",
-      "Starting IoTDB Client Export Script",
-      "------------------------------------------",
-      "Connect failed because org.apache.thrift.transport.TTransportException: "
-          + "java.net.ConnectException: Connection refused"
-    };
+  protected void testOnUnix(String queryCommand) throws IOException {
+
     String dir = getCliPath();
     ProcessBuilder builder =
         new ProcessBuilder(
@@ -90,13 +90,26 @@ public class ExportCsvTestIT extends AbstractScript {
             "-h",
             "127.0.0.1",
             "-p",
-            "6668",
+            "6667",
             "-u",
             "root",
             "-pw",
             "root",
             "-td",
-            "./");
-    testOutput(builder, output);
+            "./",
+            "-q",
+            queryCommand);
+    testOutput(builder, null);
+  }
+
+  @Test
+  public void testAggregationQuery() throws IOException {
+    String os = System.getProperty("os.name").toLowerCase();
+    String queryCommand = "select count(*) from root";
+    if (os.startsWith("windows")) {
+      testOnWindows(queryCommand);
+    } else {
+      testOnUnix(queryCommand);
+    }
   }
 }
