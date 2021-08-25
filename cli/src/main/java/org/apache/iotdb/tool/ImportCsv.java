@@ -213,7 +213,7 @@ public class ImportCsv extends AbstractCsvTool {
         System.out.println("File: " + file.getAbsolutePath() + " not found!!!");
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
-      e.printStackTrace();
+      System.out.println("Encounter an error when connecting to server, because " + e.getMessage());
     } finally {
       if (session != null) {
         session.close();
