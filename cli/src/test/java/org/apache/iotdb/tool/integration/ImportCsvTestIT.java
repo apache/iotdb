@@ -19,8 +19,8 @@
 package org.apache.iotdb.tool.integration;
 
 import org.apache.iotdb.cli.AbstractScript;
-
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
