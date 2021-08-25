@@ -2449,14 +2449,11 @@ public class StorageGroupProcessor {
           "can not load TsFile because of can not find suitable location, "
               + "preName: "
               + preTime
-              + " "
-              + "subsequenceTime: "
+              + " subsequenceTime: "
               + subsequenceTime
-              + " "
-              + "insertIndex: "
+              + " insertIndex: "
               + insertIndex
-              + " "
-              + "tsFilemanagementSize: "
+              + " tsFilemanagementSize: "
               + tsFileManagement.size(true));
     }
 
