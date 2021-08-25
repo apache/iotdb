@@ -229,7 +229,7 @@ public class IoTDBSessionIteratorIT {
       while (iterator.next()) {
         String ans =
             String.format(
-                "%s,%s,%s", iterator.getLong(1), iterator.getString(2), iterator.getString(3));
+                "%s,%s,%s,%s", iterator.getLong(1), iterator.getString(2), iterator.getString(3), iterator.getString(4));
         assertEquals(retArray[count], ans);
         count++;
       }
@@ -282,7 +282,7 @@ public class IoTDBSessionIteratorIT {
                 iterator.getLong(1),
                 iterator.getString(2),
                 iterator.getString(3),
-                iterator.getString(3));
+                iterator.getString(4));
         assertEquals(retArray[count], ans);
         count++;
       }
