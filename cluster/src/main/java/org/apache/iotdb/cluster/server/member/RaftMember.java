@@ -117,7 +117,6 @@ import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_T
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember {
-
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
   public static final boolean USE_LOG_DISPATCHER = false;
 
