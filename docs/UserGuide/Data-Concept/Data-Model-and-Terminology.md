@@ -27,7 +27,11 @@ According to the enterprise organization structure and equipment entity hierarch
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/122668849-b1c69280-d1ec-11eb-83cb-3b73c40bdf72.png"></center>
 
-Here are the basic concepts of the model involved in IoTDB:
+Here are the basic concepts of the model involved in IoTDB. 
+
+
+
+### Measurement, Entity, Storage Group, Path
 
 * Measurement (Also called field)
 
@@ -57,38 +61,6 @@ After a storage group is set, the ancestral layers, children and descendant laye
 
 The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
 
-* Data point
-
-**A "time-value" pair**.
-
-* Timeseries (A measurement of an entity corresponds to a timeseries. Also called meter, timeline, and tag, parameter in real time database)
-
-**The record of a measurement of an entity on the time axis.** Timeseries is a series of data points.
-
-For example, if entity wt01 in power plant wf01 of power group ln has a measurement named status, its timeseries  can be expressed as: `root.ln.wf01.wt01.status`.
-
-
-* Multi-variable timeseries (Also called aligned timeseries, from v0.13)
-
-A multi-variable measurements of an entity corresponds to a multi-variable timeseries. These timeseries are called **multi-variable timeseries**, also called **aligned timeseries**.
-
-Multi-variable timeseries need to be created, inserted and deleted at the same time. However, when querying, you can query each sub-measurement separately.
-
-By using multi-variable timeseries, the timestamp columns of a group of multi-variable timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries:
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
-
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to multi-variable timeseries will be introduced one by one.
-
-
-* Measurement template (From v0.13)
-
-In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
-
-Currently you can only set one **measurement template** on a specific path. An entity will use it's own measurement template or nearest ancestor's measurement template.
-
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
-
 * Path
 
 In IoTDB, a path is an expression that conforms to the following constraints:
@@ -116,7 +88,7 @@ The characters supported in LayerName without double quotes are as below:
 '-' and ':' cannot be the first character. '+' cannot use alone.
 
 > Note: the LayerName of storage group can only be characters, numbers, underscores and hyphen. 
-> 
+>
 > Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
 
 
@@ -140,119 +112,44 @@ When `*` appears in the middle of the path, it represents `*` itself, i.e., a la
 
 > Note2: A path with `*` at the end has the same meaning as a prefix path, e.g., `root.vehicle.*` and `root.vehicle` is the same.
 
+
+
+### Timeseries
+
+* Data point
+
+**A "time-value" pair**.
+
+* Timeseries (A measurement of an entity corresponds to a timeseries. Also called meter, timeline, and tag, parameter in real time database)
+
+**The record of a measurement of an entity on the time axis.** Timeseries is a series of data points.
+
+For example, if entity wt01 in power plant wf01 of power group ln has a measurement named status, its timeseries  can be expressed as: `root.ln.wf01.wt01.status`.
+
+
+* Multi-variable timeseries (Also called aligned timeseries, from v0.13)
+
+A multi-variable measurements of an entity corresponds to a multi-variable timeseries. These timeseries are called **multi-variable timeseries**, also called **aligned timeseries**.
+
+Multi-variable timeseries need to be created, inserted and deleted at the same time. However, when querying, you can query each sub-measurement separately.
+
+By using multi-variable timeseries, the timestamp columns of a group of multi-variable timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries:
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
+
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to multi-variable timeseries will be introduced one by one.
+
 * Timestamp
 
-The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps
-
-* Absolute timestamp
-
-Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
-
-<center>**Supported formats of DATETIME-INPUT type timestamp**
+The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps. For detailed description, please go to Data Type doc.
 
 
-|Format|
-|:---:|
-|yyyy-MM-dd HH:mm:ss|
-|yyyy/MM/dd HH:mm:ss|
-|yyyy.MM.dd HH:mm:ss|
-|yyyy-MM-dd'T'HH:mm:ss|
-|yyyy/MM/dd'T'HH:mm:ss|
-|yyyy.MM.dd'T'HH:mm:ss|
-|yyyy-MM-dd HH:mm:ssZZ|
-|yyyy/MM/dd HH:mm:ssZZ|
-|yyyy.MM.dd HH:mm:ssZZ|
-|yyyy-MM-dd'T'HH:mm:ssZZ|
-|yyyy/MM/dd'T'HH:mm:ssZZ|
-|yyyy.MM.dd'T'HH:mm:ssZZ|
-|yyyy/MM/dd HH:mm:ss.SSS|
-|yyyy-MM-dd HH:mm:ss.SSS|
-|yyyy.MM.dd HH:mm:ss.SSS|
-|yyyy/MM/dd'T'HH:mm:ss.SSS|
-|yyyy-MM-dd'T'HH:mm:ss.SSS|
-|yyyy.MM.dd'T'HH:mm:ss.SSS|
-|yyyy-MM-dd HH:mm:ss.SSSZZ|
-|yyyy/MM/dd HH:mm:ss.SSSZZ|
-|yyyy.MM.dd HH:mm:ss.SSSZZ|
-|yyyy-MM-dd'T'HH:mm:ss.SSSZZ|
-|yyyy/MM/dd'T'HH:mm:ss.SSSZZ|
-|yyyy.MM.dd'T'HH:mm:ss.SSSZZ|
-|ISO8601 standard time format|
 
-</center>
+### Measurement Template
 
 
-IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in the table below:
+* Measurement template (From v0.13)
 
-<center>**The syntax of the custom time format**
+In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template helps save memory by implementing schema sharing. For detailed description, please refer to Measurement Template doc.
 
-|Symbol|Meaning|Presentation|Examples|
-|:---:|:---:|:---:|:---:|
-|G|era|era|era|
-|C|century of era (>=0)|	number|	20|
-| Y	|year of era (>=0)|	year|	1996|
-|||||
-| x	|weekyear|	year|	1996|
-| w	|week of weekyear|	number	|27|
-| e	|day of week	|number|	2|
-| E	|day of week	|text	|Tuesday; Tue|
-|||||
-| y|	year|	year|	1996|
-| D	|day of year	|number|	189|
-| M	|month of year	|month|	July; Jul; 07|
-| d	|day of month	|number|	10|
-|||||
-| a	|halfday of day	|text	|PM|
-| K	|hour of halfday (0~11)	|number|	0|
-| h	|clockhour of halfday (1~12)	|number|	12|
-|||||
-| H	|hour of day (0~23)|	number|	0|
-| k	|clockhour of day (1~24)	|number|	24|
-| m	|minute of hour|	number|	30|
-| s	|second of minute|	number|	55|
-| S	|fraction of second	|millis|	978|
-|||||
-| z	|time zone	|text	|Pacific Standard Time; PST|
-| Z	|time zone offset/id|	zone|	-0800; -08:00; America/Los_Angeles|
-|||||
-| '|	escape for text	|delimiter|	　|
-| ''|	single quote|	literal	|'|
-
-</center>
-
-* Relative timestamp
-
-Relative time refers to the time relative to the server time ```now()``` and ```DATETIME``` time.
-
- Syntax:
- ```
-  Duration = (Digit+ ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS'))+
-  RelativeTime = (now() | DATETIME) ((+|-) Duration)+
-        
- ```
-
-  <center>**The syntax of the duration unit**
-
-|Symbol|Meaning|Presentation|Examples|
-|:---:|:---:|:---:|:---:|
-|y|year|1y=365 days|1y|
-|mo|month|1mo=30 days|1mo|
-|w|week|1w=7 days|1w|
-|d|day|1d=1 day|1d|
-|||||
-|h|hour|1h=3600 seconds|1h|
-|m|minute|1m=60 seconds|1m|
-|s|second|1s=1 second|1s|
-|||||
-|ms|millisecond|1ms=1000_000 nanoseconds|1ms|
-|us|microsecond|1us=1000 nanoseconds|1us|
-|ns|nanosecond|1ns=1 nanosecond|1ns|
-
-  </center>
-
-  eg：
-  ```
-  now() - 1d2h //1 day and 2 hours earlier than the current server time
-  now() - 1w //1 week earlier than the current server time
-  ```
-  > Note：There must be spaces on the left and right of '+' and '-'.
+In the following chapters of, data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.

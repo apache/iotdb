@@ -21,23 +21,22 @@
 
 ## JDBC
 
+*注意: 目前的JDBC实现仅是为与第三方工具连接使用的。使用JDBC（尤其是执行插入语句时）无法提供高性能吞吐。
+对于Java应用，我们推荐使用[JAVA NATIVE API](https://iotdb.apache.org/zh/UserGuide/Master/API/Programming-Java-Native-API.html)*
+
 ### 依赖
 
 * JDK >= 1.8
 * Maven >= 3.6
 
-
-
 ### 安装方法
 
-在根目录下执行下面的命令:
+在根目录下执行下面的命令：
 ```shell
 mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 ```
 
-
-
-#### 在MAVEN中使用 IoTDB JDBC
+#### 在 MAVEN 中使用 IoTDB JDBC
 
 ```xml
 <dependencies>
@@ -49,15 +48,13 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-
-
 #### 示例代码
 
 本章提供了如何建立数据库连接、执行 SQL 和显示查询结果的示例。
 
 要求您已经在工程中包含了数据库编程所需引入的包和 JDBC class.
 
-**注意:为了更快地插入，建议使用 executeBatch()**
+**注意：为了更快地插入，建议使用 executeBatch()**
 
 ```Java
 import java.sql.*;
@@ -83,7 +80,6 @@ public class JDBCExample {
     }catch (IoTDBSQLException e){
       System.out.println(e.getMessage());
     }
-
 
     //Show storage group
     statement.execute("SHOW STORAGE GROUP");
@@ -114,7 +110,6 @@ public class JDBCExample {
     
 
     //Execute insert statements in batch
-    statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
     statement.addBatch("insert into root.demo(timestamp,s0) values(1,1);");
     statement.addBatch("insert into root.demo(timestamp,s0) values(2,15);");
     statement.addBatch("insert into root.demo(timestamp,s0) values(2,17);");

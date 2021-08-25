@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.metadata.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
@@ -37,7 +38,7 @@ public class MetaUtils {
 
   private MetaUtils() {}
 
-  static String getNodeRegByIdx(int idx, String[] nodes) {
+  public static String getNodeRegByIdx(int idx, String[] nodes) {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
@@ -118,32 +119,32 @@ public class MetaUtils {
   }
 
   @TestOnly
-  public static List<String> getMultiFullPaths(MNode node) {
+  public static List<String> getMultiFullPaths(IMNode node) {
     if (node == null) {
       return Collections.emptyList();
     }
 
-    List<MNode> lastNodeList = new ArrayList<>();
+    List<IMNode> lastNodeList = new ArrayList<>();
     collectLastNode(node, lastNodeList);
 
     List<String> result = new ArrayList<>();
-    for (MNode mNode : lastNodeList) {
-      result.add(mNode.getFullPath());
+    for (IMNode lastNode : lastNodeList) {
+      result.add(lastNode.getFullPath());
     }
 
     return result;
   }
 
   @TestOnly
-  public static void collectLastNode(MNode node, List<MNode> lastNodeList) {
+  public static void collectLastNode(IMNode node, List<IMNode> lastNodeList) {
     if (node != null) {
-      Map<String, MNode> children = node.getChildren();
+      Map<String, IMNode> children = node.getChildren();
       if (children.isEmpty()) {
         lastNodeList.add(node);
       }
 
-      for (Entry<String, MNode> entry : children.entrySet()) {
-        MNode childNode = entry.getValue();
+      for (Entry<String, IMNode> entry : children.entrySet()) {
+        IMNode childNode = entry.getValue();
         collectLastNode(childNode, lastNodeList);
       }
     }

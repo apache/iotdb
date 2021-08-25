@@ -29,7 +29,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -59,7 +60,7 @@ import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
@@ -120,6 +121,10 @@ public abstract class PhysicalPlan {
     return isQuery;
   }
 
+  public boolean isSelectInto() {
+    return false;
+  }
+
   public Operator.OperatorType getOperatorType() {
     return operatorType;
   }
@@ -170,7 +175,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -223,7 +228,9 @@ public abstract class PhysicalPlan {
   }
 
   public void setLoginUserName(String loginUserName) {
-    this.loginUserName = loginUserName;
+    if (this instanceof AuthorPlan) {
+      this.loginUserName = loginUserName;
+    }
   }
 
   public static class Factory {
@@ -370,11 +377,11 @@ public abstract class PhysicalPlan {
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
-        case SET_DEVICE_TEMPLATE:
-          plan = new SetDeviceTemplatePlan();
+        case SET_SCHEMA_TEMPLATE:
+          plan = new SetSchemaTemplatePlan();
           break;
-        case SET_USING_DEVICE_TEMPLATE:
-          plan = new SetUsingDeviceTemplatePlan();
+        case SET_USING_SCHEMA_TEMPLATE:
+          plan = new SetUsingSchemaTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
@@ -399,6 +406,9 @@ public abstract class PhysicalPlan {
           break;
         case DROP_FUNCTION:
           plan = new DropFunctionPlan();
+          break;
+        case SELECT_INTO:
+          plan = new SelectIntoPlan();
           break;
         default:
           throw new IOException("unrecognized log type " + type);
@@ -448,8 +458,8 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
     CREATE_TEMPLATE,
-    SET_DEVICE_TEMPLATE,
-    SET_USING_DEVICE_TEMPLATE,
+    SET_SCHEMA_TEMPLATE,
+    SET_USING_SCHEMA_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_ALIGNED_TIMESERIES,
     CLUSTER_LOG,
@@ -464,7 +474,8 @@ public abstract class PhysicalPlan {
     CREATE_SNAPSHOT,
     CLEARCACHE,
     CREATE_FUNCTION,
-    DROP_FUNCTION
+    DROP_FUNCTION,
+    SELECT_INTO
   }
 
   public long getIndex() {

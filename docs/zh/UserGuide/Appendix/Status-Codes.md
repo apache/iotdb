@@ -19,9 +19,9 @@
 
 -->
 
-# 附录3：状态码
+# 附录 3：状态码
 
-从0.10版本开始IoTDB引入了**状态码**这一概念。例如，因为IoTDB需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
+从 0.10 版本开始 IoTDB 引入了**状态码**这一概念。例如，因为 IoTDB 需要在写入数据之前首先注册时间序列，一种可能的解决方案是：
 
 ```
 try {
@@ -54,8 +54,8 @@ try {
 |301|PATH_NOT_EXIST_ERROR|路径不存在|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|不支持的获取元数据操作|
 |303|METADATA_ERROR|处理元数据错误|
-|305|OUT_OF_TTL_ERROR|插入时间少于TTL时间边界|
-|306|CONFIG_ADJUSTER|IoTDB系统负载过大|
+|305|OUT_OF_TTL_ERROR|插入时间少于 TTL 时间边界|
+|306|CONFIG_ADJUSTER|IoTDB 系统负载过大|
 |307|MERGE_ERROR|合并错误|
 |308|SYSTEM_CHECK_ERROR|系统检查错误|
 |309|SYNC_DEVICE_OWNER_CONFLICT_ERROR|回传设备冲突错误|
@@ -63,17 +63,17 @@ try {
 |311|STORAGE_GROUP_PROCESSOR_ERROR|存储组处理器相关错误|
 |312|STORAGE_GROUP_ERROR|存储组相关错误|
 |313|STORAGE_ENGINE_ERROR|存储引擎相关错误|
-|314|TSFILE_PROCESSOR_ERROR|TsFile处理器相关错误|
+|314|TSFILE_PROCESSOR_ERROR|TsFile 处理器相关错误|
 |315|PATH_ILLEGAL|路径不合法|
 |316|LOAD_FILE_ERROR|加载文件错误|
 |317|STORAGE_GROUP_NOT_READY| 存储组还在恢复中，还不能接受读写操作 |
 |400|EXECUTE_STATEMENT_ERROR|执行语句错误|
-|401|SQL_PARSE_ERROR|SQL语句分析错误|
+|401|SQL_PARSE_ERROR|SQL 语句分析错误|
 |402|GENERATE_TIME_ZONE_ERROR|生成时区错误|
 |403|SET_TIME_ZONE_ERROR|设置时区错误|
 |404|NOT_STORAGE_GROUP_ERROR|操作对象不是存储组|
 |405|QUERY_NOT_ALLOWED|查询语句不允许|
-|406|AST_FORMAT_ERROR|AST格式相关错误|
+|406|AST_FORMAT_ERROR|AST 格式相关错误|
 |407|LOGICAL_OPERATOR_ERROR|逻辑符相关错误|
 |408|LOGICAL_OPTIMIZE_ERROR|逻辑优化相关错误|
 |409|UNSUPPORTED_FILL_TYPE_ERROR|不支持的填充类型|
@@ -95,12 +95,11 @@ try {
 |603|UNINITIALIZED_AUTH_ERROR|授权人未初始化|
 |700|PARTITION_NOT_READY|分区表未准备好|
 |701|TIME_OUT|操作超时|
-|702|NO_LEADER|Leader找不到|
+|702|NO_LEADER|Leader 找不到|
 |703|UNSUPPORTED_OPERATION|不支持的操作|
 |704|NODE_READ_ONLY|节点只读|
 |705|CONSISTENCY_FAILURE|一致性检查失败|
 |706|NO_CONNECTION|连接获取失败|
 |707|NEED_REDIRECTION|需要重定向|
-> 在最新版本中，我们重构了IoTDB的异常类。通过将错误信息统一提取到异常类中，并为所有异常添加不同的错误代码，从而当捕获到异常并引发更高级别的异常时，错误代码将保留并传递，以便用户了解详细的错误原因。
+> 在最新版本中，我们重构了 IoTDB 的异常类。通过将错误信息统一提取到异常类中，并为所有异常添加不同的错误代码，从而当捕获到异常并引发更高级别的异常时，错误代码将保留并传递，以便用户了解详细的错误原因。
 除此之外，我们添加了一个基础异常类“ProcessException”，由所有异常扩展。
-

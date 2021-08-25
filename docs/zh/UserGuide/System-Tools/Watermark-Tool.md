@@ -19,19 +19,19 @@ under the License.
 -->
 ## 水印工具
 
-这个工具提供了 1）IoTDB查询结果水印嵌入功能，2）可疑数据的水印检测功能。
+这个工具提供了 1）IoTDB 查询结果水印嵌入功能，2）可疑数据的水印检测功能。
 
 ### 水印嵌入
 
 #### 配置
 
-IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-engine.properties`中的以下各项：
+IoTDB 默认关闭水印嵌入功能。为了使用这个功能，第一步要做的事情是修改配置文件`iotdb-engine.properties`中的以下各项：
 
 | 名称                    | 示例                                                   | 解释                                |
 | ----------------------- | ------------------------------------------------------ | ----------------------------------- |
-| watermark_module_opened | false                                                  | `true`打开水印嵌入功能; `false`关闭 |
+| watermark_module_opened | false                                                  | `true`打开水印嵌入功能；`false`关闭 |
 | watermark_secret_key    | IoTDB*2019@Beijing                                     | 自定义密钥                          |
-| watermark_bit_string    | 100101110100                                           | 要被嵌入的0-1比特串                 |
+| watermark_bit_string    | 100101110100                                           | 要被嵌入的 0-1 比特串                 |
 | watermark_method        | GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5) | 指定水印算法及其参数                |
 
 注意：
@@ -39,15 +39,15 @@ IoTDB默认关闭水印嵌入功能。为了使用这个功能，第一步要做
 - `watermark_module_opened`: 如果您想使用水印嵌入功能，请将其设置成`true`。
 - `watermark_secret_key`: 不能使用字符 '&'。密钥长度没有限制，一般来说密钥越长，攻击难度就越高。
 - `watermark_bit_string`: 比特串长度没有限制（除了不能为空字符串），但是当长度过短时，水印检测可能达不到要求的显著性水平。
-- `watermark_method`: 现在仅支持一种算法GroupBasedLSBMethod，因此您实际上可以修改的只有这个算法的两个参数`embed_row_cycle`和`embed_lsb_num`的值：
+- `watermark_method`: 现在仅支持一种算法 GroupBasedLSBMethod，因此您实际上可以修改的只有这个算法的两个参数`embed_row_cycle`和`embed_lsb_num`的值：
   - 均是正整数
-  - `embed_row_cycle`控制了被嵌入水印的行占总行数的比例。`embed_row_cycle`越小，被嵌入水印的行的比例就越大。当`embed_row_cycle`等于1的时候，所有的行都将嵌入水印。
-  - GroupBasedLSBMethod使用LSB嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
+  - `embed_row_cycle`控制了被嵌入水印的行占总行数的比例。`embed_row_cycle`越小，被嵌入水印的行的比例就越大。当`embed_row_cycle`等于 1 的时候，所有的行都将嵌入水印。
+  - GroupBasedLSBMethod 使用 LSB 嵌入。`embed_lsb_num`控制了允许嵌入水印的最低有效位的数量。`embed_lsb_num`越大，数值的可变化范围就越大。
 - `watermark_secret_key`, `watermark_bit_string`和`watermark_method`都不应该被攻击者获得。您需要自己负责配置文件`iotdb-engine.properties`的安全管理。
 
 #### 使用示例
 
- * 第一步：创建一个新用户Alice，授予读权限，然后查询
+ * 第一步：创建一个新用户 Alice，授予读权限，然后查询
 
 一个新创建的用户默认不使用水印。因此查询结果就是数据库中的原始数据。
 
@@ -98,13 +98,13 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
- * 第二步：给Alice施加水印嵌入
+ * 第二步：给 Alice 施加水印嵌入
 
-sql用法：`grant watermark_embedding to Alice`
+sql 用法：`grant watermark_embedding to Alice`
 
 您可以使用`grant watermark_embedding to user1,user2,...`来同时给多个用户施加水印嵌入。
 
-只有root用户有权限运行该指令。在root给Alice施加水印嵌入之后，Alice的所有查询结果都将被嵌入水印。
+只有 root 用户有权限运行该指令。在 root 给 Alice 施加水印嵌入之后，Alice 的所有查询结果都将被嵌入水印。
 
 ```
 .\start-cli.bat -u root -pw root
@@ -153,13 +153,13 @@ select * from root
 +-----------------------------------+------------------+
 ```
 
- * 第三步：撤销Alice的水印嵌入
+ * 第三步：撤销 Alice 的水印嵌入
 
-sql用法：`revoke watermark_embedding from Alice`
+sql 用法：`revoke watermark_embedding from Alice`
 
 您可以使用`revoke watermark_embedding from user1,user2,...`来同时撤销多个用户的水印嵌入。
 
-只有root用户有权限运行该指令。在root撤销Alice的水印嵌入之后，Alice的所有查询结果就又是数据库中的原始数据了。
+只有 root 用户有权限运行该指令。在 root 撤销 Alice 的水印嵌入之后，Alice 的所有查询结果就又是数据库中的原始数据了。
 
 ### 水印检测
 
@@ -178,11 +178,11 @@ sql用法：`revoke watermark_embedding from Alice`
 | embed_lsb_num      | 5                    | 参见水印嵌入小节                               |
 | alpha              | 0.05                 | 显著性水平                                     |
 | columnIndex        | 1                    | 指定可疑数据的某一列进行检测                   |
-| dataType           | float                | 指定检测列的数据类型；int/float/double任选其一 |
+| dataType           | float                | 指定检测列的数据类型；int/float/double 任选其一 |
 
 注意：
 
-- `filePath`: 您可以使用export-csv工具来生成这样的数据文件。第一行是表头， 第一列是时间列。文件中的数据示例如下：
+- `filePath`: 您可以使用 export-csv 工具来生成这样的数据文件。第一行是表头， 第一列是时间列。文件中的数据示例如下：
 
 | Time                          | root.vehicle.d0.s1 | root.vehicle.d0.s1 |
 | ----------------------------- | ------------------ | ------------------ |
@@ -191,6 +191,6 @@ sql用法：`revoke watermark_embedding from Alice`
 
 - `watermark_secret_key`, `watermark_bit_string`, `embed_row_cycle`和`embed_lsb_num`应该和水印嵌入过程使用的值保持一致。
 
-- `alpha`: 取值范围[0,1]。水印检测基于显著性检验，`alpha`越小，没有嵌入水印的数据被检测成嵌入水印的可能性越低，从而检测出嵌入水印的结果的可信度越高。
+- `alpha`: 取值范围 [0,1]。水印检测基于显著性检验，`alpha`越小，没有嵌入水印的数据被检测成嵌入水印的可能性越低，从而检测出嵌入水印的结果的可信度越高。
 
 - `columnIndex`: 正整数

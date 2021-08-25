@@ -126,6 +126,8 @@ public abstract class Operator {
     UDAF,
     UDTF,
 
+    SELECT_INTO,
+
     CREATE_FUNCTION,
     DROP_FUNCTION,
 
@@ -146,8 +148,8 @@ public abstract class Operator {
     STOP_TRIGGER,
 
     CREATE_TEMPLATE,
-    SET_DEVICE_TEMPLATE,
-    SET_USING_DEVICE_TEMPLATE,
+    SET_SCHEMA_TEMPLATE,
+    SET_USING_SCHEMA_TEMPLATE,
 
     MERGE,
     FULL_MERGE,
@@ -168,6 +170,7 @@ public abstract class Operator {
 
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    SET_SYSTEM_MODE
   }
 }

@@ -17,45 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.physical.crud;
+package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class SetDeviceTemplatePlan extends PhysicalPlan {
-  String templateName;
-  String prefixPath;
+public class SetUsingSchemaTemplatePlan extends PhysicalPlan {
 
-  public SetDeviceTemplatePlan() {
-    super(false, OperatorType.SET_DEVICE_TEMPLATE);
+  private static final Logger logger = LoggerFactory.getLogger(SetUsingSchemaTemplatePlan.class);
+  PartialPath prefixPath;
+
+  public SetUsingSchemaTemplatePlan() {
+    super(false, OperatorType.SET_USING_SCHEMA_TEMPLATE);
   }
 
-  public SetDeviceTemplatePlan(String templateName, String prefixPath) {
-    super(false, OperatorType.SET_DEVICE_TEMPLATE);
-    this.templateName = templateName;
-    this.prefixPath = prefixPath;
-  }
-
-  public String getTemplateName() {
-    return templateName;
-  }
-
-  public void setTemplateName(String templateName) {
-    this.templateName = templateName;
-  }
-
-  public String getPrefixPath() {
-    return prefixPath;
-  }
-
-  public void setPrefixPath(String prefixPath) {
+  public SetUsingSchemaTemplatePlan(PartialPath prefixPath) {
+    super(false, OperatorType.SET_USING_SCHEMA_TEMPLATE);
     this.prefixPath = prefixPath;
   }
 
@@ -64,31 +52,32 @@ public class SetDeviceTemplatePlan extends PhysicalPlan {
     return null;
   }
 
+  public PartialPath getPrefixPath() {
+    return prefixPath;
+  }
+
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_DEVICE_TEMPLATE.ordinal());
-
-    ReadWriteIOUtils.write(templateName, buffer);
-    ReadWriteIOUtils.write(prefixPath, buffer);
-
+    buffer.put((byte) PhysicalPlanType.SET_USING_SCHEMA_TEMPLATE.ordinal());
+    ReadWriteIOUtils.write(prefixPath.getFullPath(), buffer);
     buffer.putLong(index);
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    templateName = ReadWriteIOUtils.readString(buffer);
-    prefixPath = ReadWriteIOUtils.readString(buffer);
-
-    this.index = buffer.getLong();
+    String pathString = readString(buffer);
+    try {
+      prefixPath = new PartialPath(pathString);
+    } catch (IllegalPathException e) {
+      logger.error("Failed to deserialize device {} from buffer", pathString);
+    }
+    index = buffer.getLong();
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.SET_DEVICE_TEMPLATE.ordinal());
-
-    ReadWriteIOUtils.write(templateName, stream);
-    ReadWriteIOUtils.write(prefixPath, stream);
-
+    stream.writeByte((byte) PhysicalPlanType.SET_USING_SCHEMA_TEMPLATE.ordinal());
+    ReadWriteIOUtils.write(prefixPath.getFullPath(), stream);
     stream.writeLong(index);
   }
 }

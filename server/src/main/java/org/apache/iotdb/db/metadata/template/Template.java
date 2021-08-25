@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -120,13 +121,17 @@ public class Template {
         || schemaMap.containsKey(path.getDevicePath().getMeasurement()));
   }
 
-  public List<MeasurementMNode> getMeasurementMNode() {
+  public boolean hasSchema(String measurementId) {
+    return schemaMap.containsKey(measurementId);
+  }
+
+  public List<IMeasurementMNode> getMeasurementMNode() {
     Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
-    List<MeasurementMNode> res = new ArrayList<>();
+    List<IMeasurementMNode> res = new ArrayList<>();
 
     for (IMeasurementSchema measurementSchema : schemaMap.values()) {
       if (deduplicateSchema.add(measurementSchema)) {
-        MeasurementMNode measurementMNode = null;
+        IMeasurementMNode measurementMNode = null;
         if (measurementSchema instanceof MeasurementSchema) {
           measurementMNode =
               new MeasurementMNode(

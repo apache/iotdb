@@ -22,14 +22,14 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.MetadataOperationType;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -319,7 +319,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setTemplate(SetDeviceTemplatePlan plan) throws IOException {
+  public void setTemplate(SetSchemaTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_TEMPLATE));
     buf.append(",");
     buf.append(plan.getTemplateName());
@@ -331,7 +331,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setUsingTemplate(SetUsingDeviceTemplatePlan plan) throws IOException {
+  public void setUsingTemplate(SetUsingSchemaTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath());

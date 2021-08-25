@@ -52,7 +52,6 @@ END
   、d、w、mo、y 等单位。
 * `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层以下的所有序列聚合。Group By Level 语句的具体语义及 `<level>` 的定义见 [路径层级分组聚合](../IoTDB-SQL-Language/DML-Data-Manipulation-Language.md)。
 
-
 注：
 
 * `<for_interval>`,`<every_interval>` 可选择指定。如果用户没有指定其中的某一项，则未指定项的值按照`<group_by_interval>` 处理。
@@ -69,8 +68,6 @@ END
       * 若用户未指定 `<level>`，令原始时间序列最大层数为 `L`， 
       则系统生成的结果时间序列路径为 `root.${1}. ... .${L - 1}.<node_name>`。
 
-
-
 #### 示例
 
 ##### 原始时间序列
@@ -84,7 +81,6 @@ END
 |root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT| GORILLA|     SNAPPY|null|      null|
 +-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ````
-
 
 ````
 +-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
@@ -111,15 +107,14 @@ END
 需要注意的是，`${x}` 中的 `x` 应当大于等于 `1` 且小于等于 `<level>` 值
 （若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
 
-
 ##### 创建 `cq1`
 ````
 CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
 ````
 
-每隔 10s 查询 `root.ln.*.*.temperature` 在前 10s 内的最大值（结果以10s为一组），
+每隔 10s 查询 `root.ln.*.*.temperature` 在前 10s 内的最大值（结果以 10s 为一组），
 将结果写入到 `root.${1}.${2}.${3}.temperature_max` 中，
-结果将产生4条新序列：
+结果将产生 4 条新序列：
 ````
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                       timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -129,7 +124,6 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 |root.ln.wf01.wt02.temperature_max| null|      root.ln|   FLOAT| GORILLA|     SNAPPY|null|      null|
 |root.ln.wf01.wt01.temperature_max| null|      root.ln|   FLOAT| GORILLA|     SNAPPY|null|      null|
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
-````
 ````
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 |                         Time|root.ln.wf02.wt02.temperature_max|root.ln.wf02.wt01.temperature_max|root.ln.wf01.wt02.temperature_max|root.ln.wf01.wt01.temperature_max|
@@ -145,7 +139,7 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
 ````
 
-每隔 20s 查询 `root.ln.*.*.temperature` 在前 20s 内的平均值（结果以10s为一组，按照第2层节点分组），
+每隔 20s 查询 `root.ln.*.*.temperature` 在前 20s 内的平均值（结果以 10s 为一组，按照第 2 层节点分组），
 将结果写入到 `root.${1}.${2}.temperature_avg` 中。
 结果将产生如下两条新序列，
 其中 `root.ln.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
@@ -158,7 +152,6 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |root.ln.wf02.temperature_avg| null|      root.ln|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 |root.ln.wf01.temperature_avg| null|      root.ln|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+
-````
 ````
 +-----------------------------+----------------------------+----------------------------+
 |                         Time|root.ln.wf02.temperature_avg|root.ln.wf01.temperature_avg|
@@ -184,7 +177,6 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |root.ln_cq.wf02.temperature_avg| null|   root.ln_cq|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 |root.ln_cq.wf01.temperature_avg| null|   root.ln_cq|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
-````
 ````
 +-----------------------------+-------------------------------+-------------------------------+
 |                         Time|root.ln_cq.wf02.temperature_avg|root.ln_cq.wf01.temperature_avg|
@@ -227,6 +219,3 @@ DROP CONTINUOUS QUERY cq3
 | `continuous_query_execution_thread` | 执行连续查询任务的线程池的线程数 | int | max(1, CPU 核数 / 2)|
 | `max_pending_continuous_query_tasks` | 队列中连续查询最大任务堆积数 | int | 64|
 | `continuous_query_min_every_interval` | 连续查询执行时间间隔的最小值 | duration | 1s|
-
-
-

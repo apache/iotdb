@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.mlog.MLogParser;
@@ -101,10 +101,10 @@ public class MLogParserTest {
 
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-      IoTDB.metaManager.createDeviceTemplate(genCreateTemplatePlan());
-      SetDeviceTemplatePlan setDeviceTemplatePlan =
-          new SetDeviceTemplatePlan("template1", "root.sg");
-      IoTDB.metaManager.setDeviceTemplate(setDeviceTemplatePlan);
+      IoTDB.metaManager.createSchemaTemplate(genCreateTemplatePlan());
+      SetSchemaTemplatePlan setSchemaTemplatePlan =
+          new SetSchemaTemplatePlan("template1", "root.sg");
+      IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
       IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath("root.sg.d1"), true, true, 1);
     } catch (MetadataException | IOException e) {
       e.printStackTrace();

@@ -337,6 +337,13 @@
           id: 'SteveYurongSu',
           date: '2021/05/12'
         },
+        {
+          avatar:'/img/contributor-avatar/user.svg',
+          name: 'Chao Wang',
+          role: 'Committer',
+          id: 'wangchao316',
+          date: '2021/06/30'
+        },
         ]
       }
     },

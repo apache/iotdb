@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -61,7 +61,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
     queryPlan.setPaths(pathList);
     queryPlan.setDataTypes(dataTypes);
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
       QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, context);
@@ -82,7 +82,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
 
   @Test
   public void testGetAllStorageGroupNodes() {
-    List<StorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
     for (int i = 0; i < allStorageGroupNodes.size(); i++) {
       assertEquals(
           IoTDB.metaManager.getAllStorageGroupNodes().get(i).getFullPath(),
@@ -96,7 +96,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest {
           IOException, InterruptedException, QueryProcessException {
     ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan(pathList.get(0));
     QueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.processQuery(showTimeSeriesPlan, context);
       int count = 0;

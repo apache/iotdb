@@ -47,7 +47,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -101,6 +101,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -123,6 +124,7 @@ public class StorageEngine implements IService {
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
   private ScheduledExecutorService ttlCheckThread;
+  private ScheduledExecutorService memtableTimedFlushCheckThread;
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
   // add customized listeners here for flush and close events
@@ -237,9 +239,9 @@ public class StorageEngine implements IService {
             Runtime.getRuntime().availableProcessors(), "Recovery-Thread-Pool");
 
     // recover all logic storage group processors
-    List<StorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
+    List<IStorageGroupMNode> sgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     List<Future<Void>> futures = new LinkedList<>();
-    for (StorageGroupMNode storageGroup : sgNodes) {
+    for (IStorageGroupMNode storageGroup : sgNodes) {
       VirtualStorageGroupManager virtualStorageGroupManager =
           processorMap.computeIfAbsent(
               storageGroup.getPartialPath(), id -> new VirtualStorageGroupManager(true));
@@ -273,6 +275,17 @@ public class StorageEngine implements IService {
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
+    logger.info("start ttl check thread successfully.");
+
+    if (config.isEnableTimedFlushUnseqMemtable()) {
+      memtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      memtableTimedFlushCheckThread.scheduleAtFixedRate(
+          this::timedFlushMemTable,
+          config.getUnseqMemtableFlushCheckInterval(),
+          config.getUnseqMemtableFlushCheckInterval(),
+          TimeUnit.MILLISECONDS);
+      logger.info("start memtable timed flush check thread successfully.");
+    }
   }
 
   private void checkTTL() {
@@ -284,6 +297,16 @@ public class StorageEngine implements IService {
       // ignore
     } catch (Exception e) {
       logger.error("An error occurred when checking TTL", e);
+    }
+  }
+
+  private void timedFlushMemTable() {
+    try {
+      for (VirtualStorageGroupManager processor : processorMap.values()) {
+        processor.timedFlushMemTable();
+      }
+    } catch (Exception e) {
+      logger.error("An error occurred when checking memtable flush interval", e);
     }
   }
 
@@ -299,6 +322,17 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
         throw new StorageEngineFailureException(
             "StorageEngine failed to stop because of " + "ttlCheckThread.", e);
+      }
+    }
+    if (memtableTimedFlushCheckThread != null) {
+      memtableTimedFlushCheckThread.shutdownNow();
+      try {
+        memtableTimedFlushCheckThread.awaitTermination(60, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Memtable flush interval check thread still doesn't exit after 60s");
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException(
+            "StorageEngine failed to stop because of memtableFlushCheckThread.", e);
       }
     }
     recoveryThreadPool.shutdownNow();
@@ -324,6 +358,15 @@ public class StorageEngine implements IService {
         Thread.currentThread().interrupt();
       }
     }
+    if (memtableTimedFlushCheckThread != null) {
+      memtableTimedFlushCheckThread.shutdownNow();
+      try {
+        memtableTimedFlushCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Memtable flush interval check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+      }
+    }
     recoveryThreadPool.shutdownNow();
     this.reset();
   }
@@ -344,7 +387,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
       return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
@@ -360,7 +403,7 @@ public class StorageEngine implements IService {
    */
   public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     try {
-      StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
@@ -376,7 +419,7 @@ public class StorageEngine implements IService {
     try {
       List<String> lockHolderList = new ArrayList<>(pathList.size());
       for (PartialPath path : pathList) {
-        StorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+        IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
         StorageGroupProcessor storageGroupProcessor =
             getStorageGroupProcessorByPath(path, storageGroupMNode);
         lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
@@ -398,7 +441,7 @@ public class StorageEngine implements IService {
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   private StorageGroupProcessor getStorageGroupProcessorByPath(
-      PartialPath devicePath, StorageGroupMNode storageGroupMNode)
+      PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     VirtualStorageGroupManager virtualStorageGroupManager =
         processorMap.get(storageGroupMNode.getPartialPath());
@@ -422,7 +465,7 @@ public class StorageEngine implements IService {
    */
   public StorageGroupProcessor buildNewStorageGroupProcessor(
       PartialPath logicalStorageGroupName,
-      StorageGroupMNode storageGroupMNode,
+      IStorageGroupMNode storageGroupMNode,
       String virtualStorageGroupId)
       throws StorageGroupProcessorException {
     StorageGroupProcessor processor;
@@ -468,7 +511,7 @@ public class StorageEngine implements IService {
       storageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
-          StorageGroupMNode storageGroupMNode =
+          IStorageGroupMNode storageGroupMNode =
               IoTDB.metaManager.getStorageGroupNodeByPath(insertRowPlan.getPrefixPath());
           updateMonitorStatistics(
               processorMap.get(storageGroupMNode.getPartialPath()), insertRowPlan);
@@ -528,7 +571,7 @@ public class StorageEngine implements IService {
 
     if (config.isEnableStatMonitor()) {
       try {
-        StorageGroupMNode storageGroupMNode =
+        IStorageGroupMNode storageGroupMNode =
             IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getPrefixPath());
         updateMonitorStatistics(
             processorMap.get(storageGroupMNode.getPartialPath()), insertTabletPlan);

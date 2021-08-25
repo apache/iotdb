@@ -179,6 +179,10 @@ public class SQLConstant {
   public static final int TOK_CONTINUOUS_QUERY_DROP = 107;
   public static final int TOK_SHOW_CONTINUOUS_QUERIES = 108;
 
+  public static final int TOK_SELECT_INTO = 109;
+
+  public static final int TOK_SET_SYSTEM_MODE = 110;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -247,6 +251,8 @@ public class SQLConstant {
     tokenNames.put(TOK_CONTINUOUS_QUERY_CREATE, "TOK_CONTINUOUS_QUERY_CREATE");
     tokenNames.put(TOK_CONTINUOUS_QUERY_DROP, "TOK_CONTINUOUS_QUERY_DROP");
     tokenNames.put(TOK_SHOW_CONTINUOUS_QUERIES, "TOK_SHOW_CONTINUOUS_QUERIES");
+
+    tokenNames.put(TOK_SELECT_INTO, "TOK_SELECT_INTO");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

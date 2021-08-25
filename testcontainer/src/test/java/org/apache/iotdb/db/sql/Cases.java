@@ -83,10 +83,17 @@ public abstract class Cases {
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
-      writeStatement.execute(
-          String.format(
-              "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              timeSeries));
+      try {
+        writeStatement.execute(
+            String.format(
+                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                timeSeries));
+      } catch (Exception e) {
+        if (timeSeries.equals("root.sg1.aa.bb")) {
+          e.printStackTrace();
+          fail();
+        }
+      }
     }
     ResultSet resultSet = null;
     // try to read data on each node.
@@ -96,10 +103,10 @@ public abstract class Cases {
       while (resultSet.next()) {
         result.add(resultSet.getString(1));
       }
-      Assert.assertEquals(3, result.size());
-      for (String timeseries : timeSeriesArray) {
-        Assert.assertTrue(result.contains(timeseries));
-      }
+      Assert.assertEquals(1, result.size());
+      Assert.assertTrue(result.contains("root.sg1.aa.bb"));
+      Assert.assertFalse(result.contains("root.sg1.aa.bb.cc"));
+      Assert.assertFalse(result.contains("root.sg1.aa"));
       resultSet.close();
     }
 
@@ -212,79 +219,6 @@ public abstract class Cases {
       resultSet.close();
     }
   }
-
-  //  @Test
-  //  public void vectorCountTest() throws IoTDBConnectionException, StatementExecutionException {
-  //    List<List<String>> measurementList = new ArrayList<>();
-  //    List<String> schemaNames = new ArrayList<>();
-  //    List<List<TSEncoding>> encodingList = new ArrayList<>();
-  //    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-  //    List<CompressionType> compressionTypes = new ArrayList<>();
-  //    List<TSDataType> dataTypes = new ArrayList<>();
-  //    List<TSEncoding> encodings = new ArrayList<>();
-  //    String[] vectorMeasurements = new String[10];
-  //
-  //    Stream.iterate(0, i -> i + 1)
-  //        .limit(10)
-  //        .forEach(
-  //            i -> {
-  //              dataTypes.add(TSDataType.DOUBLE);
-  //              vectorMeasurements[i] = "vm" + i;
-  //              encodings.add(TSEncoding.RLE);
-  //              compressionTypes.add(CompressionType.SNAPPY);
-  //            });
-  //    schemaNames.add("schema");
-  //    encodingList.add(encodings);
-  //    dataTypeList.add(dataTypes);
-  //    measurementList.add(Arrays.asList(vectorMeasurements));
-  //
-  //    session.createSchemaTemplate(
-  //        "testcontainer",
-  //        schemaNames,
-  //        measurementList,
-  //        dataTypeList,
-  //        encodingList,
-  //        compressionTypes);
-  //    session.setStorageGroup("root.template");
-  //    session.setSchemaTemplate("testcontainer", "root.template");
-  //
-  //    VectorMeasurementSchema vectorMeasurementSchema =
-  //        new VectorMeasurementSchema(
-  //            "vector", vectorMeasurements, dataTypes.toArray(new TSDataType[0]));
-  //
-  //    Tablet tablet = new Tablet("root.template.device1.vector",
-  //    Arrays.asList(vectorMeasurementSchema));
-  //    tablet.setAligned(true);
-  //    for (int i = 0; i < 10; i++) {
-  //      tablet.addTimestamp(i, i);
-  //      for (int j = 0; j < 10; j++) {
-  //        tablet.addValue("vm" + j, i, (double) i);
-  //        tablet.rowSize++;
-  //      }
-  //    }
-  //    session.insertTablet(tablet);
-  //
-  //    SessionDataSet sessionDataSet =
-  //        session.executeQueryStatement("select count(*) from root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    RowRecord next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet = session.executeQueryStatement("select count(vm1) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //
-  //    sessionDataSet =
-  //        session.executeQueryStatement("select count(vm1),count(vm2) from
-  // root.template.device1");
-  //    Assert.assertTrue(sessionDataSet.hasNext());
-  //    next = sessionDataSet.next();
-  //    Assert.assertEquals(2, next.getFields().size());
-  //    Assert.assertEquals(10, next.getFields().get(0).getLongV());
-  //    Assert.assertEquals(10, next.getFields().get(1).getLongV());
-  //  }
 
   @Test
   public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
@@ -494,42 +428,6 @@ public abstract class Cases {
   }
 
   @Test
-  public void testApplyClearCache() throws InterruptedException {
-    String sql = "CLEAR CACHE";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
-  public void testApplyMerge() throws InterruptedException {
-    String sql = "MERGE";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
-  public void testCreateSnapshot() throws InterruptedException {
-    String sql = "CREATE SNAPSHOT FOR SCHEMA";
-    try {
-      // Wait for 3S so that the leader can be elected
-      Thread.sleep(3000);
-      writeStatement.execute(sql);
-    } catch (SQLException e) {
-      Assert.assertNull(e);
-    }
-  }
-
-  @Test
   public void clusterUDTFQueryTest() throws SQLException {
     // Prepare data.
     writeStatement.execute(
@@ -568,6 +466,65 @@ public abstract class Cases {
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
+    }
+  }
+
+  @Test
+  public void testSelectInto() throws SQLException {
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format(
+              "CREATE timeseries root.sg.device%s.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+              i));
+      writeStatement.execute(
+          String.format(
+              "CREATE timeseries root.sg.device%s.t WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+              i));
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(1,1)", i));
+    }
+
+    writeStatement.execute(
+        "SELECT device0.s, device1.s, device2.s, device3.s, device4.s, device5.s, device6.s, device7.s, device8.s, device9.s "
+            + "INTO device0.t, device1.t, device2.t, device3.t, device4.t, device5.t, device6.t, device7.t, device8.t, device9.t "
+            + "FROM root.sg;");
+
+    for (int i = 0; i < 10; i++) {
+      writeStatement.execute(
+          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(2,2)", i));
+      writeStatement.execute(
+          String.format("SELECT device%s.s into device%s.t from root.sg;", i, i));
+    }
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; ++i) {
+        try (ResultSet resultSet =
+            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.device%s", i))) {
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(1, Double.parseDouble(resultSet.getString(1)), 0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
+          Assert.assertTrue(resultSet.next());
+          Assert.assertEquals(2, Double.parseDouble(resultSet.getString(1)), 0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(1)),
+              Double.parseDouble(resultSet.getString(2)),
+              0);
+          Assert.assertEquals(
+              Double.parseDouble(resultSet.getString(2)),
+              Double.parseDouble(resultSet.getString(3)),
+              0);
+
+          Assert.assertFalse(resultSet.next());
+        }
+      }
     }
   }
 }

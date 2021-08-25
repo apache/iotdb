@@ -52,4 +52,3 @@ IoTDB 与大数据系统进行了对接。
 * [Spark-TsFile](../Connector/Spark-TsFile.md)
 * [Spark-IoTDB](../Connector/Spark-IOTDB.md)
 * [Grafana](../../UserGuide/Ecosystem%20Integration/Grafana.md)
-

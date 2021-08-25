@@ -26,19 +26,15 @@
 * JDK >= 1.8
 * Maven >= 3.6
 
-
-
 ### 安装方法
 
-在根目录下运行:
+在根目录下运行：
 
 ```shell
 mvn clean install -pl session -am -Dmaven.test.skip=true
 ```
 
-
-
-### 在MAVEN中使用原生接口
+### 在 MAVEN 中使用原生接口
 
 ```xml
 <dependencies>
@@ -50,13 +46,11 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-
-
 ### 原生接口说明
 
-下面将给出Session对应的接口的简要介绍和对应参数：
+下面将给出 Session 对应的接口的简要介绍和对应参数：
 
-* 初始化Session
+* 初始化 Session
 
 ```java
     // 全部使用默认配置
@@ -87,13 +81,13 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
             .build();
 ```
 
-* 开启Session
+* 开启 Session
 
 ```java
 Session.open()
 ```
 
-* 关闭Session
+* 关闭 Session
 
 ```java
 Session.close()
@@ -189,7 +183,7 @@ void insertRecords(List<String> deviceIds, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
-* 插入同属于一个device的多个 Record。
+* 插入同属于一个 device 的多个 Record。
 
 ```java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
@@ -215,16 +209,16 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-* 创建一个设备模板
+* 创建一个物理量模板
 
 ```
-* name: 设备模板名称
-* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个list中再放入measurements中，
-*               如果该工况是对齐的，将所有对齐工况名称放入一个list再放入measurements中
-* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入dataTypes中，
-             如果该工况是对齐的，将所有对齐工况的数据类型放入一个list再放入dataTypes中
-* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个list中再放入encodings中，
-             如果该工况是对齐的，将所有对齐工况的编码类型放入一个list再放入encodings中
+* name: 物理量模板名称
+* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个 list 中再放入 measurements 中，
+*               如果该工况是对齐的，将所有对齐工况名称放入一个 list 再放入 measurements 中
+* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 dataTypes 中，
+             如果该工况是对齐的，将所有对齐工况的数据类型放入一个 list 再放入 dataTypes 中
+* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 encodings 中，
+             如果该工况是对齐的，将所有对齐工况的编码类型放入一个 list 再放入 encodings 中
 * compressors: 压缩方式列表                          
 void createSchemaTemplate(
       String templateName,
@@ -235,7 +229,7 @@ void createSchemaTemplate(
       List<CompressionType> compressors)
 ```
 
-* 将名为'templateName'的设备模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的设备模板
+* 将名为'templateName'的物理量模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的物理量模板
 
 ``` 
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -268,26 +262,23 @@ void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values)
 ```
 
-
 * 测试 insertTablet，不实际写入数据，只将数据传输到 server 即返回。
 
 ```java
 void testInsertTablet(Tablet tablet)
 ```
 
-
-
 ### 针对原生接口的连接池
 
-我们提供了一个针对原生接口的连接池(`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
-如果超过60s都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
+我们提供了一个针对原生接口的连接池 (`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
+如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
 
 当一个连接被用完后，他会自动返回池中等待下次被使用；
 当一个连接损坏后，他会从池中被删除，并重建一个连接重新执行用户的操作。
 
 对于查询操作：
 
-1. 使用SessionPool进行查询时，得到的结果集是`SessionDataSet`的封装类`SessionDataSetWrapper`;
+1. 使用 SessionPool 进行查询时，得到的结果集是`SessionDataSet`的封装类`SessionDataSetWrapper`;
 2. 若对于一个查询的结果集，用户并没有遍历完且不再想继续遍历时，需要手动调用释放连接的操作`closeResultSet`;
 3. 若对一个查询的结果集遍历时出现异常，也需要手动调用释放连接的操作`closeResultSet`.
 4. 可以调用 `SessionDataSetWrapper` 的 `getColumnNames()` 方法得到结果集列名 
@@ -296,7 +287,7 @@ void testInsertTablet(Tablet tablet)
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
 
-使用对齐时间序列和设备模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
+使用对齐时间序列和物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
 
 ### 示例代码
 
@@ -304,12 +295,10 @@ void testInsertTablet(Tablet tablet)
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
-
-
-### 集群信息相关的接口 (仅在集群模式下可用)
+### 集群信息相关的接口 （仅在集群模式下可用）
 
 集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
-要使用该API，需要增加依赖：
+要使用该 API，需要增加依赖：
 
 ```xml
 <dependencies>
@@ -321,7 +310,7 @@ void testInsertTablet(Tablet tablet)
 </dependencies>
 ```
 
-建立连接与关闭连接的示例:
+建立连接与关闭连接的示例：
 
 ```java
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -355,7 +344,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
     }
 ```
 
-API列表：
+API 列表：
 
 * 获取集群中的各个节点的信息（构成哈希环）
 
@@ -363,7 +352,7 @@ API列表：
 list<Node> getRing();
 ```
 
-* 给定一个路径（应包括一个SG作为前缀）和起止时间，获取其覆盖的数据分区情况:
+* 给定一个路径（应包括一个 SG 作为前缀）和起止时间，获取其覆盖的数据分区情况：
 
 ```java 
     /**
@@ -374,7 +363,7 @@ list<Node> getRing();
     list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 ```
 
-* 给定一个路径（应包括一个SG作为前缀），获取其被分到了哪个节点上:
+* 给定一个路径（应包括一个 SG 作为前缀），获取其被分到了哪个节点上：
 ```java  
     /**
      * @param path input path (should contains a Storage group name as its prefix)
@@ -383,7 +372,7 @@ list<Node> getRing();
     list<Node> getMetaPartition(1:string path);
 ```
 
-* 获取所有节点的死活状态:
+* 获取所有节点的死活状态：
 ```java
     /**
      * @return key: node, value: live or not
@@ -391,7 +380,7 @@ list<Node> getRing();
     map<Node, bool> getAllNodeStatus();
 ```
 
-* 获取当前连接节点的Raft组信息（投票编号等）（一般用户无需使用该接口）:
+* 获取当前连接节点的 Raft 组信息（投票编号等）（一般用户无需使用该接口）:
 ```java  
     /**
      * @return A multi-line string with each line representing the total time consumption, invocation

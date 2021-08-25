@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -81,8 +81,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
     assertNull(mNode.getSchema().getProps());
   }
 
@@ -102,8 +102,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(2, mNode.getSchema().getProps().size());
@@ -127,8 +127,8 @@ public class IoTDBSimpleQueryIT {
       e.printStackTrace();
     }
 
-    MeasurementMNode mNode =
-        (MeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
+    IMeasurementMNode mNode =
+        (IMeasurementMNode) MManager.getInstance().getNodeByPath(new PartialPath("root.sg1.d0.s1"));
 
     // check if SDT property is set
     assertEquals(4, mNode.getSchema().getProps().size());

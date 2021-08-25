@@ -23,7 +23,7 @@ import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogTxtWriter;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
@@ -35,7 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
 import org.apache.commons.cli.CommandLine;
@@ -217,11 +217,11 @@ public class MLogParser {
           case CREATE_TEMPLATE:
             mLogTxtWriter.createTemplate((CreateTemplatePlan) plan);
             break;
-          case SET_DEVICE_TEMPLATE:
-            mLogTxtWriter.setTemplate((SetDeviceTemplatePlan) plan);
+          case SET_SCHEMA_TEMPLATE:
+            mLogTxtWriter.setTemplate((SetSchemaTemplatePlan) plan);
             break;
-          case SET_USING_DEVICE_TEMPLATE:
-            mLogTxtWriter.setUsingTemplate((SetUsingDeviceTemplatePlan) plan);
+          case SET_USING_SCHEMA_TEMPLATE:
+            mLogTxtWriter.setUsingTemplate((SetUsingSchemaTemplatePlan) plan);
             break;
           case AUTO_CREATE_DEVICE_MNODE:
             mLogTxtWriter.autoCreateDeviceNode(

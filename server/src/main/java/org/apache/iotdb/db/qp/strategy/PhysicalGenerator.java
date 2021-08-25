@@ -37,8 +37,7 @@ import java.util.Map;
 /** Used to convert logical operator to physical plan */
 public class PhysicalGenerator {
 
-  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
-      throws QueryProcessException {
+  public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     PhysicalPlan physicalPlan = operator.generatePhysicalPlan(this);
     physicalPlan.setDebug(operator.isDebug());
     return physicalPlan;
@@ -54,27 +53,6 @@ public class PhysicalGenerator {
       default:
         throw new QueryProcessException(
             String.format("Unrecognized load configuration operator type, %s", type.name()));
-    }
-  }
-
-  /**
-   * get types for path list
-   *
-   * @return pair.left is the type of column in result set, pair.right is the real type of the
-   *     measurement
-   */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(
-      List<PartialPath> paths, String aggregation) throws MetadataException {
-    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, (String) null);
-    // if the aggregation function is null, the type of column in result set
-    // is equal to the real type of the measurement
-    if (aggregation == null) {
-      return new Pair<>(measurementDataTypes, measurementDataTypes);
-    } else {
-      // if the aggregation function is not null,
-      // we should recalculate the type of column in result set
-      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregation);
-      return new Pair<>(columnDataTypes, measurementDataTypes);
     }
   }
 
