@@ -212,12 +212,12 @@ public class IoTDBSessionIteratorIT {
   public void testLastQuery() {
     String[] retArray =
         new String[] {
-          "9,root.sg1.d1.s1,false",
-          "9,root.sg1.d1.s2,9",
-          "9,root.sg1.d1.s3,90",
-          "9,root.sg1.d1.s4,13.5",
-          "9,root.sg1.d1.s5,22.5",
-          "9,root.sg1.d1.s6,time9",
+          "9,root.sg1.d1.s1,BOOLEAN,false",
+          "9,root.sg1.d1.s2,INT32,9",
+          "9,root.sg1.d1.s3,INT64,90",
+          "9,root.sg1.d1.s4,FLOAT,13.5",
+          "9,root.sg1.d1.s5,DOUBLE,22.5",
+          "9,root.sg1.d1.s6,TEXT,time9",
         };
 
     try {
@@ -229,7 +229,11 @@ public class IoTDBSessionIteratorIT {
       while (iterator.next()) {
         String ans =
             String.format(
-                "%s,%s,%s", iterator.getLong(1), iterator.getString(2), iterator.getString(3));
+                "%s,%s,%s,%s",
+                iterator.getLong(1),
+                iterator.getString(2),
+                iterator.getString(3),
+                iterator.getString(4));
         assertEquals(retArray[count], ans);
         count++;
       }
@@ -267,7 +271,7 @@ public class IoTDBSessionIteratorIT {
   /** Test executeQueryStatement with timeout, and the result is not timeout here. */
   @Test
   public void queryWithTimeoutTest() {
-    String[] retArray = new String[] {"9,root.sg1.d1.s1,false"};
+    String[] retArray = new String[] {"9,root.sg1.d1.s1,BOOLEAN,false"};
 
     try {
       SessionDataSet sessionDataSet =
@@ -278,7 +282,11 @@ public class IoTDBSessionIteratorIT {
       while (iterator.next()) {
         String ans =
             String.format(
-                "%s,%s,%s", iterator.getLong(1), iterator.getString(2), iterator.getString(3));
+                "%s,%s,%s,%s",
+                iterator.getLong(1),
+                iterator.getString(2),
+                iterator.getString(3),
+                iterator.getString(4));
         assertEquals(retArray[count], ans);
         count++;
       }
