@@ -144,6 +144,11 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     return results;
   }
 
+  @Override
+  public List<PartialPath> getPrefixPaths() {
+    return null;
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, paths.size());
   }

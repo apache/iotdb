@@ -187,6 +187,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
+  public List<PartialPath> getPrefixPaths() {
+    return Collections.singletonList(this.prefixPath);
+  }
+
+  @Override
   public int getBatchSize() {
     return rowPlans.length;
   }
