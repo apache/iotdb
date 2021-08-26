@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
+import org.apache.thrift.annotation.Nullable;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -31,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 
 public abstract class AbstractScript {
 
-  protected void testOutput(ProcessBuilder builder, String[] output) throws IOException {
+  protected void testOutput(ProcessBuilder builder, @Nullable String[] output) throws IOException {
     builder.redirectErrorStream(true);
     Process p = builder.start();
     BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -48,17 +50,18 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
-    System.out.println("should contains:");
-    for (String s : output) {
-      System.out.println(s);
-    }
+    if (output != null){
+      System.out.println("should contains:");
+      for (String s : output) {
+        System.out.println(s);
+      }
 
-    System.out.println("actualOutput:");
-    for (String out : actualOutput) {
-      System.out.println(out);
+      System.out.println("actualOutput:");
+      for (String out : actualOutput) {
+        System.out.println(out);
+      }
+      assertTrue(actualOutput.get(actualOutput.size() - 1).contains(output[output.length - 1]));
     }
-
-    assertTrue(actualOutput.get(actualOutput.size() - 1).contains(output[output.length - 1]));
   }
 
   protected String getCliPath() {
@@ -93,7 +96,7 @@ public abstract class AbstractScript {
         .getAbsolutePath();
   }
 
-  protected abstract void testOnWindows(String[] output) throws IOException;
+  protected abstract void testOnWindows(String queryCommand, String[] output) throws IOException;
 
-  protected abstract void testOnUnix(String[] output) throws IOException;
+  protected abstract void testOnUnix(String queryCommand, String[] output) throws IOException;
 }
