@@ -213,7 +213,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
-    | (suffixPath | fullPath) LIKE stringLiteral
+    | (suffixPath | fullPath) (REGEXP | LIKE) stringLiteral
     ;
 
 inClause
@@ -1284,6 +1284,10 @@ CONCAT
 
 LIKE
     : L I K E
+    ;
+
+REGEXP
+    : R E G E X P
     ;
 
 TOLERANCE
