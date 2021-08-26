@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
@@ -180,11 +181,20 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         currentNode = newInnerNode;
       }
       try {
-        currentNode.addChildOperator(
-            new BasicFunctionOperator(
-                operator.getFilterType(),
-                noStarPaths.get(i),
-                ((BasicFunctionOperator) operator).getValue()));
+        if (operator instanceof InOperator) {
+          currentNode.addChildOperator(
+              new InOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((InOperator) operator).getNot(),
+                  ((InOperator) operator).getValues()));
+        } else {
+          currentNode.addChildOperator(
+              new BasicFunctionOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((BasicFunctionOperator) operator).getValue()));
+        }
       } catch (SQLParserException e) {
         throw new LogicalOptimizeException(e.getMessage());
       }

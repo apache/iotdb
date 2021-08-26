@@ -46,7 +46,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang.text.StrBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -468,7 +467,7 @@ public class MetadataIndexConstructorTest {
    * @return curIndex's string
    */
   private String generateIndexString(int curIndex, int maxIndex) {
-    StrBuilder res = new StrBuilder(String.valueOf(curIndex));
+    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
     String target = String.valueOf(maxIndex);
     while (res.length() < target.length()) {
       res.insert(0, "0");

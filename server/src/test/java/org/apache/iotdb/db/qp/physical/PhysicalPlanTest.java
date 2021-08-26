@@ -1480,4 +1480,21 @@ public class PhysicalPlanTest {
     SetStorageGroupPlan plan = (SetStorageGroupPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals("SetStorageGroup{root.sg}", plan.toString());
   }
+
+  @Test
+  public void testRegexpQuery() throws QueryProcessException, MetadataException {
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d5.s1"),
+        TSDataType.TEXT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+
+    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 REGEXP 'string*'";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
+    IExpression expect =
+        new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
+    assertEquals(expect.toString(), queryFilter.toString());
+  }
 }

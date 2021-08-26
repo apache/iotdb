@@ -645,15 +645,15 @@ Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 
 2. 当前 SELECT LAST 语句只支持包含'>'或'>='的时间过滤条件
 
-3. 结果集以三列的表格的固定形式返回。
+3. 结果集以四列的表格的固定形式返回。
 例如 "select last s1, s2 from root.sg.d1, root.sg.d2", 结果集返回如下：
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time |    timeseries | dataType | value |
+| ---  | ------------- | -------- | ----- |
+|  5   | root.sg.d1.s1 |    INT32 |   100 |
+|  2   | root.sg.d1.s2 |    INT32 |   400 |
+|  4   | root.sg.d2.s1 |    INT32 |   250 |
+|  9   | root.sg.d2.s2 |    INT32 |   600 |
 
 4. 注意 LAST 语句不支持与"disable align"关键词一起使用。
 
@@ -704,6 +704,46 @@ E.g. select * as temperature from root.sg.d1
 
 这种情况如果 * 匹配多个传感器，则无法正常显示。
 
+```
+* Regexp 语句
+
+Regexp语句仅支持数据类型为 TEXT的列进行过滤，传入的过滤条件为 Java 标准库风格的正则表达式
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
+
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
+```
+
+* Like 语句
+
+Like语句的用法和mysql相同, 但是仅支持对数据类型为 TEXT的列进行过滤
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
+
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'abc%'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%'
+这种情况，'\%'表示'%'将会被转义
+结果集将显示为：
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
 ```
 
 ## 数据库管理语句
@@ -1039,6 +1079,15 @@ SHOW QUERY PROCESSLIST
 KILL QUERY INT?
 E.g. KILL QUERY
 E.g. KILL QUERY 2
+```
+
+
+## 设置系统为只读/可写入模式
+
+
+```
+IoTDB> SET SYSTEM TO READONLY
+IoTDB> SET SYSTEM TO WRITABLE
 ```
 
 ## 标识符列表

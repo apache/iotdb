@@ -890,21 +890,21 @@ which means: Query and return the last data points of timeseries prefixPath.path
 
 Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
-The result will be returned in a three column table format.
+The result will be returned in a four column table format.
 
 ```
-| Time | Path | Value |
+| Time | timeseries | dataType | value |
 ```
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+
-|                         Time|              timeseries|value|
-+-----------------------------+------------------------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|
-+-----------------------------+------------------------+-----+
++-----------------------------+------------------------+--------+-----+
+|                         Time|              timeseries|dataType|value|
++-----------------------------+------------------------+--------+-----+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status| BOOLEAN|false|
++-----------------------------+------------------------+--------+-----+
 Total line number = 1
 It costs 0.000s
 ```
@@ -914,12 +914,12 @@ whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+
-|                         Time|                   timeseries|    value|
-+-----------------------------+-----------------------------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|
-+-----------------------------+-----------------------------+---------+
++-----------------------------+-----------------------------+--------+---------+
+|                         Time|                   timeseries|dataType|    value|
++-----------------------------+-----------------------------+--------+---------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status| BOOLEAN|    false|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|  DOUBLE|21.067368|
++-----------------------------+-----------------------------+--------+---------+
 Total line number = 2
 It costs 0.002s
 ```
@@ -1032,6 +1032,48 @@ Total line number = 1
 It costs 0.017s
 ```
 
+* Value Method
+
+When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+
+```
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
+```
+Detailed descriptions of all parameters are given in Table 3-6.
+
+<center>**Table 3-6 Specific value fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
+|constant|represents given fill value|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
+
+Here we give an example of filling null values using the value method. The SQL statement is as follows:
+
+```
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 #### Correspondence between Data Type and Fill Method
 
 Data types and the supported fill methods are shown in Table 3-6.
@@ -1040,11 +1082,11 @@ Data types and the supported fill methods are shown in Table 3-6.
 
 |Data Type|Supported Fill Methods|
 |:---|:---|
-|boolean|previous|
-|int32|previous, linear|
-|int64|previous, linear|
-|float|previous, linear|
-|double|previous, linear|
+|boolean|previous, value|
+|int32|previous, linear, value|
+|int64|previous, linear, value|
+|float|previous, linear, value|
+|double|previous, linear, value|
 |text|previous|
 </center>
 

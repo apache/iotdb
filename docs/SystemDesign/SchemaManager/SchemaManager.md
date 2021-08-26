@@ -297,7 +297,7 @@ Schema operation examples and the corresponding parsed mlog record:
 ## TLog
 * org.apache.iotdb.db.metadata.logfile.TagLogFile
 
-All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.bin.
+All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/tlog.txt.
 
 * Total number of bytes of persistence for tags and attributes of each time series is L, which can be configured in the iotdb-engine.properties
 

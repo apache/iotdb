@@ -22,9 +22,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
@@ -393,13 +393,23 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public void releaseTVListRamCost(long cost) {
+    this.tvListRamCost -= cost;
+  }
+
+  @Override
   public long getTVListsRamCost() {
     return tvListRamCost;
   }
 
   @Override
-  public void addTextDataSize(long testDataSize) {
-    this.memSize += testDataSize;
+  public void addTextDataSize(long textDataSize) {
+    this.memSize += textDataSize;
+  }
+
+  @Override
+  public void releaseTextDataSize(long textDataSize) {
+    this.memSize -= textDataSize;
   }
 
   @Override
