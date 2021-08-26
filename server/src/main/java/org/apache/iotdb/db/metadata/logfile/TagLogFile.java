@@ -94,7 +94,7 @@ public class TagLogFile implements AutoCloseable {
   public long write(Map<String, String> tagMap, Map<String, String> attributeMap)
       throws IOException, MetadataException {
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
-    synchronized (this){
+    synchronized (this) {
       // get offset and write data should be atomic operation
       long offset = fileChannel.position();
       fileChannel.write(byteBuffer);
