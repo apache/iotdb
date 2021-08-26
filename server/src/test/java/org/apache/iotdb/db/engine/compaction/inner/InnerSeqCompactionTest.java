@@ -64,14 +64,14 @@ public class InnerSeqCompactionTest {
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",
-        COMPACTION_TEST_SG + ".device0.sensor1",
-        COMPACTION_TEST_SG + ".device0.sensor2",
-        COMPACTION_TEST_SG + ".device0.sensor3",
-        COMPACTION_TEST_SG + ".device0.sensor4",
-        COMPACTION_TEST_SG + ".device0.sensor5",
-        COMPACTION_TEST_SG + ".device0.sensor6",
-        COMPACTION_TEST_SG + ".device0.sensor7",
-        COMPACTION_TEST_SG + ".device0.sensor8"
+        COMPACTION_TEST_SG + ".device1.sensor0",
+        COMPACTION_TEST_SG + ".device2.sensor0",
+        COMPACTION_TEST_SG + ".device3.sensor0",
+        COMPACTION_TEST_SG + ".device4.sensor0",
+        COMPACTION_TEST_SG + ".device5.sensor0",
+        COMPACTION_TEST_SG + ".device6.sensor0",
+        COMPACTION_TEST_SG + ".device7.sensor0",
+        COMPACTION_TEST_SG + ".device8.sensor0",
       };
   static final int[] toMergeFileNums = new int[] {2, 3};
   static final CompactionTimeseriesType[] compactionTimeseriesTypes =
@@ -82,9 +82,12 @@ public class InnerSeqCompactionTest {
       };
   static final boolean[] compactionBeforeHasMods = new boolean[] {true, false};
   static final boolean[] compactionHasMods = new boolean[] {true, false};
+  private static int prevMaxDegreeOfIndexNode;
 
   @Before
   public void setUp() throws MetadataException {
+    prevMaxDegreeOfIndexNode = TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode();
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
     IoTDB.metaManager.init();
     IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String fullPath : fullPaths) {
@@ -105,6 +108,7 @@ public class InnerSeqCompactionTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
   }
 
   @Test
