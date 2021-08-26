@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
@@ -93,8 +94,10 @@ public class LastQueryExecutor {
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
-                new PartialPath(COLUMN_TIMESERIES, false), new PartialPath(COLUMN_VALUE, false)),
-            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+                new PartialPath(COLUMN_TIMESERIES, false),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
+                new PartialPath(COLUMN_VALUE, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<Pair<Boolean, TimeValuePair>> lastPairList =
         calculateLastPairForSeries(selectedSeries, dataTypes, context, expression, lastQueryPlan);
@@ -108,6 +111,10 @@ public class LastQueryExecutor {
         pathField.setBinaryV(
             new Binary(lastQueryPlan.getResultColumns().get(i).getResultColumnName()));
         resultRecord.addField(pathField);
+
+        Field typeField = new Field(TSDataType.TEXT);
+        typeField.setBinaryV(new Binary(lastTimeValuePair.getValue().getDataType().name()));
+        resultRecord.addField(typeField);
 
         Field valueField = new Field(TSDataType.TEXT);
         valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));

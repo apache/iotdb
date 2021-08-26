@@ -46,6 +46,7 @@ import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
@@ -2068,7 +2069,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       return notOp;
     } else if (ctx.LR_BRACKET() != null && ctx.OPERATOR_NOT() == null) {
       return parseOrExpression(ctx.orExpression());
-    } else if (ctx.LIKE() != null) {
+    } else if (ctx.REGEXP() != null || ctx.LIKE() != null) {
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());
       } else if (ctx.fullPath() != null) {
@@ -2077,7 +2078,9 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
       if (path == null) {
         throw new SQLParserException("Path is null, please check the sql.");
       }
-      return new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
+      return ctx.REGEXP() != null
+          ? new RegexpOperator(FilterType.REGEXP, path, ctx.stringLiteral().getText())
+          : new LikeOperator(FilterType.LIKE, path, ctx.stringLiteral().getText());
     } else {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new PartialPath(SQLConstant.getSingleTimeArray());
