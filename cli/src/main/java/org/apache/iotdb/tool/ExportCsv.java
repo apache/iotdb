@@ -293,8 +293,7 @@ public class ExportCsv extends AbstractCsvTool {
       SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
       List<List<Object>> records = loadDataFromDataSet(sessionDataSet);
       writeCsvFile(null, records, path);
-      System.out.println(
-          "The result of query was written to the file: " + new File(path).getAbsolutePath());
+      System.out.println("Export completely!");
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       System.out.println("Cannot dump result because: " + e.getMessage());
     }

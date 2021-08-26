@@ -19,7 +19,6 @@
 package org.apache.iotdb.tool.integration;
 
 import org.apache.iotdb.cli.AbstractScript;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,85 +30,73 @@ import java.io.IOException;
 public class ExportCsvTestIT extends AbstractScript {
 
   @Before
-  public void setUp() {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
+  public void tearDown() {}
 
   @Test
   public void test() throws IOException {
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
-      testOnWindows("select * from root");
+      testOnWindows();
     } else {
-      testOnUnix("select * from root");
+      testOnUnix();
     }
   }
 
   @Override
-  protected void testOnWindows() {}
+  protected void testOnWindows() throws IOException {
+    final String[] output = {
+            "````````````````````````````````````````````````",
+            "Starting IoTDB Client Export Script",
+            "````````````````````````````````````````````````",
+            "Connect failed because org.apache.thrift.transport.TTransportException: "
+                    + "java.net.ConnectException: Connection refused"
+    };
+    String dir = getCliPath();
+    ProcessBuilder builder =
+            new ProcessBuilder(
+                    "cmd.exe",
+                    "/c",
+                    dir + File.separator + "tools" + File.separator + "export-csv.bat",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    "6668",
+                    "-u",
+                    "root",
+                    "-pw",
+                    "root",
+                    "-td",
+                    "./");
+    testOutput(builder, output);
+  }
 
   @Override
-  protected void testOnUnix() {}
-
-  protected void testOnWindows(String queryCommand) throws IOException {
-
+  protected void testOnUnix() throws IOException {
+    final String[] output = {
+            "------------------------------------------",
+            "Starting IoTDB Client Export Script",
+            "------------------------------------------",
+            "Connect failed because org.apache.thrift.transport.TTransportException: "
+                    + "java.net.ConnectException: Connection refused"
+    };
     String dir = getCliPath();
     ProcessBuilder builder =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            dir + File.separator + "tools" + File.separator + "export-csv.bat",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            ".\\",
-            "-q",
-            queryCommand);
-    testOutput(builder, null);
-  }
-
-  protected void testOnUnix(String queryCommand) throws IOException {
-
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "sh",
-            dir + File.separator + "tools" + File.separator + "export-csv.sh",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            "./",
-            "-q",
-            queryCommand);
-    testOutput(builder, null);
-  }
-
-  @Test
-  public void testAggregationQuery() throws IOException {
-    String os = System.getProperty("os.name").toLowerCase();
-    String queryCommand = "select count(*) from root";
-    if (os.startsWith("windows")) {
-      testOnWindows(queryCommand);
-    } else {
-      testOnUnix(queryCommand);
-    }
+            new ProcessBuilder(
+                    "sh",
+                    dir + File.separator + "tools" + File.separator + "export-csv.sh",
+                    "-h",
+                    "127.0.0.1",
+                    "-p",
+                    "6668",
+                    "-u",
+                    "root",
+                    "-pw",
+                    "root",
+                    "-td",
+                    "./");
+    testOutput(builder, output);
   }
 }
