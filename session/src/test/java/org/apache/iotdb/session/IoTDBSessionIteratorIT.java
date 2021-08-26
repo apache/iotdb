@@ -212,12 +212,12 @@ public class IoTDBSessionIteratorIT {
   public void testLastQuery() {
     String[] retArray =
         new String[] {
-          "9,root.sg1.d1.s1,BOOLEAN,false",
-          "9,root.sg1.d1.s2,INT32,9",
-          "9,root.sg1.d1.s3,INT64,90",
-          "9,root.sg1.d1.s4,FLOAT,13.5",
-          "9,root.sg1.d1.s5,DOUBLE,22.5",
-          "9,root.sg1.d1.s6,TEXT,time9",
+          "9,root.sg1.d1.s1,false,BOOLEAN",
+          "9,root.sg1.d1.s2,9,INT32",
+          "9,root.sg1.d1.s3,90,INT64",
+          "9,root.sg1.d1.s4,13.5,FLOAT",
+          "9,root.sg1.d1.s5,22.5,DOUBLE",
+          "9,root.sg1.d1.s6,time9,TEXT",
         };
 
     try {
@@ -271,7 +271,7 @@ public class IoTDBSessionIteratorIT {
   /** Test executeQueryStatement with timeout, and the result is not timeout here. */
   @Test
   public void queryWithTimeoutTest() {
-    String[] retArray = new String[] {"9,root.sg1.d1.s1,BOOLEAN,false"};
+    String[] retArray = new String[] {"9,root.sg1.d1.s1,false,BOOLEAN"};
 
     try {
       SessionDataSet sessionDataSet =

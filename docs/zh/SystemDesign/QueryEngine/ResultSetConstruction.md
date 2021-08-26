@@ -91,7 +91,7 @@ SQL：`SELECT '111', s1, s2, *, s5 FROM root.sg.d1 ALIGN BY DEVICE;`
 
 - org.apache.iotdb.db.service.StaticResps.LAST_RESP
 
-最新数据查询计算出需要查询的时间序列具有最大时间戳的结果并以时间（Time）、时间序列（timeseries）、数据类型（dataType）、值（value）四列进行展示。
+最新数据查询计算出需要查询的时间序列具有最大时间戳的结果并以时间（Time）、时间序列（timeseries）、值（value）、数据类型（dataType）四列进行展示。
 
 接下来举例说明：
 
@@ -99,7 +99,7 @@ SQL：`SELECT '111', s1, s2, *, s5 FROM root.sg.d1 ALIGN BY DEVICE;`
 
 SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
-| Time | timeseries    | dataType |value |
+| Time | timeseries    | value | dataType |
 | ---- | ------------- | ----- |----- |
 | ...  | root.sg.d1.s1 | ...   |...   |
 | ...  | root.sg.d1.s2 | ...   |...   |
