@@ -131,6 +131,7 @@ public class IoTDBLikeIT {
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6_1%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("6116,6%16", outputResultStr(st0.getResultSet()));
+
     hasResultSet = st0.execute("select status from root.t1.wf01.wt01 where status like '6\\%%'");
     Assert.assertTrue(hasResultSet);
     Assert.assertEquals("6%16", outputResultStr(st0.getResultSet()));
