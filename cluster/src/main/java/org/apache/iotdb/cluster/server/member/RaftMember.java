@@ -1036,7 +1036,7 @@ public abstract class RaftMember {
 
       // if a single log exceeds the threshold
       // we need to return error code to the client as in server mode
-      if ((int) RamUsageEstimator.sizeOf(log) + Integer.BYTES
+      if (log.serialize().capacity() + Integer.BYTES
           >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
         logger.error(
             "Log cannot fit into buffer, please increase raft_log_buffer_size;"
@@ -1089,7 +1089,7 @@ public abstract class RaftMember {
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
       // just like processPlanLocally,we need to check the size of log
-      if ((int) RamUsageEstimator.sizeOf(log) + Integer.BYTES
+      if (log.serialize().capacity() + Integer.BYTES
           >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
         logger.error(
             "Log cannot fit into buffer, please increase raft_log_buffer_size;"
