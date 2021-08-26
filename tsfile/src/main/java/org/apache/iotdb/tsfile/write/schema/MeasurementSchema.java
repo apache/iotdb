@@ -217,8 +217,7 @@ public class MeasurementSchema
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimestampDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
