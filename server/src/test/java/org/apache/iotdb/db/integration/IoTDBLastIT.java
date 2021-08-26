@@ -515,9 +515,9 @@ public class IoTDBLastIT {
                   + ","
                   + resultSet.getString(TIMESEIRES_STR)
                   + ","
-                  + resultSet.getString(DATA_TYPE_STR)
+                  + resultSet.getString(VALUE_STR)
                   + ","
-                  + resultSet.getString(VALUE_STR);
+                  + resultSet.getString(DATA_TYPE_STR);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
