@@ -155,17 +155,21 @@ public class LastCacheManager {
     for (IMNode measurementNode : node.getChildren().values()) {
       if (measurementNode != null) {
         ((IMeasurementMNode) measurementNode).getLastCacheEntry().resetLastCache();
-        logger.debug(
-            "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-            measurementNode.getFullPath());
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+              measurementNode.getFullPath());
+        }
       }
     }
     // process lastCache of timeseries represented by template
     for (Map.Entry<String, ILastCacheEntry> entry : node.getTemplateLastCaches().entrySet()) {
       entry.getValue().resetLastCache();
-      logger.debug(
-          "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
-          node.getPartialPath().concatNode(entry.getKey()).getFullPath());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
+            node.getPartialPath().concatNode(entry.getKey()).getFullPath());
+      }
     }
   }
 
@@ -224,9 +228,11 @@ public class LastCacheManager {
             && startTime <= lastPair.getTimestamp()
             && lastPair.getTimestamp() <= endTime) {
           lastCacheEntry.resetLastCache(index);
-          logger.info(
-              "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-              path.concatNode(measurement).getFullPath());
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                path.concatNode(measurement).getFullPath());
+          }
         }
       }
     } else {
@@ -235,8 +241,10 @@ public class LastCacheManager {
           && startTime <= lastPair.getTimestamp()
           && lastPair.getTimestamp() <= endTime) {
         lastCacheEntry.resetLastCache();
-        logger.info(
-            "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());
+        }
       }
     }
   }
