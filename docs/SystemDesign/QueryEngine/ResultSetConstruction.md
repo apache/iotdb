@@ -99,7 +99,7 @@ Assuming there are two timeseries now: `root.sg.d1.s1`, `root.sg.d1.s2`， then 
 
 SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
-| Time | timeseries    | dataType |value |
+| Time | timeseries    | value | dataType|
 | ---- | ------------- | ----- |----- |
 | ...  | root.sg.d1.s1 | ...   |...   |
 | ...  | root.sg.d1.s2 | ...   |...   |

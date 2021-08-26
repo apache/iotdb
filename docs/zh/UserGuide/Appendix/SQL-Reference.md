@@ -648,12 +648,12 @@ Eg. SELECT LAST s1, s2 FROM root.sg.d1 where time >= 500
 3. 结果集以四列的表格的固定形式返回。
 例如 "select last s1, s2 from root.sg.d1, root.sg.d2", 结果集返回如下：
 
-| Time |    timeseries | dataType | value |
-| ---  | ------------- | -------- | ----- |
-|  5   | root.sg.d1.s1 |    INT32 |   100 |
-|  2   | root.sg.d1.s2 |    INT32 |   400 |
-|  4   | root.sg.d2.s1 |    INT32 |   250 |
-|  9   | root.sg.d2.s2 |    INT32 |   600 |
+| Time |    timeseries | value | dataType |
+| ---  | ------------- | ----- | -------- |
+|  5   | root.sg.d1.s1 |   100 |    INT32 |
+|  2   | root.sg.d1.s2 |   400 |    INT32 |
+|  4   | root.sg.d2.s1 |   250 |    INT32 |
+|  9   | root.sg.d2.s2 |   600 |    INT32 |
 
 4. 注意 LAST 语句不支持与"disable align"关键词一起使用。
 

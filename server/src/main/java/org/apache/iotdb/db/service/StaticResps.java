@@ -40,7 +40,7 @@ class StaticResps {
 
   static final TSExecuteStatementResp LAST_RESP =
       getExecuteResp(
-          Arrays.asList(COLUMN_TIMESERIES, COLUMN_TIMESERIES_DATATYPE, COLUMN_VALUE),
+          Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE, COLUMN_TIMESERIES_DATATYPE),
           Arrays.asList(
               TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString()),
           false);

@@ -893,18 +893,18 @@ Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other fil
 The result will be returned in a four column table format.
 
 ```
-| Time | timeseries | dataType | value |
+| Time | timeseries | value | dataType |
 ```
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+--------+-----+
-|                         Time|              timeseries|dataType|value|
-+-----------------------------+------------------------+--------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status| BOOLEAN|false|
-+-----------------------------+------------------------+--------+-----+
++-----------------------------+------------------------+-----+--------+
+|                         Time|              timeseries|value|dataType|
++-----------------------------+------------------------+-----+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
++-----------------------------+------------------------+-----+--------+
 Total line number = 1
 It costs 0.000s
 ```
@@ -914,12 +914,12 @@ whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+--------+---------+
-|                         Time|                   timeseries|dataType|    value|
-+-----------------------------+-----------------------------+--------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status| BOOLEAN|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|  DOUBLE|21.067368|
-+-----------------------------+-----------------------------+--------+---------+
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s
 ```

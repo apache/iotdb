@@ -94,8 +94,8 @@ public class LastQueryExecutor {
         new ListDataSet(
             Arrays.asList(
                 new PartialPath(COLUMN_TIMESERIES, false),
-                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false),
-                new PartialPath(COLUMN_VALUE, false)),
+                new PartialPath(COLUMN_VALUE, false),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<Pair<Boolean, TimeValuePair>> lastPairList =
@@ -111,13 +111,13 @@ public class LastQueryExecutor {
             new Binary(lastQueryPlan.getResultColumns().get(i).getResultColumnName()));
         resultRecord.addField(pathField);
 
-        Field typeField = new Field(TSDataType.TEXT);
-        typeField.setBinaryV(new Binary(lastTimeValuePair.getValue().getDataType().name()));
-        resultRecord.addField(typeField);
-
         Field valueField = new Field(TSDataType.TEXT);
         valueField.setBinaryV(new Binary(lastTimeValuePair.getValue().getStringValue()));
         resultRecord.addField(valueField);
+
+        Field typeField = new Field(TSDataType.TEXT);
+        typeField.setBinaryV(new Binary(lastTimeValuePair.getValue().getDataType().name()));
+        resultRecord.addField(typeField);
 
         dataSet.putRecord(resultRecord);
       }
