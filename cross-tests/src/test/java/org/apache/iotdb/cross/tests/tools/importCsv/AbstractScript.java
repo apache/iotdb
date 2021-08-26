@@ -50,7 +50,7 @@ public abstract class AbstractScript {
     r.close();
     p.destroy();
 
-    if (output != null){
+    if (output != null) {
       System.out.println("should contains:");
       for (String s : output) {
         System.out.println(s);

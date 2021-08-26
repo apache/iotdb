@@ -1,13 +1,14 @@
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tool.AbstractCsvTool;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class ExportCsvTestIT extends AbstractScript {
 
@@ -84,24 +84,45 @@ public class ExportCsvTestIT extends AbstractScript {
   @Test
   public void testExport()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String queryCommand = "select c1,c2,c3 from root.test.t1";
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
     if (os.startsWith("windows")) {
-      testOnWindows("select c1,c2,c3 from root.test.t1", null);
+      testOnWindows(queryCommand, null);
     } else {
-      testOnUnix("select * from root.test", null);
+      testOnUnix(queryCommand, null);
     }
     CSVParser parser = readCsvFile("./target/dump0.csv");
     String headers = "Time,root.test.t1.c1,root.test.t1.c2,root.test.t1.c3";
-    assertEquals(parser.getHeaderNames(), headers);
-    ArrayList<String> realRecords =
-            new ArrayList<>(
-                    Arrays.asList("1.0", "\"abc\",aa", "abbe's"));
+    assertEquals(StringUtils.join(parser.getHeaderNames(), ','), headers);
+    ArrayList<String> realRecords = new ArrayList<>(Arrays.asList("1.0,\"\"abc\",aa\",\"abbe's\""));
     List<CSVRecord> records = parser.getRecords();
     for (int i = 0; i < records.size(); i++) {
-      List<String> record = records.get(i).toList();
-      record.remove(0);
-      assertEquals(records, realRecords.get(i));
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      String recordWithoutTime = record.substring(record.indexOf(',') + 1);
+      assertEquals(realRecords.get(i), recordWithoutTime);
+    }
+  }
+
+  @Test
+  public void testAggregationQuery()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String queryCommand = "select count(c1),count(c2),count(c3) from root.test.t1";
+    prepareData();
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      testOnWindows(queryCommand, null);
+    } else {
+      testOnUnix(queryCommand, null);
+    }
+    CSVParser parser = readCsvFile("./target/dump0.csv");
+    String headers = "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)";
+    assertEquals(StringUtils.join(parser.getHeaderNames(), ','), headers);
+    ArrayList<String> realRecords = new ArrayList<>(Arrays.asList("1,1,1"));
+    List<CSVRecord> records = parser.getRecords();
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      assertEquals(realRecords.get(i), record);
     }
   }
 
