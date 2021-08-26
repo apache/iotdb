@@ -516,7 +516,7 @@ public class IoTDBAsIT {
 
   @Test
   public void lastWithAsTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"400,speed,50.4,", "400,root.sg.d1.s2,28.3,"};
+    String[] retArray = new String[] {"400,speed,50.4,FLOAT,", "400,root.sg.d1.s2,28.3,FLOAT,"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -532,7 +532,7 @@ public class IoTDBAsIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        assertEquals("Time,timeseries,value,", header.toString());
+        assertEquals("Time,timeseries,value,type,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -554,7 +554,9 @@ public class IoTDBAsIT {
   @Test
   public void lastWithAsDuplicatedTest() throws ClassNotFoundException {
     String[] retArray =
-        new String[] {"400,speed,50.4,", "400,root.sg.d1.s1,50.4,", "400,temperature,28.3,"};
+        new String[] {
+          "400,speed,50.4,FLOAT,", "400,root.sg.d1.s1,50.4,FLOAT,", "400,temperature,28.3,FLOAT,"
+        };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -571,7 +573,7 @@ public class IoTDBAsIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        assertEquals("Time,timeseries,value,", header.toString());
+        assertEquals("Time,timeseries,value,type,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
