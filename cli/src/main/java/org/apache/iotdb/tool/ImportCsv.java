@@ -233,6 +233,10 @@ public class ImportCsv extends AbstractCsvTool {
           System.out.println("Empty file!");
           return;
         }
+        if (!headerNames.contains("Time")) {
+          System.out.println("No headers!");
+          return;
+        }
         if (records.isEmpty()) {
           System.out.println("No records!");
           return;

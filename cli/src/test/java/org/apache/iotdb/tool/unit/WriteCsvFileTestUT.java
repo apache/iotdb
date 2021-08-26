@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.Assert.assertTrue;
+
 public class WriteCsvFileTestUT {
   @Test
   public void writeCsvFileTest() {
@@ -38,7 +40,7 @@ public class WriteCsvFileTestUT {
     List<Object> row3 = new ArrayList<>(Arrays.asList(3, "100", "hello world!!!", false));
     ArrayList<List<Object>> records = new ArrayList<>(Arrays.asList(row1, row2, row3));
 
-    AbstractCsvTool.writeCsvFile(headerNames, records, "./test0.csv");
-    AbstractCsvTool.writeCsvFile(null, records, "./test1.csv");
+    assertTrue(AbstractCsvTool.writeCsvFile(headerNames, records, "./test0.csv"));
+    assertTrue(AbstractCsvTool.writeCsvFile(null, records, "./test1.csv"));
   }
 }

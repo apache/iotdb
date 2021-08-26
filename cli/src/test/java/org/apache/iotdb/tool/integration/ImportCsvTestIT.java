@@ -48,55 +48,55 @@ public class ImportCsvTestIT extends AbstractScript {
   @Override
   protected void testOnWindows() throws IOException {
     final String[] output = {
-            "````````````````````````````````````````````````",
-            "Starting IoTDB Client Import Script",
-            "````````````````````````````````````````````````",
-            "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
-                    + "java.net.ConnectException: Connection refused"
+      "````````````````````````````````````````````````",
+      "Starting IoTDB Client Import Script",
+      "````````````````````````````````````````````````",
+      "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
+          + "java.net.ConnectException: Connection refused"
     };
     String dir = getCliPath();
     ProcessBuilder builder =
-            new ProcessBuilder(
-                    "cmd.exe",
-                    "/c",
-                    dir + File.separator + "tools" + File.separator + "import-csv.bat",
-                    "-h",
-                    "127.0.0.1",
-                    "-p",
-                    "6668",
-                    "-u",
-                    "root",
-                    "-pw",
-                    "root",
-                    "-f",
-                    "./");
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            dir + File.separator + "tools" + File.separator + "import-csv.bat",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6668",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-f",
+            "./");
     testOutput(builder, output);
   }
 
   @Override
   protected void testOnUnix() throws IOException {
     final String[] output = {
-            "------------------------------------------",
-            "Starting IoTDB Client Import Script",
-            "------------------------------------------",
-            "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
-                    + "java.net.ConnectException: Connection refused"
+      "------------------------------------------",
+      "Starting IoTDB Client Import Script",
+      "------------------------------------------",
+      "Encounter an error when connecting to server, because org.apache.thrift.transport.TTransportException: "
+          + "java.net.ConnectException: Connection refused"
     };
     String dir = getCliPath();
     ProcessBuilder builder =
-            new ProcessBuilder(
-                    "sh",
-                    dir + File.separator + "tools" + File.separator + "import-csv.sh",
-                    "-h",
-                    "127.0.0.1",
-                    "-p",
-                    "6668",
-                    "-u",
-                    "root",
-                    "-pw",
-                    "root",
-                    "-f",
-                    "./");
+        new ProcessBuilder(
+            "sh",
+            dir + File.separator + "tools" + File.separator + "import-csv.sh",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6668",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-f",
+            "./");
     testOutput(builder, output);
   }
 }
