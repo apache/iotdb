@@ -147,7 +147,7 @@ public abstract class Cases {
     for (Statement readStatement : readStatements) {
       resultSet = readStatement.executeQuery("select last * from root.ln.wf01.wt01;");
       Assert.assertTrue(resultSet.next());
-      double last = Double.parseDouble(resultSet.getString(3));
+      double last = Double.parseDouble(resultSet.getString("value"));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
     }
