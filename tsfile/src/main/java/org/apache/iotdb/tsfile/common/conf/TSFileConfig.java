@@ -78,7 +78,7 @@ public class TSFileConfig implements Serializable {
   /** The maximum degree of a metadataIndex node, default value is 256 */
   private int maxDegreeOfIndexNode = 256;
   /** Data type for input timestamp, TsFile supports INT64. */
-  private TSDataType timestampDataType = TSDataType.INT64;
+  private TSDataType timeSeriesDataType = TSDataType.INT64;
   /** Max length limitation of input string. */
   private int maxStringLength = 128;
   /** Floating-point precision. */
@@ -180,14 +180,14 @@ public class TSFileConfig implements Serializable {
     this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
   }
 
-  public TSDataType getTimestampDataType() {
-    return timestampDataType;
+  public TSDataType getTimeSeriesDataType() {
+    return timeSeriesDataType;
   }
 
   // TS_2DIFF configuration
 
-  public void setTimeSeriesDataType(TSDataType timestampDataType) {
-    this.timestampDataType = timestampDataType;
+  public void setTimeSeriesDataType(TSDataType timeSeriesDataType) {
+    this.timeSeriesDataType = timeSeriesDataType;
   }
 
   public int getMaxStringLength() {

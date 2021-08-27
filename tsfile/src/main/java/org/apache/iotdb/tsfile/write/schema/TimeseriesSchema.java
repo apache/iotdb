@@ -149,7 +149,7 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimestampDataType();
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
