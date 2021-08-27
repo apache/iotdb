@@ -125,6 +125,7 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 |root.ln.wf01.wt01.temperature_max| null|      root.ln|   FLOAT| GORILLA|     SNAPPY|null|      null|
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ````
+````
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 |                         Time|root.ln.wf02.wt02.temperature_max|root.ln.wf02.wt01.temperature_max|root.ln.wf01.wt02.temperature_max|root.ln.wf01.wt01.temperature_max|
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
@@ -153,6 +154,7 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |root.ln.wf01.temperature_avg| null|      root.ln|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 +----------------------------+-----+-------------+--------+--------+-----------+----+----------+
 ````
+````
 +-----------------------------+----------------------------+----------------------------+
 |                         Time|root.ln.wf02.temperature_avg|root.ln.wf01.temperature_avg|
 +-----------------------------+----------------------------+----------------------------+
@@ -177,6 +179,7 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 |root.ln_cq.wf02.temperature_avg| null|   root.ln_cq|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 |root.ln_cq.wf01.temperature_avg| null|   root.ln_cq|  DOUBLE| GORILLA|     SNAPPY|null|      null|
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
+````
 ````
 +-----------------------------+-------------------------------+-------------------------------+
 |                         Time|root.ln_cq.wf02.temperature_avg|root.ln_cq.wf01.temperature_avg|
@@ -219,3 +222,4 @@ DROP CONTINUOUS QUERY cq3
 | `continuous_query_execution_thread` | 执行连续查询任务的线程池的线程数 | int | max(1, CPU 核数 / 2)|
 | `max_pending_continuous_query_tasks` | 队列中连续查询最大任务堆积数 | int | 64|
 | `continuous_query_min_every_interval` | 连续查询执行时间间隔的最小值 | duration | 1s|
+

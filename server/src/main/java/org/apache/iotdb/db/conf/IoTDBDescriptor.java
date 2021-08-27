@@ -957,12 +957,6 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setTimeSeriesDataType(
-            properties.getProperty(
-                "time_series_data_type",
-                TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setMaxStringLength(
             Integer.parseInt(
                 properties.getProperty(
