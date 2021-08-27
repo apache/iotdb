@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
+import org.apache.iotdb.cluster.expr.VotingLogList;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
@@ -268,7 +269,7 @@ public class MetaGroupMember extends RaftMember {
         new SyncClientPool(new SyncMetaClient.FactorySync(factory)),
         new AsyncClientPool(new AsyncMetaHeartbeatClient.FactoryAsync(factory)),
         new SyncClientPool(new SyncMetaHeartbeatClient.FactorySync(factory)));
-    allNodes = new ArrayList<>();
+    setAllNodes(new ArrayList<>());
     initPeerMap();
 
     dataClientProvider = new DataClientProvider(factory);
@@ -685,7 +686,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
   private void updateNodeList(Collection<Node> nodes) {
-    allNodes = new ArrayList<>(nodes);
+    setAllNodes(new ArrayList<>(nodes));
     initPeerMap();
     logger.info("All nodes in the partition table: {}", allNodes);
     initIdNodeMap();
@@ -714,7 +715,7 @@ public class MetaGroupMember extends RaftMember {
         // leader through the first heartbeat. After the leader knows the node information of all
         // nodes, it can replace the incomplete node information previously saved locally, and build
         // partitionTable to send it to other followers.
-        allNodes = new ArrayList<>(idNodeMap.values());
+        setAllNodes(new ArrayList<>(idNodeMap.values()));
         if (partitionTable == null) {
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");

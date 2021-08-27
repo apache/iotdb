@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_WEAK_ACCEPT;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,50 +81,43 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // someone has rejected this log because the leadership is stale
       return;
     }
+
     long resp = response.status;
-    synchronized (log) {
-      if (resp == RESPONSE_STRONG_ACCEPT) {
-        log.getStronglyAcceptedNodeIds().add(receiver.nodeIdentifier);
-        int remaining = quorumSize - log.getStronglyAcceptedNodeIds().size();
-        logger.debug(
-            "{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
-            member.getName(),
-            receiver,
-            log,
-            remaining);
-        if (remaining == 0) {
-          logger.debug(
-              "{}: Log [{}] {} is accepted by the quorum",
-              member.getName(),
-              log.getLog(),
-              log);
-          log.notifyAll();
-        }
-        peer.setMatchIndex(Math.max(log.getLog().getCurrLogIndex(), peer.getMatchIndex()));
-      } else if (resp > 0) {
-        // a response > 0 is the follower's term
-        // the leader ship is stale, wait for the new leader's heartbeat
-        long prevReceiverTerm = receiverTerm.get();
-        logger.debug(
-            "{}: Received a rejection from {} because term is stale: {}/{}",
-            member.getName(),
-            receiver,
-            prevReceiverTerm,
-            resp);
-        if (resp > prevReceiverTerm) {
-          receiverTerm.set(resp);
-        }
-        leaderShipStale.set(true);
-        log.notifyAll();
-      } else {
-        // e.g., Response.RESPONSE_LOG_MISMATCH
-        logger.debug(
-            "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
-        onFail();
+
+    if (resp == RESPONSE_STRONG_ACCEPT) {
+      member.getVotingLogList().onStronglyAccept(log.getLog().getCurrLogIndex(),
+          log.getLog().getCurrLogTerm(), receiver.nodeIdentifier);
+      peer.setMatchIndex(Math.max(log.getLog().getCurrLogIndex(), peer.getMatchIndex()));
+    } else if (resp > 0) {
+      // a response > 0 is the follower's term
+      // the leader ship is stale, wait for the new leader's heartbeat
+      long prevReceiverTerm = receiverTerm.get();
+      logger.debug(
+          "{}: Received a rejection from {} because term is stale: {}/{}",
+          member.getName(),
+          receiver,
+          prevReceiverTerm,
+          resp);
+      if (resp > prevReceiverTerm) {
+        receiverTerm.set(resp);
       }
-      // rejected because the receiver's logs are stale or the receiver has no cluster info, just
-      // wait for the heartbeat to handle
+      leaderShipStale.set(true);
+      synchronized (log) {
+        log.notifyAll();
+      }
+    } else if (resp == RESPONSE_WEAK_ACCEPT) {
+      synchronized (log) {
+        log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
+        log.notifyAll();
+      }
+    } else {
+      // e.g., Response.RESPONSE_LOG_MISMATCH
+      logger.debug(
+          "{}: The log {} is rejected by {} because: {}", member.getName(), log, receiver, resp);
+      onFail();
     }
+    // rejected because the receiver's logs are stale or the receiver has no cluster info, just
+    // wait for the heartbeat to handle
   }
 
   @Override

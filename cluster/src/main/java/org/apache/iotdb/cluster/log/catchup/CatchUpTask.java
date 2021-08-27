@@ -83,12 +83,11 @@ public class CatchUpTask implements Runnable {
     long localFirstIndex = 0;
     try {
       // to avoid snapshot catch up when index is volatile
-      synchronized (raftMember.getLogManager()) {
-        localFirstIndex = raftMember.getLogManager().getFirstIndex();
-        lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
-        hi = raftMember.getLogManager().getLastLogIndex() + 1;
-        logs = raftMember.getLogManager().getEntries(lo, hi);
-      }
+      localFirstIndex = raftMember.getLogManager().getFirstIndex();
+      lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
+      hi = raftMember.getLogManager().getLastLogIndex() + 1;
+      logs = raftMember.getLogManager().getEntries(lo, hi);
+
       // this may result from peer's match index being changed concurrently, making the peer
       // actually catch up now
       if (logger.isInfoEnabled()) {

@@ -81,4 +81,13 @@ public class ExprPlan extends PhysicalPlan {
   public void setNeedForward(boolean needForward) {
     this.needForward = needForward;
   }
+
+  public byte[] getWorkload() {
+    return workload;
+  }
+
+  @Override
+  public String toString() {
+    return "ExprPlan";
+  }
 }

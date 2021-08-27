@@ -53,6 +53,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.expr.VotingLogList;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
 import org.apache.iotdb.cluster.log.CommitLogTask;
 import org.apache.iotdb.cluster.log.HardState;
@@ -260,6 +261,8 @@ public abstract class RaftMember {
    * (logIndex, logTerm) -> append handler
    */
   protected Map<Pair<Long, Long>, AppendNodeEntryHandler> sentLogHandlers = new ConcurrentHashMap<>();
+
+  protected VotingLogList votingLogList;
 
   protected RaftMember() {
   }
@@ -772,6 +775,7 @@ public abstract class RaftMember {
 
   public void setAllNodes(List<Node> allNodes) {
     this.allNodes = allNodes;
+    this.votingLogList = new VotingLogList(allNodes.size()/2 + 1);
   }
 
   public Map<Node, Long> getLastCatchUpResponseTime() {
@@ -1132,6 +1136,8 @@ public abstract class RaftMember {
       log.setCreateTime(System.nanoTime());
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+
+      votingLogList.insert(sendLogRequest.getVotingLog());
     }
 
     try {
@@ -1144,6 +1150,10 @@ public abstract class RaftMember {
       Timer.Statistic.RAFT_SENDER_LOG_FROM_CREATE_TO_ACCEPT.calOperationCostTimeFromStart(
           sendLogRequest.getVotingLog().getLog().getCreateTime());
       switch (appendLogResult) {
+        case WEAK_ACCEPT:
+          // TODO: change to weak
+          Statistic.RAFT_WEAK_ACCEPT.add(1);
+          return StatusUtils.OK;
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
@@ -1541,9 +1551,10 @@ public abstract class RaftMember {
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (log.getStronglyAcceptedNodeIds().size() >= quorumSize
+      while (log.getStronglyAcceptedNodeIds().size() < quorumSize
           && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
-          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)
+          && log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size() < quorumSize) {
         try {
           log.wait(RaftServer.getWriteOperationTimeoutMS());
         } catch (InterruptedException e) {
@@ -1566,8 +1577,14 @@ public abstract class RaftMember {
     }
 
     // cannot get enough agreements within a certain amount of time
-    if (log.getStronglyAcceptedNodeIds().size() < quorumSize) {
+    if (log.getStronglyAcceptedNodeIds().size() < quorumSize
+        && (log.getStronglyAcceptedNodeIds().size() + log.getWeaklyAcceptedNodeIds().size()) < quorumSize) {
       return AppendLogResult.TIME_OUT;
+    }
+
+    if (log.getStronglyAcceptedNodeIds().size() < quorumSize
+        && (log.getStronglyAcceptedNodeIds().size() + log.getWeaklyAcceptedNodeIds().size()) >= quorumSize) {
+      return AppendLogResult.WEAK_ACCEPT;
     }
 
     // voteCounter has counted down to zero
@@ -1647,6 +1664,7 @@ public abstract class RaftMember {
     // logManager, the follower can handle the larger commitIndex with no effect
     request.setLeaderCommit(logManager.getCommitLogIndex());
     request.setPrevLogIndex(log.getCurrLogIndex() - 1);
+    request.setIsFromLeader(true);
     try {
       request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
     } catch (Exception e) {
@@ -1913,7 +1931,7 @@ public abstract class RaftMember {
         && alreadyWait <= RaftServer.getWriteOperationTimeoutMS()) {
       synchronized (peer) {
         try {
-          peer.wait(RaftServer.getWriteOperationTimeoutMS());
+          peer.wait(1000);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Waiting for peer to catch up interrupted");
@@ -1939,12 +1957,14 @@ public abstract class RaftMember {
               , quorumSize);
       try {
         logger.debug("{} sending a log to {}: {}", name, node, log);
+        long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         AppendEntryResult result;
         if (indirectReceivers == null || indirectReceivers.isEmpty()) {
           result = client.appendEntry(request);
         } else {
           result = client.appendEntryIndirect(request, indirectReceivers);
         }
+        Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
 
         handler.onComplete(result);
       } catch (TException e) {
@@ -2051,11 +2071,11 @@ public abstract class RaftMember {
   protected long checkPrevLogIndex(long prevLogIndex) {
     long lastLogIndex = logManager.getLastLogIndex();
     long startTime = Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
+    Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
     if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
       // there are logs missing between the incoming log and the local last log, and such logs
       // did not come within a timeout, report a mismatch to the sender and it shall fix this
       // through catch-up
-      Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
       return Response.RESPONSE_LOG_MISMATCH;
     }
     Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
@@ -2143,7 +2163,8 @@ public abstract class RaftMember {
   enum AppendLogResult {
     OK,
     TIME_OUT,
-    LEADERSHIP_STALE
+    LEADERSHIP_STALE,
+    WEAK_ACCEPT
   }
 
   /**
@@ -2166,5 +2187,9 @@ public abstract class RaftMember {
 
   public void removeAppendLogHandler(Pair<Long, Long> indexTerm) {
     sentLogHandlers.remove(indexTerm);
+  }
+
+  public VotingLogList getVotingLogList() {
+    return votingLogList;
   }
 }

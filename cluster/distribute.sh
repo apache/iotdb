@@ -1,7 +1,7 @@
-src_lib_path=/e/codestore/incubator-iotdb2/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/lib/iotdb*
+src_lib_path=/e/codestore/incubator-iotdb2/cluster/target/iotdb-cluster-0.13.0-SNAPSHOT/lib/*
 
-ips=(fit35 fit36 fit38 fit39)
-target_lib_path=/data/iotdb_expr/lib/
+ips=(fit36 fit38 fit39)
+target_lib_path=/data/iotdb_expr/lib
 
 for ip in ${ips[*]}
   do
@@ -10,7 +10,7 @@ for ip in ${ips[*]}
   done
 
 ips=(fit31 fit33 fit34)
-target_lib_path=/disk/iotdb_expr/lib/
+target_lib_path=/disk/iotdb_expr/lib
 
 for ip in ${ips[*]}
   do

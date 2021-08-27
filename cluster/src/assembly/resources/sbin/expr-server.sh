@@ -33,6 +33,22 @@ if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
   shift
 fi
 
+if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
+    if [ $enable_printgc == "true" ]; then
+      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+    else
+        . "$IOTDB_CONF/iotdb-env.sh"
+    fi
+elif [ -f "${IOTDB_HOME}/conf/iotdb-env.sh" ]; then
+    if [ $enable_printgc == "true" ]; then
+      . "${IOTDB_HOME}/conf/iotdb-env.sh" "printgc"
+    else
+      . "${IOTDB_HOME}/conf/iotdb-env.sh"
+    fi
+else
+    echo "can't find $IOTDB_CONF/iotdb-env.sh"
+fi
+
 if [ -n "$JAVA_HOME" ]; then
     for java in "$JAVA_HOME"/bin/amd64/java "$JAVA_HOME"/bin/java; do
         if [ -x "$java" ]; then

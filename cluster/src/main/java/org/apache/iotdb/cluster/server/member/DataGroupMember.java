@@ -171,7 +171,7 @@ public class DataGroupMember extends RaftMember {
         new AsyncClientPool(new SingleManagerFactory(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
-    allNodes = nodes;
+    setAllNodes(nodes);
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir());
     LogApplier applier = new DataLogApplier(metaGroupMember, this);
@@ -792,7 +792,7 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
-        allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        setAllNodes(metaGroupMember.getPartitionTable().getHeaderGroup(getHeader()));
         initPeerMap();
         if (removedNode.equals(leader.get())) {
           // if the leader is removed, also start an election immediately

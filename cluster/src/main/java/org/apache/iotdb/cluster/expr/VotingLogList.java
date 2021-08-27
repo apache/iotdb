@@ -25,7 +25,7 @@ import org.apache.iotdb.cluster.log.VotingLog;
 
 public class VotingLogList {
 
-  private List<ExprVotingLog> logList = new ArrayList<>();
+  private List<VotingLog> logList = new ArrayList<>();
   private volatile long currTerm = -1;
   private int quorumSize;
 
@@ -39,7 +39,7 @@ public class VotingLogList {
    *
    * @param log
    */
-  public synchronized void insert(ExprVotingLog log) {
+  public synchronized void insert(VotingLog log) {
     if (log.getLog().getCurrLogTerm() != currTerm) {
       logList.clear();
       currTerm = log.getLog().getCurrLogTerm();
@@ -58,10 +58,10 @@ public class VotingLogList {
    * @param acceptingNodeId
    * @return the lastly removed entry if any.
    */
-  public synchronized VotingLog onStronglyAccept(long index, long term, int acceptingNodeId) {
+  public synchronized void onStronglyAccept(long index, long term, int acceptingNodeId) {
     int lastEntryIndexToCommit = -1;
     for (int i = 0, logListSize = logList.size(); i < logListSize; i++) {
-      ExprVotingLog votingLog = logList.get(i);
+      VotingLog votingLog = logList.get(i);
       if (votingLog.getLog().getCurrLogIndex() <= index
           && votingLog.getLog().getCurrLogTerm() == term) {
         votingLog.getStronglyAcceptedNodeIds().add(acceptingNodeId);
@@ -71,13 +71,15 @@ public class VotingLogList {
       }
     }
 
-    VotingLog ret = null;
     if (lastEntryIndexToCommit != -1) {
-      ret = logList.get(lastEntryIndexToCommit);
-      logList.subList(0, lastEntryIndexToCommit + 1).clear();
+      List<VotingLog> acceptedLogs = logList.subList(0, lastEntryIndexToCommit + 1);
+      for (VotingLog acceptedLog : acceptedLogs) {
+        synchronized (acceptedLog) {
+          acceptedLog.notifyAll();
+        }
+      }
+      acceptedLogs.clear();
     }
-
-    return ret;
   }
 
   public synchronized void clear() {

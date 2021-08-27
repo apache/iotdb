@@ -20,9 +20,12 @@
 package org.apache.iotdb.cluster.expr;
 
 import java.nio.ByteBuffer;
-import java.sql.Time;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
@@ -42,19 +45,20 @@ import org.apache.iotdb.db.qp.physical.sys.ExprPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ExprMember extends MetaGroupMember {
 
+  private static final Logger logger = LoggerFactory.getLogger(ExprMember.class);
+  private static final ExecutorService bypassPool = Executors.newCachedThreadPool();
   public static boolean bypassRaft = false;
   public static boolean useSlidingWindow = false;
 
-  private VotingLogList votingLogList;
-
   private int windowSize = 10000;
   private Log[] logWindow = new Log[windowSize];
-  private long[] prevIndices = new long[windowSize];
+  private long firstPosPrevIndex = 0;
   private long[] prevTerms = new long[windowSize];
-
 
   public ExprMember() {
   }
@@ -62,19 +66,14 @@ public class ExprMember extends MetaGroupMember {
   public ExprMember(Node thisNode, List<Node> allNodes) {
     this.thisNode = thisNode;
     this.allNodes = allNodes;
-    this.votingLogList = new VotingLogList(allNodes.size()/2 + 1);
   }
 
   public ExprMember(TProtocolFactory factory,
       Node thisNode, Coordinator coordinator)
       throws QueryProcessException {
     super(factory, thisNode, coordinator);
-  }
-
-  @Override
-  public void setAllNodes(List<Node> allNodes) {
-    super.setAllNodes(allNodes);
-    this.votingLogList = new VotingLogList(allNodes.size()/2 + 1);
+    this.firstPosPrevIndex = logManager.getLastLogIndex();
+    this.prevTerms[0] = logManager.getLastLogTerm();
   }
 
   @Override
@@ -84,37 +83,50 @@ public class ExprMember extends MetaGroupMember {
 
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    if (bypassRaft) {
-      if (plan instanceof ExprPlan && !((ExprPlan) plan).isNeedForward()) {
-        return StatusUtils.OK;
-      } else if (plan instanceof ExprPlan) {
-        ((ExprPlan) plan).setNeedForward(false);
-      }
-
-      ExecutNonQueryReq req = new ExecutNonQueryReq();
-      ByteBuffer byteBuffer = ByteBuffer.allocate(128 * 1024);
-      plan.serialize(byteBuffer);
-      byteBuffer.flip();
-      req.setPlanBytes(byteBuffer);
-
-      for (Node node : getAllNodes()) {
-        if (!ClusterUtils.isNodeEquals(node, thisNode)) {
-          Client syncClient = getSyncClient(node);
-          try {
-            long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG
-                .getOperationStartTime();
-            syncClient.executeNonQueryPlan(req);
-            Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
-          } catch (TException e) {
-            ClientUtils.putBackSyncClient(syncClient);
-            return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
-          }
-          ClientUtils.putBackSyncClient(syncClient);
+    try {
+      if (bypassRaft) {
+        int bufferSize = 4096;
+        if (plan instanceof ExprPlan && !((ExprPlan) plan).isNeedForward()) {
+          return StatusUtils.OK;
+        } else if (plan instanceof ExprPlan) {
+          ((ExprPlan) plan).setNeedForward(false);
+          bufferSize += ((ExprPlan) plan).getWorkload().length;
         }
+
+        ExecutNonQueryReq req = new ExecutNonQueryReq();
+        ByteBuffer byteBuffer = ByteBuffer.allocate(bufferSize);
+        plan.serialize(byteBuffer);
+        byteBuffer.flip();
+        req.setPlanBytes(byteBuffer);
+        List<Future> futures = new ArrayList<>();
+        for (Node node : getAllNodes()) {
+          if (!ClusterUtils.isNodeEquals(node, thisNode)) {
+            futures.add(bypassPool.submit(() -> {
+              Client syncClient = getSyncClient(node);
+              try {
+                long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG
+                    .getOperationStartTime();
+                syncClient.executeNonQueryPlan(req);
+                Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
+              } catch (TException e) {
+                ClientUtils.putBackSyncClient(syncClient);
+                return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
+              }
+              ClientUtils.putBackSyncClient(syncClient);
+              return null;
+            }));
+          }
+        }
+        for (Future future : futures) {
+          future.get();
+        }
+        return StatusUtils.OK;
       }
-      return StatusUtils.OK;
+      return processNonPartitionedMetaPlan(plan);
+    } catch (Exception e) {
+      logger.error("Exception in processing plan", e);
+      return StatusUtils.INTERNAL_ERROR.deepCopy().setMessage(e.getMessage());
     }
-    return processNonPartitionedMetaPlan(plan);
   }
 
   /**
@@ -130,11 +142,10 @@ public class ExprMember extends MetaGroupMember {
 
   private void checkLogPrev(int pos) {
     // check the previous entry
-    long prevLogIndex = prevIndices[pos];
     long prevLogTerm = prevTerms[pos];
     if (pos > 0) {
       Log prev = logWindow[pos - 1];
-      if (prev != null && (prev.getCurrLogIndex() != prevLogIndex || prev.getCurrLogTerm() != prevLogTerm)) {
+      if (prev != null && prev.getCurrLogTerm() != prevLogTerm) {
         logWindow[pos - 1] = null;
       }
     }
@@ -145,9 +156,8 @@ public class ExprMember extends MetaGroupMember {
     Log log = logWindow[pos];
     boolean nextMismatch = false;
     if (pos < windowSize - 1) {
-      long nextPrevIndex = prevIndices[pos + 1];
       long nextPrevTerm = prevTerms[pos + 1];
-      if (!(nextPrevIndex != log.getCurrLogIndex() || nextPrevTerm != log.getCurrLogTerm())) {
+      if (nextPrevTerm != log.getCurrLogTerm()) {
         nextMismatch = true;
       }
     }
@@ -170,7 +180,7 @@ public class ExprMember extends MetaGroupMember {
    * @return
    */
   private long flushWindow(AppendEntryResult result, long leaderCommit) {
-    long windowPrevLogIndex = prevIndices[0];
+    long windowPrevLogIndex = firstPosPrevIndex;
     long windowPrevLogTerm = prevTerms[0];
 
     int flushPos = 0;
@@ -179,18 +189,21 @@ public class ExprMember extends MetaGroupMember {
         break;
       }
     }
+
     // flush [0, flushPos)
     List<Log> logs = Arrays.asList(logWindow).subList(0, flushPos);
     long success = logManager.maybeAppend(windowPrevLogIndex, windowPrevLogTerm, leaderCommit,
         logs);
     if (success != -1) {
       System.arraycopy(logWindow, flushPos, logWindow, 0, windowSize - flushPos);
+      System.arraycopy(prevTerms, flushPos, prevTerms, 0, windowSize - flushPos);
       for (int i = 1; i <= flushPos; i++) {
         logWindow[windowSize - i] = null;
       }
     }
+    firstPosPrevIndex = logManager.getLastLogIndex();
     result.status = Response.RESPONSE_STRONG_ACCEPT;
-    result.setLastLogIndex(logManager.getLastLogIndex());
+    result.setLastLogIndex(firstPosPrevIndex);
     result.setLastLogTerm(logManager.getLastLogTerm());
     return success;
   }
@@ -200,6 +213,7 @@ public class ExprMember extends MetaGroupMember {
     if (!useSlidingWindow) {
       return super.appendEntry(prevLogIndex, prevLogTerm, leaderCommit, log);
     }
+
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long appendedPos = 0;
 
@@ -215,10 +229,8 @@ public class ExprMember extends MetaGroupMember {
       } else if (windowPos < windowSize) {
         // the new entry falls into the window
         logWindow[windowPos] = log;
-        prevIndices[windowPos] = prevLogIndex;
         prevTerms[windowPos] = prevLogTerm;
         checkLog(windowPos);
-
         if (windowPos == 0) {
           appendedPos = flushWindow(result, leaderCommit);
         } else {

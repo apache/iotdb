@@ -25,10 +25,12 @@ import java.util.Set;
 public class VotingLog {
   protected Log log;
   protected Set<Integer> stronglyAcceptedNodeIds;
+  protected Set<Integer> weaklyAcceptedNodeIds;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;
     stronglyAcceptedNodeIds = new HashSet<>(groupSize);
+    weaklyAcceptedNodeIds = new HashSet<>(groupSize);
   }
 
   public Log getLog() {
@@ -45,5 +47,18 @@ public class VotingLog {
 
   public void setStronglyAcceptedNodeIds(Set<Integer> stronglyAcceptedNodeIds) {
     this.stronglyAcceptedNodeIds = stronglyAcceptedNodeIds;
+  }
+
+  public Set<Integer> getWeaklyAcceptedNodeIds() {
+    return weaklyAcceptedNodeIds;
+  }
+
+  public void setWeaklyAcceptedNodeIds(Set<Integer> weaklyAcceptedNodeIds) {
+    this.weaklyAcceptedNodeIds = weaklyAcceptedNodeIds;
+  }
+
+  @Override
+  public String toString() {
+    return log.toString();
   }
 }

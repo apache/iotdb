@@ -32,6 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_STRONG_ACCEPT;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_WEAK_ACCEPT;
 
 /**
  * LogCatchUpHandler checks the result of appending a log in a catch-up task and decides to abort
@@ -51,7 +53,7 @@ public class LogCatchUpHandler implements AsyncMethodCallback<AppendEntryResult>
   public void onComplete(AppendEntryResult response) {
     logger.debug("{}: Received a catch-up result of {} from {}", memberName, log, follower);
     long resp = response.status;
-    if (resp == RESPONSE_AGREE) {
+    if (resp == RESPONSE_AGREE || resp == RESPONSE_STRONG_ACCEPT || resp == RESPONSE_WEAK_ACCEPT) {
       synchronized (appendSucceed) {
         appendSucceed.set(true);
         appendSucceed.notifyAll();
