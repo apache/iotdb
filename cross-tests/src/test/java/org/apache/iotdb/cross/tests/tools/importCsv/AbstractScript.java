@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.thrift.annotation.Nullable;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -32,6 +31,8 @@ import java.util.Properties;
 import static org.junit.Assert.assertTrue;
 
 public abstract class AbstractScript {
+  protected String[] command;
+  protected final String CSV_FILE = "target" + File.separator + "test.csv";
 
   protected void testOutput(ProcessBuilder builder, @Nullable String[] output) throws IOException {
     builder.redirectErrorStream(true);
@@ -96,7 +97,23 @@ public abstract class AbstractScript {
         .getAbsolutePath();
   }
 
-  protected abstract void testOnWindows(String queryCommand, String[] output) throws IOException;
+  protected void testMethod(@Nullable String[] params, @Nullable String[] output)
+      throws IOException {
+    String[] basicParams =
+        new String[] {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root"};
+    command = ArrayUtils.addAll(command, basicParams);
+    command = ArrayUtils.addAll(command, params);
+    if (params != null) {
+      command = ArrayUtils.addAll(command, basicParams);
+    }
+    ProcessBuilder processBuilder = new ProcessBuilder(command);
+    testOutput(processBuilder, output);
+  }
 
-  protected abstract void testOnUnix(String queryCommand, String[] output) throws IOException;
+  protected static CSVParser readCsvFile(String path) throws IOException {
+    return CSVFormat.EXCEL
+        .withQuote('\'')
+        .withEscape('\\')
+        .parse(new InputStreamReader(new FileInputStream(path)));
+  }
 }

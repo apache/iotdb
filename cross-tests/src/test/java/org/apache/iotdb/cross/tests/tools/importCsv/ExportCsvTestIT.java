@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -5,7 +24,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -14,11 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -29,6 +44,20 @@ public class ExportCsvTestIT extends AbstractScript {
   public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    String os = System.getProperty("os.name").toLowerCase();
+    if (os.startsWith("windows")) {
+      command =
+          new String[] {
+            "cmd.exe",
+            "/c",
+            getCliPath() + File.separator + "tools" + File.separator + "export-csv.bat"
+          };
+    } else {
+      command =
+          new String[] {
+            "sh", getCliPath() + File.separator + "tools" + File.separator + "export-csv.sh"
+          };
+    }
   }
 
   @After
@@ -36,93 +65,60 @@ public class ExportCsvTestIT extends AbstractScript {
     EnvironmentUtils.cleanEnv();
   }
 
-  @Override
-  protected void testOnWindows(String queryCommand, String[] output) throws IOException {
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "cmd.exe",
-            "/c",
-            dir + File.separator + "tools" + File.separator + "export-csv.bat",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            "./target",
-            "-q",
-            queryCommand);
-    testOutput(builder, output);
-  }
-
-  @Override
-  protected void testOnUnix(String queryCommand, String[] output) throws IOException {
-    String dir = getCliPath();
-    ProcessBuilder builder =
-        new ProcessBuilder(
-            "sh",
-            dir + File.separator + "tools" + File.separator + "export-csv.sh",
-            "-h",
-            "127.0.0.1",
-            "-p",
-            "6667",
-            "-u",
-            "root",
-            "-pw",
-            "root",
-            "-td",
-            "./target",
-            "-s",
-            queryCommand);
-    testOutput(builder, output);
-  }
-
   @Test
   public void testExport()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    String queryCommand = "select c1,c2,c3 from root.test.t1";
+    String[] params = {"-td", "target/", "-q", "select c1,c2,c3 from root.test.t1"};
     prepareData();
-    String os = System.getProperty("os.name").toLowerCase();
-    if (os.startsWith("windows")) {
-      testOnWindows(queryCommand, null);
-    } else {
-      testOnUnix(queryCommand, null);
-    }
-    CSVParser parser = readCsvFile("./target/dump0.csv");
-    String headers = "Time,root.test.t1.c1,root.test.t1.c2,root.test.t1.c3";
-    assertEquals(StringUtils.join(parser.getHeaderNames(), ','), headers);
-    ArrayList<String> realRecords = new ArrayList<>(Arrays.asList("1.0,\"\"abc\",aa\",\"abbe's\""));
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "Time,root.test.t1.c1,root.test.t1.c2,root.test.t1.c3",
+      "1970-01-01T08:00:00.001+08:00,1.0,\"\"abc\",aa\",\"abbe's\""
+    };
     List<CSVRecord> records = parser.getRecords();
     for (int i = 0; i < records.size(); i++) {
       String record = StringUtils.join(records.get(i).toList(), ',');
-      String recordWithoutTime = record.substring(record.indexOf(',') + 1);
-      assertEquals(realRecords.get(i), recordWithoutTime);
+      assertEquals(realRecords[i], record);
+    }
+  }
+
+  @Test
+  public void testWithDataType()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String[] params = {
+      "-td", "target/", "-datatype", "true", "-q", "select c1,c2,c3 from root.test.t1"
+    };
+    prepareData();
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "Time,root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
+      "1970-01-01T08:00:00.001+08:00,1.0,\"\"abc\",aa\",\"abbe's\""
+    };
+    List<CSVRecord> records = parser.getRecords();
+    for (int i = 0; i < records.size(); i++) {
+      String record = StringUtils.join(records.get(i).toList(), ',');
+      assertEquals(realRecords[i], record);
     }
   }
 
   @Test
   public void testAggregationQuery()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
-    String queryCommand = "select count(c1),count(c2),count(c3) from root.test.t1";
+    String[] params = {
+      "-td", "target/", "-q", "select count(c1),count(c2),count(c3) from root.test.t1"
+    };
     prepareData();
-    String os = System.getProperty("os.name").toLowerCase();
-    if (os.startsWith("windows")) {
-      testOnWindows(queryCommand, null);
-    } else {
-      testOnUnix(queryCommand, null);
-    }
-    CSVParser parser = readCsvFile("./target/dump0.csv");
-    String headers = "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)";
-    assertEquals(StringUtils.join(parser.getHeaderNames(), ','), headers);
-    ArrayList<String> realRecords = new ArrayList<>(Arrays.asList("1,1,1"));
+    testMethod(params, null);
+    CSVParser parser = readCsvFile("target/dump0.csv");
+    String[] realRecords = {
+      "count(root.test.t1.c1),count(root.test.t1.c2),count(root.test.t1.c3)", "1,1,1"
+    };
     List<CSVRecord> records = parser.getRecords();
     for (int i = 0; i < records.size(); i++) {
       String record = StringUtils.join(records.get(i).toList(), ',');
-      assertEquals(realRecords.get(i), record);
+      assertEquals(realRecords[i], record);
     }
   }
 
@@ -141,13 +137,5 @@ public class ExportCsvTestIT extends AbstractScript {
     values.add("\"abc\",aa");
     values.add("abbe's");
     session.insertRecord(deviceId, 1L, measurements, values);
-  }
-
-  private static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withFirstRecordAsHeader()
-        .withQuote('\'')
-        .withEscape('\\')
-        .parse(new InputStreamReader(new FileInputStream(path)));
   }
 }
