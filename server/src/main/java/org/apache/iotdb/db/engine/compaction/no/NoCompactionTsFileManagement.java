@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.no;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +43,9 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
 
   // includes sealed and unsealed unSequence TsFiles
   private final Map<Long, List<TsFileResource>> unSequenceFileListMap = new TreeMap<>();
+
+  /** manage TsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   public NoCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -107,6 +111,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
             unSequenceFileListMap.get(tsFileResource.getTimePartition());
         unSequenceFileList.remove(tsFileResource);
       }
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     } finally {
       writeUnlock();
     }
@@ -150,6 +155,9 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
           unSequenceFileListMap
               .get(currTimePartition)
               .removeAll(tsFileResourceList.subList(startIndex, tsFileResourceList.size()));
+        }
+        for (TsFileResource tsFileResource : tsFileResourceList) {
+          tsFileResourceManager.removeTsFileResource(tsFileResource);
         }
       }
     } finally {

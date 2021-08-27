@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -84,6 +85,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
   private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
+
+  /** manage TsFileResource degrade */
+  private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
 
   public LevelCompactionTsFileManagement(String storageGroupName, String storageGroupDir) {
     super(storageGroupName, storageGroupDir);
@@ -231,6 +235,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           unSequenceTsFileResource.remove(tsFileResource);
         }
       }
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     } finally {
       writeUnlock();
     }
@@ -254,6 +259,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             levelTsFileResource.removeAll(tsFileResourceList);
           }
         }
+      }
+      for (TsFileResource tsFileResource : tsFileResourceList) {
+        tsFileResourceManager.removeTsFileResource(tsFileResource);
       }
     } finally {
       writeUnlock();

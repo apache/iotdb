@@ -494,7 +494,7 @@ public class TsFileResource {
     processor = null;
     chunkMetadataList = null;
     timeIndex.close();
-    tsFileResourceManager.registerSealedTsFileResource(this);
+//    tsFileResourceManager.registerSealedTsFileResource(this);
   }
 
   TsFileProcessor getUnsealedFileProcessor() {

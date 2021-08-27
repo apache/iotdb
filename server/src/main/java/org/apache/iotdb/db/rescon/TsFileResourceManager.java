@@ -40,7 +40,6 @@ public class TsFileResourceManager {
   @TestOnly
   public static double getTimeIndexMemoryThreshold() {
     return TIME_INDEX_MEMORY_THRESHOLD;
-
   }
 
   /**
@@ -53,6 +52,13 @@ public class TsFileResourceManager {
 //    System.out.println("memory used in manager " + totalTimeIndexMemCost + " " + TIME_INDEX_MEMORY_THRESHOLD);
     chooseTsFileResourceToDegrade();
   }
+
+  /** delete the TsFileResource in PriorityQueue when the source file is deleted */
+  public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
+    sealedTsFileResources.add(tsFileResource);
+    totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+  }
+
 
   /** once degradation is triggered, the total memory for timeIndex should reduce */
   public synchronized void releaseTimeIndexMemCost(long memCost) {
@@ -75,6 +81,7 @@ public class TsFileResourceManager {
       }
       long memoryReduce = tsFileResource.releaseMemory();
       releaseTimeIndexMemCost(memoryReduce);
+      sealedTsFileResources.add(tsFileResource);
     }
   }
 

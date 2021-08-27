@@ -741,6 +741,7 @@ public class StorageGroupProcessor {
           } else {
             tsFileResource.setClosed(true);
             tsFileManagement.add(tsFileResource, isSeq);
+            tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
           }
           continue;
         } else {
