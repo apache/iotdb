@@ -79,14 +79,15 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -703,23 +704,29 @@ public class DataGroupMember extends RaftMember {
       } catch (Exception e) {
         Throwable cause = IOUtils.getRootCause(e);
         boolean hasCreated = false;
-        if (cause instanceof PathNotExistException) {
-          try {
-            if (plan instanceof InsertPlan && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-              if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-                hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-              } else if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
-                ;
+        try {
+          if (plan instanceof InsertPlan && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+            if ((cause instanceof PathNotExistException) && (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan)) {
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+            }
+            else if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan){
+              if (e instanceof BatchProcessException) {
+                for (TSStatus status:((BatchProcessException) e).getFailingStatus()){
+                  if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+                    hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
+                    ((BatchPlan) plan).getResults().clear();
+                    break;
+                  }
+                }
               }
             }
-          } catch (MetadataException | CheckConsistencyException ex) {
-            logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
-            return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage());
           }
-
-          if (hasCreated) {
-            return executeNonQueryPlan(plan);
-          }
+        }catch (MetadataException | CheckConsistencyException ex) {
+          logger.error("{}: Cannot auto-create timeseries for {}", name, plan, e);
+          return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage());
+        }
+        if (hasCreated) {
+          return executeNonQueryPlan(plan);
         }
         return handleLogExecutionException(plan, cause);
       }
@@ -736,6 +743,41 @@ public class DataGroupMember extends RaftMember {
       return executeNonQueryPlanWithKnownLeader(plan);
     }
   }
+
+//  private void handleBatchInsert(InsertPlan plan){
+//    TSStatus[] failingStatus =
+//    for (int i = 0; i < failingStatus.length; i++) {
+//      TSStatus status = failingStatus[i];
+//      // skip succeeded plans in later execution
+//      if (status != null
+//              && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+//              && plan instanceof BatchPlan) {
+//        ((BatchPlan) plan).setIsExecuted(i);
+//      }
+//    }
+//
+//    boolean needRetry = false, hasError = false;
+//    for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
+//      TSStatus status = failingStatus[i];
+//      if (status != null) {
+//        if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+//                && plan instanceof BatchPlan) {
+//          ((BatchPlan) plan).unsetIsExecuted(i);
+//          needRetry = true;
+//        } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+//          hasError = true;
+//        }
+//      }
+//    }
+//    if (hasError) {
+//      throw e;
+//    }
+//    if (needRetry) {
+//      pullTimeseriesSchema(plan, dataGroupMember.getHeader());
+//      plan.recoverFromFailure();
+//      getQueryExecutor().processNonQuery(plan);
+//    }
+//  }
 
   private void handleChangeMembershipLogWithoutRaft(Log log) {
     if (log instanceof AddNodeLog) {
