@@ -1376,7 +1376,7 @@ public class TSServiceImpl implements TSIService.Iface {
         allCheckSuccess = false;
         insertRowsPlan
             .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), "inserting records" + e.getMessage()));
+            .put(i, onIOTDBException(e, "inserting records", e.getErrorCode()));
       } catch (Exception e) {
         allCheckSuccess = false;
         insertRowsPlan
@@ -1439,8 +1439,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
-      statusList.add(
-          RpcUtils.getStatus(e.getErrorCode(), "inserting records of one device" + e.getMessage()));
+      statusList.add(onIOTDBException(e, "inserting records of one device", e.getErrorCode()));
     } catch (Exception e) {
       statusList.add(
           onNPEOrUnexpectedException(
@@ -1492,9 +1491,7 @@ public class TSServiceImpl implements TSIService.Iface {
       } catch (IoTDBException e) {
         insertRowsPlan
             .getResults()
-            .put(
-                i,
-                RpcUtils.getStatus(e.getErrorCode(), "inserting string records" + e.getMessage()));
+            .put(i, onIOTDBException(e, "inserting string records", e.getErrorCode()));
         allCheckSuccess = false;
       } catch (Exception e) {
         insertRowsPlan
@@ -1596,7 +1593,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "inserting a record" + e.getMessage());
+      return onIOTDBException(e, "inserting a record", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "inserting a record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1627,7 +1624,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "inserting a string record" + e.getMessage());
+      return onIOTDBException(e, "inserting a string record", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "inserting a string record", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1653,7 +1650,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? new TSStatus(status) : new TSStatus(executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "deleting data" + e.getMessage());
+      return onIOTDBException(e, "deleting data", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(e, "deleting data", TSStatusCode.EXECUTE_STATEMENT_ERROR);
     }
@@ -1682,7 +1679,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "inserting tablet" + e.getMessage());
+      return onIOTDBException(e, "inserting tablet", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "inserting tablet", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1700,6 +1697,8 @@ public class TSServiceImpl implements TSIService.Iface {
       }
 
       return insertTabletsInternally(req);
+    } catch (IoTDBException e) {
+      return onIOTDBException(e, "inserting tablets", e.getErrorCode());
     } catch (NullPointerException e) {
       LOGGER.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1761,7 +1760,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "setting storage group" + e.getMessage());
+      return onIOTDBException(e, "setting storage group", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "setting storage group", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1784,7 +1783,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "deleting storage group" + e.getMessage());
+      return onIOTDBException(e, "deleting storage group", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "deleting storage group", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1817,7 +1816,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "creating timeseries" + e.getMessage());
+      return onIOTDBException(e, "creating timeseries", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "creating timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1871,7 +1870,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "creating aligned timeseries" + e.getMessage());
+      return onIOTDBException(e, "creating aligned timeseries", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "creating aligned timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -1959,8 +1958,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       return executeNonQueryPlan(multiPlan);
     } catch (IoTDBException e) {
-      LOGGER.error("creating multi timeseries fails", e);
-      return RpcUtils.getStatus(e.getErrorCode(), "creating multi timeseries" + e.getMessage());
+      return onIOTDBException(e, "creating multi timeseries", e.getErrorCode());
     } catch (Exception e) {
       LOGGER.error("creating multi timeseries fails", e);
       return onNPEOrUnexpectedException(
@@ -1984,7 +1982,7 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = checkAuthority(plan, sessionId);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
-      return RpcUtils.getStatus(e.getErrorCode(), "deleting timeseries" + e.getMessage());
+      return onIOTDBException(e, "deleting timeseries", e.getErrorCode());
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "deleting timeseries", TSStatusCode.EXECUTE_STATEMENT_ERROR);
@@ -2189,6 +2187,19 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.warn("Status code: {}, MSG: {}", statusCode, message, e);
     }
     return RpcUtils.getStatus(statusCode, message + e.getMessage());
+  }
+
+  private TSStatus onIOTDBException(Exception e, String operation, int errorCode) {
+    String errorName = "IOTDBException";
+    for (TSStatusCode value : TSStatusCode.values()) {
+      if (value.getStatusCode() == errorCode) {
+        errorName = value.name();
+        break;
+      }
+    }
+    String message = String.format("[%s] Exception occurred while %s. ", errorName, operation);
+    LOGGER.warn("Status code: {}, MSG: {}", errorName, message, e);
+    return RpcUtils.getStatus(errorCode, message + e.getMessage());
   }
 
   private TSStatus getNotLoggedInStatus() {

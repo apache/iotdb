@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,10 +57,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class IoTDBSessionSimpleIT {
 
@@ -723,6 +721,280 @@ public class IoTDBSessionSimpleIT {
 
     session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
     checkResult(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertIlligalPath() throws IoTDBConnectionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    // List<String> deviceIds = Arrays.asList("root.sg..d1", "root.sg.d2");
+    String deviceId = "root.sg..d1";
+    List<String> deviceIds = Arrays.asList("root.sg..d1", "root.sg.d2");
+    List<Long> timestamps = Arrays.asList(1L, 1L);
+    List<String> measurements = Arrays.asList("s1", "s2", "s3");
+    List<List<String>> allMeasurements = Arrays.asList(measurements, measurements);
+    List<TSDataType> tsDataTypes =
+        Arrays.asList(TSDataType.INT32, TSDataType.FLOAT, TSDataType.TEXT);
+    List<List<TSDataType>> allTsDataTypes = Arrays.asList(tsDataTypes, tsDataTypes);
+    List<TSEncoding> tsEncodings =
+        Arrays.asList(TSEncoding.PLAIN, TSEncoding.PLAIN, TSEncoding.PLAIN);
+    List<CompressionType> compressionTypes =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.SNAPPY);
+    List<Object> values = Arrays.asList(1, 2f, "3");
+    List<List<Object>> allValues = Arrays.asList(values, values);
+    List<String> stringValues = Arrays.asList("1", "2", "3");
+    List<List<String>> allstringValues = Arrays.asList(stringValues, stringValues);
+    String operation = "inserting records";
+    try {
+      session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "inserting string records";
+    try {
+      session.insertRecords(deviceIds, Arrays.asList(2L, 2L), allMeasurements, allstringValues);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceIds.get(0))));
+    }
+
+    operation = "inserting a record";
+    try {
+      session.insertRecord(deviceId, 3L, measurements, tsDataTypes, values);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "inserting a string record";
+    try {
+      session.insertRecord(deviceId, 4L, measurements, stringValues);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "inserting records of one device";
+    try {
+      session.insertRecordsOfOneDevice(
+          deviceId, Arrays.asList(5L, 6L), allMeasurements, allTsDataTypes, allValues);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "deleting data";
+    try {
+      session.deleteData(deviceId + ".s1", 6L);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId + ".s1")));
+    }
+
+    operation = "inserting tablet";
+    try {
+      Tablet tablet =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
+              5);
+      long ts = 7L;
+      for (long row = 0; row < 8; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, ts);
+        tablet.addValue("s1", rowIndex, 1);
+        tablet.addValue("s2", rowIndex, 1.0F);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertTablet(tablet, true);
+          tablet.reset();
+        }
+        ts++;
+      }
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "inserting tablets";
+    try {
+      Tablet tablet1 =
+          new Tablet(
+              deviceId,
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
+              5);
+      Tablet tablet2 =
+          new Tablet(
+              "root.sg.d2",
+              Arrays.asList(
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
+              5);
+      HashMap<String, Tablet> tablets = new HashMap<>();
+      tablets.put(deviceId, tablet1);
+      tablets.put("root.sg.d2", tablet2);
+      long ts = 16L;
+      for (long row = 0; row < 8; row++) {
+        int row1 = tablet1.rowSize++;
+        int row2 = tablet2.rowSize++;
+        tablet1.addTimestamp(row1, ts);
+        tablet2.addTimestamp(row2, ts);
+        tablet1.addValue("s1", row1, 1);
+        tablet1.addValue("s2", row1, 1.0F);
+        tablet2.addValue("s1", row2, 1);
+        tablet2.addValue("s2", row2, 1.0F);
+        if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+          session.insertTablets(tablets, true);
+          tablet1.reset();
+          tablet2.reset();
+        }
+        ts++;
+      }
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "setting storage group";
+    try {
+      session.setStorageGroup("root..sg");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, "root..sg")));
+    }
+
+    operation = "creating timeseries";
+    try {
+      session.createTimeseries(
+          "root.sg..d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg..d1.s1")));
+    }
+
+    operation = "creating aligned timeseries";
+    try {
+      session.createAlignedTimeseries(
+          deviceId,
+          measurements,
+          tsDataTypes,
+          tsEncodings,
+          CompressionType.SNAPPY,
+          Arrays.asList("alias1", "alias2", "alias3"));
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+    }
+
+    operation = "creating multi timeseries";
+    try {
+      session.createMultiTimeseries(
+          Arrays.asList("root.sg.d1..s1", "root.sg.d1.s2", "root.sg.d1.s3"),
+          tsDataTypes,
+          tsEncodings,
+          compressionTypes,
+          null,
+          null,
+          null,
+          null);
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg.d1..s1")));
+    }
+
+    operation = "deleting timeseries";
+    try {
+      session.deleteTimeseries("root.sg.d1..s1");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg.d1..s1")));
+    }
+
+    operation = "deleting storage group";
+    try {
+      session.deleteStorageGroup("root..sg");
+      fail("Exception expected");
+    } catch (StatementExecutionException e) {
+      assertTrue(
+          e.getMessage()
+              .contains(
+                  String.format(
+                      "[%s] Exception occurred while %s. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, operation, "root..sg")));
+    }
+
     session.close();
   }
 
