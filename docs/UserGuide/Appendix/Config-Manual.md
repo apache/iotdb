@@ -159,15 +159,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 128 |
 |Effective|Trigger|
 
-* time\_series\_data\_type
-
-|Name| time\_series\_data\_type |
-|:---:|:---|
-|Description|Timestamp data type|
-|Type|Enum String: "INT32", "INT64"|
-|Default| Int64 |
-|Effective|Trigger|
-
 * time\_encoder
 
 |Name| time\_encoder |
