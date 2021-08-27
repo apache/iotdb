@@ -57,7 +57,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
@@ -94,7 +94,7 @@ public class LastQueryExecutor {
             Arrays.asList(
                 new PartialPath(COLUMN_TIMESERIES, false),
                 new PartialPath(COLUMN_VALUE, false),
-                new PartialPath(COLUMN_TYPE, false)),
+                new PartialPath(COLUMN_TIMESERIES_DATATYPE, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
 
     List<Pair<Boolean, TimeValuePair>> lastPairList =

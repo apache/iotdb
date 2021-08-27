@@ -532,7 +532,7 @@ public class IoTDBAsIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        assertEquals("Time,timeseries,value,type,", header.toString());
+        assertEquals("Time,timeseries,value,dataType,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -573,7 +573,7 @@ public class IoTDBAsIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        assertEquals("Time,timeseries,value,type,", header.toString());
+        assertEquals("Time,timeseries,value,dataType,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
