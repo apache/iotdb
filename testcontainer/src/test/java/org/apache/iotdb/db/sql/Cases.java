@@ -243,7 +243,7 @@ public abstract class Cases {
     while (sessionDataSet.hasNext()) {
       count++;
       List<Field> fields = sessionDataSet.next().getFields();
-      Assert.assertEquals("[root.sg1.d1.s1,INT64,1]", fields.toString().replace(" ", ""));
+      Assert.assertEquals("[root.sg1.d1.s1,1,INT64]", fields.toString().replace(" ", ""));
     }
     Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
