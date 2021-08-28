@@ -323,7 +323,7 @@ public class InsertRowPlan extends InsertPlan {
     }
     failedValues.add(values[index]);
     values[index] = null;
-    dataTypes[index] = null;
+    // dataTypes[index] = null;
   }
 
   @Override
