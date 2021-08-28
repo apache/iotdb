@@ -33,10 +33,11 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SingleReplicaApplier extends DataLogApplier {
-  private static final Logger logger = LoggerFactory.getLogger(SingleReplicaApplier.class);
+public class SingleReplicaDataApplier extends DataLogApplier {
+  private static final Logger logger = LoggerFactory.getLogger(SingleReplicaDataApplier.class);
 
-  public SingleReplicaApplier(MetaGroupMember metaGroupMember, DataGroupMember dataGroupMember) {
+  public SingleReplicaDataApplier(
+      MetaGroupMember metaGroupMember, DataGroupMember dataGroupMember) {
     super(metaGroupMember, dataGroupMember);
   }
 

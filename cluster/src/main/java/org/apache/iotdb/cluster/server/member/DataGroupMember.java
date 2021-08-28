@@ -38,7 +38,7 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
-import org.apache.iotdb.cluster.log.applier.SingleReplicaApplier;
+import org.apache.iotdb.cluster.log.applier.SingleReplicaDataApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -161,7 +161,7 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
-  SingleReplicaApplier singleReplicaApplier;
+  SingleReplicaDataApplier singleReplicaApplier;
 
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
@@ -207,7 +207,7 @@ public class DataGroupMember extends RaftMember {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
       applier = new AsyncDataLogApplier(applier, name);
     }
-    singleReplicaApplier = new SingleReplicaApplier(metaGroupMember, this);
+    singleReplicaApplier = new SingleReplicaDataApplier(metaGroupMember, this);
     logManager =
         new FilePartitionedSnapshotLogManager(
             applier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);
@@ -744,41 +744,6 @@ public class DataGroupMember extends RaftMember {
       return executeNonQueryPlanWithKnownLeader(plan);
     }
   }
-
-  //  private void handleBatchInsert(InsertPlan plan){
-  //    TSStatus[] failingStatus =
-  //    for (int i = 0; i < failingStatus.length; i++) {
-  //      TSStatus status = failingStatus[i];
-  //      // skip succeeded plans in later execution
-  //      if (status != null
-  //              && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-  //              && plan instanceof BatchPlan) {
-  //        ((BatchPlan) plan).setIsExecuted(i);
-  //      }
-  //    }
-  //
-  //    boolean needRetry = false, hasError = false;
-  //    for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
-  //      TSStatus status = failingStatus[i];
-  //      if (status != null) {
-  //        if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
-  //                && plan instanceof BatchPlan) {
-  //          ((BatchPlan) plan).unsetIsExecuted(i);
-  //          needRetry = true;
-  //        } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-  //          hasError = true;
-  //        }
-  //      }
-  //    }
-  //    if (hasError) {
-  //      throw e;
-  //    }
-  //    if (needRetry) {
-  //      pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-  //      plan.recoverFromFailure();
-  //      getQueryExecutor().processNonQuery(plan);
-  //    }
-  //  }
 
   private void handleChangeMembershipLogWithoutRaft(Log log) {
     if (log instanceof AddNodeLog) {
