@@ -529,7 +529,7 @@ public abstract class Cases {
   }
 
   @Test
-  public void testAutoCreateSchemaInClusterMode(){
+  public void testAutoCreateSchemaInClusterMode() {
     Session session = new Session("127.0.0.1", 6667, "root", "root", null);
     session.open();
     List<String> measurement_list = new ArrayList<>();
@@ -552,25 +552,25 @@ public abstract class Cases {
       session.setStorageGroup(sg);
       for (int j = 0; j < 10; j++) {
         session.createTimeseries(
-                String.format("%s.d1.s%s", sg, j),
-                TSDataType.INT64,
-                TSEncoding.RLE,
-                CompressionType.SNAPPY);
+            String.format("%s.d1.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
         session.createTimeseries(
-                String.format("%s.d2.s%s", sg, j),
-                TSDataType.INT64,
-                TSEncoding.RLE,
-                CompressionType.SNAPPY);
+            String.format("%s.d2.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
         session.createTimeseries(
-                String.format("%s.d3.s%s", sg, j),
-                TSDataType.INT64,
-                TSEncoding.RLE,
-                CompressionType.SNAPPY);
+            String.format("%s.d3.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
         session.createTimeseries(
-                String.format("%s.d4.s%s", sg, j),
-                TSDataType.INT64,
-                TSEncoding.RLE,
-                CompressionType.SNAPPY);
+            String.format("%s.d4.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
       }
     }
 
@@ -578,7 +578,7 @@ public abstract class Cases {
     for (int i = 0; i < 10; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
@@ -624,11 +624,11 @@ public abstract class Cases {
 
     session.insertTablets(tabletMap);
 
-        // step 2: test auto create sg and time series schema
+    // step 2: test auto create sg and time series schema
     for (int i = 10; i < 20; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
@@ -667,7 +667,7 @@ public abstract class Cases {
       for (int i = 0; i < 20; i++) {
         for (int d = 1; d <= 4; d++) {
           ResultSet resultSet =
-                  readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
           for (long t = 0; t < 3; t++) {
             Assert.assertTrue(resultSet.next());
             Assert.assertEquals(resultSet.getLong(1), t);
