@@ -34,6 +34,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,10 +45,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.fail;
 
@@ -529,9 +529,8 @@ public abstract class Cases {
   }
 
   @Test
-  public void testAutoCreateSchemaInClusterMode() {
-    Session session = new Session("127.0.0.1", 6667, "root", "root", null);
-    session.open();
+  public void testAutoCreateSchemaInClusterMode()
+      throws IoTDBConnectionException, StatementExecutionException, SQLException {
     List<String> measurement_list = new ArrayList<>();
     measurement_list.add("s1");
     measurement_list.add("s2");
@@ -671,9 +670,9 @@ public abstract class Cases {
           for (long t = 0; t < 3; t++) {
             Assert.assertTrue(resultSet.next());
             Assert.assertEquals(resultSet.getLong(1), t);
-            Assert.assertEquals(resultSet.getString(2), "1.0");
-            Assert.assertEquals(resultSet.getString(3), "2.0");
-            Assert.assertEquals(resultSet.getString(4), "3.0");
+            Assert.assertEquals(resultSet.getString(2), "1");
+            Assert.assertEquals(resultSet.getString(3), "2");
+            Assert.assertEquals(resultSet.getString(4), "3");
           }
         }
       }
