@@ -686,7 +686,7 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() != 1) {
+    if (ClusterDescriptor.getInstance().getConfig().getReplicationNum() == 1) {
       try {
         if (plan instanceof LogPlan) {
           Log log;
