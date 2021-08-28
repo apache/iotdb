@@ -461,7 +461,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset);
+              writer.close();
             }
+            writer = new RestorableTsFileIOWriter(target, false);
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             List<Modification> modifications = new ArrayList<>();
@@ -507,7 +509,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset);
+              writer.close();
             }
+            writer = new RestorableTsFileIOWriter(target, false);
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
             CompactionUtils.merge(
