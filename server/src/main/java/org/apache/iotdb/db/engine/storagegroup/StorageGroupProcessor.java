@@ -2246,7 +2246,8 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
-      List<TsFileResource> sequenceList = tsFileManagement.getTsFileListByTimePartition(true, newFilePartitionId);
+      List<TsFileResource> sequenceList =
+          tsFileManagement.getTsFileListByTimePartition(true, newFilePartitionId);
 
       int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       String newFileName, renameInfo;
@@ -2330,8 +2331,7 @@ public class StorageGroupProcessor {
    *     file can be inserted between [i, i+1]
    */
   private int findInsertionPosition(
-      TsFileResource newTsFileResource,
-      List<TsFileResource> sequenceList) {
+      TsFileResource newTsFileResource, List<TsFileResource> sequenceList) {
 
     int insertPos = -1;
 
@@ -2531,8 +2531,8 @@ public class StorageGroupProcessor {
               + subsequenceTime
               + " insertIndex: "
               + insertIndex
-                  + " partition: "
-                  + timePartitionId
+              + " partition: "
+              + timePartitionId
               + " sequencePartitionListLength: "
               + sequenceListLength);
     }
