@@ -2,6 +2,9 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.regex.Pattern;
 
@@ -12,6 +15,8 @@ public abstract class Traverser {
     protected static final String PATH_ONE_LEVEL_WILDCARD = "*";
 
     protected String[] nodes;
+
+    protected boolean isMeasurementTraverser = false;
 
     public void setNodes(String[] nodes) {
         this.nodes = nodes;
@@ -36,8 +41,8 @@ public abstract class Traverser {
             return;
         }
 
-        if (isValid(node)) {
-            if (processInternalValid(node, idx)) {
+        if (isValid(node) || node.isMeasurement()) {
+            if (processInternalValid(node, idx) || node.isMeasurement()) {
                 return;
             }
         }
@@ -62,6 +67,17 @@ public abstract class Traverser {
         for (IMNode child : node.getChildren().values()) {
             traverse(child, idx + 1, true);
         }
+
+        if (!isMeasurementTraverser) {
+            return;
+        }
+
+        if (node.isUseTemplate()) {
+            Template upperTemplate = node.getUpperTemplate();
+            for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, true);
+            }
+        }
     }
 
     protected void processOneLevelWildcard(IMNode node, int idx, boolean multiLevelWildcard) throws MetadataException {
@@ -77,6 +93,24 @@ public abstract class Traverser {
                 traverse(child, idx, true);
             }
         }
+
+        if (!isMeasurementTraverser) {
+            return;
+        }
+
+        if (node.isUseTemplate()) {
+            for (IMeasurementSchema schema : node.getUpperTemplate().getSchemaMap().values()) {
+                if (!Pattern.matches(regex, schema.getMeasurementId())) {
+                    continue;
+                }
+                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, false);
+            }
+            if (multiLevelWildcard) {
+                for (IMeasurementSchema schema : node.getUpperTemplate().getSchemaMap().values()) {
+                    traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, true);
+                }
+            }
+        }
     }
 
     protected void processNameMatch(IMNode node, int idx, boolean multiLevelWildcard) throws MetadataException {
@@ -87,6 +121,24 @@ public abstract class Traverser {
         if (multiLevelWildcard) {
             for (IMNode child : node.getChildren().values()) {
                 traverse(child, idx, true);
+            }
+        }
+
+        if (!isMeasurementTraverser) {
+            return;
+        }
+
+        if (node.isUseTemplate()) {
+            Template upperTemplate = node.getUpperTemplate();
+            IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(nodes[idx]);
+            if (targetSchema != null) {
+                traverse(new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null), idx + 1, false);
+            }
+
+            if (multiLevelWildcard) {
+                for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+                    traverse(new MeasurementMNode(node, schema.getMeasurementId(), targetSchema, null), idx, true);
+                }
             }
         }
     }

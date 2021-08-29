@@ -384,17 +384,24 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 6);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 5);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.**")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.**")), 6);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 1);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 4);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.**")), 5);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")), 3);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")), 3);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
-      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2")), 2);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
 
+      try {
+        manager.getAllTimeseriesCount(new PartialPath("root.laptop"));
+        fail();
+      }catch (MetadataException e){
+        Assert.assertEquals(e.getMessage(),"Path [root.laptop] does not exist");
+      }
       try {
         manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"));
         fail("Expected exception");
@@ -1365,13 +1372,13 @@ public class MManagerBasicTest {
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
 
-      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1")));
+      Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1")));
-      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer")));
-      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
+      Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.**")));
+      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1429,7 +1436,8 @@ public class MManagerBasicTest {
 
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d1")));
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
-      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
+      Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1549,7 +1557,7 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
-      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath()));
+      assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertEquals(1, node.getMeasurementMNodeCount());
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertNull(insertRowPlan.getMeasurementMNodes()[1]);

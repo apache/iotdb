@@ -41,6 +41,10 @@ import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
@@ -979,7 +983,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the count of timeseries under the given prefix path. if prefixPath contains '*', then not
+   * Get the count of timeseries matching the given path pattern. if prefixPath contains '*', then not
    * throw PathNotExistException()
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
@@ -989,67 +993,24 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    try {
-      return getCount(root, nodes, 1, false);
-    } catch (PathNotExistException e) {
+    CounterTraverser counter = new MeasurementCounter();
+    counter.setNodes(nodes);
+    counter.traverse(root);
+    int count = counter.getCount();
+    if(count > 0){
+      return count;
+    }else {
+      for(String name:nodes){
+        if(name.contains(PATH_WILDCARD)){
+          return count;
+        }
+      }
       throw new PathNotExistException(prefixPath.getFullPath());
     }
   }
 
-  /** Traverse the MTree to get the count of timeseries. */
-  private int getCount(IMNode node, String[] nodes, int idx, boolean wildcard)
-      throws PathNotExistException {
-    if (node.isMeasurement()) {
-      if (idx < nodes.length) {
-        if (((IMeasurementMNode) node).getSchema().containsSubMeasurement(nodes[idx])) {
-          return 1;
-        } else {
-          if (!wildcard) {
-            throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
-          } else {
-            return 0;
-          }
-        }
-      } else {
-        return ((IMeasurementMNode) node).getMeasurementCount();
-      }
-    }
-    if (idx < nodes.length) {
-      if (PATH_WILDCARD.equals(nodes[idx])) {
-        int sum = 0;
-        for (IMNode child : node.getChildren().values()) {
-          sum += getCount(child, nodes, idx + 1, true);
-        }
-        return sum;
-      } else {
-        IMNode child = node.getChild(nodes[idx]);
-        if (child == null) {
-          if (node.isUseTemplate()
-              && node.getUpperTemplate().getSchemaMap().containsKey(nodes[idx])) {
-            return 1;
-          }
-          if (!wildcard) {
-            throw new PathNotExistException(node.getName() + NO_CHILDNODE_MSG + nodes[idx]);
-          } else {
-            return 0;
-          }
-        }
-        return getCount(child, nodes, idx + 1, wildcard);
-      }
-    } else {
-      int sum = 0;
-      if (node.isUseTemplate()) {
-        sum += node.getUpperTemplate().getSchemaMap().size();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        sum += getCount(child, nodes, idx + 1, wildcard);
-      }
-      return sum;
-    }
-  }
-
   /**
-   * Get the count of devices under the given prefix path.
+   * Get the count of devices matching the given path pattern.
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
@@ -1058,11 +1019,14 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getDevicesCount(root, nodes, 1);
+    CounterTraverser counter = new EntityCounter();
+    counter.setNodes(nodes);
+    counter.traverse(root);
+    return counter.getCount();
   }
 
   /**
-   * Get the count of storage group under the given prefix path.
+   * Get the count of storage group matching the given path pattern.
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
@@ -1071,7 +1035,10 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    return getStorageGroupCount(root, nodes, 1, "");
+    CounterTraverser counter = new StorageGroupCounter();
+    counter.setNodes(nodes);
+    counter.traverse(root);
+    return counter.getCount();
   }
 
   /** Get the count of nodes in the given level under the given prefix path. */
@@ -1093,54 +1060,6 @@ public class MTree implements Serializable {
       }
     }
     return getCountInGivenLevel(node, level - (i - 1));
-  }
-
-  /** Traverse the MTree to get the count of devices. */
-  private int getDevicesCount(IMNode node, String[] nodes, int idx) {
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    boolean curIsDevice = node.isUseTemplate();
-    int cnt = curIsDevice ? 1 : 0;
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
-      IMNode next = node.getChild(nodeReg);
-      if (next != null) {
-        if (next.isMeasurement() && idx >= nodes.length && !curIsDevice) {
-          cnt++;
-        } else {
-          cnt += getDevicesCount(node.getChild(nodeReg), nodes, idx + 1);
-        }
-      }
-    } else {
-      for (IMNode child : node.getChildren().values()) {
-        if (child.isMeasurement() && !curIsDevice && idx >= nodes.length) {
-          cnt++;
-          curIsDevice = true;
-        }
-        cnt += getDevicesCount(child, nodes, idx + 1);
-      }
-    }
-    return cnt;
-  }
-
-  /** Traverse the MTree to get the count of storage group. */
-  private int getStorageGroupCount(IMNode node, String[] nodes, int idx, String parent) {
-    int cnt = 0;
-    if (node.isStorageGroup() && idx >= nodes.length) {
-      cnt++;
-      return cnt;
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!(PATH_WILDCARD).equals(nodeReg)) {
-      IMNode next = node.getChild(nodeReg);
-      if (next != null) {
-        cnt += getStorageGroupCount(next, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
-      }
-    } else {
-      for (IMNode child : node.getChildren().values()) {
-        cnt +=
-            getStorageGroupCount(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR);
-      }
-    }
-    return cnt;
   }
 
   /**

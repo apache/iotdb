@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -7,12 +7,13 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import java.util.List;
+import java.util.regex.Pattern;
 
-public abstract class MeasurementCollector<T> extends CollectorTraverser {
 
-    protected T resultSet;
+public class MeasurementCounter extends CounterTraverser {
 
-    public MeasurementCollector() {
+    public MeasurementCounter() {
         isMeasurementTraverser = true;
     }
 
@@ -22,13 +23,23 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser {
     }
 
     @Override
-    public void processValidNode(IMNode node, int idx) throws MetadataException {
+    protected void processValidNode(IMNode node, int idx) throws MetadataException {
         IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
         if (schema instanceof MeasurementSchema) {
-            collectMeasurementSchema((IMeasurementMNode) node);
+            count++;
         } else if (schema instanceof VectorMeasurementSchema) {
             // only when idx >= nodes.length -1
-            collectVectorMeasurementSchema((IMeasurementMNode) node, idx < nodes.length ? nodes[idx] : "*");
+            List<String> measurements = schema.getValueMeasurementIdList();
+            if (idx >= nodes.length) {
+                count += ((IMeasurementMNode) node).getMeasurementCount();
+            } else {
+                String regex = nodes[idx].replace("*", ".*");
+                for (String measurement : measurements) {
+                    if (Pattern.matches(regex, measurement)) {
+                        count++;
+                    }
+                }
+            }
         }
     }
 
@@ -42,9 +53,4 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser {
         }
         return true;
     }
-
-    protected abstract void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException;
-
-    protected abstract void collectVectorMeasurementSchema(IMeasurementMNode node, String reg) throws MetadataException;
-
 }
