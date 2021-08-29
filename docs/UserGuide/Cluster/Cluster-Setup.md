@@ -298,7 +298,7 @@ To stop the services of all the nodes on a single machine, you need to execute t
 
 | Name        | connection\_timeout\_ms                                      |
 | ----------- | ------------------------------------------------------------ |
-| Description | Thrift socket and connection timeout between raft nodes, in milliseconds |
+| Description | Thrift socket and connection timeout between raft nodes, in milliseconds. **Note that the timeout of the connection used for sending heartbeats and requesting votes will be adjust to min(heartbeat\_interval\_ms, connection\_timeout\_ms).** |
 | Type        | Int32                                                        |
 | Default     | 20000                                                        |
 | Effective   | After restart system                                         |

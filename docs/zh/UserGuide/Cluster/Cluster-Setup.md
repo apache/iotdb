@@ -295,7 +295,7 @@ iotdb-engines.properties 配置文件中的部分内容会不再生效：
 
 | 名字         | connection_timeout_ms                              |
 | ------------ | -------------------------------------------------- |
-| 描述         | raft 节点间的 thrift 连接超时和 socket 超时时间，单位毫秒 |
+| 描述         | raft 节点间的 thrift 连接超时和 socket 超时时间，单位毫秒. **对于发送心跳和投票请求的 thrift 连接的超时时间会被自动调整为 connection_timeout_ms 和 heartbeat_interval_ms 的最小值.** |
 | 类型         | Int32                                              |
 | 默认值       | 20000                                              |
 | 改后生效方式 | 重启服务生效
