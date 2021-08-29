@@ -149,6 +149,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     }
+    for (TsFileResource tsFileResource : mergeTsFiles) {
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
+    }
   }
 
   private void deleteLevelFile(TsFileResource seqFile) {
@@ -235,10 +238,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           unSequenceTsFileResource.remove(tsFileResource);
         }
       }
-      tsFileResourceManager.removeTsFileResource(tsFileResource);
+
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.removeTsFileResource(tsFileResource);
   }
 
   @Override
@@ -260,11 +264,11 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
-      for (TsFileResource tsFileResource : tsFileResourceList) {
-        tsFileResourceManager.removeTsFileResource(tsFileResource);
-      }
     } finally {
       writeUnlock();
+    }
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     }
   }
 
@@ -477,6 +481,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           } else {
             writer.close();
           }
+          tsFileResourceManager.registerSealedTsFileResource(targetTsFileResource);
           // complete compaction and delete source file
           deleteAllSubLevelFiles(isSeq, timePartition);
         } else {
@@ -509,6 +514,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 modifications);
             // complete compaction and delete source file
             writeLock();
+            tsFileResourceManager.registerSealedTsFileResource(targetResource);
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(
@@ -704,6 +710,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 i,
                 toMergeTsFiles.size());
             writeLock();
+            tsFileResourceManager.registerSealedTsFileResource(newResource);
             try {
               if (Thread.currentThread().isInterrupted()) {
                 throw new InterruptedException(

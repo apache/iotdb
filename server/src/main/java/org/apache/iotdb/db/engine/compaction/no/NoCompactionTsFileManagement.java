@@ -111,10 +111,10 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
             unSequenceFileListMap.get(tsFileResource.getTimePartition());
         unSequenceFileList.remove(tsFileResource);
       }
-      tsFileResourceManager.removeTsFileResource(tsFileResource);
     } finally {
       writeUnlock();
     }
+    tsFileResourceManager.removeTsFileResource(tsFileResource);
   }
 
   @Override
@@ -156,12 +156,12 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
               .get(currTimePartition)
               .removeAll(tsFileResourceList.subList(startIndex, tsFileResourceList.size()));
         }
-        for (TsFileResource tsFileResource : tsFileResourceList) {
-          tsFileResourceManager.removeTsFileResource(tsFileResource);
-        }
       }
     } finally {
       writeUnlock();
+    }
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResourceManager.removeTsFileResource(tsFileResource);
     }
   }
 

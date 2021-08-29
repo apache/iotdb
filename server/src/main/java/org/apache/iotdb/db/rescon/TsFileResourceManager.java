@@ -55,8 +55,10 @@ public class TsFileResourceManager {
 
   /** delete the TsFileResource in PriorityQueue when the source file is deleted */
   public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
-    sealedTsFileResources.add(tsFileResource);
-    totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+    if (sealedTsFileResources.remove(tsFileResource)){
+      sealedTsFileResources.remove(tsFileResource);
+      totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
+    }
   }
 
 
