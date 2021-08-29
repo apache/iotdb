@@ -584,7 +584,7 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries under the given path, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
    * @return deletion failed Timeseries
@@ -870,8 +870,7 @@ public class MManager {
    * Return all paths for given path if the path is abstract. Or return the path itself. Regular
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
-   * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
-   *     wildcard can only match one level, otherwise it can match to the tail.
+   * @param prefixPath can be a pattern or a full path.
    */
   public List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
     return mtree.getAllTimeseriesPath(prefixPath);

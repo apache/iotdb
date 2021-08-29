@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
 
 public class MeasurementCounter extends CounterTraverser {
 
-    public MeasurementCounter() {
+    public MeasurementCounter(IMNode startNode, String[] nodes) {
+        super(startNode,nodes);
         isMeasurementTraverser = true;
     }
 

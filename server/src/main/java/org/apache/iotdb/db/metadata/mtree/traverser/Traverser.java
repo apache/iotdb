@@ -14,19 +14,21 @@ public abstract class Traverser {
     protected static final String PATH_MULTI_LEVEL_WILDCARD = "**";
     protected static final String PATH_ONE_LEVEL_WILDCARD = "*";
 
+    protected IMNode startNode;
     protected String[] nodes;
 
     protected boolean isMeasurementTraverser = false;
 
-    public void setNodes(String[] nodes) {
+    public Traverser(IMNode startNode, String[] nodes){
+        this.startNode = startNode;
         this.nodes = nodes;
     }
 
-    public void traverse(IMNode startNode) throws MetadataException {
+    public void traverse() throws MetadataException {
         traverse(startNode, 1, false);
     }
 
-    public void traverse(IMNode node, int idx, boolean multiLevelWildcard) throws MetadataException {
+    protected void traverse(IMNode node, int idx, boolean multiLevelWildcard) throws MetadataException {
         if (idx >= nodes.length) {
             if (isValid(node)) {
                 processValidNode(node, idx);

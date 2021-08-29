@@ -8,11 +8,15 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 
-public abstract class MeasurementCollector<T> extends CollectorTraverser {
+public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
-    protected T resultSet;
+    public MeasurementCollector(IMNode startNode, String[] nodes, T resultSet) {
+        super(startNode, nodes, resultSet);
+        isMeasurementTraverser = true;
+    }
 
-    public MeasurementCollector() {
+    public MeasurementCollector(IMNode startNode, String[] nodes, T resultSet, int limit, int offset) {
+        super(startNode, nodes, resultSet, limit, offset);
         isMeasurementTraverser = true;
     }
 

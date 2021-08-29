@@ -8,6 +8,10 @@ public abstract class CounterTraverser extends Traverser {
 
     int count;
 
+    public CounterTraverser(IMNode startNode, String[] nodes) {
+        super(startNode, nodes);
+    }
+
     @Override
     protected void processValidNode(IMNode node, int idx) throws MetadataException {
         count ++;

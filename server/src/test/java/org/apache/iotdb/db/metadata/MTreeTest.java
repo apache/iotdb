@@ -605,8 +605,8 @@ public class MTreeTest {
       assertEquals(list, root.getStorageGroupByPath(new PartialPath("root.laptop.d1")));
 
       list.add("root.laptop.d2");
-      assertEquals(list, root.getStorageGroupByPath(new PartialPath("root.laptop")));
-      assertEquals(list, root.getStorageGroupByPath(new PartialPath("root")));
+      assertEquals(list, root.getStorageGroupByPath(new PartialPath("root.laptop.**")));
+      assertEquals(list, root.getStorageGroupByPath(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -719,10 +719,10 @@ public class MTreeTest {
         Collections.emptyMap(),
         null);
 
-    assertEquals(2, root.getDevices(new PartialPath("root")).size());
+    assertEquals(2, root.getDevices(new PartialPath("root.**")).size());
     assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.**")));
-    assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root")).size());
-    assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root"), 0, 0).left.size());
+    assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root.**")).size());
+    assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root.**"), 0, 0).left.size());
   }
 
   @Test

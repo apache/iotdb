@@ -475,7 +475,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -488,7 +488,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -502,7 +502,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          recoverManager.getDevices(new PartialPath("root.*")).stream()
+          recoverManager.getDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
 
@@ -539,8 +539,8 @@ public class MManagerBasicTest {
       assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1.s1")));
       assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.d1")));
       list.add("root.laptop.d2");
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop")));
-      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root")));
+      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.laptop.**")));
+      assertEquals(list, manager.getStorageGroupByPath(new PartialPath("root.**")));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -727,7 +727,7 @@ public class MManagerBasicTest {
       // usual condition
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.laptop")).stream()
+          manager.getDevices(new PartialPath("root.laptop.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
       manager.setStorageGroup(new PartialPath("root.vehicle"));
@@ -741,7 +741,7 @@ public class MManagerBasicTest {
       // prefix with *
       assertEquals(
           devices,
-          manager.getDevices(new PartialPath("root.*")).stream()
+          manager.getDevices(new PartialPath("root.**")).stream()
               .map(PartialPath::getFullPath)
               .collect(Collectors.toSet()));
     } catch (MetadataException e) {
@@ -1287,7 +1287,7 @@ public class MManagerBasicTest {
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root"), false, null, null, 0, 0, false);
+          new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(4, result.size());
       Set<String> set = new HashSet<>();
