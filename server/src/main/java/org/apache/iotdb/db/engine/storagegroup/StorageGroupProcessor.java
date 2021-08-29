@@ -2246,9 +2246,9 @@ public class StorageGroupProcessor {
     long newFilePartitionId = newTsFileResource.getTimePartitionWithCheck();
     writeLock("loadNewTsFile");
     try {
-      List<TsFileResource> sequenceList = tsFileManagement.getTsFileList(true);
+      List<TsFileResource> sequenceList = tsFileManagement.getTsFileListByTimePartition(true, newFilePartitionId);
 
-      int insertPos = findInsertionPosition(newTsFileResource, newFilePartitionId, sequenceList);
+      int insertPos = findInsertionPosition(newTsFileResource, sequenceList);
       String newFileName, renameInfo;
       LoadTsFileType tsFileType;
 
@@ -2331,7 +2331,6 @@ public class StorageGroupProcessor {
    */
   private int findInsertionPosition(
       TsFileResource newTsFileResource,
-      long newFilePartitionId,
       List<TsFileResource> sequenceList) {
 
     int insertPos = -1;
@@ -2339,12 +2338,6 @@ public class StorageGroupProcessor {
     // find the position where the new file should be inserted
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
-      long localPartitionId = Long.parseLong(localFile.getTsFile().getParentFile().getName());
-
-      if (newFilePartitionId > localPartitionId) {
-        insertPos = i;
-        continue;
-      }
 
       if (!localFile.isClosed() && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
@@ -2375,8 +2368,10 @@ public class StorageGroupProcessor {
    */
   private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) {
     boolean hasPre = false, hasSubsequence = false;
-    for (String device : fileA.getDevices()) {
-      if (!fileB.getDevices().contains(device)) {
+    Set<String> fileADevices = fileA.getDevices();
+    Set<String> fileBDevices = fileB.getDevices();
+    for (String device : fileADevices) {
+      if (!fileBDevices.contains(device)) {
         continue;
       }
       long startTimeA = fileA.getStartTime(device);
@@ -2509,6 +2504,7 @@ public class StorageGroupProcessor {
   private String getFileNameForSequenceLoadingFile(
       int insertIndex, TsFileResource newTsFileResource, List<TsFileResource> sequenceList)
       throws LoadFileException {
+    int sequenceListLength = sequenceList.size();
     long timePartitionId = newTsFileResource.getTimePartition();
     long preTime, subsequenceTime;
 
@@ -2518,7 +2514,7 @@ public class StorageGroupProcessor {
       String preName = sequenceList.get(insertIndex).getTsFile().getName();
       preTime = Long.parseLong(preName.split(FILE_NAME_SEPARATOR)[0]);
     }
-    if (insertIndex == tsFileManagement.size(true) - 1) {
+    if (insertIndex == sequenceListLength - 1) {
       subsequenceTime = preTime + ((System.currentTimeMillis() - preTime) << 1);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getTsFile().getName();
@@ -2526,7 +2522,7 @@ public class StorageGroupProcessor {
     }
 
     long meanTime = preTime + ((subsequenceTime - preTime) >> 1);
-    if (insertIndex != tsFileManagement.size(true) - 1 && meanTime == subsequenceTime) {
+    if (insertIndex != sequenceListLength - 1 && meanTime == subsequenceTime) {
       throw new LoadFileException(
           "can not load TsFile because of can not find suitable location, "
               + "preName: "
@@ -2535,8 +2531,10 @@ public class StorageGroupProcessor {
               + subsequenceTime
               + " insertIndex: "
               + insertIndex
-              + " tsFilemanagementSize: "
-              + tsFileManagement.size(true));
+                  + " partition: "
+                  + timePartitionId
+              + " sequencePartitionListLength: "
+              + sequenceListLength);
     }
 
     return getNewTsFileName(
