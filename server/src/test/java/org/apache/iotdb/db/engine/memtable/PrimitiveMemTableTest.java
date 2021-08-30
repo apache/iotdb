@@ -91,16 +91,20 @@ public class PrimitiveMemTableTest {
       series.write(i, i);
     }
     series.write(0, 21);
-    series.write(20, 21);
     series.write(99, 20);
+    series.write(20, 21);
     String str = series.toString();
     Assert.assertFalse(series.getTVList().isSorted());
     Assert.assertEquals(
-        str,
-        "MemChunk Size: 103\n"
-            + "Data type:INT32\n"
-            + "First point:0 : 0\n"
-            + "Last point:99 : 20\n");
+        "MemChunk Size: 103"
+            + System.lineSeparator()
+            + "Data type:INT32"
+            + System.lineSeparator()
+            + "First point:0 : 0"
+            + System.lineSeparator()
+            + "Last point:99 : 20"
+            + System.lineSeparator(),
+        str);
   }
 
   @Test
