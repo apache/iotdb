@@ -95,7 +95,8 @@ public class PrimitiveMemTableTest {
     series.write(99, 20);
     String str = series.toString();
     Assert.assertFalse(series.getTVList().isSorted());
-    Assert.assertEquals(str,
+    Assert.assertEquals(
+        str,
         "MemChunk Size: 103\n"
             + "Data type:INT32\n"
             + "First point:0 : 0\n"
