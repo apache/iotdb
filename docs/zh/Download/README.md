@@ -53,7 +53,17 @@
 历史版本下载: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
 
 
-**<font color=red>升级注意事项</font>**:
+**<font color=red>注意事项</font>**:
+
+- 推荐修改的操作系统参数
+  * 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 - 如何升级小版本 (例如，从 v0.11.0 to v0.11.2)?
   * 同一个大版本下的多个小版本是互相兼容的。

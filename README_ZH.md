@@ -85,6 +85,14 @@ IoTDB的主要特点如下:
 1. Java >= 1.8 (目前 1.8、11和13 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
+4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## 安装
 
