@@ -168,7 +168,7 @@ public class TsFileIOWriter {
   /**
    * For TsFileReWriteTool / UpgradeTool. Use this method to determine if needs to start a
    * ChunkGroup.
-   * 
+   *
    * @return isWritingChunkGroup
    */
   public boolean isWritingChunkGroup() {
