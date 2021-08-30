@@ -81,6 +81,28 @@ public class PrimitiveMemTableTest {
   }
 
   @Test
+  public void memSeriesToStringTest() throws IOException {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(
+            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+    int count = 100;
+    for (int i = 0; i < count; i++) {
+      series.write(i, i);
+    }
+    series.write(0, 21);
+    series.write(20, 21);
+    series.write(99, 20);
+    String str = series.toString();
+    Assert.assertFalse(series.getTVList().isSorted());
+    Assert.assertEquals(str,
+        "MemChunk Size: 103\n"
+            + "Data type:INT32\n"
+            + "First point:0 : 0\n"
+            + "Last point:99 : 20\n");
+  }
+
+  @Test
   public void simpleTest() throws IOException, QueryProcessException, MetadataException {
     IMemTable memTable = new PrimitiveMemTable();
     int count = 10;
