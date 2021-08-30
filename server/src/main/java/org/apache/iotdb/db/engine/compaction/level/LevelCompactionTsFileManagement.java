@@ -191,13 +191,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       List<TsFileResource> result = new ArrayList<>();
       if (sequence) {
         List<SortedSet<TsFileResource>> sequenceTsFileList =
-            sequenceTsFileResources.computeIfAbsent(timePartition, k -> new ArrayList<>());
+            sequenceTsFileResources.getOrDefault(timePartition, new ArrayList<>());
         for (int i = sequenceTsFileList.size() - 1; i >= 0; i--) {
           result.addAll(sequenceTsFileList.get(i));
         }
       } else {
         List<List<TsFileResource>> unSequenceTsFileList =
-            unSequenceTsFileResources.computeIfAbsent(timePartition, k -> new ArrayList<>());
+            unSequenceTsFileResources.getOrDefault(timePartition, new ArrayList<>());
         for (int i = unSequenceTsFileList.size() - 1; i >= 0; i--) {
           result.addAll(unSequenceTsFileList.get(i));
         }
