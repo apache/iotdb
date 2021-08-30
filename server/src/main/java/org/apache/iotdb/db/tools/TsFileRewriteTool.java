@@ -306,7 +306,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     for (Entry<Long, ChunkWriterImpl> entry : partitionChunkWriterMap.entrySet()) {
       long partitionId = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partitionId);
-      if (firstChunkInChunkGroup) {
+      if (firstChunkInChunkGroup || !tsFileIOWriter.isWritingChunkGroup()) {
         tsFileIOWriter.startChunkGroup(deviceId);
       }
       // write chunks to their own upgraded tsFiles
