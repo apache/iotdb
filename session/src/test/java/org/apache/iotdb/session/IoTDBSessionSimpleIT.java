@@ -20,6 +20,7 @@ package org.apache.iotdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -729,7 +730,6 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
-    // List<String> deviceIds = Arrays.asList("root.sg..d1", "root.sg.d2");
     String deviceId = "root.sg..d1";
     List<String> deviceIds = Arrays.asList("root.sg..d1", "root.sg.d2");
     List<Long> timestamps = Arrays.asList(1L, 1L);
@@ -746,7 +746,7 @@ public class IoTDBSessionSimpleIT {
     List<List<Object>> allValues = Arrays.asList(values, values);
     List<String> stringValues = Arrays.asList("1", "2", "3");
     List<List<String>> allstringValues = Arrays.asList(stringValues, stringValues);
-    String operation = "inserting records";
+
     try {
       session.insertRecords(deviceIds, timestamps, allMeasurements, allTsDataTypes, allValues);
       fail("Exception expected");
@@ -755,11 +755,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_RECORDS, deviceId)));
     }
 
-    operation = "inserting string records";
     try {
       session.insertRecords(deviceIds, Arrays.asList(2L, 2L), allMeasurements, allstringValues);
       fail("Exception expected");
@@ -768,11 +767,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceIds.get(0))));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.INSERT_STRING_RECORDS,
+                      deviceIds.get(0))));
     }
 
-    operation = "inserting a record";
     try {
       session.insertRecord(deviceId, 3L, measurements, tsDataTypes, values);
       fail("Exception expected");
@@ -781,11 +781,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_RECORD, deviceId)));
     }
 
-    operation = "inserting a string record";
     try {
       session.insertRecord(deviceId, 4L, measurements, stringValues);
       fail("Exception expected");
@@ -794,11 +793,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_STRING_RECORD, deviceId)));
     }
 
-    operation = "inserting records of one device";
     try {
       session.insertRecordsOfOneDevice(
           deviceId, Arrays.asList(5L, 6L), allMeasurements, allTsDataTypes, allValues);
@@ -808,11 +806,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.INSERT_RECORDS_OF_ONE_DEVICE,
+                      deviceId)));
     }
 
-    operation = "deleting data";
     try {
       session.deleteData(deviceId + ".s1", 6L);
       fail("Exception expected");
@@ -821,11 +820,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId + ".s1")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.DELETE_DATA, deviceId + ".s1")));
     }
 
-    operation = "inserting tablet";
     try {
       Tablet tablet =
           new Tablet(
@@ -852,11 +850,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_TABLET, deviceId)));
     }
 
-    operation = "inserting tablets";
     try {
       Tablet tablet1 =
           new Tablet(
@@ -898,11 +895,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.INSERT_TABLETS, deviceId)));
     }
 
-    operation = "setting storage group";
     try {
       session.setStorageGroup("root..sg");
       fail("Exception expected");
@@ -911,11 +907,10 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, "root..sg")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.SET_STORAGE_GROUP, "root..sg")));
     }
 
-    operation = "creating timeseries";
     try {
       session.createTimeseries(
           "root.sg..d1.s1", TSDataType.INT32, TSEncoding.PLAIN, CompressionType.SNAPPY);
@@ -925,11 +920,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg..d1.s1")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.CREATE_TIMESERIES,
+                      "root.sg..d1.s1")));
     }
 
-    operation = "creating aligned timeseries";
     try {
       session.createAlignedTimeseries(
           deviceId,
@@ -944,11 +940,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, deviceId)));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.CREATE_ALIGNED_TIMESERIES,
+                      deviceId)));
     }
 
-    operation = "creating multi timeseries";
     try {
       session.createMultiTimeseries(
           Arrays.asList("root.sg.d1..s1", "root.sg.d1.s2", "root.sg.d1.s3"),
@@ -965,11 +962,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg.d1..s1")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.CREATE_MULTI_TIMESERIES,
+                      "root.sg.d1..s1")));
     }
 
-    operation = "deleting timeseries";
     try {
       session.deleteTimeseries("root.sg.d1..s1");
       fail("Exception expected");
@@ -978,11 +976,12 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, "root.sg.d1..s1")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL,
+                      OperationType.DELETE_TIMESERIES,
+                      "root.sg.d1..s1")));
     }
 
-    operation = "deleting storage group";
     try {
       session.deleteStorageGroup("root..sg");
       fail("Exception expected");
@@ -991,8 +990,8 @@ public class IoTDBSessionSimpleIT {
           e.getMessage()
               .contains(
                   String.format(
-                      "[%s] Exception occurred while %s. %s is not a legal path",
-                      TSStatusCode.PATH_ILLEGAL, operation, "root..sg")));
+                      "[%s] Exception occurred: %s failed. %s is not a legal path",
+                      TSStatusCode.PATH_ILLEGAL, OperationType.DELETE_STORAGE_GROUPS, "root..sg")));
     }
 
     session.close();
