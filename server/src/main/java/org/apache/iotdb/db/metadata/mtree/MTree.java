@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
@@ -1368,6 +1369,11 @@ public class MTree implements Serializable {
     return jsonObject;
   }
 
+  /**
+   * Try determining the storage group using the children of a mNode. If one child is a storage
+   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
+   * match the path into the queue and discard other children.
+   */
   public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
     Map<String, String> paths = new HashMap<>();
     String[] nodes = path.getNodes();
@@ -1375,61 +1381,14 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    Deque<Integer> depthStack = new ArrayDeque<>();
-    if (!root.getChildren().isEmpty()) {
-      nodeStack.push(root);
-      depthStack.push(0);
+    StorageGroupDeterminator determinator = new StorageGroupDeterminator(root, nodes, paths);
+    try {
+      determinator.traverse();
+    }catch (MetadataException e){
+      logger.info("Fail to determine all storage groups because", e);
     }
 
-    while (!nodeStack.isEmpty()) {
-      IMNode node = nodeStack.removeFirst();
-      int depth = depthStack.removeFirst();
-
-      determineStorageGroup(depth + 1, nodes, node, paths, nodeStack, depthStack);
-    }
     return paths;
-  }
-
-  /**
-   * Try determining the storage group using the children of a mNode. If one child is a storage
-   * group node, put a storageGroupName-fullPath pair into paths. Otherwise put the children that
-   * match the path into the queue and discard other children.
-   */
-  private void determineStorageGroup(
-      int depth,
-      String[] nodes,
-      IMNode node,
-      Map<String, String> paths,
-      Deque<IMNode> nodeStack,
-      Deque<Integer> depthStack) {
-    String currNode = depth >= nodes.length ? PATH_WILDCARD : nodes[depth];
-    for (Entry<String, IMNode> entry : node.getChildren().entrySet()) {
-      if (!currNode.equals(PATH_WILDCARD) && !currNode.equals(entry.getKey())) {
-        continue;
-      }
-      // this child is desired
-      IMNode child = entry.getValue();
-      if (child.isStorageGroup()) {
-        // we have found one storage group, record it
-        String sgName = child.getFullPath();
-        // concat the remaining path with the storage group name
-        StringBuilder pathWithKnownSG = new StringBuilder(sgName);
-        for (int i = depth + 1; i < nodes.length; i++) {
-          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(nodes[i]);
-        }
-        if (depth >= nodes.length - 1 && currNode.equals(PATH_WILDCARD)) {
-          // the we find the sg at the last node and the last node is a wildcard (find "root
-          // .group1", for "root.*"), also append the wildcard (to make "root.group1.*")
-          pathWithKnownSG.append(IoTDBConstant.PATH_SEPARATOR).append(PATH_WILDCARD);
-        }
-        paths.put(sgName, pathWithKnownSG.toString());
-      } else if (!child.getChildren().isEmpty()) {
-        // push it back so we can traver its children later
-        nodeStack.push(child);
-        depthStack.push(depth);
-      }
-    }
   }
 
   public IEntityMNode setToEntity(IMNode node) {
