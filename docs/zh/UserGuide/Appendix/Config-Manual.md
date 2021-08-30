@@ -138,15 +138,6 @@
 |默认值| 65536 |
 |改后生效方式|触发生效|
 
-* time\_series\_data\_type
-
-|名字| time\_series\_data\_type |
-|:---:|:---|
-|描述|时间戳数据类型|
-|类型|枚举 String: "INT32", "INT64"|
-|默认值| Int64 |
-|改后生效方式|触发生效|
-
 * time\_encoder
 
 |名字| time\_encoder |

@@ -166,6 +166,16 @@ public class TsFileIOWriter {
   }
 
   /**
+   * For TsFileReWriteTool / UpgradeTool. Use this method to determine if needs to start a
+   * ChunkGroup.
+   *
+   * @return isWritingChunkGroup
+   */
+  public boolean isWritingChunkGroup() {
+    return currentChunkGroupDeviceId != null;
+  }
+
+  /**
    * start a {@linkplain ChunkMetadata ChunkMetaData}.
    *
    * @param measurementId - measurementId of this time series

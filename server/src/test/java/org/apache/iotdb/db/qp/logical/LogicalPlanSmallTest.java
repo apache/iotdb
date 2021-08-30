@@ -346,8 +346,8 @@ public class LogicalPlanSmallTest {
   }
 
   @Test
-  public void testLikeQuery() {
-    String sqlStr = "SELECT a FROM root.sg.* WHERE a LIKE 'string'";
+  public void testRegexpQuery() {
+    String sqlStr = "SELECT a FROM root.sg.* WHERE a REGEXP 'string'";
     Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;

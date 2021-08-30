@@ -33,16 +33,23 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -58,7 +65,7 @@ public class TimeSeriesMetadataCache {
       config.getAllocateMemoryForTimeSeriesMetaDataCache();
   private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
-  private final LoadingCache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
+  private final Cache<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
@@ -75,77 +82,22 @@ public class TimeSeriesMetadataCache {
         Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE)
             .weigher(
-                new Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
-
-                  int count = 0;
-                  int averageSize = 0;
-
-                  /**
-                   * The calculation is time consuming, so we won't calculate each entry' size each
-                   * time. Every 100,000 entry, we will calculate the average size of the first 10
-                   * entries, and use that to represent the next 99,990 entries' size.
-                   */
-                  @Override
-                  public int weigh(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
-                    int currentSize;
-                    if (count < 10) {
-                      currentSize =
-                          (int)
-                              (RamUsageEstimator.shallowSizeOf(key)
-                                  + RamUsageEstimator.sizeOf(key.device)
-                                  + RamUsageEstimator.sizeOf(key.measurement)
-                                  + RamUsageEstimator.shallowSizeOf(value)
-                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                              .calculateRamSize()
-                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                                      * value.getChunkMetadataList().size()
-                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
-                      averageSize = ((averageSize * count) + currentSize) / (++count);
-                      entryAverageSize.set(averageSize);
-                    } else if (count < 100000) {
-                      count++;
-                      currentSize = averageSize;
-                    } else {
-                      averageSize =
-                          (int)
-                              (RamUsageEstimator.shallowSizeOf(key)
-                                  + RamUsageEstimator.sizeOf(key.device)
-                                  + RamUsageEstimator.sizeOf(key.measurement)
-                                  + RamUsageEstimator.shallowSizeOf(value)
-                                  + RamUsageEstimator.sizeOf(value.getMeasurementId())
-                                  + RamUsageEstimator.shallowSizeOf(value.getStatistics())
-                                  + (((ChunkMetadata) value.getChunkMetadataList().get(0))
-                                              .calculateRamSize()
-                                          + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
-                                      * value.getChunkMetadataList().size()
-                                  + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList()));
-                      count = 1;
-                      currentSize = averageSize;
-                      entryAverageSize.set(averageSize);
-                    }
-                    return currentSize;
-                  }
-                })
+                (Weigher<TimeSeriesMetadataCacheKey, TimeseriesMetadata>)
+                    (key, value) ->
+                        (int)
+                            (RamUsageEstimator.shallowSizeOf(key)
+                                + RamUsageEstimator.sizeOf(key.device)
+                                + RamUsageEstimator.sizeOf(key.measurement)
+                                + RamUsageEstimator.shallowSizeOf(value)
+                                + RamUsageEstimator.sizeOf(value.getMeasurementId())
+                                + RamUsageEstimator.shallowSizeOf(value.getStatistics())
+                                + (((ChunkMetadata) value.getChunkMetadataList().get(0))
+                                            .calculateRamSize()
+                                        + RamUsageEstimator.NUM_BYTES_OBJECT_REF)
+                                    * value.getChunkMetadataList().size()
+                                + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
-            .build(
-                new CacheLoader<TimeSeriesMetadataCacheKey, TimeseriesMetadata>() {
-                  @Override
-                  public TimeseriesMetadata load(TimeSeriesMetadataCacheKey key) throws Exception {
-                    // bloom filter part
-                    TsFileSequenceReader reader =
-                        FileReaderManager.getInstance().get(key.filePath, true);
-                    BloomFilter bloomFilter = reader.readBloomFilter();
-                    if (bloomFilter != null
-                        && !bloomFilter.contains(
-                            key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
-                      return null;
-                    }
-                    return reader.readTimeseriesMetadata(
-                        new Path(key.device, key.measurement), false);
-                  }
-                });
+            .build();
   }
 
   public static TimeSeriesMetadataCache getInstance() {
