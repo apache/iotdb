@@ -282,4 +282,12 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   public long getMaxPlanIndex() {
     return maxPlanIndex;
   }
+
+  public boolean dropLastChunkGroupMetadata() {
+    if (chunkGroupMetadataList.size() < 1) {
+      return false;
+    }
+    chunkGroupMetadataList.remove(chunkGroupMetadataList.size() - 1);
+    return true;
+  }
 }

@@ -461,6 +461,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset);
+              writer.dropLastChunkGroupMetadata();
             }
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
@@ -507,6 +508,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           if (writer.hasCrashed()) {
             if (offset > 0) {
               writer.getIOWriterOut().truncate(offset);
+              writer.dropLastChunkGroupMetadata();
             }
             CompactionLogger compactionLogger =
                 new CompactionLogger(storageGroupDir, storageGroupName);
