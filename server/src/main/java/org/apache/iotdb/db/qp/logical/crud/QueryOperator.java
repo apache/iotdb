@@ -345,7 +345,7 @@ public class QueryOperator extends Operator {
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();
       int seriesOffset = specialClauseComponent.getSeriesOffset();
-      measurements = slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
+      return slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
     }
     return measurements;
   }
