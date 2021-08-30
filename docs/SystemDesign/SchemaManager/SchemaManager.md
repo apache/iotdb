@@ -295,7 +295,7 @@ Schema operation examples and the corresponding parsed mlog record:
     > format: 61,path                                                                                                              
 
 ## TLog
-* org.apache.iotdb.db.metadata.logfile.TagLogFile
+* org.apache.iotdb.db.metadata.tag.TagLogFile
 
 All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/tlog.txt.
 
