@@ -576,7 +576,9 @@ public class TSServiceImpl implements TSIService.Iface {
         } else {
           result.add(
               onNPEOrUnexpectedException(
-                  e, "\"" + statement + "\". "+ OperationType.EXECUTE_BATCH_STATEMENT, TSStatusCode.INTERNAL_SERVER_ERROR));
+                  e,
+                  "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT,
+                  TSStatusCode.INTERNAL_SERVER_ERROR));
         }
       }
     }
@@ -618,10 +620,10 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + statement + "\". "+ OperationType.EXECUTE_STATEMENT));
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + statement + "\". "+OperationType.EXECUTE_STATEMENT));
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
     }
   }
 
@@ -652,10 +654,12 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e,  "\"" + req.getStatement() + "\". "+ OperationType.EXECUTE_QUERY_STATEMENT));
+          onQueryException(
+              e, "\"" + req.getStatement() + "\". " + OperationType.EXECUTE_QUERY_STATEMENT));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e,  "\"" + req.getStatement() + "\". "+ OperationType.EXECUTE_QUERY_STATEMENT));
+          onQueryException(
+              e, "\"" + req.getStatement() + "\". " + OperationType.EXECUTE_QUERY_STATEMENT));
     }
   }
 
@@ -1237,10 +1241,12 @@ public class TSServiceImpl implements TSIService.Iface {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req.statement + "\". "+ OperationType.EXECUTE_UPDATE_STATEMENT));
+          onQueryException(
+              e, "\"" + req.statement + "\". " + OperationType.EXECUTE_UPDATE_STATEMENT));
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(e, "\"" + req.statement + "\". "+ OperationType.EXECUTE_UPDATE_STATEMENT));
+          onQueryException(
+              e, "\"" + req.statement + "\". " + OperationType.EXECUTE_UPDATE_STATEMENT));
     }
   }
 
