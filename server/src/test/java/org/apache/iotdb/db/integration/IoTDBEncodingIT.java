@@ -132,6 +132,63 @@ public class IoTDBEncodingIT {
   }
 
   @Test
+  public void testSetTimeEncoderRegularAndValueEncoderDIFF() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT64,ENCODING=DIFF");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(1,1100)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(2,1200)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(3,1300)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(4,1400)");
+
+      statement.execute("flush");
+
+      int[] result = new int[] {1100, 1200, 1300, 1400};
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+        int index = 0;
+        while (resultSet.next()) {
+          int salary = resultSet.getInt("root.db_0.tab0.salary");
+          assertEquals(result[index], salary);
+          index++;
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testSetTimeEncoderRegularAndValueEncoderDIFFOutofOrder() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE TIMESERIES root.db_0.tab0.salary WITH DATATYPE=INT32,ENCODING=DIFF");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(1,1200)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(2,1100)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(7,1000)");
+      statement.execute("insert into root.db_0.tab0(time,salary) values(4,2200)");
+      statement.execute("flush");
+
+      int[] result = new int[] {1200, 1100, 2200, 1000};
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+        int index = 0;
+        while (resultSet.next()) {
+          int salary = resultSet.getInt("root.db_0.tab0.salary");
+          assertEquals(result[index], salary);
+          index++;
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void testSetTimeEncoderRegularAndValueEncoderRLE() {
     try (Connection connection =
             DriverManager.getConnection(
