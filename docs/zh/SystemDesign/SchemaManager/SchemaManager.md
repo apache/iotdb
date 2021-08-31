@@ -288,7 +288,7 @@ mlog.bin 存储二进制编码。我们可以使用 [MlogParser Tool](https://io
     > 格式：61,path
 
 ## 标签文件
-* org.apache.iotdb.db.metadata.logfile.TagLogFile
+* org.apache.iotdb.db.metadata.tag.TagLogFile
 
 所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/tlog.txt。
 

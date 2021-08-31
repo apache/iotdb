@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.logfile;
+package org.apache.iotdb.db.metadata.tag;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -93,10 +93,12 @@ public class TagLogFile implements AutoCloseable {
 
   public long write(Map<String, String> tagMap, Map<String, String> attributeMap)
       throws IOException, MetadataException {
-    long offset = fileChannel.position();
     ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
-    fileChannel.write(byteBuffer);
-    return offset;
+    synchronized (this) {
+      long offset = fileChannel.position();
+      fileChannel.write(byteBuffer);
+      return offset;
+    }
   }
 
   /** This method does not modify this file's current position. */

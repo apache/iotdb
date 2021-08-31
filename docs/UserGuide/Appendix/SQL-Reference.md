@@ -658,12 +658,12 @@ Rules:
 3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time | Path          | Value | dataType |
+| ---  | ------------- |------ | -------- |
+|  5   | root.sg.d1.s1 | 100   | INT32    |
+|  2   | root.sg.d1.s2 | 400   | INT32    |
+|  4   | root.sg.d2.s1 | 250   | INT32    |
+|  9   | root.sg.d2.s2 | 600   | INT32    |
 
 4. It is not supported to use "diable align" in LAST query. 
 
@@ -716,22 +716,45 @@ In this situation, it will throws an exception if * corresponds to multiple sens
 
 ```
 
-* Like Statement
+* Regexp Statement
 
-Fuzzy query only supports regular expressions with data type of text and Java standard library style when matching
+Regexp Statement only supports regular expressions with Java standard library style on timeseries which is TEXT data type
 ```
 SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
 Select Clause : <Path> [COMMA <Path>]*
 FromClause : < PrefixPath > [COMMA < PrefixPath >]*
 WhereClause : andExpression (OPERATOR_OR andExpression)*
 andExpression : predicate (OPERATOR_AND predicate)*
-predicate : (suffixPath | fullPath) LIKE stringLiteral
-stringLiteral : SINGLE_QUOTE_STRING_LITERAL | DOUBLE_QUOTE_STRING_LITERAL
+predicate : (suffixPath | fullPath) REGEXP regularExpression
+regularExpression: Java standard regularexpression, like '^[a-z][0-9]$', [details](https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html)
 
-Eg. select s1 from root.sg.d1 where s1 like 'Regex'
-Eg. select s1, s2 FROM root.sg.d1 where s1 like 'regex' and s2 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex'
-Eg. select * from root.sg.d1 where s1 like 'Regex' and time > 100
+Eg. select s1 from root.sg.d1 where s1 regexp '^[0-9]*$'
+Eg. select s1, s2 FROM root.sg.d1 where s1 regexp '^\w+([-+.]\w+)*@\w+([-.]\w+)*\.\w+([-.]\w+)*$' and s2 regexp '^\d{15}|\d{18}$'
+Eg. select * from root.sg.d1 where s1 regexp '^[a-zA-Z]\w{5,17}$'
+Eg. select * from root.sg.d1 where s1 regexp '^\d{4}-\d{1,2}-\d{1,2}' and time > 100
+```
+
+* Like Statement
+
+The usage of LIKE Statement similar with mysql, but only support timeseries which is TEXT data type
+```
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause>
+Select Clause : <Path> [COMMA <Path>]*
+FromClause : < PrefixPath > [COMMA < PrefixPath >]*
+WhereClause : andExpression (OPERATOR_OR andExpression)*
+andExpression : predicate (OPERATOR_AND predicate)*
+predicate : (suffixPath | fullPath) LIKE likeExpression
+likeExpression : string that may contains "%" or "_", while "%value" means a string that ends with the value,  "value%" means a string starts with the value, "%value%" means string that contains values, and "_" represents any character.
+
+Eg. select s1 from root.sg.d1 where s1 like 'abc'
+Eg. select s1, s2 from root.sg.d1 where s1 like 'a%bc'
+Eg. select * from root.sg.d1 where s1 like 'abc_'
+Eg. select * from root.sg.d1 where s1 like 'abc\%' and time > 100
+In this situation, '\%' means '%' will be escaped
+The result set will be like:
+| Time | Path         | Value |
+| ---  | ------------ | ----- |
+|  200 | root.sg.d1.s1| abc%  |
 ```
 
 ## Database Management Statement

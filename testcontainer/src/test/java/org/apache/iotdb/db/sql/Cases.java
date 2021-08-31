@@ -147,7 +147,7 @@ public abstract class Cases {
     for (Statement readStatement : readStatements) {
       resultSet = readStatement.executeQuery("select last * from root.ln.wf01.wt01;");
       Assert.assertTrue(resultSet.next());
-      double last = Double.parseDouble(resultSet.getString(3));
+      double last = Double.parseDouble(resultSet.getString("value"));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
     }
@@ -243,7 +243,7 @@ public abstract class Cases {
     while (sessionDataSet.hasNext()) {
       count++;
       List<Field> fields = sessionDataSet.next().getFields();
-      Assert.assertEquals("[root.sg1.d1.s1, 1]", fields.toString());
+      Assert.assertEquals("[root.sg1.d1.s1,1,INT64]", fields.toString().replace(" ", ""));
     }
     Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
