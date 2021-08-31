@@ -25,6 +25,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,7 +35,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-public class FunctionExpression implements Expression {
+public class FunctionExpression extends Expression {
 
   /**
    * true: aggregation function<br>
@@ -54,7 +55,6 @@ public class FunctionExpression implements Expression {
 
   private List<PartialPath> paths;
 
-  private String expressionString;
   private String parametersString;
 
   public FunctionExpression(String functionName) {
@@ -143,6 +143,24 @@ public class FunctionExpression implements Expression {
     }
   }
 
+  @Override
+  public void constructTransformerBuilder(
+      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
+    if (expressionTransformerBuilderMap.containsKey(this)) {
+      return;
+    }
+
+    for (Expression expression : expressions) {
+      expression.constructTransformerBuilder(expressionTransformerBuilderMap);
+    }
+
+    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
+    for (Expression expression : expressions) {
+      transformerBuilder.addDependentExpression(expression);
+    }
+    expressionTransformerBuilderMap.put(this, transformerBuilder);
+  }
+
   public List<PartialPath> getPaths() {
     if (paths == null) {
       paths = new ArrayList<>();
@@ -158,10 +176,7 @@ public class FunctionExpression implements Expression {
 
   @Override
   public String toString() {
-    if (expressionString == null) {
-      expressionString = functionName + "(" + getParametersString() + ")";
-    }
-    return expressionString;
+    return functionName + "(" + getParametersString() + ")";
   }
 
   /**

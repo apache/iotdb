@@ -23,12 +23,14 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public abstract class BinaryExpression implements Expression {
+public abstract class BinaryExpression extends Expression {
 
   protected final Expression leftExpression;
   protected final Expression rightExpression;
@@ -100,6 +102,22 @@ public abstract class BinaryExpression implements Expression {
   public void collectPaths(Set<PartialPath> pathSet) {
     leftExpression.collectPaths(pathSet);
     rightExpression.collectPaths(pathSet);
+  }
+
+  @Override
+  public void constructTransformerBuilder(
+      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
+    if (expressionTransformerBuilderMap.containsKey(this)) {
+      return;
+    }
+
+    leftExpression.constructTransformerBuilder(expressionTransformerBuilderMap);
+    rightExpression.constructTransformerBuilder(expressionTransformerBuilderMap);
+
+    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
+    transformerBuilder.addDependentExpression(leftExpression);
+    transformerBuilder.addDependentExpression(rightExpression);
+    expressionTransformerBuilderMap.put(this, transformerBuilder);
   }
 
   public Expression getLeftExpression() {

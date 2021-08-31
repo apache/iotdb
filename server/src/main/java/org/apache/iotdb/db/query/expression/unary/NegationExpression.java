@@ -23,12 +23,14 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class NegationExpression implements Expression {
+public class NegationExpression extends Expression {
 
   protected Expression expression;
 
@@ -67,6 +69,20 @@ public class NegationExpression implements Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     expression.collectPaths(pathSet);
+  }
+
+  @Override
+  public void constructTransformerBuilder(
+      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
+    if (expressionTransformerBuilderMap.containsKey(this)) {
+      return;
+    }
+
+    expression.constructTransformerBuilder(expressionTransformerBuilderMap);
+
+    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
+    transformerBuilder.addDependentExpression(expression);
+    expressionTransformerBuilderMap.put(this, transformerBuilder);
   }
 
   @Override

@@ -200,7 +200,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
       transformers[columnIndex] =
           new ArithmeticNegationTransformer(
               constructPointReaderBySeriesName(
-                  ((NegationExpression) expression).getExpression().toString()));
+                  ((NegationExpression) expression).getExpression().getExpressionString()));
       return;
     }
 
@@ -209,30 +209,40 @@ public abstract class UDTFDataSet extends QueryDataSet {
     if (binaryExpression instanceof AdditionExpression) {
       transformers[columnIndex] =
           new ArithmeticAdditionTransformer(
-              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
-              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+              constructPointReaderBySeriesName(
+                  binaryExpression.getLeftExpression().getExpressionString()),
+              constructPointReaderBySeriesName(
+                  binaryExpression.getRightExpression().getExpressionString()));
     } else if (binaryExpression instanceof SubtractionExpression) {
       transformers[columnIndex] =
           new ArithmeticSubtractionTransformer(
-              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
-              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+              constructPointReaderBySeriesName(
+                  binaryExpression.getLeftExpression().getExpressionString()),
+              constructPointReaderBySeriesName(
+                  binaryExpression.getRightExpression().getExpressionString()));
     } else if (binaryExpression instanceof MultiplicationExpression) {
       transformers[columnIndex] =
           new ArithmeticMultiplicationTransformer(
-              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
-              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+              constructPointReaderBySeriesName(
+                  binaryExpression.getLeftExpression().getExpressionString()),
+              constructPointReaderBySeriesName(
+                  binaryExpression.getRightExpression().getExpressionString()));
     } else if (binaryExpression instanceof DivisionExpression) {
       transformers[columnIndex] =
           new ArithmeticDivisionTransformer(
-              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
-              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+              constructPointReaderBySeriesName(
+                  binaryExpression.getLeftExpression().getExpressionString()),
+              constructPointReaderBySeriesName(
+                  binaryExpression.getRightExpression().getExpressionString()));
     } else if (binaryExpression instanceof ModuloExpression) {
       transformers[columnIndex] =
           new ArithmeticModuloTransformer(
-              constructPointReaderBySeriesName(binaryExpression.getLeftExpression().toString()),
-              constructPointReaderBySeriesName(binaryExpression.getRightExpression().toString()));
+              constructPointReaderBySeriesName(
+                  binaryExpression.getLeftExpression().getExpressionString()),
+              constructPointReaderBySeriesName(
+                  binaryExpression.getRightExpression().getExpressionString()));
     } else {
-      throw new UnsupportedOperationException(binaryExpression.toString());
+      throw new UnsupportedOperationException(binaryExpression.getExpressionString());
     }
   }
 

@@ -134,6 +134,6 @@ public class ResultColumn {
   }
 
   public String getResultColumnName() {
-    return alias != null ? alias : expression.toString();
+    return alias != null ? alias : expression.getExpressionString();
   }
 }

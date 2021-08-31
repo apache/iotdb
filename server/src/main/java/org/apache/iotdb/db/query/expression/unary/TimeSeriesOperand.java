@@ -23,12 +23,14 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class TimeSeriesOperand implements Expression {
+public class TimeSeriesOperand extends Expression {
 
   protected PartialPath path;
   protected TSDataType dataType;
@@ -63,6 +65,14 @@ public class TimeSeriesOperand implements Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     pathSet.add(path);
+  }
+
+  @Override
+  public void constructTransformerBuilder(
+      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
+    if (!expressionTransformerBuilderMap.containsKey(this)) {
+      expressionTransformerBuilderMap.put(this, new TransformerBuilder(this));
+    }
   }
 
   @Override
