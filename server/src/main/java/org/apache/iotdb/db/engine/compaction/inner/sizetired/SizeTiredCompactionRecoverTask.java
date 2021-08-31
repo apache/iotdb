@@ -145,7 +145,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             }
             InnerSpaceCompactionUtils.deleteTsFilesInDisk(
                 sourceTsFileResources, fullStorageGroupName);
-            renameLevelFilesMods(sourceTsFileResources, targetResource);
+            combineModsInCompaction(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {
             writer.close();

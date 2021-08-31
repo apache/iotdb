@@ -181,7 +181,7 @@ public class InnerUnseqCompactionTest {
                     chunkPagePointsNum.add(pagePointsNum);
                     tsFileResource =
                         CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-                    CompactionFileGeneratorUtils.writeChunkToTsFile(
+                    CompactionFileGeneratorUtils.writeTsFile(
                         fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     break;
                   case FILE_OVERLAP_CHUNK_NO_OVERLAP:
@@ -223,7 +223,7 @@ public class InnerUnseqCompactionTest {
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
                           CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-                      CompactionFileGeneratorUtils.writeChunkToTsFile(
+                      CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
                     break;
@@ -262,7 +262,7 @@ public class InnerUnseqCompactionTest {
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
                           CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-                      CompactionFileGeneratorUtils.writeChunkToTsFile(
+                      CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
                     break;
@@ -280,7 +280,7 @@ public class InnerUnseqCompactionTest {
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
                           CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-                      CompactionFileGeneratorUtils.writeChunkToTsFile(
+                      CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, 50L, tsFileResource);
                     } else {
                       chunkPagePointsNum = new ArrayList<>();
@@ -295,7 +295,7 @@ public class InnerUnseqCompactionTest {
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
                           CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-                      CompactionFileGeneratorUtils.writeChunkToTsFile(
+                      CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
                     break;
@@ -359,7 +359,8 @@ public class InnerUnseqCompactionTest {
                   compactionLogger,
                   new HashSet<>(),
                   false);
-              SizeTiredCompactionTask.renameLevelFilesMods(toMergeResources, targetTsFileResource);
+              SizeTiredCompactionTask.combineModsInCompaction(
+                  toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);

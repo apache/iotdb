@@ -73,7 +73,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     this.skippedDevicesSet = new HashSet<>();
   }
 
-  public static void renameLevelFilesMods(
+  public static void combineModsInCompaction(
       Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
@@ -178,7 +178,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);
-      renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
+      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
           fullStorageGroupName,
