@@ -44,12 +44,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.xml.crypto.Data;
 import java.io.File;
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Arrays;
 
 public class IoTDBLoadExternalTsFileWithTimePartitionIT {
@@ -58,8 +56,8 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   String tempDir = "temp";
 
   String STORAGE_GROUP = "root.ln";
-  String[] devices = new String[] {"d1", "d2"};
-  String[] measurements = new String[] {"s1", "s2"};
+  String[] devices = new String[] {"d1", "d2", "d3"};
+  String[] measurements = new String[] {"s1", "s2", "s3"};
 
   // generate several tsFiles, with timestamp from startTime(inclusive) to endTime(exclusive)
   long startTime = 0;
@@ -68,6 +66,8 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   long timePartition = 100; // unit s
 
   long recordTimeGap = 1000;
+
+  long[] deviceDataPointNumber = new long[devices.length];
 
   int originalTsFileNum = 0;
 
@@ -86,8 +86,6 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
     StorageEngine.setEnablePartition(true);
     StorageEngine.setTimePartitionInterval(timePartition);
-
-    prepareData();
   }
 
   @After
@@ -106,7 +104,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
 
   /** get the name of tsfile given counter */
   String getName(int counter) {
-    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0.tsfile";
+    return tempDir + File.separator + System.currentTimeMillis() + "-" + counter + "-0-0.tsfile";
   }
 
   /** write a record, given timestamp */
@@ -171,10 +169,11 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
   }
 
   @Test
-  public void loadTsFileWithTimePartition() {
+  public void loadTsFileWithTimePartitionTest() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      prepareData();
 
       statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
 
@@ -205,6 +204,127 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       }
     } catch (SQLException | IllegalPathException throwables) {
       throwables.printStackTrace();
+      Assert.fail();
+    }
+  }
+
+  void writeDataWithDifferentDevice(TsFileWriter tsFileWriter, long timestamp, int counter)
+          throws IOException, WriteProcessException {
+    int mod = (counter % 6);
+    if (mod < 3) {
+      TSRecord tsRecord = new TSRecord(timestamp, STORAGE_GROUP + DOT + devices[mod]);
+      deviceDataPointNumber[mod] += 1;
+      for (String measurement : measurements) {
+        DataPoint dPoint = new LongDataPoint(measurement, 10000);
+        tsRecord.addTuple(dPoint);
+      }
+      tsFileWriter.write(tsRecord);
+    } else {
+      for (int i = 2; i <= devices.length; i++) {
+        for (int j = 1; j < i; j++) {
+          if (i + j == mod) {
+            TSRecord tsRecord1 = new TSRecord(timestamp, STORAGE_GROUP + DOT + devices[i - 1]);
+            TSRecord tsRecord2 = new TSRecord(timestamp, STORAGE_GROUP + DOT + devices[j - 1]);
+            deviceDataPointNumber[i - 1] += 1;
+            deviceDataPointNumber[j - 1] += 1;
+            for (String measurement : measurements) {
+              DataPoint dataPoint1 = new LongDataPoint(measurement, 100);
+              DataPoint dataPoint2 = new LongDataPoint(measurement, 10000);
+              tsRecord1.addTuple(dataPoint1);
+              tsRecord2.addTuple(dataPoint2);
+            }
+            tsFileWriter.write(tsRecord1);
+            tsFileWriter.write(tsRecord2);
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  void prepareDataWithDifferentDevice() {
+    startTime = 0;
+    endTime = 100_000;
+    recordTimeGap = 10;
+
+    long tsfileMaxTime = 1000;
+    File dir = new File(tempDir);
+    if (dir.exists()) {
+      FileUtils.deleteDirectory(dir);
+    }
+    dir.mkdir();
+    try {
+      File f;
+      TsFileWriter tsFileWriter = null;
+      int counter = 0;
+      for (long timestamp = startTime; timestamp < endTime; timestamp += recordTimeGap) {
+        if (timestamp % tsfileMaxTime == 0) {
+          if (tsFileWriter != null) {
+            tsFileWriter.flushAllChunkGroups();
+            tsFileWriter.close();
+            counter++;
+          }
+          String path = getName(counter);
+          f = FSFactoryProducer.getFSFactory().getFile(path);
+          tsFileWriter = new TsFileWriter(new TsFileIOWriter(f));
+          register(tsFileWriter);
+        }
+        writeDataWithDifferentDevice(tsFileWriter, timestamp, counter);
+      }
+      tsFileWriter.flushAllChunkGroups();
+      tsFileWriter.close();
+      originalTsFileNum = counter + 1;
+    } catch (Throwable e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void loadTsFileWithDifferentDevice() {
+    try (Connection connection =
+                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      prepareDataWithDifferentDevice();
+
+      statement.execute(String.format("load \"%s\"", new File(tempDir).getAbsolutePath()));
+
+      String dataDir = config.getDataDirs()[0];
+      // sequence/logical_sg/virtual_sg/time_partitions
+      File f =
+              new File(
+                      dataDir,
+                      new PartialPath("sequence") + File.separator + "root.ln" + File.separator + "0");
+      Assert.assertEquals(
+              (endTime - startTime) / (timePartition), f.list().length);
+
+      int totalPartitionsNum = (int) ((endTime - startTime) / (timePartition));
+      int[] splitTsFilePartitions = new int[totalPartitionsNum];
+      for (int i = 0; i < splitTsFilePartitions.length; i++) {
+        splitTsFilePartitions[i] = Integer.parseInt(f.list()[i]);
+      }
+      Arrays.sort(splitTsFilePartitions);
+
+      for (int i = 0; i < (endTime - startTime) / (timePartition); i++) {
+        Assert.assertEquals(i, splitTsFilePartitions[i]);
+      }
+
+      // each time partition folder should contain 2 files, the tsfile and the resource file
+      for (int i = 0; i < (endTime - startTime) / (timePartition); i++) {
+        Assert.assertEquals(
+                2, new File(f.getAbsolutePath(), "" + i).list().length);
+      }
+
+      for (int i = 0; i < devices.length; i++) {
+        statement.executeQuery(
+            "select count(" + measurements[0] + ") from " + STORAGE_GROUP + DOT + devices[i]);
+        ResultSet set = statement.getResultSet();
+        set.next();
+        long number = set.getLong(1);
+        Assert.assertEquals(deviceDataPointNumber[i], number);
+        }
+    } catch (Exception e) {
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 }
