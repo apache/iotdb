@@ -70,6 +70,16 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     }
   }
 
+  /**
+   * This constructor is used for splitting parent InsertRowsOfOneDevicePlan into sub ones. So
+   * there's no need to validate rowPlans.
+   */
+  public InsertRowsOfOneDevicePlan(PartialPath deviceId, InsertRowPlan[] rowPlans) {
+    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
+    this.prefixPath = deviceId;
+    this.rowPlans = rowPlans;
+  }
+
   @Override
   public void checkIntegrity() {}
 
