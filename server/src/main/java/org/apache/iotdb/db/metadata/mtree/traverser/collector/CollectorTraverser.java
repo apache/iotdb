@@ -28,11 +28,11 @@ public abstract class CollectorTraverser<T> extends Traverser {
         this.offset = offset;
     }
 
-    protected void traverse(IMNode node, int idx, boolean multiLevelWildcard) throws MetadataException {
+    protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
         if (hasLimit && count == limit) {
             return;
         }
-        super.traverse(node, idx, multiLevelWildcard);
+        super.traverse(node, idx, multiLevelWildcard, level);
     }
 
     public T getResult() {

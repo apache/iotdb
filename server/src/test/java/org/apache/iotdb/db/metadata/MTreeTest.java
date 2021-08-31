@@ -688,12 +688,12 @@ public class MTreeTest {
         assertEquals("Path [root.laptop.d1.s3] does not exist", e.getMessage());
       }
 
-      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 2));
-      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop"), 3));
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
-      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 3));
-      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 3));
-      assertEquals(0, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1"), 4));
+      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 3));
+      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.**"), 2));
+      assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.**"), 3));
+      assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1.*"), 3));
+      assertEquals(0, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.d1.**"), 4));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

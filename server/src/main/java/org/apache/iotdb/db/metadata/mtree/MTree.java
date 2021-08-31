@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterm
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -960,35 +961,9 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath.getFullPath());
     }
-    IMNode node = root;
-    int i;
-    for (i = 1; i < nodes.length; i++) {
-      if (nodes[i].equals("*")) {
-        break;
-      }
-      if (node.getChild(nodes[i]) != null) {
-        node = node.getChild(nodes[i]);
-      } else {
-        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
-      }
-    }
-    return getCountInGivenLevel(node, level - (i - 1));
-  }
-
-  /**
-   * Traverse the MTree to get the count of timeseries in the given level.
-   *
-   * @param targetLevel Record the distance to the target level, 0 means the target level.
-   */
-  private int getCountInGivenLevel(IMNode node, int targetLevel) {
-    if (targetLevel == 0) {
-      return 1;
-    }
-    int cnt = 0;
-    for (IMNode child : node.getChildren().values()) {
-      cnt += getCountInGivenLevel(child, targetLevel - 1);
-    }
-    return cnt;
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, nodes, level);
+    counter.traverse();
+    return counter.getCount();
   }
 
   /**
@@ -1216,11 +1191,6 @@ public class MTree implements Serializable {
       }
     }
     return res;
-  }
-
-  /** Get all paths from root to the given level. */
-  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel) throws MetadataException {
-    return getNodesList(path, nodeLevel, null);
   }
 
   /** Get all paths from root to the given level */
