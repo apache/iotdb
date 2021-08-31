@@ -18,47 +18,52 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class UpgradeSevice implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeSevice.class);
 
-  private static final UpgradeSevice INSTANCE = new UpgradeSevice();
   private ExecutorService upgradeThreadPool;
   private AtomicInteger threadCnt = new AtomicInteger();
-  private static int cntUpgradeFileNum;
+  private static AtomicInteger cntUpgradeFileNum = new AtomicInteger();
 
-
-  private UpgradeSevice() {
-  }
+  private UpgradeSevice() {}
 
   public static UpgradeSevice getINSTANCE() {
-    return INSTANCE;
+    return InstanceHolder.INSTANCE;
+  }
+
+  public static class InstanceHolder {
+    private static final UpgradeSevice INSTANCE = new UpgradeSevice();
+
+    private InstanceHolder() {}
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     int updateThreadNum = IoTDBDescriptor.getInstance().getConfig().getUpgradeThreadNum();
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }
-    upgradeThreadPool = Executors.newFixedThreadPool(updateThreadNum,
-        r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
+    upgradeThreadPool =
+        Executors.newFixedThreadPool(
+            updateThreadNum, r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
     UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
-    if (cntUpgradeFileNum == 0) {
+    if (cntUpgradeFileNum.get() == 0) {
       stop();
       return;
     }
@@ -68,12 +73,10 @@ public class UpgradeSevice implements IService {
   @Override
   public void stop() {
     UpgradeLog.closeLogWriter();
+    UpgradeUtils.clearUpgradeRecoverMap();
     if (upgradeThreadPool != null) {
       upgradeThreadPool.shutdownNow();
       logger.info("Waiting for upgrade task pool to shut down");
-      while (!upgradeThreadPool.isTerminated()) {
-        // wait
-      }
       upgradeThreadPool = null;
       logger.info("Upgrade service stopped");
     }
@@ -84,23 +87,8 @@ public class UpgradeSevice implements IService {
     return ServiceType.UPGRADE_SERVICE;
   }
 
-
-  public static void setCntUpgradeFileNum(int cntUpgradeFileNum) {
-    UpgradeUtils.getCntUpgradeFileLock().writeLock().lock();
-    try {
-      UpgradeSevice.cntUpgradeFileNum = cntUpgradeFileNum;
-    } finally {
-      UpgradeUtils.getCntUpgradeFileLock().writeLock().unlock();
-    }
-  }
-
-  public static int getCntUpgradeFileNum() {
-    UpgradeUtils.getCntUpgradeFileLock().readLock().lock();
-    try {
-      return cntUpgradeFileNum;
-    } finally {
-      UpgradeUtils.getCntUpgradeFileLock().readLock().unlock();
-    }
+  public static AtomicInteger getTotalUpgradeFileNum() {
+    return cntUpgradeFileNum;
   }
 
   public void submitUpgradeTask(UpgradeTask upgradeTask) {
@@ -108,7 +96,7 @@ public class UpgradeSevice implements IService {
   }
 
   private static void countUpgradeFiles() {
-    cntUpgradeFileNum = StorageEngine.getInstance().countUpgradeFiles();
+    cntUpgradeFileNum.addAndGet(StorageEngine.getInstance().countUpgradeFiles());
     logger.info("finish counting upgrading files, total num:{}", cntUpgradeFileNum);
   }
 

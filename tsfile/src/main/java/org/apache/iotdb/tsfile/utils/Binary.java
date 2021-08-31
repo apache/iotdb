@@ -18,10 +18,10 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+
 import java.io.Serializable;
 import java.util.Arrays;
-
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
  * Override compareTo() and equals() function to Binary class. This class is used to accept Java
@@ -30,11 +30,11 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
+  public static final Binary EMPTY_VALUE = new Binary("");
+
   private byte[] values;
 
-  /**
-   * if the bytes v is modified, the modification is visible to this binary.
-   */
+  /** if the bytes v is modified, the modification is visible to this binary. */
   public Binary(byte[] v) {
     this.values = v;
   }

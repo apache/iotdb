@@ -19,6 +19,10 @@
 
 -->
 
+# 0.11.x -> 0.12.x
+
+from txt format to binary format, updated by Chao Wang
+
 # 0.10.x -> 0.11.x
 
 Last updated on 2020-11-5 by Haonan Hou

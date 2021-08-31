@@ -19,25 +19,24 @@
 
 package org.apache.iotdb.tsfile;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 
-import java.io.File;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * An example of writing data with Tablet to TsFile
- */
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+/** An example of writing data with Tablet to TsFile */
 public class TsFileWriteWithTablet {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
@@ -52,19 +51,21 @@ public class TsFileWriteWithTablet {
 
       Schema schema = new Schema();
 
-      String device = "root.sg.device_1";
+      String device = Constant.DEVICE_PREFIX + 1;
       String sensorPrefix = "sensor_";
       // the number of rows to include in the tablet
       int rowNum = 1000000;
       // the number of values to include in the tablet
       int sensorNum = 10;
 
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema = new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+        IMeasurementSchema measurementSchema =
+            new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
-        schema.registerTimeseries(new Path(device, sensorPrefix + (i + 1)),
+        schema.registerTimeseries(
+            new Path(device, sensorPrefix + (i + 1)),
             new MeasurementSchema(sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 

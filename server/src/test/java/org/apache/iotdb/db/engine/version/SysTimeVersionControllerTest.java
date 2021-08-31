@@ -38,7 +38,7 @@ public class SysTimeVersionControllerTest {
       assertTrue(diff >= -1000 && diff <= -200);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      //do nothing
+      // do nothing
     }
   }
 }

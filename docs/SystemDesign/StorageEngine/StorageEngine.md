@@ -31,7 +31,7 @@ Each data file TsFile corresponds to a file index information TsFileResource in 
 
 In addition, the storage engine includes asynchronous persistence and file merge mechanisms.
 
-## Write process
+## Writing process
 
 ### Related code
 
@@ -49,9 +49,9 @@ In addition, the storage engine includes asynchronous persistence and file merge
 
   Responsible for data writing and accessing a TsFile file.
 
-## Data write
+## Data writing
 See details:
-* [Data write](../StorageEngine/DataManipulation.md)
+* [Data writing](../StorageEngine/DataManipulation.md)
 
 ## Data access
 

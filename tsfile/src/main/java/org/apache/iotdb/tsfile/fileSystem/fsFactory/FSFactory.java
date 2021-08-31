@@ -24,12 +24,14 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 
 public interface FSFactory {
 
   /**
    * get file with parent
+   *
    * @param pathname pathname
    * @return file with parent
    */
@@ -37,6 +39,7 @@ public interface FSFactory {
 
   /**
    * get file
+   *
    * @param pathname pathname
    * @return file
    */
@@ -44,6 +47,7 @@ public interface FSFactory {
 
   /**
    * get file
+   *
    * @param parent parent file path
    * @param child child file path
    * @return file
@@ -52,6 +56,7 @@ public interface FSFactory {
 
   /**
    * get file
+   *
    * @param parent parent file
    * @param child child file path
    * @return file
@@ -60,6 +65,7 @@ public interface FSFactory {
 
   /**
    * get file by uri
+   *
    * @param uri uri
    * @return file
    */
@@ -67,6 +73,7 @@ public interface FSFactory {
 
   /**
    * get buffered reader
+   *
    * @param filePath file path
    * @return buffered reader
    */
@@ -74,6 +81,7 @@ public interface FSFactory {
 
   /**
    * get buffered reader
+   *
    * @param filePath file path
    * @param append whether is append
    * @return buffered reader
@@ -82,6 +90,7 @@ public interface FSFactory {
 
   /**
    * get input stream
+   *
    * @param filePath file path
    * @return input stream
    */
@@ -89,6 +98,7 @@ public interface FSFactory {
 
   /**
    * get output stream
+   *
    * @param filePath file path
    * @return output stream
    */
@@ -96,6 +106,7 @@ public interface FSFactory {
 
   /**
    * move file
+   *
    * @param srcFile src file
    * @param destFile dest file
    */
@@ -103,6 +114,7 @@ public interface FSFactory {
 
   /**
    * list file by suffix
+   *
    * @param fileFolder file folder
    * @param suffix suffix
    * @return list of files
@@ -111,9 +123,17 @@ public interface FSFactory {
 
   /**
    * list file by prefix
+   *
    * @param fileFolder file folder
    * @param prefix prefix
    * @return list of files
    */
   File[] listFilesByPrefix(String fileFolder, String prefix);
+
+  /**
+   * delete the file if it exists
+   *
+   * @param file local file or HDFS file
+   */
+  boolean deleteIfExists(File file) throws IOException;
 }

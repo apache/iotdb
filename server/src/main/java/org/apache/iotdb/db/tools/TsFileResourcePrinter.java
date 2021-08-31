@@ -19,40 +19,42 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 /**
- * This tool can analyze the tsfile.resource files from a folder, 
- * or analyze a single tsfile.resource file.
+ * This tool can analyze the tsfile.resource files from a folder, or analyze a single
+ * tsfile.resource file.
  */
 public class TsFileResourcePrinter {
 
   @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
-    String folder = "test";
+    String folder = "data/data/sequence/root.group_1/0";
     if (args.length >= 1) {
       folder = args[0];
     }
     File folderFile = SystemFileFactory.INSTANCE.getFile(folder);
     if (folderFile.isDirectory()) {
       // analyze the tsfile.resource files from a folder
-      File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
+      File[] files =
+          FSFactoryProducer.getFSFactory()
+              .listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
       Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
 
       for (File file : files) {
         printResource(file.getAbsolutePath());
       }
       System.out.println("Analyzing the resource file folder " + folder + " finished.");
-    }
-    else {
+    } else {
       // analyze a tsfile.resource file
       printResource(folderFile.getAbsolutePath());
       System.out.println("Analyzing the resource file " + folder + " finished.");
@@ -63,22 +65,22 @@ public class TsFileResourcePrinter {
   public static void printResource(String filename) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
-    System.out.println(String.format("Analyzing %s ...", filename));
+    System.out.printf("Analyzing %s ...%n", filename);
     System.out.println();
     resource.deserialize();
 
-    System.out.println("HistoricalVersions: " + resource.getHistoricalVersions());
+    System.out.printf(
+        "Resource plan index range [%d, %d]%n",
+        resource.getMinPlanIndex(), resource.getMaxPlanIndex());
 
-    for (String device : resource.getDeviceToIndexMap().keySet()) {
-      System.out.println(String.format(
-          "device %s, "
-              + "start time %d (%s), "
-              + "end time %d (%s)",
+    for (String device : resource.getDevices()) {
+      System.out.printf(
+          "device %s, start time %d (%s), end time %d (%s)%n",
           device,
           resource.getStartTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
           resource.getEndTime(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
+          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device)));
     }
     System.out.println();
   }

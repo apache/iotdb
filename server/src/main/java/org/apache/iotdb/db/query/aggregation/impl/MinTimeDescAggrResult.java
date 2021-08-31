@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
 
 public class MinTimeDescAggrResult extends MinTimeAggrResult {
 
@@ -39,14 +40,24 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
     }
   }
 
+  @Override
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
+        setLongValue(timestamps[i]);
+        return;
+      }
+    }
+  }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
-    for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    for (int i = length - 1; i >= 0; i--) {
+      if (values[i] != null) {
         setLongValue(timestamps[i]);
+        return;
       }
     }
   }
@@ -55,5 +66,4 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   public boolean hasFinalResult() {
     return false;
   }
-
 }

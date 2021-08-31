@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.exception.write;
 
-public class UnSupportedDataTypeException extends RuntimeException {
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+
+public class UnSupportedDataTypeException extends TsFileRuntimeException {
 
   private static final long serialVersionUID = 6399248887091915203L;
 

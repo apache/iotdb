@@ -20,7 +20,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class StatementExecutionException extends Exception{
+public class StatementExecutionException extends Exception {
 
   private int statusCode;
 

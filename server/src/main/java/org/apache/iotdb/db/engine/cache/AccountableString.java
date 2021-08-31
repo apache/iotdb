@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+
+import java.util.Objects;
 
 public class AccountableString implements Accountable {
 

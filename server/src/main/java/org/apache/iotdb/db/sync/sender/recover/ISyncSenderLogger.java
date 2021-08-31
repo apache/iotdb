@@ -35,12 +35,14 @@ public interface ISyncSenderLogger {
 
   /**
    * Start to sync deleted files name
+   *
    * @throws IOException
    */
   void startSyncDeletedFilesName() throws IOException;
 
   /**
    * After a deleted file name is synced to the receiver end, record it in sync log.
+   *
    * @param file the deleted tsfile
    * @throws IOException
    */
@@ -48,18 +50,18 @@ public interface ISyncSenderLogger {
 
   /**
    * Start to sync new tsfiles
+   *
    * @throws IOException
    */
   void startSyncTsFiles() throws IOException;
 
   /**
-   *
    * After a new tsfile is synced to the receiver end, record it in sync log.
+   *
    * @param file new tsfile
    * @throws IOException
    */
   void finishSyncTsfile(File file) throws IOException;
 
   void close() throws IOException;
-
 }

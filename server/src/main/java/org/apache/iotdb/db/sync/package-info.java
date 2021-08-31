@@ -18,20 +18,19 @@
  */
 
 /**
- * <p>
  * Package Sync is a suite tool that periodically uploads persistent tsfiles from the sender disk to
  * the receiver and loads them. With merge module, synchronous update of write, update and delete
  * operations can be synced.
  *
- * On the sender side of the sync, the sync module is a separate process, independent of the IoTDB
- * process. It can be started and closed through separate scripts.
+ * <p>On the sender side of the sync, the sync module is a separate process, independent of the
+ * IoTDB process. It can be started and closed through separate scripts.
  *
- * On the receiver side of the sync, the sync module is embedded in the engine of IoTDB and is in
+ * <p>On the receiver side of the sync, the sync module is embedded in the engine of IoTDB and is in
  * the same process with IoTDB. The receiver module listens to a separate port. Before using it, it
  * needs to set up a whitelist at the sync receiver, which is expressed as a network segment. The
  * receiver only accepts the data transferred from the sender located in the whitelist segment.
  *
- * Due to the IoTDB system supports multiple directories of data files, it will perform sub-tasks
+ * <p>Due to the IoTDB system supports multiple directories of data files, it will perform sub-tasks
  * according to disks in every complete synchronization task, because hard links are needed in the
  * execution process. Hard links can not be operated across disk partitions, and a synchronization
  * task will be performed in turn according to disks.

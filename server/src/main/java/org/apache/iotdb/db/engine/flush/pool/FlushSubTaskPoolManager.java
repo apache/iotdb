@@ -21,17 +21,17 @@ package org.apache.iotdb.db.engine.flush.pool;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class FlushSubTaskPoolManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory
-      .getLogger(FlushSubTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlushSubTaskPoolManager.class);
 
   private FlushSubTaskPoolManager() {
-    this.pool = IoTDBThreadPoolFactory
-        .newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
+    this.pool =
+        IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
   }
 
   public static FlushSubTaskPoolManager getInstance() {
@@ -51,8 +51,8 @@ public class FlushSubTaskPoolManager extends AbstractPoolManager {
   @Override
   public void start() {
     if (pool == null) {
-      this.pool = IoTDBThreadPoolFactory
-          .newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
+      this.pool =
+          IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.FLUSH_SUB_TASK_SERVICE.getName());
     }
     LOGGER.info("Flush sub task manager started.");
   }
@@ -66,10 +66,9 @@ public class FlushSubTaskPoolManager extends AbstractPoolManager {
   private static class InstanceHolder {
 
     private InstanceHolder() {
-      //allowed to do nothing
+      // allowed to do nothing
     }
 
     private static FlushSubTaskPoolManager instance = new FlushSubTaskPoolManager();
   }
-
 }

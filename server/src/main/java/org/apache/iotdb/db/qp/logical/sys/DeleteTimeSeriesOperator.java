@@ -18,22 +18,24 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-/**
- * this class deletes whole data and metadata of the timeseries.
- */
-public class DeleteTimeSeriesOperator extends RootOperator {
+import java.util.List;
+
+/** this class deletes whole data and metadata of the timeseries. */
+public class DeleteTimeSeriesOperator extends Operator {
 
   private List<PartialPath> deletePathList;
-  
+
   public DeleteTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_TIMESERIES;
   }
-  
+
   public List<PartialPath> getDeletePathList() {
     return deletePathList;
   }
@@ -42,4 +44,8 @@ public class DeleteTimeSeriesOperator extends RootOperator {
     this.deletePathList = deletePathList;
   }
 
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new DeleteTimeSeriesPlan(deletePathList);
+  }
 }

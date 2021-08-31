@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
-import java.io.IOException;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+
+import java.io.IOException;
 
 /**
  * CachedPriorityMergeReader use a cache to reduce unnecessary heap updates and increase locality.
@@ -54,7 +55,8 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
     while (!heap.isEmpty() && cacheLimit < CACHE_SIZE) {
       Element top = heap.peek();
       if (lastTimestamp == null || top.currTime() != lastTimestamp) {
-        TimeValuePairUtils.setTimeValuePair(top.timeValuePair, timeValuePairCache[cacheLimit++]);
+        TimeValuePairUtils.setTimeValuePair(
+            top.getTimeValuePair(), timeValuePairCache[cacheLimit++]);
         lastTimestamp = top.currTime();
       }
       // remove duplicates
@@ -69,7 +71,6 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
       }
     }
   }
-
 
   @Override
   public TimeValuePair nextTimeValuePair() throws IOException {

@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
-
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class LongTVList extends TVList {
 
@@ -46,7 +47,7 @@ public class LongTVList extends TVList {
     checkExpansion();
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
-    minTime = minTime <= timestamp ? minTime : timestamp;
+    minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
     size++;
@@ -91,10 +92,11 @@ public class LongTVList extends TVList {
     return cloneArray;
   }
 
+  @Override
   public void sort() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
-      sortedTimestamps = (long[][]) PrimitiveArrayManager
-          .createDataListsByType(TSDataType.INT64, size);
+      sortedTimestamps =
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
     if (sortedValues == null || sortedValues.length < size) {
       sortedValues = (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
@@ -124,21 +126,26 @@ public class LongTVList extends TVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    set(dest, sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+    set(
+        dest,
+        sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
         sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
+  @Override
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     long srcV = getLong(src);
     set(dest, srcT, srcV);
   }
 
+  @Override
   protected void setToSorted(int src, int dest) {
     sortedTimestamps[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getTime(src);
     sortedValues[dest / ARRAY_SIZE][dest % ARRAY_SIZE] = getLong(src);
   }
 
+  @Override
   protected void reverseRange(int lo, int hi) {
     hi--;
     while (lo < hi) {
@@ -169,14 +176,19 @@ public class LongTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(getTime(index),
-        TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+    return new TimeValuePair(
+        getTime(index), TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
   }
 
   @Override
-  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
-      TSEncoding encoding) {
+  protected TimeValuePair getTimeValuePair(
+      int index, long time, Integer floatPrecision, TSEncoding encoding) {
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT64, getLong(index)));
+  }
+
+  @Override
+  public TSDataType getDataType() {
+    return TSDataType.INT64;
   }
 
   @Override

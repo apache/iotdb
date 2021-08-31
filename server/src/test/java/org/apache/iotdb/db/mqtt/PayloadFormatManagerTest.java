@@ -23,13 +23,13 @@ import static org.junit.Assert.*;
 
 public class PayloadFormatManagerTest {
 
-    @Test(expected = IllegalArgumentException.class)
-    public void getPayloadFormat() {
-        PayloadFormatManager.getPayloadFormat("txt");
-    }
+  @Test(expected = IllegalArgumentException.class)
+  public void getPayloadFormat() {
+    PayloadFormatManager.getPayloadFormat("txt");
+  }
 
-    @Test
-    public void getDefaultPayloadFormat() {
-        assertNotNull(PayloadFormatManager.getPayloadFormat("json"));
-    }
+  @Test
+  public void getDefaultPayloadFormat() {
+    assertNotNull(PayloadFormatManager.getPayloadFormat("json"));
+  }
 }

@@ -20,6 +20,11 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,10 +32,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 public class LoadConfigurationPlan extends PhysicalPlan {
 
@@ -41,8 +42,8 @@ public class LoadConfigurationPlan extends PhysicalPlan {
 
   LoadConfigurationPlanType loadConfigurationPlanType;
 
-  public LoadConfigurationPlan(LoadConfigurationPlanType loadConfigurationPlanType,
-      Properties[] propertiesArray)
+  public LoadConfigurationPlan(
+      LoadConfigurationPlanType loadConfigurationPlanType, Properties[] propertiesArray)
       throws QueryProcessException {
     super(false, OperatorType.LOAD_CONFIGURATION);
     if (loadConfigurationPlanType != LoadConfigurationPlanType.GLOBAL) {
@@ -137,6 +138,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
   }
 
   public enum LoadConfigurationPlanType {
-    GLOBAL, LOCAL
+    GLOBAL,
+    LOCAL
   }
 }

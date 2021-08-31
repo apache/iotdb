@@ -19,25 +19,28 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 public class GroupByTimeDataSet extends QueryDataSet {
 
-  private static final Logger logger = LoggerFactory
-    .getLogger(GroupByTimeDataSet.class);
+  private static final Logger logger = LoggerFactory.getLogger(GroupByTimeDataSet.class);
 
   private List<RowRecord> records = new ArrayList<>();
   private int index = 0;
@@ -46,8 +49,9 @@ public class GroupByTimeDataSet extends QueryDataSet {
   private GroupByTimePlan groupByTimePlan;
   private QueryContext context;
 
-  public GroupByTimeDataSet(QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
-    throws QueryProcessException, IOException {
+  public GroupByTimeDataSet(
+      QueryContext context, GroupByTimePlan plan, GroupByEngineDataSet dataSet)
+      throws QueryProcessException, IOException {
     this.queryId = context.getQueryId();
     this.paths = new ArrayList<>(plan.getDeduplicatedPaths());
     this.dataTypes = plan.getDeduplicatedDataTypes();
@@ -58,34 +62,43 @@ public class GroupByTimeDataSet extends QueryDataSet {
       logger.debug("paths " + this.paths + " level:" + plan.getLevel());
     }
 
-    Map<Integer, String> pathIndex = new HashMap<>();
-    Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths(), plan.getLevel(), pathIndex);
+    Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
     // get all records from GroupByDataSet, then we merge every record
     if (logger.isDebugEnabled()) {
       logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
     }
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex);
-      if (curRecord != null) {
-        records.add(curRecord);
+      RowRecord rawRecord = dataSet.nextWithoutConstraint();
+      RowRecord curRecord = new RowRecord(rawRecord.getTimestamp());
+      List<AggregateResult> mergedAggResults =
+          FilePathUtils.mergeRecordByPath(plan, rawRecord, finalPaths);
+      for (AggregateResult resultData : mergedAggResults) {
+        TSDataType dataType = resultData.getResultDataType();
+        curRecord.addField(resultData.getResult(), dataType);
       }
+      records.add(curRecord);
     }
 
     this.dataTypes = new ArrayList<>();
     this.paths = new ArrayList<>();
-    for (int i = 0; i < finalPaths.size(); i++) {
-      this.dataTypes.add(TSDataType.INT64);
+    for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
+      try {
+        this.paths.add(new PartialPath(entry.getKey()));
+      } catch (IllegalPathException e) {
+        logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
+      }
+      this.dataTypes.add(entry.getValue().getResultDataType());
     }
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() throws IOException {
+  public boolean hasNextWithoutConstraint() {
     return index < records.size();
   }
 
   @Override
-  protected RowRecord nextWithoutConstraint() {
+  public RowRecord nextWithoutConstraint() {
     return records.get(index++);
   }
 }

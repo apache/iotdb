@@ -21,7 +21,7 @@
 
 # Data partition
 
-Time series data is partitioned on two levels of storage groups and time ranges.
+Time series data is partitioned at the storage group and time range levels.
 
 ## Storage group
 

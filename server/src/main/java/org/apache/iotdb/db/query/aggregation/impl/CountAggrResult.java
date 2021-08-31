@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.query.aggregation.impl;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 
 public class CountAggrResult extends AggregateResult {
 
@@ -44,45 +45,49 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    long preValue = getLongValue();
-    preValue += statistics.getCount();
-    setLongValue(preValue);
+    setLongValue(getLongValue() + statistics.getCount());
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage) {
-    int cnt = dataInThisPage.length();
-    long preValue = getLongValue();
-    preValue += cnt;
-    setLongValue(preValue);
+    setLongValue(getLongValue() + dataInThisPage.length());
   }
 
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    int cnt = 0;
     while (dataInThisPage.hasCurrent()) {
       if (dataInThisPage.currentTime() >= maxBound || dataInThisPage.currentTime() < minBound) {
         break;
       }
-      long preValue = getLongValue();
-      setLongValue(++preValue);
+      cnt++;
       dataInThisPage.next();
     }
+    setLongValue(getLongValue() + cnt);
   }
 
   @Override
-  public void updateResultUsingTimestamps(long[] timestamps, int length,
-      IReaderByTimestamp dataReader) throws IOException {
+  public void updateResultUsingTimestamps(
+      long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     int cnt = 0;
+    Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
-      Object value = dataReader.getValueInTimestamp(timestamps[i]);
-      if (value != null) {
+      if (values[i] != null) {
         cnt++;
       }
     }
+    setLongValue(getLongValue() + cnt);
+  }
 
-    long preValue = getLongValue();
-    preValue += cnt;
-    setLongValue(preValue);
+  @Override
+  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+    int cnt = 0;
+    for (int i = 0; i < length; i++) {
+      if (values[i] != null) {
+        cnt++;
+      }
+    }
+    setLongValue(getLongValue() + cnt);
   }
 
   @Override
@@ -97,10 +102,8 @@ public class CountAggrResult extends AggregateResult {
   }
 
   @Override
-  protected void deserializeSpecificFields(ByteBuffer buffer) {
-  }
+  protected void deserializeSpecificFields(ByteBuffer buffer) {}
 
   @Override
-  protected void serializeSpecificFields(OutputStream outputStream) throws IOException {
-  }
+  protected void serializeSpecificFields(OutputStream outputStream) {}
 }

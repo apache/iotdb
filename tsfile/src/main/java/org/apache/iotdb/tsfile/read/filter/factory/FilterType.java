@@ -19,7 +19,9 @@
 package org.apache.iotdb.tsfile.read.filter.factory;
 
 public enum FilterType {
-  VALUE_FILTER("value"), TIME_FILTER("time"), GROUP_BY_FILTER("group by");
+  VALUE_FILTER("value"),
+  TIME_FILTER("time"),
+  GROUP_BY_FILTER("group by");
 
   private String name;
 
@@ -31,5 +33,4 @@ public enum FilterType {
   public String toString() {
     return name;
   }
-
 }

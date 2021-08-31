@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-/**
- * It is an empty signal to notify the caller that there is no more batch data after it.
- */
+/** It is an empty signal to notify the caller that there is no more batch data after it. */
 public class SignalBatchData extends BatchData {
 
   private static final long serialVersionUID = -4175548102820374070L;
@@ -32,7 +30,7 @@ public class SignalBatchData extends BatchData {
   private static class InstanceHolder {
 
     private InstanceHolder() {
-      //allowed to do nothing
+      // allowed to do nothing
     }
 
     private static SignalBatchData instance = new SignalBatchData();

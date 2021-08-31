@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.tsfile.encoding.bitpacking;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Random;
 
-import org.junit.Test;
-
-import org.apache.iotdb.tsfile.encoding.bitpacking.IntPacker;
+import static org.junit.Assert.assertEquals;
 
 public class IntPackerTest {
 
@@ -52,7 +50,7 @@ public class IntPackerTest {
         bb[idx++] = tb[j];
       }
     }
-    int res[] = new int[count * 8];
+    int[] res = new int[count * 8];
     packer.unpackAllValues(bb, bb.length, res);
 
     for (int i = 0; i < count * 8; i++) {
@@ -78,5 +76,4 @@ public class IntPackerTest {
       }
     }
   }
-
 }

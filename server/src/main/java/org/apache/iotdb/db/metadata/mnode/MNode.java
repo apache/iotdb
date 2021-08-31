@@ -18,158 +18,73 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
-/**
- * This class is the implementation of Metadata Node. One MNode instance represents one node in the
- * Metadata Tree
- */
-public class MNode implements Serializable {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
-  private static final long serialVersionUID = -770028375899514063L;
-  private static Map<String, String> cachedPathPool = CachedStringPool.getInstance()
-      .getCachedPool();
+public abstract class MNode implements IMNode {
 
-  /**
-   * Name of the MNode
-   */
+  private static Map<String, String> cachedPathPool =
+      CachedStringPool.getInstance().getCachedPool();
+
+  /** Name of the MNode */
   protected String name;
-  protected MNode parent;
 
-  /**
-   * from root to this node, only be set when used once for InternalMNode
-   */
+  protected IMNode parent;
+
+  /** from root to this node, only be set when used once for InternalMNode */
   protected String fullPath;
 
-  /**
-   * use in Measurement Node so it's protected
-   * suppress warnings reason: volatile for double synchronized check
-   */
-  @SuppressWarnings("squid:S3077")
-  protected transient volatile ConcurrentMap<String, MNode> children = null;
-
-  /**
-   * suppress warnings reason: volatile for double synchronized check
-   */
-  @SuppressWarnings("squid:S3077")
-  private transient volatile ConcurrentMap<String, MNode> aliasChildren = null;
-
-  /**
-   * Constructor of MNode.
-   */
-  public MNode(MNode parent, String name) {
+  /** Constructor of MNode. */
+  public MNode(IMNode parent, String name) {
     this.parent = parent;
     this.name = name;
   }
 
-  /**
-   * check whether the MNode has a child with the name
-   */
-  public boolean hasChild(String name) {
-    return (children != null && children.containsKey(name)) ||
-        (aliasChildren != null && aliasChildren.containsKey(name));
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  @Override
+  public IMNode getParent() {
+    return parent;
+  }
+
+  @Override
+  public void setParent(IMNode parent) {
+    this.parent = parent;
   }
 
   /**
-   * add a child to current mnode
-   * @param name child's name
-   * @param child child's node
+   * get partial path of this node
+   *
+   * @return partial path
    */
-  public void addChild(String name, MNode child) {
-    /* use cpu time to exchange memory
-     * measurementNode's children should be null to save memory
-     * add child method will only be called when writing MTree, which is not a frequent operation
-     */
-    if (children == null) {
-      // double check, children is volatile
-      synchronized (this) {
-        if (children == null) {
-          children = new ConcurrentHashMap<>();
-        }
-      }
+  @Override
+  public PartialPath getPartialPath() {
+    List<String> detachedPath = new ArrayList<>();
+    IMNode temp = this;
+    detachedPath.add(temp.getName());
+    while (temp.getParent() != null) {
+      temp = temp.getParent();
+      detachedPath.add(0, temp.getName());
     }
-
-    children.putIfAbsent(name, child);
+    return new PartialPath(detachedPath.toArray(new String[0]));
   }
 
-  /**
-   * delete a child
-   */
-  public void deleteChild(String name) {
-    if (children != null) {
-      children.remove(name);
-    }
-  }
-
-  /**
-   * delete the alias of a child
-   */
-  public void deleteAliasChild(String alias) {
-    if (aliasChildren != null) {
-      aliasChildren.remove(alias);
-    }
-  }
-
-  /**
-   * get the child with the name
-   */
-  public MNode getChild(String name) {
-    MNode child = null;
-    if (children != null) {
-      child = children.get(name);
-    }
-    if (child != null) {
-      return child;
-    }
-    return aliasChildren == null ? null : aliasChildren.get(name);
-  }
-
-  /**
-   * get the count of all leaves whose ancestor is current node
-   */
-  public int getLeafCount() {
-    if (children == null) {
-      return 0;
-    }
-    int leafCount = 0;
-    for (MNode child : children.values()) {
-      leafCount += child.getLeafCount();
-    }
-    return leafCount;
-  }
-
-  /**
-   * add an alias
-   */
-  public boolean addAlias(String alias, MNode child) {
-    if (aliasChildren == null) {
-      // double check, alias children volatile
-      synchronized (this) {
-        if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
-        }
-      }
-    }
-
-    return aliasChildren.computeIfAbsent(alias, aliasName -> child) == child;
-  }
-
-  /**
-   * get full path
-   */
+  /** get full path */
+  @Override
   public String getFullPath() {
     if (fullPath == null) {
       fullPath = concatFullPath();
@@ -183,74 +98,68 @@ public class MNode implements Serializable {
     return fullPath;
   }
 
-  public PartialPath getPartialPath() {
-    List<String> detachedPath = new ArrayList<>();
-    MNode temp = this;
-    detachedPath.add(temp.getName());
-    while (temp.getParent() != null) {
-      temp = temp.getParent();
-      detachedPath.add(0, temp.getName());
-    }
-    return new PartialPath(detachedPath.toArray(new String[0]));
-  }
-
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(name);
-    MNode curr = this;
+    IMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
-      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
+      builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.getName());
     }
     return builder.toString();
   }
 
   @Override
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    return false;
+  }
+
+  @Override
+  public boolean isStorageGroup() {
+    return false;
+  }
+
+  @Override
+  public boolean isEntity() {
+    return false;
+  }
+
+  @Override
+  public boolean isMeasurement() {
+    return false;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MNode mNode = (MNode) o;
+    if (fullPath == null) {
+      return Objects.equals(getFullPath(), mNode.getFullPath());
+    } else {
+      return Objects.equals(fullPath, mNode.fullPath);
+    }
+  }
+
+  @Override
+  public int hashCode() {
+    if (fullPath == null) {
+      return Objects.hash(getFullPath());
+    } else {
+      return Objects.hash(fullPath);
+    }
+  }
+
+  @Override
   public String toString() {
     return this.getName();
-  }
-
-  public MNode getParent() {
-    return parent;
-  }
-
-  public void setParent(MNode parent) {
-    this.parent = parent;
-  }
-
-  public Map<String, MNode> getChildren() {
-    if (children == null) {
-      return Collections.emptyMap();
-    }
-    return children;
-  }
-
-  public void setChildren(ConcurrentMap<String, MNode> children) {
-    this.children = children;
-  }
-
-  public String getName() {
-    return name;
-  }
-
-  public void setName(String name) {
-    this.name = name;
-  }
-
-  public void serializeTo(BufferedWriter bw) throws IOException {
-    serializeChildren(bw);
-
-    String s = String.valueOf(MetadataConstant.MNODE_TYPE) + "," + name + ","
-        + (children == null ? "0" : children.size());
-    bw.write(s);
-    bw.newLine();
-  }
-
-  void serializeChildren(BufferedWriter bw) throws IOException {
-    if (children == null) {
-      return;
-    }
-    for (Entry<String, MNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo(bw);
-    }
   }
 }

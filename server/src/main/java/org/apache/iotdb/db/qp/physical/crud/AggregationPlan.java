@@ -18,9 +18,19 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AggregationPlan extends RawDataQueryPlan {
 
@@ -32,6 +42,8 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
   private int level = -1;
+  // group by level aggregation result path
+  private final Map<String, AggregateResult> levelAggPaths = new LinkedHashMap<>();
 
   public AggregationPlan() {
     super();
@@ -65,5 +77,54 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   public void setLevel(int level) {
     this.level = level;
+  }
+
+  public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
+    if (!levelAggPaths.isEmpty()) {
+      return levelAggPaths;
+    }
+    List<PartialPath> seriesPaths = getPaths();
+    List<TSDataType> dataTypes = getDataTypes();
+    try {
+      for (int i = 0; i < seriesPaths.size(); i++) {
+        String transformedPath =
+            FilePathUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
+        String key = getAggregations().get(i) + "(" + transformedPath + ")";
+        if (!levelAggPaths.containsKey(key)) {
+          AggregateResult aggRet =
+              AggregateResultFactory.getAggrResultByName(
+                  getAggregations().get(i), dataTypes.get(i));
+          levelAggPaths.put(key, aggRet);
+        }
+      }
+    } catch (IllegalPathException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+    return levelAggPaths;
+  }
+
+  @Override
+  public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
+    return resultColumns.get(pathIndex).getResultColumnName();
+  }
+
+  @Override
+  public String getColumnForDisplay(String columnForReader, int pathIndex)
+      throws IllegalPathException {
+    String columnForDisplay = columnForReader;
+    if (level >= 0) {
+      PartialPath path = paths.get(pathIndex);
+      String aggregatePath =
+          path.isMeasurementAliasExists()
+              ? FilePathUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
+              : FilePathUtils.generatePartialPathByLevel(path.toString(), level);
+      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+    }
+    return columnForDisplay;
+  }
+
+  @Override
+  public boolean isRawQuery() {
+    return false;
   }
 }

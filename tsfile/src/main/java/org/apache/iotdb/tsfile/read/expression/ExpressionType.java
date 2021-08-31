@@ -20,34 +20,28 @@ package org.apache.iotdb.tsfile.read.expression;
 
 public enum ExpressionType {
 
-  /**
-   * Represent the relationship between the left expression and the right
-   * expression is AND
-   */
+  /** Represent the relationship between the left expression and the right expression is AND */
   AND,
 
-  /**
-   * Represent the relationship between the left expression and the right
-   * expression is OR
-   */
+  /** Represent the relationship between the left expression and the right expression is OR */
   OR,
 
   /**
-   * Represents that the expression is a leaf node in the expression tree and the
-   * type is value filtering
+   * Represents that the expression is a leaf node in the expression tree and the type is value
+   * filtering
    */
   SERIES,
 
   /**
-   * Represents that the expression is a leaf node in the expression tree and the
-   * type is time filtering
+   * Represents that the expression is a leaf node in the expression tree and the type is time
+   * filtering
    */
   GLOBAL_TIME,
 
   /**
-   * This type is used in the pruning process of expression tree in the
-   * distributed reading process. When pruning a expression tree for a data group,
-   * leaf nodes belonging to other data groups will be set to that type.
+   * This type is used in the pruning process of expression tree in the distributed reading process.
+   * When pruning a expression tree for a data group, leaf nodes belonging to other data groups will
+   * be set to that type.
    */
   TRUE
 }

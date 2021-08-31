@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.lang.management.ManagementFactory;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanRegistrationException;
@@ -26,25 +30,20 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.StartupException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.lang.management.ManagementFactory;
 
 public class JMXService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(JMXService.class);
 
-  private JMXService() {
-  }
+  private JMXService() {}
 
-  public static final JMXService getInstance() {
+  public static JMXService getInstance() {
     return JMXServerHolder.INSTANCE;
   }
 
-  /**
-   * function for registering MBean.
-   */
+  /** function for registering MBean. */
   public static void registerMBean(Object mbean, String name) {
     try {
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -52,16 +51,15 @@ public class JMXService implements IService {
       if (!mbs.isRegistered(objectName)) {
         mbs.registerMBean(mbean, objectName);
       }
-    } catch (MalformedObjectNameException | InstanceAlreadyExistsException
+    } catch (MalformedObjectNameException
+        | InstanceAlreadyExistsException
         | MBeanRegistrationException
         | NotCompliantMBeanException e) {
       logger.error("Failed to registerMBean {}", name, e);
     }
   }
 
-  /**
-   * function for deregistering MBean.
-   */
+  /** function for deregistering MBean. */
   public static void deregisterMBean(String name) {
     try {
       MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
@@ -69,12 +67,12 @@ public class JMXService implements IService {
       if (mbs.isRegistered(objectName)) {
         mbs.unregisterMBean(objectName);
       }
-    } catch (MalformedObjectNameException | MBeanRegistrationException
+    } catch (MalformedObjectNameException
+        | MBeanRegistrationException
         | InstanceNotFoundException e) {
       logger.error("Failed to unregisterMBean {}", name, e);
     }
   }
-
 
   @Override
   public ServiceType getID() {
@@ -82,7 +80,7 @@ public class JMXService implements IService {
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
       logger.debug("{} JMX port is undefined", this.getID().getName());
@@ -98,7 +96,6 @@ public class JMXService implements IService {
 
     private static final JMXService INSTANCE = new JMXService();
 
-    private JMXServerHolder() {
-    }
+    private JMXServerHolder() {}
   }
 }

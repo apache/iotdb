@@ -19,18 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -44,8 +34,24 @@ import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompactionMergeCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.MERGING_MODIFICATION_FILE_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public abstract class TsFileManagement {
 
@@ -53,87 +59,80 @@ public abstract class TsFileManagement {
   protected String storageGroupName;
   protected String storageGroupDir;
 
-  /**
-   * Serialize queries, delete resource files, compaction cleanup files
-   */
+  /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
 
   public volatile boolean isUnseqMerging = false;
+  public volatile boolean isSeqMerging = false;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
   public ModificationFile mergingModification;
+
   private long mergeStartTime;
+
+  /** whether execute merge chunk in this task */
+  protected boolean isMergeExecutedInCurrentTask = false;
+
+  protected boolean isForceFullMerge = IoTDBDescriptor.getInstance().getConfig().isForceFullMerge();
+  private final int maxOpenFileNumInEachUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().getMaxOpenFileNumInEachUnseqCompaction();
 
   public TsFileManagement(String storageGroupName, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
   }
 
-  /**
-   * get the TsFile list which has been completed hot compacted
-   */
-  public abstract List<TsFileResource> getStableTsFileList(boolean sequence);
+  public void setForceFullMerge(boolean forceFullMerge) {
+    isForceFullMerge = forceFullMerge;
+  }
 
   /**
-   * get the TsFile list in sequence
+   * get the TsFile list in sequence, not recommend to use this method, use
+   * getTsFileListByTimePartition instead
    */
+  @Deprecated
   public abstract List<TsFileResource> getTsFileList(boolean sequence);
 
-  /**
-   * get the TsFile list iterator in sequence
-   */
+  /** get the TsFile list in sequence by time partition */
+  public abstract List<TsFileResource> getTsFileListByTimePartition(
+      boolean sequence, long timePartition);
+
+  /** get the TsFile list iterator in sequence */
   public abstract Iterator<TsFileResource> getIterator(boolean sequence);
 
-  /**
-   * remove one TsFile from list
-   */
+  /** remove one TsFile from list */
   public abstract void remove(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * remove some TsFiles from list
-   */
+  /** remove some TsFiles from list */
   public abstract void removeAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
-  /**
-   * add one TsFile to list
-   */
+  /** add one TsFile to list */
   public abstract void add(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * add some TsFiles to list
-   */
+  /** add one TsFile to list for recover */
+  public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
+
+  /** add some TsFiles to list */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence);
 
-  /**
-   * is one TsFile contained in list
-   */
+  /** is one TsFile contained in list */
   public abstract boolean contains(TsFileResource tsFileResource, boolean sequence);
 
-  /**
-   * clear list
-   */
+  /** clear list */
   public abstract void clear();
 
-  /**
-   * is the list empty
-   */
+  /** is the list empty */
   public abstract boolean isEmpty(boolean sequence);
 
-  /**
-   * return TsFile list size
-   */
+  /** return TsFile list size */
   public abstract int size(boolean sequence);
 
-  /**
-   * recover TsFile list
-   */
+  /** recover TsFile list */
   public abstract void recover();
 
-  /**
-   * fork current TsFile list (call this before merge)
-   */
+  /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
 
   public void readLock() {
@@ -158,32 +157,66 @@ public abstract class TsFileManagement {
 
   protected abstract void merge(long timePartition);
 
-  public class CompactionMergeTask implements Runnable {
+  public class CompactionMergeTask implements Callable<Void> {
 
     private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
     private long timePartitionId;
 
-    public CompactionMergeTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack,
-        long timePartitionId) {
+    public CompactionMergeTask(
+        CloseCompactionMergeCallBack closeCompactionMergeCallBack, long timePartitionId) {
       this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
       this.timePartitionId = timePartitionId;
     }
 
     @Override
-    public void run() {
+    public Void call() {
       merge(timePartitionId);
-      closeCompactionMergeCallBack.call();
+      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      return null;
     }
   }
 
-  public void merge(boolean fullMerge, List<TsFileResource> seqMergeList,
-      List<TsFileResource> unSeqMergeList, long dataTTL) {
+  public class CompactionRecoverTask implements Callable<Void> {
+
+    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
+
+    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
+    }
+
+    @Override
+    public Void call() {
+      recover();
+      // in recover logic, we do not have to start next compaction task, and in this case the param
+      // time partition is useless, we can just pass 0L
+      closeCompactionMergeCallBack.call(false, 0L);
+      return null;
+    }
+  }
+
+  public synchronized void merge(
+      boolean fullMerge,
+      List<TsFileResource> seqMergeList,
+      List<TsFileResource> unSeqMergeList,
+      long dataTTL) {
     if (isUnseqMerging) {
       if (logger.isInfoEnabled()) {
-        logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
+        logger.info(
+            "{} Last merge is ongoing, currently consumed time: {}ms",
+            storageGroupName,
             (System.currentTimeMillis() - mergeStartTime));
       }
       return;
+    }
+    // wait until seq merge has finished
+    while (isSeqMerging) {
+      try {
+        wait(200);
+      } catch (InterruptedException e) {
+        logger.error("{} [Compaction] shutdown", storageGroupName, e);
+        Thread.currentThread().interrupt();
+        return;
+      }
     }
     isUnseqMerging = true;
 
@@ -199,16 +232,24 @@ public abstract class TsFileManagement {
       return;
     }
 
+    if (unSeqMergeList.size() > maxOpenFileNumInEachUnseqCompaction) {
+      logger.info(
+          "{} too much unseq files to be merged, reduce it to {}",
+          storageGroupName,
+          maxOpenFileNumInEachUnseqCompaction);
+      unSeqMergeList = unSeqMergeList.subList(0, maxOpenFileNumInEachUnseqCompaction);
+    }
+
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-    long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
+    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, ttlLowerBound);
 
     IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
-        logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
-            budget);
+        logger.info(
+            "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
         isUnseqMerging = false;
         return;
       }
@@ -227,15 +268,25 @@ public abstract class TsFileManagement {
       }
 
       mergeStartTime = System.currentTimeMillis();
-      MergeTask mergeTask = new MergeTask(mergeResource, storageGroupDir,
-          this::mergeEndAction, taskName, fullMerge, fileSelector.getConcurrentMergeNum(),
-          storageGroupName);
-      mergingModification = new ModificationFile(
-          storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+      MergeTask mergeTask =
+          new MergeTask(
+              mergeResource,
+              storageGroupDir,
+              this::mergeEndAction,
+              taskName,
+              fullMerge,
+              fileSelector.getConcurrentMergeNum(),
+              storageGroupName);
+      mergingModification =
+          new ModificationFile(storageGroupDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
       MergeManager.getINSTANCE().submitMainTask(mergeTask);
       if (logger.isInfoEnabled()) {
-        logger.info("{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
-            storageGroupName, taskName, mergeFiles[0].size(), mergeFiles[1].size());
+        logger.info(
+            "{} submits a merge task {}, merging {} seqFiles, {} unseqFiles",
+            storageGroupName,
+            taskName,
+            mergeFiles[0].size(),
+            mergeFiles[1].size());
       }
 
     } catch (MergeException | IOException e) {
@@ -255,9 +306,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  /**
-   * acquire the write locks of the resource , the merge lock and the compaction lock
-   */
+  /** acquire the write locks of the resource , the merge lock and the compaction lock */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
     boolean compactionLockGot;
@@ -279,9 +328,7 @@ public abstract class TsFileManagement {
     }
   }
 
-  /**
-   * release the write locks of the resource , the merge lock and the compaction lock
-   */
+  /** release the write locks of the resource , the merge lock and the compaction lock */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     writeUnlock();
     seqFile.writeUnlock();
@@ -294,7 +341,6 @@ public abstract class TsFileManagement {
       // clean cache
       if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
         ChunkCache.getInstance().clear();
-        ChunkMetadataCache.getInstance().clear();
         TimeSeriesMetadataCache.getInstance().clear();
       }
     } finally {
@@ -318,18 +364,24 @@ public abstract class TsFileManagement {
       seqFile.removeModFile();
       if (mergingModification != null) {
         for (Modification modification : mergingModification.getModifications()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
           seqFile.getModFile().write(modification);
         }
         try {
           seqFile.getModFile().close();
         } catch (IOException e) {
-          logger
-              .error("Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
+          logger.error(
+              "Cannot close the ModificationFile {}", seqFile.getModFile().getFilePath(), e);
         }
       }
     } catch (IOException e) {
-      logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
-          seqFile.getTsFile(), e);
+      logger.error(
+          "{} cannot clean the ModificationFile of {} after merge",
+          storageGroupName,
+          seqFile.getTsFile(),
+          e);
     }
   }
 
@@ -344,12 +396,12 @@ public abstract class TsFileManagement {
     }
   }
 
-  public void mergeEndAction(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+  public void mergeEndAction(
+      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File mergeLog) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
+    if (Thread.currentThread().isInterrupted() || unseqFiles.isEmpty()) {
+      // merge task abort, or merge runtime exception arose, just end this merge
       isUnseqMerging = false;
       logger.info("{} a merge task abnormally ends", storageGroupName);
       return;
@@ -362,22 +414,47 @@ public abstract class TsFileManagement {
       doubleWriteLock(seqFile);
 
       try {
-        updateMergeModification(seqFile);
-        if (i == seqFiles.size() - 1) {
-          //FIXME if there is an exception, the the modification file will be not closed.
-          removeMergingModification();
-          isUnseqMerging = false;
-          Files.delete(mergeLog.toPath());
+        // if meet error(like file not found) in merge task, the .merge file may not be deleted
+        File mergedFile =
+            FSFactoryProducer.getFSFactory().getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
+        if (mergedFile.exists()) {
+          if (!mergedFile.delete()) {
+            logger.warn("Delete file {} failed", mergedFile);
+          }
         }
-      } catch (IOException e) {
-        logger.error("{} a merge task ends but cannot delete log {}", storageGroupName,
-            mergeLog.toPath());
+        updateMergeModification(seqFile);
       } finally {
         doubleWriteUnlock(seqFile);
       }
     }
 
+    try {
+      removeMergingModification();
+      isUnseqMerging = false;
+      Files.delete(mergeLog.toPath());
+    } catch (IOException e) {
+      logger.error(
+          "{} a merge task ends but cannot delete log {}", storageGroupName, mergeLog.toPath());
+    }
+
     logger.info("{} a merge task ends", storageGroupName);
   }
 
+  // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
+  public static int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long ver1 = Long.parseLong(items1[0]);
+    long ver2 = Long.parseLong(items2[0]);
+    int cmp = Long.compare(ver1, ver2);
+    if (cmp == 0) {
+      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      if (cmpVersion == 0) {
+        return Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
+      }
+      return cmpVersion;
+    } else {
+      return cmp;
+    }
+  }
 }

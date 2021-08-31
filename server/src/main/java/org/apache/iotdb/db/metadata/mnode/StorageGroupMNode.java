@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 
-public class StorageGroupMNode extends MNode {
+import java.io.IOException;
+
+public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -32,32 +33,38 @@ public class StorageGroupMNode extends MNode {
    */
   private long dataTTL;
 
-  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
+  public StorageGroupMNode(IMNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
   }
 
+  @Override
   public long getDataTTL() {
     return dataTTL;
   }
 
+  @Override
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
   }
 
   @Override
-  public void serializeTo(BufferedWriter bw) throws IOException {
-    serializeChildren(bw);
+  public boolean isStorageGroup() {
+    return true;
+  }
 
-    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
-    s.append(",").append(name).append(",");
-    s.append(dataTTL).append(",");
-    s.append(children == null ? "0" : children.size());
-    bw.write(s.toString());
-    bw.newLine();
+  @Override
+  public void serializeTo(MLogWriter logWriter) throws IOException {
+    serializeChildren(logWriter);
+
+    logWriter.serializeStorageGroupMNode(this);
+  }
+
+  public static StorageGroupMNode deserializeFrom(StorageGroupMNodePlan plan) {
+    return new StorageGroupMNode(null, plan.getName(), plan.getDataTTL());
   }
 
   public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
-    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+    return new StorageGroupMNode(null, nodeInfo[1], Long.parseLong(nodeInfo[2]));
   }
 }

@@ -27,7 +27,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * The schema of timeseries that exist in this file. The deviceTemplates is a simplified manner to
+ * The schema of timeseries that exist in this file. The schemaTemplates is a simplified manner to
  * batch create schema of timeseries.
  */
 public class Schema implements Serializable {
@@ -36,54 +36,53 @@ public class Schema implements Serializable {
    * Path (device + measurement) -> measurementSchema By default, use the LinkedHashMap to store the
    * order of insertion
    */
-  private Map<Path, MeasurementSchema> registeredTimeseries;
+  private Map<Path, IMeasurementSchema> registeredTimeseries;
 
-  /**
-   * template name -> (measuremnet -> MeasurementSchema)
-   */
-  private Map<String, Map<String, MeasurementSchema>> deviceTemplates;
+  /** template name -> (measurement -> MeasurementSchema) */
+  private Map<String, Map<String, IMeasurementSchema>> schemaTemplates;
 
   public Schema() {
     this.registeredTimeseries = new LinkedHashMap<>();
   }
 
-  public Schema(Map<Path, MeasurementSchema> knownSchema) {
+  public Schema(Map<Path, IMeasurementSchema> knownSchema) {
     this.registeredTimeseries = knownSchema;
   }
 
-  public void registerTimeseries(Path path, MeasurementSchema descriptor) {
+  public void registerTimeseries(Path path, IMeasurementSchema descriptor) {
     this.registeredTimeseries.put(path, descriptor);
   }
 
-  public void registerDeviceTemplate(String templateName, Map<String, MeasurementSchema> template) {
-    if (deviceTemplates == null) {
-      deviceTemplates = new HashMap<>();
+  public void registerSchemaTemplate(
+      String templateName, Map<String, IMeasurementSchema> template) {
+    if (schemaTemplates == null) {
+      schemaTemplates = new HashMap<>();
     }
-    this.deviceTemplates.put(templateName, template);
+    this.schemaTemplates.put(templateName, template);
   }
 
-  public void extendTemplate(String templateName, MeasurementSchema descriptor) {
-    if (deviceTemplates == null) {
-      deviceTemplates = new HashMap<>();
+  public void extendTemplate(String templateName, IMeasurementSchema descriptor) {
+    if (schemaTemplates == null) {
+      schemaTemplates = new HashMap<>();
     }
-    Map<String, MeasurementSchema> template = this.deviceTemplates
-        .getOrDefault(templateName, new HashMap<>());
+    Map<String, IMeasurementSchema> template =
+        this.schemaTemplates.getOrDefault(templateName, new HashMap<>());
     template.put(descriptor.getMeasurementId(), descriptor);
-    this.deviceTemplates.put(templateName, template);
+    this.schemaTemplates.put(templateName, template);
   }
 
   public void registerDevice(String deviceId, String templateName) {
-    if (!deviceTemplates.containsKey(templateName)) {
+    if (!schemaTemplates.containsKey(templateName)) {
       return;
     }
-    Map<String, MeasurementSchema> template = deviceTemplates.get(templateName);
-    for (Map.Entry<String, MeasurementSchema> entry : template.entrySet()) {
+    Map<String, IMeasurementSchema> template = schemaTemplates.get(templateName);
+    for (Map.Entry<String, IMeasurementSchema> entry : template.entrySet()) {
       Path path = new Path(deviceId, entry.getKey());
       registerTimeseries(path, entry.getValue());
     }
   }
 
-  public MeasurementSchema getSeriesSchema(Path path) {
+  public IMeasurementSchema getSeriesSchema(Path path) {
     return registeredTimeseries.get(path);
   }
 
@@ -94,20 +93,17 @@ public class Schema implements Serializable {
     return registeredTimeseries.get(path).getType();
   }
 
-  public Map<String, Map<String, MeasurementSchema>> getDeviceTemplates() {
-    return deviceTemplates;
+  public Map<String, Map<String, IMeasurementSchema>> getSchemaTemplates() {
+    return schemaTemplates;
   }
 
-  /**
-   * check if this schema contains a measurement named measurementId.
-   */
+  /** check if this schema contains a measurement named measurementId. */
   public boolean containsTimeseries(Path path) {
     return registeredTimeseries.containsKey(path);
   }
 
   // for test
-  public Map<Path, MeasurementSchema> getRegisteredTimeseriesMap() {
+  public Map<Path, IMeasurementSchema> getRegisteredTimeseriesMap() {
     return registeredTimeseries;
   }
-
 }

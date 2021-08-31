@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
+import org.apache.iotdb.db.engine.modification.io.ModificationReader;
+import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -28,13 +37,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.engine.modification.io.ModificationReader;
-import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
@@ -75,9 +77,8 @@ public class ModificationFile implements AutoCloseable {
     }
   }
 
-  /**
-   * Release resources such as streams and caches.
-   */
+  /** Release resources such as streams and caches. */
+  @Override
   public void close() throws IOException {
     synchronized (this) {
       writer.close();
@@ -139,10 +140,11 @@ public class ModificationFile implements AutoCloseable {
   }
 
   /**
-   * Create a hardlink for the modification file.
-   * The hardlink with have a suffix like ".{sysTime}_{randomLong}"
+   * Create a hardlink for the modification file. The hardlink with have a suffix like
+   * ".{sysTime}_{randomLong}"
+   *
    * @return a new ModificationFile with its path changed to the hardlink, or null if the origin
-   * file does not exist or the hardlink cannot be created.
+   *     file does not exist or the hardlink cannot be created.
    */
   public ModificationFile createHardlink() {
     if (!exists()) {
@@ -150,7 +152,8 @@ public class ModificationFile implements AutoCloseable {
     }
 
     while (true) {
-      String hardlinkSuffix = TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
+      String hardlinkSuffix =
+          TsFileConstant.PATH_SEPARATOR + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(filePath + hardlinkSuffix);
 
       try {

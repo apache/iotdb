@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.tsfile.fileSystem.fileInputFactory;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 public class HDFSInputFactory implements FileInputFactory {
 
@@ -43,6 +43,7 @@ public class HDFSInputFactory implements FileInputFactory {
     }
   }
 
+  @Override
   public TsFileInput getTsFileInput(String filePath) {
     try {
       return (TsFileInput) constructor.newInstance(filePath);

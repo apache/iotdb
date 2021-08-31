@@ -19,6 +19,13 @@
 
 -->
 
+# 0.10.x/0.11.x (version-2) -> 0.12.x (version-3)
+| PR#   | Name                                                        | Author          | Changes                                                      |
+| ----- | ----------------------------------------------------------- | --------------- | ------------------------------------------------------------ |
+| 2263  | Move memtable plan index from ChunkGroupFooter to a separate marker      | jt2594838       | Add min/max plan index after MetaMarker.OPERATION_INDEX_RANGE when a memtable is flush|
+| 2184  | [IOTDB-1081] New TsFile Format      | JackieTien97      | Please see [details](https://cwiki.apache.org/confluence/display/IOTDB/New+TsFile+Format)|
+| 2445  | Remove versionInfo in Tsfile and get rid of versions in memtable      | wshao08       | Delete version info in TsFile |
+
 
 # 0.9.x (version-1) -> 0.10.x (version-2)
 

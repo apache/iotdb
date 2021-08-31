@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.query.reader.universal;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class PriorityMergeReaderTest {
 
@@ -30,23 +32,40 @@ public class PriorityMergeReaderTest {
   public void test2S() throws IOException {
 
     // 2 series
-    test(new long[]{1, 2, 3, 4, 5, 6}, new long[]{2, 2, 2, 1, 2, 2}, new long[]{1, 2, 3, 4, 5},
-        new long[]{1, 2, 3, 5, 6});
-    test(new long[]{1, 2, 3, 4, 5}, new long[]{1, 1, 1, 1, 1}, new long[]{1, 2, 3, 4, 5},
-        new long[]{});
-    test(new long[]{1, 2, 3, 4, 5}, new long[]{2, 2, 2, 2, 2}, new long[]{},
-        new long[]{1, 2, 3, 4, 5});
-    test(new long[]{1, 2, 3, 4, 5, 6, 7, 8}, new long[]{1, 1, 1, 1, 1, 2, 2, 2},
-        new long[]{1, 2, 3, 4, 5},
-        new long[]{6, 7, 8});
+    test(
+        new long[] {1, 2, 3, 4, 5, 6},
+        new long[] {2, 2, 2, 1, 2, 2},
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {1, 2, 3, 5, 6});
+    test(
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {1, 1, 1, 1, 1},
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {});
+    test(
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {2, 2, 2, 2, 2},
+        new long[] {},
+        new long[] {1, 2, 3, 4, 5});
+    test(
+        new long[] {1, 2, 3, 4, 5, 6, 7, 8},
+        new long[] {1, 1, 1, 1, 1, 2, 2, 2},
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {6, 7, 8});
 
     // 3 series
-    test(new long[]{1, 2, 3, 4, 5, 6, 7}, new long[]{3, 3, 3, 1, 3, 2, 3},
-        new long[]{1, 2, 3, 4, 5},
-        new long[]{1, 2, 3, 5, 6}, new long[]{1, 2, 3, 5, 7});
-    test(new long[]{1, 2, 3, 4, 5, 6}, new long[]{1, 1, 2, 3, 2, 3}, new long[]{1, 2},
-        new long[]{3, 5},
-        new long[]{4, 6});
+    test(
+        new long[] {1, 2, 3, 4, 5, 6, 7},
+        new long[] {3, 3, 3, 1, 3, 2, 3},
+        new long[] {1, 2, 3, 4, 5},
+        new long[] {1, 2, 3, 5, 6},
+        new long[] {1, 2, 3, 5, 7});
+    test(
+        new long[] {1, 2, 3, 4, 5, 6},
+        new long[] {1, 1, 2, 3, 2, 3},
+        new long[] {1, 2},
+        new long[] {3, 5},
+        new long[] {4, 6});
   }
 
   private void test(long[] retTimestamp, long[] retValue, long[]... sources) throws IOException {

@@ -19,28 +19,42 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.TsFileManagement.CompactionMergeTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction
- * tasks.
- */
+import java.io.File;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPACTION_LOG_NAME;
+
+/** CompactionMergeTaskPoolManager provides a ThreadPool to queue and run all compaction tasks. */
 public class CompactionMergeTaskPoolManager implements IService {
 
-  private static final Logger logger = LoggerFactory
-      .getLogger(CompactionMergeTaskPoolManager.class);
-  private static final CompactionMergeTaskPoolManager INSTANCE = new CompactionMergeTaskPoolManager();
+  private static final Logger logger =
+      LoggerFactory.getLogger(CompactionMergeTaskPoolManager.class);
+  private static final CompactionMergeTaskPoolManager INSTANCE =
+      new CompactionMergeTaskPoolManager();
   private ExecutorService pool;
+  private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
 
   public static CompactionMergeTaskPoolManager getInstance() {
     return INSTANCE;
@@ -49,8 +63,8 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void start() {
     if (pool == null) {
-      this.pool = IoTDBThreadPoolFactory
-          .newScheduledThreadPool(
+      this.pool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(
               IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
               ThreadName.COMPACTION_SERVICE.getName());
     }
@@ -63,15 +77,45 @@ public class CompactionMergeTaskPoolManager implements IService {
       pool.shutdownNow();
       logger.info("Waiting for task pool to shut down");
       waitTermination();
+      storageGroupTasks.clear();
     }
   }
 
   @Override
-  public void waitAndStop(long millseconds) {
+  public void waitAndStop(long milliseconds) {
     if (pool != null) {
-      awaitTermination(pool, millseconds);
+      awaitTermination(pool, milliseconds);
       logger.info("Waiting for task pool to shut down");
       waitTermination();
+      storageGroupTasks.clear();
+    }
+  }
+
+  @TestOnly
+  public void waitAllCompactionFinish() {
+    if (pool != null) {
+      File sgDir =
+          FSFactoryProducer.getFSFactory()
+              .getFile(
+                  FilePathUtils.regularizePath(
+                          IoTDBDescriptor.getInstance().getConfig().getSystemDir())
+                      + "storage_groups");
+      File[] subDirList = sgDir.listFiles();
+      if (subDirList != null) {
+        for (File subDir : subDirList) {
+          while (FSFactoryProducer.getFSFactory()
+              .getFile(
+                  subDir.getAbsoluteFile()
+                      + File.separator
+                      + subDir.getName()
+                      + COMPACTION_LOG_NAME)
+              .exists()) {
+            // wait
+          }
+        }
+      }
+      storageGroupTasks.clear();
+      logger.info("All compaction task finish");
     }
   }
 
@@ -82,8 +126,10 @@ public class CompactionMergeTaskPoolManager implements IService {
       try {
         Thread.sleep(200);
       } catch (InterruptedException e) {
-        logger.error("CompactionMergeTaskPoolManager {} shutdown",
-            ThreadName.COMPACTION_SERVICE.getName(), e);
+        logger.error(
+            "CompactionMergeTaskPoolManager {} shutdown",
+            ThreadName.COMPACTION_SERVICE.getName(),
+            e);
         Thread.currentThread().interrupt();
       }
       timeMillis += 200;
@@ -93,15 +139,16 @@ public class CompactionMergeTaskPoolManager implements IService {
       }
     }
     pool = null;
+    storageGroupTasks.clear();
     logger.info("CompactionManager stopped");
   }
 
-  private void awaitTermination(ExecutorService service, long millseconds) {
+  private void awaitTermination(ExecutorService service, long milliseconds) {
     try {
       service.shutdown();
-      service.awaitTermination(millseconds, TimeUnit.MILLISECONDS);
+      service.awaitTermination(milliseconds, TimeUnit.MILLISECONDS);
     } catch (InterruptedException e) {
-      logger.warn("CompactionThreadPool can not be closed in {} ms", millseconds);
+      logger.warn("CompactionThreadPool can not be closed in {} ms", milliseconds);
       Thread.currentThread().interrupt();
     }
     service.shutdownNow();
@@ -112,15 +159,37 @@ public class CompactionMergeTaskPoolManager implements IService {
     return ServiceType.COMPACTION_SERVICE;
   }
 
-  public void submitTask(CompactionMergeTask compactionMergeTask)
+  public void submitTask(String storageGroupName, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
-      pool.submit(compactionMergeTask);
+    if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
+        == CompactionStrategy.LEVEL_COMPACTION) {
+      if (pool != null && !pool.isTerminated()) {
+        Future<Void> future = pool.submit(compactionMergeTask);
+        storageGroupTasks
+            .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
+            .add(future);
+      }
+    }
+  }
+
+  /**
+   * Abort all compactions of a storage group. The caller must acquire the write lock of the
+   * corresponding storage group.
+   */
+  public void abortCompaction(String storageGroup) {
+    Set<Future<Void>> subTasks =
+        storageGroupTasks.getOrDefault(storageGroup, Collections.emptySet());
+    Iterator<Future<Void>> subIterator = subTasks.iterator();
+    while (subIterator.hasNext()) {
+      Future<Void> next = subIterator.next();
+      if (!next.isDone() && !next.isCancelled()) {
+        next.cancel(true);
+      }
+      subIterator.remove();
     }
   }
 
   public boolean isTerminated() {
     return pool == null || pool.isTerminated();
   }
-
 }

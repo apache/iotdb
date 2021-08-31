@@ -29,7 +29,7 @@
   * iotdb-engine.properties 加一个参数 compaction_strategy：表示文件合并策略
   * compaction_strategy 内置两个策略：LEVEL_COMPACTION 和 NO_COMPACTION
   * LEVEL_COMPACTION 即开启合并并使用层级合并方法，NO_COMPACTION 即关闭合并
-  * iotdb-engine.properties 中加 merge_chunk_point_number：最大的chunk大小限制，LEVEL_COMPACTION 时，当达到该参数就合并到最后一层
+  * iotdb-engine.properties 中加 merge_chunk_point_number：最大的 chunk 大小限制，LEVEL_COMPACTION 时，当达到该参数就合并到最后一层
   * iotdb-engine.properties 加一个参数 max_level_num：LEVEL_COMPACTION 时最大层数
 * 代码结构修改
   * 新建一个 TsFileManagement 类，专门管理 StorageGroupProcessor 中的 seqFileList 和 unSeqFileList ，在这里写合并的主体逻辑，对外抽象对 seqFileList 和 unSeqFileList 的一系列所需接口
@@ -70,7 +70,9 @@
 	* 生成合并日志 .compaction.log
 	* 记录是层级合并
 	* 记录目标文件
-	* 进行合并（记录日志 device - offset）
+	* 进行合并（每写完一个 device, 记录日志 device - offset）
+	* 生成 .resource 文件
+	* writer endFile
 	* 记录完成合并
 * 加写锁
 * 从磁盘删掉待合并的文件，并从正式文件列表中移除
@@ -81,32 +83,39 @@
 
 * 如果日志文件存在
 	* 如果是全局合并（把所有小文件合并到最后一层）
-		* 如果合并没结束
+		* 如果合并没结束且目标文件还未封口
 			* 截断文件
 			* 继续全局合并
+		* 删除原文件及其对应列表
 	* 如果是层级合并
-		* 如果合并没结束
+		* 如果合并没结束且目标文件还未封口
 			* 截断文件
 			* 继续层级合并
+		* 删除原文件及其对应列表
 * 如果日志文件不存在
 	* 无需恢复
 
 ## LEVEL_COMPACTION 例子
 
-设置 max_file_num_in_each_level = 3，tsfile_manage_strategy = LevelStrategy， max_level_num = 3，此时文件结构为，第0层、第1层、第2层，其中第2层是不再做合并的稳定的文件列表
+设置 max_file_num_in_each_level = 3，tsfile_manage_strategy = LevelStrategy， max_level_num = 3，此时文件结构为，第 0 层、第 1 层、第 2 层，其中第 2 层是不再做合并的稳定的文件列表
 
 ### 完全根据 level 合并的情况
-假设此时整个系统中有5个文件，最后一个文件没有关闭，则其结构及顺序分布如下
+假设此时整个系统中有 5 个文件，最后一个文件没有关闭，则其结构及顺序分布如下
+```
 level-0: t2-0 t3-0 t4-0
 level-1: t0-1 t1-1
-当最后一个文件关闭，按如下方式合并（第0层的t2-0、t3-0、t4-0文件合并到了第1层的t2-1文件）
+```
+当最后一个文件关闭，按如下方式合并（第 0 层的 t2-0、t3-0、t4-0 文件合并到了第 1 层的 t2-1 文件）
+```
 level-0: t2-0 t3-0 t4-0
            \    \    |
              \   \   |
                \  \  |
                  \ \ |
 level-1: t0-1 t1-1 t2-1
-合并后发现第1层合并后也满了，则继续合并到第2层，最后整个系统只剩下了第2层的t0-2文件
+```
+合并后发现第 1 层合并后也满了，则继续合并到第 2 层，最后整个系统只剩下了第 2 层的 t0-2 文件
+```
 level-0: t2-0 t3-0 t4-0
            \    \    |
              \   \   |
@@ -118,12 +127,15 @@ level-1: t0-1 t1-1 t2-1
           |  /   /
           | /  /
 level-2: t0-2
-
+```
 ### 中途满足 merge_chunk_point_number 的情况
-假设此时整个系统中有4个文件，最后一个文件没有关闭,则其结构及顺序分布如下
+假设此时整个系统中有 4 个文件，最后一个文件没有关闭，则其结构及顺序分布如下
+```
 level-0: t2-0 t3-0
 level-1: t0-1 t1-1
-当最后一个文件关闭，但是t0-1、t1-1、t2-0、t3-0文件的 chunk point 数量加起来已经满足 merge_chunk_point_number，则做如下合并，即直接将所有文件合并到第2层（稳定层）
+```
+当最后一个文件关闭，但是 t0-1、t1-1、t2-0、t3-0 文件的 chunk point 数量加起来已经满足 merge_chunk_point_number，则做如下合并，即直接将所有文件合并到第 2 层（稳定层）
+```
 level-0: t2-0 t3-0
            |    |
 level-1: t0-1 t1-1
@@ -131,31 +143,36 @@ level-1: t0-1 t1-1
            |   / 
            |  / 
 level-2: t0-2
-
+```
 ### 动态参数调整的例子
 
 - 系统会严格按照上文中提到的 merge 流程对多层文件进行选择和合并，这里只介绍到参数调整时，系统初始化过程中文件会被放在哪一层
-- 假设max_file_num_in_each_level = 3
-* 从0.10.0升级
+- 假设 max_file_num_in_each_level = 3
+* 从 0.10.0 升级
 	* 将所有文件的 mergeVersion 置为 {max_level_num - 1}
 	* 即老版本的文件不会被重复合并
-假设整个系统中有5个文件，此时恢复后的文件结构为：
+假设整个系统中有 5 个文件，此时恢复后的文件结构为：
 level-2: t0-2 t1-2 t2-2 t3-2 t4-2
 
 * 提高 max_level_num
 	* 此时因为不会改变任何文件的原 level，所以 recover 时文件还会被放到原来的层上，或超出 {max_level_num - 1} 的文件被放在最后一层（考虑到多次调整的情况）
 	* 即原文件将基于原来的 level 继续合并，超出 {max_level_num - 1} 部分也不会有乱序问题，因为在最后一层的必然是老文件
-假设整个系统中有5个文件，原 max_file_num_in_each_level = 2，提高后的 max_file_num_in_each_level = 3，此时恢复后的文件结构为：
+假设整个系统中有 5 个文件，原 max_file_num_in_each_level = 2，提高后的 max_file_num_in_each_level = 3，此时恢复后的文件结构为：
+```
 level-0: t2-0 t3-0 t4-0
 level-1: t0-1 t1-1
+```
 假设 {size(t2-0)+size(t3-0)+size(t4-0)< merge_chunk_point_number}，则进行合并的过程如下
+```
 level-0: t2-0 t3-0 t4-0
            \    \    |
              \   \   |
                \  \  |
                  \ \ |
 level-1: t0-1 t1-1 t2-1
-合并后发现第1层合并后也满了，则继续合并到第2层，最后整个系统只剩下了第2层的t0-2文件
+```
+合并后发现第 1 层合并后也满了，则继续合并到第 2 层，最后整个系统只剩下了第 2 层的 t0-2 文件
+```
 level-0: t2-0 t3-0 t4-0
            \    \    |
              \   \   |
@@ -167,21 +184,26 @@ level-1: t0-1 t1-1 t2-1
          |  /   /
          | /  /
 level-2: t0-2
-
+```
 * 降低 max_level_num
 	* 此时因为不会改变任何文件的原 level，所以 recover 时小于此时 {max_level_num - 1} 的文件还会被放到原来的层上，而超出的文件将被放在最后一层
 	* 即部分文件将被继续合并，而超出 {max_level_num - 2} 的文件将不会再被合并
-假设整个系统中有7个文件，原max_file_num_in_each_level = 3，降低后的max_file_num_in_each_level = 2，此时恢复后的文件结构为：
+假设整个系统中有 7 个文件，原 max_file_num_in_each_level = 3，降低后的 max_file_num_in_each_level = 2，此时恢复后的文件结构为：
+```
 level-0: t4-0 t5-0 t6-0
 level-1: t0-2 t1-1 t2-1 t3-1
+```
 假设 {size(t2-0)+size(t3-0)+size(t4-0)< merge_chunk_point_number}，则进行合并的过程如下
+```
 level-0:          t2-0 t3-0 t4-0
                     \    \    |
                       \   \   |
                         \  \  |
                           \ \ |
 level-1: t0-2 t1-1 t2-1 t3-1 t4-1
-合并后发现第1层合并后也满了，则继续合并到第2层
+```
+合并后发现第 1 层合并后也满了，则继续合并到第 2 层
+```
 level-0:          t2-0 t3-0 t4-0
                     \    \    |
                       \   \   |
@@ -193,30 +215,39 @@ level-1: t0-2 t1-1 t2-1 t3-1 t4-1
           |  /   /
           | /  /
 level-2: t0-2
+```
 最后剩下的文件结构为
+```
 level-0: 
 level-1: t3-1 t4-1
 level-2: t0-2
-
+```
 * NO_COMPACTION -> LEVEL_COMPACTION
-	* 此时因为因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到0层
+	* 此时因为删去了原始合并的 {mergeVersion + 1} 策略，所以所有文件将全部被放到 0 层
 	* 每一次合并会最多取出满足 {merge_chunk_point_number} 的文件进行合并，直到将所有多余的文件合并完，进入正常的合并流程
-假设整个系统中有5个文件，此时恢复后的文件结构为：
+假设整个系统中有 5 个文件，此时恢复后的文件结构为：
+```
 level-2: t0-0 t1-0 t2-0 t3-0 t4-0
+```
 假设 {size(t0-0)+size(t1-0)>=merge_chunk_point_number}，则进行第一次合并的过程如下
-level-0: t0-0 t1-0 t2-0 t3-0 t4-0 t5-0(新增了文件才会触发合并检查)
+```
+level-0: t0-0 t1-0 t2-0 t3-0 t4-0 t5-0（新增了文件才会触发合并检查）
            |   /
            |  /
            | /
 level-2: t0-2
+```
 假设 {size(t2-0)+size(t3-0)>=merge_chunk_point_number}，则进行第二次合并的过程如下
-level-0: t2-0 t3-0 t4-0 t5-0 t6-0(新增了文件才会触发合并检查)
+```
+level-0: t2-0 t3-0 t4-0 t5-0 t6-0（新增了文件才会触发合并检查）
            \    |
             \   |
              \  |
 level-2: t0-2 t2-2
+```
 假设 {size(t4-0)+size(t5-0)+size(t6-0)+size(t7-0)< merge_chunk_point_number}，则进行第三次合并的过程如下
-level-0: t4-0 t5-0 t6-0 t7-0(新增了文件才会触发合并检查)
+```
+level-0: t4-0 t5-0 t6-0 t7-0（新增了文件才会触发合并检查）
            |    /   /
            |   /  /
            |  / /
@@ -224,3 +255,4 @@ level-0: t4-0 t5-0 t6-0 t7-0(新增了文件才会触发合并检查)
 level-1: t4-1
    
 level-2: t0-2 t2-2
+```

@@ -40,7 +40,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 * Create Timeseries
     * check if the storage group exists, if not and the auto create is enable, create it.
     * create a leafMNode in the MTree with alias
-	* if the dynamic parameter is enable, check if the memory is satisfied
+	* If dynamic parameters are turned on, check the memory is satisfied or not
 	* if not restart
 	    * persist tags/attributes into tlog, and return the offset
 		* set the offset of the leafMNode
@@ -66,7 +66,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 * Set Storage Group
     * add StorageGroupMNode in MTree
-	* if dynamic parameter is enable, check if the memory is satisfied
+	* If dynamic parameters are turned on, check the memory is satisfied or not
 	* if not restart, persist log into mlog
 
 * Delete Storage Group
@@ -92,7 +92,7 @@ In the process of initializing, MManager will replay the mlog to load the metada
 
 In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
  
-> Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
+Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
 * Rename Tag/Attribute
 	* obtain the LeafMNode of that timeseries
@@ -173,16 +173,16 @@ The root node exists by default. Creating storage groups, deleting storage group
 	* create LeafMNode, and store the alias in LeafMNode if it has
 	* If it has alias, create another links with alias to LeafMNode
 
-* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; if in the deletion process, a node is found not to have any child node, needs to be deleted recursively.
+* Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; If in the deletion process,it is found that a node does not have any child nodes, it also needs to delete this node recursively.
 	
 ## MTree checkpoint
 
 ### Create condition
 
-To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.txt` and executing the commands line by line. There are two ways to create MTree snapshot:
+To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.bin` and executing the commands line by line. There are two ways to create MTree snapshot:
 1. Background checking and creating automatically: Every 10 minutes, background thread checks the last modified time of MTree. If:
-  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.txt` hasn’t been updated for more than 1 hour
-  * `mlog.txt` has reached 100000 lines (could be configured)
+  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.bin` hasn’t been updated for more than 1 hour
+  * `mlog.bin` has reached 100000 lines (could be configured)
 
 2. Creating manually: Users can use `create snapshot for schema` to create MTree snapshot
 
@@ -196,10 +196,10 @@ The method is `MManager.createMTreeSnapshot()`:
   * MeasurementMNode: 2, name, alias, TSDataType, TSEncoding, CompressionType, props, offset, children size
 
 3. After serialization, rename the temp file to a formal file (`mtree.snapshot`), to avoid crush of server and failure of serialization.
-4. Clear `mlog.txt` by `MLogWriter.clear()` method:
-  * Close BufferedWriter and delete `mlog.txt` file
+4. Clear `mlog.bin` by `MLogWriter.clear()` method:
+  * Close BufferedWriter and delete `mlog.bin` file
   * Create a new BufferedWriter
-  * Set `lineNumber` as 0. `lineNumber` records the line number of `mlog.txt`, which is used for background thread to check whether it is larger than the threshold configured by user.
+  * Set `logNumber` as 0. `logNumber` records the log number of `mlog.bin`, which is used for background thread to check whether it is larger than the threshold configured by user.
 
 5. Release the read lock.
 
@@ -209,19 +209,18 @@ The method is `MManager.initFromLog()`:
 
 1. Check whether the temp file `mtree.snapshot.tmp` exists. If so, there may exist crush of server and failure of serialization. Delete the temp file.
 2. Check whether the snapshot file `mtree.snapshot` exists. If not, use a new MTree; otherwise, start deserializing from snapshot and get MTree
-3. Read and operate all lines in `mlog.txt` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.txt` afterwards.
+3. Read and operate all lines in `mlog.bin` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.bin` afterwards.
 
 ## Log management of metadata
 
-* org.apache.iotdb.db.metadata.MLogWriter
 
-All metadata operations are recorded in a metadata log file, which defaults to data/system/schema/mlog.txt.
+All metadata operations are recorded in a metadata log file, which defaults to data/system/schema/mlog.bin.
 
 When the system restarted, the logs in mlog will be replayed. Until the replaying finished, you need to mark writeToLog to false. When the restart is complete, the writeToLog needs to be set to true.
 
-The type of metadata log is recorded by the MetadataOperationType class. mlog directly stores the corresponding string encoding.
+mlog stores the binary encoding. We can use [MlogParser Tool](https://iotdb.apache.org/UserGuide/Master/System-Tools/MLogParser-Tool.html) to parse the mlog.bin to a human-readable txt version.
 
-sql examples and the corresponding mlog record:
+Schema operation examples and the corresponding parsed mlog record:
 
 * set storage group to root.turbine
 
@@ -265,12 +264,40 @@ sql examples and the corresponding mlog record:
    > mlog: 13,root.turbine.d1.s1,newAlias
    
    > format: 13,path,[new alias]
-                                                                                                                
-                                                                                                              
-## TLog
-* org.apache.iotdb.db.metadata.TagLogFile
+                                                                                                               
+* create schema template temp1(
+  s1 INT32 with encoding=Gorilla and compression SNAPPY,
+  s2 FLOAT with encoding=RLE and compression=SNAPPY
+)
+   
+   > mlog:5,temp1,0,s1,1,8,1
+   
+   > mlog:5,temp1,0,s2,3,2,1
+   
+   > format: 5,template name,is Aligned Timeseries,measurementId,TSDataType,TSEncoding,CompressionType
 
-All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/mlog.txt.
+* set schema template temp1 to root.turbine
+ 
+    > mlog: 6,temp1,root.turbine
+   
+    > format: 6,template name,path
+
+* Auto create device root.turbine.d1 (after set a template to a prefix path,  create a device path in mtree automatically when insert data to the device)
+ 
+    > mlog: 4,root.turbine.d1
+   
+    > format: 4,path
+
+* set root.turbine.d1 is using template (after set a template to a device path, this log shows the device is using template)
+ 
+    > mlog: 61,root.turbine.d1
+   
+    > format: 61,path                                                                                                              
+
+## TLog
+* org.apache.iotdb.db.metadata.tag.TagLogFile
+
+All timeseries tag/attribute information will be saved in the tag file, which defaults to data/system/schema/tlog.txt.
 
 * Total number of bytes of persistence for tags and attributes of each time series is L, which can be configured in the iotdb-engine.properties
 

@@ -19,11 +19,18 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowDevicesOperator extends ShowOperator {
 
   private PartialPath path;
+  private int limit = 0;
+  private int offset = 0;
+  private boolean hasSgCol;
 
   public ShowDevicesOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
@@ -32,5 +39,35 @@ public class ShowDevicesOperator extends ShowOperator {
 
   public PartialPath getPath() {
     return path;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
+  public void setSgCol(boolean hasSgCol) {
+    this.hasSgCol = hasSgCol;
+  }
+
+  public boolean hasSgCol() {
+    return hasSgCol;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new ShowDevicesPlan(path, limit, offset, hasSgCol);
   }
 }

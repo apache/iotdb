@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.reader.chunk;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -29,6 +28,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
+
+import java.io.IOException;
 
 public class ChunkReaderWrap {
 
@@ -42,16 +43,10 @@ public class ChunkReaderWrap {
   // attributes for mem chunk
   private ReadOnlyMemChunk readOnlyMemChunk;
 
-  /**
-   * This is used in test.
-   */
-  protected ChunkReaderWrap() {
+  /** This is used in test. */
+  protected ChunkReaderWrap() {}
 
-  }
-
-  /**
-   * constructor of diskChunkReader
-   */
+  /** constructor of diskChunkReader */
   public ChunkReaderWrap(ChunkMetadata metaData, IChunkLoader chunkLoader, Filter filter) {
     this.type = ChunkReaderType.DISK_CHUNK;
     this.chunkMetaData = metaData;
@@ -59,9 +54,7 @@ public class ChunkReaderWrap {
     this.filter = filter;
   }
 
-  /**
-   * constructor of MemChunkReader
-   */
+  /** constructor of MemChunkReader */
   public ChunkReaderWrap(ReadOnlyMemChunk readOnlyMemChunk, Filter filter) {
     type = ChunkReaderType.MEM_CHUNK;
     this.readOnlyMemChunk = readOnlyMemChunk;
@@ -97,7 +90,7 @@ public class ChunkReaderWrap {
   }
 
   enum ChunkReaderType {
-    DISK_CHUNK, MEM_CHUNK
+    DISK_CHUNK,
+    MEM_CHUNK
   }
-
 }

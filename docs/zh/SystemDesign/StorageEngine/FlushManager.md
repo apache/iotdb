@@ -61,7 +61,7 @@ FlushManager 可以接受 memtable 的持久化任务，提交者有两个，第
 	
 * ioTask 线程
 
-	IO线程，负责将编码好的 Chunk 持久化到磁盘的 TsFile 文件上。
+	IO 线程，负责将编码好的 Chunk 持久化到磁盘的 TsFile 文件上。
 
 ### 两个任务队列
 
@@ -75,7 +75,7 @@ FlushManager 可以接受 memtable 的持久化任务，提交者有两个，第
 	
 	* EndChunkGroupIoTask：结束一个 device (ChunkGroup) 的持久化，encoding 不处理这个命令，直接发给 IO 线程。
 
-* ioTaskQueue: 编码线程->IO线程，包括三种任务
+* ioTaskQueue: 编码线程->IO 线程，包括三种任务
 	
 	* StartFlushGroupIOTask：开始持久化一个 device (ChunkGroup)。
 	

@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.tsfile.encoding.decoder;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.encoder.FloatEncoder;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -33,38 +26,39 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 /**
- * Decoder for float or double value using rle or two diff. For more info about
- * encoding pattern, see{@link FloatEncoder}
+ * Decoder for float or double value using rle or two diff. For more info about encoding pattern,
+ * see{@link FloatEncoder}
  */
 public class FloatDecoder extends Decoder {
 
   private static final Logger logger = LoggerFactory.getLogger(FloatDecoder.class);
   private Decoder decoder;
 
-  /**
-   * maxPointValue = 10^(maxPointNumer). maxPointNumber can be read from the
-   * stream.
-   */
+  /** maxPointValue = 10^(maxPointNumer). maxPointNumber can be read from the stream. */
   private double maxPointValue;
 
-  /**
-   * flag that indicates whether we have read maxPointNumber and calculated
-   * maxPointValue.
-   */
+  /** flag that indicates whether we have read maxPointNumber and calculated maxPointValue. */
   private boolean isMaxPointNumberRead;
 
   public FloatDecoder(TSEncoding encodingType, TSDataType dataType) {
     super(encodingType);
     if (encodingType == TSEncoding.RLE) {
       if (dataType == TSDataType.FLOAT) {
-        decoder = new IntRleDecoder(EndianType.BIG_ENDIAN);
+        decoder = new IntRleDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using int-rle and float");
       } else if (dataType == TSDataType.DOUBLE) {
-        decoder = new LongRleDecoder(EndianType.BIG_ENDIAN);
+        decoder = new LongRleDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using long-rle and double");
       } else {
-        throw new TsFileDecodingException(String.format("data type %s is not supported by FloatDecoder", dataType));
+        throw new TsFileDecodingException(
+            String.format("data type %s is not supported by FloatDecoder", dataType));
       }
     } else if (encodingType == TSEncoding.TS_2DIFF) {
       if (dataType == TSDataType.FLOAT) {
@@ -74,10 +68,12 @@ public class FloatDecoder extends Decoder {
         decoder = new DeltaBinaryDecoder.LongDeltaDecoder();
         logger.debug("tsfile-encoding FloatDecoder: init decoder using long-delta and double");
       } else {
-        throw new TsFileDecodingException(String.format("data type %s is not supported by FloatDecoder", dataType));
+        throw new TsFileDecodingException(
+            String.format("data type %s is not supported by FloatDecoder", dataType));
       }
     } else {
-      throw new TsFileDecodingException(String.format("%s encoding is not supported by FloatDecoder", encodingType));
+      throw new TsFileDecodingException(
+          String.format("%s encoding is not supported by FloatDecoder", encodingType));
     }
     isMaxPointNumberRead = false;
   }

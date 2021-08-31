@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.sync.conf;
 
+import org.apache.iotdb.rpc.RpcUtils;
+
 public class SyncConstant {
 
-  private SyncConstant() {
-  }
+  private SyncConstant() {}
 
   public static final String CONFIG_NAME = "iotdb-sync-client.properties";
 
@@ -31,14 +32,13 @@ public class SyncConstant {
 
   public static final String SYNC_RECEIVER = "sync-receiver";
 
-  public static final String MESSAGE_DIGIT_NAME = "MD5";
+  public static final String MESSAGE_DIGIT_NAME = "SHA-256";
 
   public static final String SYNC_DIR_NAME_SEPARATOR = "_";
 
-  /**
-   * Split data file, block size at each transmission
-   **/
-  public static final int DATA_CHUNK_SIZE = 64 * 1024 * 1024;
+  /** Split data file, block size at each transmission */
+  public static final int DATA_CHUNK_SIZE =
+      Math.min(64 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
 
   // sender section
 
@@ -81,5 +81,4 @@ public class SyncConstant {
   public static final int ERROR_CODE = -1;
 
   public static final int CONFLICT_CODE = -2;
-
 }

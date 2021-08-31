@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.MERGE_FINISHED;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
-import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -35,12 +28,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.FULL_MERGE;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SEQUENCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.UNSEQUENCE_NAME;
+
 public class CompactionLogAnalyzer {
 
-  public static final String STR_DEVICE_OFFSET_SEPERATOR = " ";
+  public static final String STR_DEVICE_OFFSET_SEPARATOR = " ";
 
   private File logFile;
-  private boolean isMergeFinished = false;
   private Set<String> deviceSet = new HashSet<>();
   private long offset = 0;
   private List<String> sourceFiles = new ArrayList<>();
@@ -54,7 +52,7 @@ public class CompactionLogAnalyzer {
 
   /**
    * @return analyze (written device set, last offset, source file list, target file , is contains
-   * merge finished)
+   *     merge finished)
    */
   public void analyze() throws IOException {
     String currLine;
@@ -69,9 +67,6 @@ public class CompactionLogAnalyzer {
             currLine = bufferedReader.readLine();
             targetFile = currLine;
             break;
-          case MERGE_FINISHED:
-            isMergeFinished = true;
-            break;
           case FULL_MERGE:
             fullMerge = true;
             break;
@@ -82,19 +77,13 @@ public class CompactionLogAnalyzer {
             isSeq = false;
             break;
           default:
-            if (currLine.contains(STR_DEVICE_OFFSET_SEPERATOR)) {
-              String[] resultList = currLine.split(STR_DEVICE_OFFSET_SEPERATOR);
-              deviceSet.add(resultList[0]);
-              offset = Long.parseLong(resultList[1]);
-            }
+            int separatorIndex = currLine.lastIndexOf(STR_DEVICE_OFFSET_SEPARATOR);
+            deviceSet.add(currLine.substring(0, separatorIndex));
+            offset = Long.parseLong(currLine.substring(separatorIndex + 1));
             break;
         }
       }
     }
-  }
-
-  public boolean isMergeFinished() {
-    return isMergeFinished;
   }
 
   public Set<String> getDeviceSet() {

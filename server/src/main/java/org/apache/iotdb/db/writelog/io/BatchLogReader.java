@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.db.writelog.io;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * BatchedLogReader reads logs from a binary batch of log in the format of ByteBuffer. The
  * ByteBuffer must be readable.
  */
-public class BatchLogReader implements ILogReader{
+public class BatchLogReader implements ILogReader {
 
   private static Logger logger = LoggerFactory.getLogger(BatchLogReader.class);
 
@@ -59,7 +61,6 @@ public class BatchLogReader implements ILogReader{
     }
     return plans;
   }
-
 
   @Override
   public void close() {

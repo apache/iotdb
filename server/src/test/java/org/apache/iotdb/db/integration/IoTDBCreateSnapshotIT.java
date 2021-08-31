@@ -19,28 +19,29 @@
 
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.logfile.MLogReader;
+import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
 
-import java.io.BufferedReader;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import java.io.File;
-import java.io.FileReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class IoTDBCreateSnapshotIT {
 
@@ -62,8 +63,9 @@ public class IoTDBCreateSnapshotIT {
   @Test
   public void createSnapshotTest() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // test before creating snapshot
@@ -71,35 +73,53 @@ public class IoTDBCreateSnapshotIT {
 
       // create snapshot
       statement.execute("CREATE SNAPSHOT FOR SCHEMA");
-      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot");
+      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot.bin");
 
       // test snapshot file exists
       Assert.assertTrue(snapshotFile.exists());
 
       // test snapshot content correct
-      Set<String> e1 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,2,2,1,,-1,0",
-          "2,s2,,3,2,1,,-1,0", "2,s3,,5,0,1,,-1,0", "2,s4,,0,0,1,,-1,0"));
-      Set<String> e2 = new HashSet<>(Arrays.asList("2,s0,,1,2,1,,-1,0", "2,s1,,5,0,1,,-1,0",
-          "2,s2,,0,0,1,,-1,0"));
+      String[] exp =
+          new String[] {
+            "2,s0,,1,2,1,,-1,0",
+            "2,s1,,2,2,1,,-1,0",
+            "2,s2,,3,2,1,,-1,0",
+            "2,s3,,5,0,1,,-1,0",
+            "2,s4,,0,0,1,,-1,0",
+            "1,d0,9223372036854775807,5",
+            "2,s0,,1,2,1,,-1,0",
+            "2,s1,,5,0,1,,-1,0",
+            "2,s2,,0,0,1,,-1,0",
+            "1,d1,9223372036854775807,3",
+            "0,vehicle,2",
+            "0,root,1"
+          };
 
-      try (BufferedReader br = new BufferedReader(new FileReader(snapshotFile))) {
-        for (int i = 0; i < 5; ++i) {
-          String actual = br.readLine();
-          Assert.assertTrue(e1.removeIf(candidate -> candidate.equals(actual)));
+      Set<PhysicalPlan> d0Plans = new HashSet<>(6);
+      for (int i = 0; i < 6; i++) {
+        d0Plans.add(MLogWriter.convertFromString(exp[i]));
+      }
+
+      Set<PhysicalPlan> d1Plans = new HashSet<>(6);
+      for (int i = 0; i < 6; i++) {
+        d1Plans.add(MLogWriter.convertFromString(exp[i + 6]));
+      }
+
+      try (MLogReader mLogReader = new MLogReader(snapshotFile)) {
+        int i = 0;
+        while (i < 6 && mLogReader.hasNext()) {
+          PhysicalPlan plan = mLogReader.next();
+          assertTrue(d0Plans.removeIf(candidate -> candidate.equals(plan)));
+          i++;
         }
-        Assert.assertTrue(e1.isEmpty());
+        assertTrue(d0Plans.isEmpty());
 
-        Assert.assertEquals("1,d0,9223372036854775807,5", br.readLine());
-
-        for (int i = 0; i < 3; ++i) {
-          String actual = br.readLine();
-          Assert.assertTrue(e2.removeIf(candidate -> candidate.equals(actual)));
+        while (i < 12 && mLogReader.hasNext()) {
+          PhysicalPlan plan = mLogReader.next();
+          assertTrue(d1Plans.removeIf(candidate -> candidate.equals(plan)));
+          i++;
         }
-        Assert.assertTrue(e2.isEmpty());
-
-        Assert.assertEquals("1,d1,9223372036854775807,3", br.readLine());
-        Assert.assertEquals("0,vehicle,2", br.readLine());
-        Assert.assertEquals("0,root,1", br.readLine());
+        assertTrue(d1Plans.isEmpty());
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -113,9 +133,9 @@ public class IoTDBCreateSnapshotIT {
       Assert.fail();
     }
 
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       checkShowTimeseries(statement);
     } catch (Exception e) {
@@ -124,24 +144,25 @@ public class IoTDBCreateSnapshotIT {
     }
   }
 
-  private static void prepareData() throws SQLException {
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-            "root");
+  private static void prepareData() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      String[] creationSqls = new String[]{
-          "SET STORAGE GROUP TO root.vehicle.d0",
-          "SET STORAGE GROUP TO root.vehicle.d1",
-          "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
-      };
+      String[] creationSqls =
+          new String[] {
+            "SET STORAGE GROUP TO root.vehicle.d0",
+            "SET STORAGE GROUP TO root.vehicle.d1",
+            "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+            "CREATE TIMESERIES root.vehicle.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+            "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
+          };
 
       for (String sql : creationSqls) {
         statement.execute(sql);
