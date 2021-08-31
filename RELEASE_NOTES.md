@@ -45,7 +45,6 @@
 * Optimize Primitive Array Manager
 * Function Improvement: add overlapped page rate in Tracing
 
-…t value for SOMAXCONN
 
 ## Bug Fixes
 * [IOTDB-1282] fix C++ class SessionDataSet mem-leak
