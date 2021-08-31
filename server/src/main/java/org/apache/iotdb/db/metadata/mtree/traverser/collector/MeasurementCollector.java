@@ -66,9 +66,8 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
     @Override
     protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-        IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-            if (idx == nodes.length - 1) {
+        if (idx == nodes.length - 1) {
+            if (((IMeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema) {
                 processValidNode(node, idx);
             }
         }

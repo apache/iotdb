@@ -21,9 +21,6 @@ public abstract class Traverser {
     // if isMeasurementTraverser, measurement in template should be processed
     protected boolean isMeasurementTraverser = false;
 
-    // if isNodeTraverser, ignore template
-    protected boolean isNodeTraverser = false;
-
     // default false means fullPath pattern match
     protected boolean isPrefixMatch = false;
 
@@ -45,24 +42,24 @@ public abstract class Traverser {
 
     protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
 
-        if(storageGroupFilter!=null
+        if (storageGroupFilter != null
                 && node.isStorageGroup()
-                && !storageGroupFilter.satisfy(node.getFullPath())){
+                && !storageGroupFilter.satisfy(node.getFullPath())) {
             return;
         }
 
-        if(isLevelTraverser && level > targetLevel){
+        if (isLevelTraverser && level > targetLevel) {
             return;
         }
 
         if (idx >= nodes.length) {
             if (isValid(node)) {
-                if(isLevelTraverser){
-                    if(targetLevel == level){
+                if (isLevelTraverser) {
+                    if (targetLevel == level) {
                         processValidNode(node, idx);
                         return;
                     }
-                }else {
+                } else {
                     processValidNode(node, idx);
                 }
             }
@@ -103,15 +100,13 @@ public abstract class Traverser {
             traverse(child, idx + 1, true, level + 1);
         }
 
-        if (!isMeasurementTraverser||isNodeTraverser) {
+        if (!isMeasurementTraverser || !node.isUseTemplate()) {
             return;
         }
 
-        if (node.isUseTemplate()) {
-            Template upperTemplate = node.getUpperTemplate();
-            for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, true, level + 1);
-            }
+        Template upperTemplate = node.getUpperTemplate();
+        for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+            traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, true, level + 1);
         }
     }
 
@@ -129,21 +124,20 @@ public abstract class Traverser {
             }
         }
 
-        if (!isMeasurementTraverser||isNodeTraverser) {
+        if (!isMeasurementTraverser || !node.isUseTemplate()) {
             return;
         }
 
-        if (node.isUseTemplate()) {
-            for (IMeasurementSchema schema : node.getUpperTemplate().getSchemaMap().values()) {
-                if (!Pattern.matches(regex, schema.getMeasurementId())) {
-                    continue;
-                }
-                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, false, level + 1);
+        Template upperTemplate = node.getUpperTemplate();
+        for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+            if (!Pattern.matches(regex, schema.getMeasurementId())) {
+                continue;
             }
-            if (multiLevelWildcard) {
-                for (IMeasurementSchema schema : node.getUpperTemplate().getSchemaMap().values()) {
-                    traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, true, level + 1);
-                }
+            traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx + 1, false, level + 1);
+        }
+        if (multiLevelWildcard) {
+            for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, true, level + 1);
             }
         }
     }
@@ -159,21 +153,19 @@ public abstract class Traverser {
             }
         }
 
-        if (!isMeasurementTraverser||isNodeTraverser) {
+        if (!isMeasurementTraverser || !node.isUseTemplate()) {
             return;
         }
 
-        if (node.isUseTemplate()) {
-            Template upperTemplate = node.getUpperTemplate();
-            IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(nodes[idx]);
-            if (targetSchema != null) {
-                traverse(new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null), idx + 1, false, level + 1);
-            }
+        Template upperTemplate = node.getUpperTemplate();
+        IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(nodes[idx]);
+        if (targetSchema != null) {
+            traverse(new MeasurementMNode(node, targetSchema.getMeasurementId(), targetSchema, null), idx + 1, false, level + 1);
+        }
 
-            if (multiLevelWildcard) {
-                for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-                    traverse(new MeasurementMNode(node, schema.getMeasurementId(), targetSchema, null), idx, true, level + 1);
-                }
+        if (multiLevelWildcard) {
+            for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
+                traverse(new MeasurementMNode(node, schema.getMeasurementId(), schema, null), idx, true, level + 1);
             }
         }
     }
@@ -185,7 +177,7 @@ public abstract class Traverser {
         }
     }
 
-    public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter){
+    public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
         this.storageGroupFilter = storageGroupFilter;
     }
 }

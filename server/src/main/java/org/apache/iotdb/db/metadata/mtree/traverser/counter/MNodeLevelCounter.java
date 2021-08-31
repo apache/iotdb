@@ -7,7 +7,6 @@ public class MNodeLevelCounter extends CounterTraverser{
 
     public MNodeLevelCounter(IMNode startNode, String[] nodes, int targetLevel) {
         super(startNode, nodes);
-        isNodeTraverser = true;
         isLevelTraverser = true;
         this.targetLevel = targetLevel;
     }

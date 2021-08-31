@@ -7,7 +7,6 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T>{
 
     public MNodeCollector(IMNode startNode, String[] nodes, T resultSet) {
         super(startNode, nodes, resultSet);
-        isNodeTraverser = true;
     }
 
     @Override
