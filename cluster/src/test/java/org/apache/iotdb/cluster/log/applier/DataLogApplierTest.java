@@ -146,7 +146,8 @@ public class DataLogApplierTest extends IoTDBTest {
 
   private TestDataGroupMember testDataGroupMember =
       new TestDataGroupMember(
-          TestUtils.getNode(10), Collections.singletonList(TestUtils.getNode(10)));
+          TestUtils.getNode(10),
+          new PartitionGroup(Collections.singletonList(TestUtils.getNode(10))));
 
   private DataLogApplier applier;
 
