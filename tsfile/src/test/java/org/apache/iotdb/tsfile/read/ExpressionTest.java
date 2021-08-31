@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -30,8 +31,8 @@ public class ExpressionTest {
   public void testGlobalTime() {
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.eq(10L));
     globalTimeExpression.setFilter(TimeFilter.eq(100L));
-    Assert.assertEquals(TimeFilter.eq(100L),
-        ((GlobalTimeExpression) globalTimeExpression.clone()).getFilter());
+    Assert.assertEquals(
+        TimeFilter.eq(100L), ((GlobalTimeExpression) globalTimeExpression.clone()).getFilter());
   }
 
   @Test

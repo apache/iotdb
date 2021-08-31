@@ -41,5 +41,4 @@ public class ChunkReaderByTimestamp extends ChunkReader {
   public void setCurrentTimestamp(long currentTimestamp) {
     this.currentTimestamp = currentTimestamp;
   }
-
 }

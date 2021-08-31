@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.engine.modification.io;
 
-import java.io.IOException;
-import java.util.Collection;
 import org.apache.iotdb.db.engine.modification.Modification;
 
-/**
- * ModificationReader reads all modifications from a persistent medium like file system.
- */
+import java.io.IOException;
+import java.util.Collection;
+
+/** ModificationReader reads all modifications from a persistent medium like file system. */
 public interface ModificationReader {
 
   /**
@@ -35,8 +34,6 @@ public interface ModificationReader {
    */
   Collection<Modification> read();
 
-  /**
-   * Release resources like streams.
-   */
+  /** Release resources like streams. */
   void close() throws IOException;
 }

@@ -18,12 +18,11 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -34,10 +33,13 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
 
 public class TimeGeneratorTest {
 
@@ -66,16 +68,18 @@ public class TimeGeneratorTest {
     long startTimestamp = 1480562618000L;
     Filter filter = TimeFilter.lt(1480562618100L);
     Filter filter2 = ValueFilter.gt(new Binary("dog"));
-    Filter filter3 = FilterFactory
-        .and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
+    Filter filter3 =
+        FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
 
-    IExpression IExpression = BinaryExpression.or(
-        BinaryExpression.and(new SingleSeriesExpression(new Path("d1", "s1"), filter),
-            new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
-        new SingleSeriesExpression(new Path("d1", "s1"), filter3));
+    IExpression IExpression =
+        BinaryExpression.or(
+            BinaryExpression.and(
+                new SingleSeriesExpression(new Path("d1", "s1"), filter),
+                new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
+            new SingleSeriesExpression(new Path("d1", "s1"), filter3));
 
-    TsFileTimeGenerator timestampGenerator = new TsFileTimeGenerator(IExpression, chunkLoader,
-        metadataQuerierByFile);
+    TsFileTimeGenerator timestampGenerator =
+        new TsFileTimeGenerator(IExpression, chunkLoader, metadataQuerierByFile);
     while (timestampGenerator.hasNext()) {
       // System.out.println(timestampGenerator.next());
       Assert.assertEquals(startTimestamp, timestampGenerator.next());

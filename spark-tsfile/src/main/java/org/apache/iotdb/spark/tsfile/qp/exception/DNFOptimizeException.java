@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.exception;
 
-
-/**
- * This exception is threw whiling meeting error in
- *
- */
+/** This exception is threw whiling meeting error in */
 public class DNFOptimizeException extends LogicalOptimizeException {
 
   private static final long serialVersionUID = 807384397361662482L;
@@ -30,5 +26,4 @@ public class DNFOptimizeException extends LogicalOptimizeException {
   public DNFOptimizeException(String msg) {
     super(msg);
   }
-
 }

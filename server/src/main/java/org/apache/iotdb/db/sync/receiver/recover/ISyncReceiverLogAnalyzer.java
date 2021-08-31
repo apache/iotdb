@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.sync.receiver.recover;
 
+import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
+
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 
 public interface ISyncReceiverLogAnalyzer {
 
@@ -29,5 +30,4 @@ public interface ISyncReceiverLogAnalyzer {
   boolean recover(String senderName) throws IOException;
 
   void scanLogger(IFileLoader loader, File syncLog, File loadLog);
-
 }

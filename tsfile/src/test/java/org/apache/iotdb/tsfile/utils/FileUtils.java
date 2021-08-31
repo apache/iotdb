@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import java.io.File;
-
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
+import java.io.File;
+
 /**
- * FileUtils is just used for return file attribute like file size, and contains
- * some measurement conversion among B, KB, MB etc.
+ * FileUtils is just used for return file attribute like file size, and contains some measurement
+ * conversion among B, KB, MB etc.
  */
 public class FileUtils {
 
@@ -41,7 +41,7 @@ public class FileUtils {
    * transform the byte value number to another unit.
    *
    * @param value - a number represented Byte which to be transformed
-   * @param unit  - the target unit to be transformed
+   * @param unit - the target unit to be transformed
    * @return - value number in unit of given parameter
    */
   public static double transformUnit(double value, Unit unit) {
@@ -52,7 +52,7 @@ public class FileUtils {
    * transform the value number from other unit to Byte unit.
    *
    * @param value - a number to be transformed
-   * @param unit  - the source unit to be transformed, maybe in unit of KB, MB, GB
+   * @param unit - the source unit to be transformed, maybe in unit of KB, MB, GB
    * @return - value number in unit of Byte
    */
   public static double transformUnitToByte(double value, Unit unit) {
@@ -62,7 +62,7 @@ public class FileUtils {
   /**
    * reserves some decimal for given double value
    *
-   * @param num   - given double value
+   * @param num - given double value
    * @param round - reserved decimal number
    * @return - double value in given decimal number
    */
@@ -71,7 +71,13 @@ public class FileUtils {
     return ((double) a) / Math.pow(10, round);
   }
 
-  public static enum Unit {
-    B, KB, MB, GB, TB, PB, EB
+  public enum Unit {
+    B,
+    KB,
+    MB,
+    GB,
+    TB,
+    PB,
+    EB
   }
 }

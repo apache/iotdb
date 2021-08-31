@@ -19,13 +19,14 @@
 
 package org.apache.iotdb.db.query.reader.resource;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.CachedPriorityMergeReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
+import java.util.List;
 
 public class CachedUnseqResourceMergeReader extends CachedPriorityMergeReader {
 

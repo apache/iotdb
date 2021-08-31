@@ -18,18 +18,13 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -37,6 +32,12 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 public class LastPointReader {
 
@@ -52,40 +53,47 @@ public class LastPointReader {
 
   private QueryDataSource dataSource;
 
-  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();;
+  private IChunkMetadata cachedLastChunk;
 
-  public LastPointReader() {
+  private List<ITimeSeriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();
 
-  }
+  public LastPointReader() {}
 
-  public LastPointReader(PartialPath seriesPath, TSDataType dataType, Set<String> deviceMeasurements,
-      QueryContext context, QueryDataSource dataSource, long queryTime, Filter timeFilter) {
+  public LastPointReader(
+      PartialPath seriesPath,
+      TSDataType dataType,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      QueryDataSource dataSource,
+      long queryTime,
+      Filter timeFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.dataSource = dataSource;
     this.context = context;
     this.queryTime = queryTime;
     this.deviceMeasurements = deviceMeasurements;
+    deviceMeasurements.add(seriesPath.getMeasurement());
     this.timeFilter = timeFilter;
   }
 
   public TimeValuePair readLastPoint() throws IOException {
-    TimeValuePair lastPointResult = retrieveValidLastPointFromSeqFiles();
-    UnpackOverlappedUnseqFiles(lastPointResult.getTimestamp());
+    TimeValuePair resultPoint = retrieveValidLastPointFromSeqFiles();
+    UnpackOverlappedUnseqFiles(resultPoint.getTimestamp());
 
-    long lastVersion = 0;
-    PriorityQueue<ChunkMetadata> sortedChunkMetatdataList = sortUnseqChunkMetadatasByEndtime();
+    PriorityQueue<IChunkMetadata> sortedChunkMetatdataList = sortUnseqChunkMetadatasByEndtime();
     while (!sortedChunkMetatdataList.isEmpty()
-        && lastPointResult.getTimestamp() <= sortedChunkMetatdataList.peek().getEndTime()) {
-      ChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
-      TimeValuePair lastChunkPoint = getChunkLastPoint(chunkMetadata);
-      if (shouldUpdate(lastPointResult.getTimestamp(), lastVersion,
-          lastChunkPoint.getTimestamp(), chunkMetadata.getVersion())) {
-        lastPointResult = lastChunkPoint;
-        lastVersion = chunkMetadata.getVersion();
+        && resultPoint.getTimestamp() <= sortedChunkMetatdataList.peek().getEndTime()) {
+      IChunkMetadata chunkMetadata = sortedChunkMetatdataList.poll();
+      TimeValuePair chunkLastPoint = getChunkLastPoint(chunkMetadata);
+      if (chunkLastPoint.getTimestamp() > resultPoint.getTimestamp()
+          || (chunkLastPoint.getTimestamp() == resultPoint.getTimestamp()
+              && (cachedLastChunk == null || shouldUpdate(cachedLastChunk, chunkMetadata)))) {
+        cachedLastChunk = chunkMetadata;
+        resultPoint = chunkLastPoint;
       }
     }
-    return lastPointResult;
+    return resultPoint;
   }
 
   /** Pick up and cache the last sequence TimeseriesMetadata that satisfies timeFilter */
@@ -95,17 +103,19 @@ public class LastPointReader {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     for (int index = seqFileResource.size() - 1; index >= 0; index--) {
       TsFileResource resource = seqFileResource.get(index);
-      TimeseriesMetadata timeseriesMetadata =
+      ITimeSeriesMetadata timeseriesMetadata;
+      timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
-        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (!timeseriesMetadata.isModified()
+            && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),
               dataType);
         } else {
-          List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+          List<IChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
             lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop
@@ -120,21 +130,20 @@ public class LastPointReader {
     return lastPoint;
   }
 
-  /**
-   * find the last TimeseriesMetadata in unseq files and unpack all overlapped unseq files
-   */
+  /** find the last TimeseriesMetadata in unseq files and unpack all overlapped unseq files */
   private void UnpackOverlappedUnseqFiles(long lBoundTime) throws IOException {
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
     while (!unseqFileResource.isEmpty()
         && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDevice()))) {
-      TimeseriesMetadata timeseriesMetadata =
+      ITimeSeriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
 
-      if (timeseriesMetadata == null || (!timeseriesMetadata.isModified()
-          && timeseriesMetadata.getStatistics().getEndTime() < lBoundTime)) {
+      if (timeseriesMetadata == null
+          || (!timeseriesMetadata.isModified()
+              && timeseriesMetadata.getStatistics().getEndTime() < lBoundTime)) {
         continue;
       }
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
@@ -148,7 +157,7 @@ public class LastPointReader {
     }
   }
 
-  private TimeValuePair getChunkLastPoint(ChunkMetadata chunkMetaData) throws IOException {
+  private TimeValuePair getChunkLastPoint(IChunkMetadata chunkMetaData) throws IOException {
     TimeValuePair lastPoint = new TimeValuePair(Long.MIN_VALUE, null);
     if (chunkMetaData == null) {
       return lastPoint;
@@ -164,8 +173,8 @@ public class LastPointReader {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
       if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
-        lastPoint = constructLastPair(
-            pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
+        lastPoint =
+            constructLastPair(pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {
         BatchData batchData = pageReader.getAllSatisfiedPageData();
         lastPoint = batchData.getLastPairBeforeOrEqualTimestamp(queryTime);
@@ -177,8 +186,10 @@ public class LastPointReader {
     return lastPoint;
   }
 
-  private boolean shouldUpdate(long time, long version, long newTime, long newVersion) {
-    return time < newTime || (time == newTime && version < newVersion);
+  private boolean shouldUpdate(IChunkMetadata cachedChunk, IChunkMetadata newChunk) {
+    return (newChunk.getVersion() > cachedChunk.getVersion())
+        || (newChunk.getVersion() == cachedChunk.getVersion()
+            && newChunk.getOffsetOfChunkHeader() > cachedChunk.getOffsetOfChunkHeader());
   }
 
   private PriorityQueue<TsFileResource> sortUnSeqFileResourcesInDecendingOrder(
@@ -194,8 +205,8 @@ public class LastPointReader {
     return unseqTsFilesSet;
   }
 
-  private PriorityQueue<ChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
-    PriorityQueue<ChunkMetadata> chunkMetadataList =
+  private PriorityQueue<IChunkMetadata> sortUnseqChunkMetadatasByEndtime() throws IOException {
+    PriorityQueue<IChunkMetadata> chunkMetadataList =
         new PriorityQueue<>(
             (o1, o2) -> {
               long endTime1 = o1.getEndTime();
@@ -205,9 +216,14 @@ public class LastPointReader {
               } else if (endTime1 > endTime2) {
                 return -1;
               }
-              return Long.compare(o2.getVersion(), o1.getVersion());
+              if (o2.getVersion() > o1.getVersion()) {
+                return 1;
+              }
+              return (o2.getVersion() < o1.getVersion()
+                  ? -1
+                  : Long.compare(o2.getOffsetOfChunkHeader(), o1.getOffsetOfChunkHeader()));
             });
-    for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
+    for (ITimeSeriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
       if (timeseriesMetadata != null) {
         chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
       }
@@ -216,6 +232,9 @@ public class LastPointReader {
   }
 
   private boolean endtimeContainedByTimeFilter(Statistics statistics) {
+    if (timeFilter == null) {
+      return true;
+    }
     return timeFilter.containStartEndTime(statistics.getEndTime(), statistics.getEndTime());
   }
 

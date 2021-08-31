@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.web.grafana.service;
 
-import java.time.ZonedDateTime;
-import java.util.List;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
+
+import java.time.ZonedDateTime;
+import java.util.List;
 
 public interface DatabaseConnectService {
 
@@ -30,5 +31,4 @@ public interface DatabaseConnectService {
   List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange);
 
   List<String> getMetaData();
-
 }

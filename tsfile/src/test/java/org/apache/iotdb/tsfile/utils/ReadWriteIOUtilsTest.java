@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
-import static org.junit.Assert.fail;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -26,8 +27,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Assert;
-import org.junit.Test;
+
+import static org.junit.Assert.fail;
 
 public class ReadWriteIOUtilsTest {
 
@@ -45,12 +46,12 @@ public class ReadWriteIOUtilsTest {
       fail(e.toString());
     }
 
-    String result;
-    result = ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    String result =
+        ReadWriteIOUtils.readString(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(str, result);
 
-    //2. null value
+    // 2. null value
     str = null;
     byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
     stream = new DataOutputStream(byteArrayOutputStream);
@@ -80,8 +81,8 @@ public class ReadWriteIOUtilsTest {
       fail(e.toString());
     }
 
-    Map<String, String> result;
-    result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    Map<String, String> result =
+        ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
 
@@ -135,6 +136,5 @@ public class ReadWriteIOUtilsTest {
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
-
   }
 }

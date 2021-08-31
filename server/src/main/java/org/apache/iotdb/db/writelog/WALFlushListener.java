@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.writelog;
 
-import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
+
+import java.io.IOException;
 
 public class WALFlushListener implements FlushListener {
 

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
 
 public interface QueryExecutor {
 

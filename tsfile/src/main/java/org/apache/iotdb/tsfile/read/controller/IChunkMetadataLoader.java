@@ -18,23 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 
 import java.io.IOException;
 import java.util.List;
 
 public interface IChunkMetadataLoader {
 
-  /**
-   * read all chunk metadata of one time series in one file.
-   */
-  List<ChunkMetadata> loadChunkMetadataList() throws IOException;
+  /** read all chunk metadata of one time series in one file. */
+  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata)
+      throws IOException;
 
-  /**
-   * For query 0.9/v1 tsfile only
-   * @param chunkMetadataList
-   * @throws IOException
-   */
-  void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException;
-
+  boolean isMemChunkMetadataLoader();
 }

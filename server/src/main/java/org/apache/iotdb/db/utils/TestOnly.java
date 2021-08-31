@@ -28,8 +28,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
 @Retention(RetentionPolicy.SOURCE)
 /**
- * TestOnly implies that the method should only be used in the tests, otherwise its functionality
- * is not guaranteed and may interfere with the normal code.
+ * TestOnly implies that the method should only be used in the tests, otherwise its functionality is
+ * not guaranteed and may interfere with the normal code.
  */
-public @interface TestOnly {
-}
+public @interface TestOnly {}

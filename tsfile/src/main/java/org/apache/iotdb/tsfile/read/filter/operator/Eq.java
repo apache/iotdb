@@ -34,8 +34,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -6668083116644568248L;
 
-  public Eq() {
-  }
+  public Eq() {}
 
   public Eq(T value, FilterType filterType) {
     super(value, filterType);
@@ -44,8 +43,8 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
   @Override
   public boolean satisfy(Statistics statistics) {
     if (filterType == FilterType.TIME_FILTER) {
-      return ((Long) value) >= statistics.getStartTime() && ((Long) value) <= statistics
-          .getEndTime();
+      return ((Long) value) >= statistics.getStartTime()
+          && ((Long) value) <= statistics.getEndTime();
     } else {
       if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;

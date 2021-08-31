@@ -19,29 +19,18 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -54,18 +43,26 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class DeletionFileNodeTest {
 
-  private String processorName = "root.test";
-
   private static String[] measurements = new String[10];
-  private TSDataType dataType = TSDataType.DOUBLE;
-  private TSEncoding encoding = TSEncoding.PLAIN;
 
   static {
     for (int i = 0; i < 10; i++) {
@@ -73,20 +70,32 @@ public class DeletionFileNodeTest {
     }
   }
 
+  private String processorName = "root.test";
+  private TSDataType dataType = TSDataType.DOUBLE;
+  private TSEncoding encoding = TSEncoding.PLAIN;
+  private int prevUnseqLevelNum = 0;
+
   @Before
   public void setup() throws MetadataException {
+    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.createTimeseries(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]), dataType,
-          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+      IoTDB.metaManager.createTimeseries(
+          new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
+          dataType,
+          encoding,
+          TSFileDescriptor.getInstance().getConfig().getCompressor(),
+          Collections.emptyMap());
     }
   }
 
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
 
   private void insertToStorageEngine(TSRecord record)
@@ -96,8 +105,8 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInBufferWriteCache() throws
-      StorageEngineException, QueryProcessException, IOException, IllegalPathException {
+  public void testDeleteInBufferWriteCache()
+      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -112,23 +121,32 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR +
-        measurements[5]), null);
-    QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource((PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
-
-    List<ReadOnlyMemChunk> timeValuePairs =
-        dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
-    int count = 0;
-    for (ReadOnlyMemChunk chunk : timeValuePairs) {
-      IPointReader iterator = chunk.getPointReader();
-      while (iterator.hasNextTimeValuePair()) {
-        iterator.nextTimeValuePair();
-        count++;
+    SingleSeriesExpression expression =
+        new SingleSeriesExpression(
+            new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    try {
+      QueryDataSource dataSource =
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+      List<ReadOnlyMemChunk> timeValuePairs =
+          dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
+      int count = 0;
+      for (ReadOnlyMemChunk chunk : timeValuePairs) {
+        IPointReader iterator = chunk.getPointReader();
+        while (iterator.hasNextTimeValuePair()) {
+          iterator.nextTimeValuePair();
+          count++;
+        }
       }
+      assertEquals(50, count);
+      QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
-    assertEquals(50, count);
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
@@ -147,21 +165,35 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
 
-    Modification[] realModifications = new Modification[]{
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), 201, 50),
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]), 202, 40),
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]), 203, 30),
-    };
+    Modification[] realModifications =
+        new Modification[] {
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
+              201,
+              50),
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]),
+              202,
+              40),
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]),
+              203,
+              30),
+        };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getSequenceFileFolder(0),
-        processorName);
+    File fileNodeDir =
+        new File(DirectoryManager.getInstance().getSequenceFileFolder(0), processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
-            modFiles.add(file);
+          if (file.isDirectory()) {
+            for (File tsfile : file.listFiles()) {
+              if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
+                modFiles.add(tsfile);
+              }
+            }
           }
         }
       }
@@ -212,30 +244,40 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
 
-    SingleSeriesExpression expression = new SingleSeriesExpression(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR +
-        measurements[5]), null);
+    SingleSeriesExpression expression =
+        new SingleSeriesExpression(
+            new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
 
-    QueryDataSource dataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource((PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
 
-    List<ReadOnlyMemChunk> timeValuePairs =
-        dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
-    int count = 0;
-    for (ReadOnlyMemChunk chunk : timeValuePairs) {
-      IPointReader iterator = chunk.getPointReader();
-      while (iterator.hasNextTimeValuePair()) {
-        iterator.nextTimeValuePair();
-        count++;
+    try {
+      QueryDataSource dataSource =
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(
+                  (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
+
+      List<ReadOnlyMemChunk> timeValuePairs =
+          dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
+      int count = 0;
+      for (ReadOnlyMemChunk chunk : timeValuePairs) {
+        IPointReader iterator = chunk.getPointReader();
+        while (iterator.hasNextTimeValuePair()) {
+          iterator.nextTimeValuePair();
+          count++;
+        }
       }
-    }
-    assertEquals(50, count);
+      assertEquals(50, count);
 
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+      QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
+    }
   }
 
   @Test
-  public void testDeleteInOverflowFile()
-      throws StorageEngineException, QueryProcessException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -260,21 +302,35 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
     StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
 
-    Modification[] realModifications = new Modification[]{
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), 301, 50),
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]), 302, 40),
-        new Deletion(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]), 303, 30),
-    };
+    Modification[] realModifications =
+        new Modification[] {
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
+              301,
+              50),
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]),
+              302,
+              40),
+          new Deletion(
+              new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]),
+              303,
+              30),
+        };
 
-    File fileNodeDir = new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(),
-        processorName);
+    File fileNodeDir =
+        new File(DirectoryManager.getInstance().getNextFolderForUnSequenceFile(), processorName);
     List<File> modFiles = new ArrayList<>();
     for (File directory : fileNodeDir.listFiles()) {
       assertTrue(directory.isDirectory());
       if (directory.isDirectory()) {
         for (File file : directory.listFiles()) {
-          if (file.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
-            modFiles.add(file);
+          if (file.isDirectory()) {
+            for (File tsfile : file.listFiles()) {
+              if (tsfile.getPath().endsWith(ModificationFile.FILE_SUFFIX)) {
+                modFiles.add(tsfile);
+              }
+            }
           }
         }
       }

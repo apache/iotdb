@@ -18,28 +18,27 @@
  */
 package org.apache.iotdb.tsfile.write.page;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.iotdb.tsfile.compress.ICompressor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.WritableByteChannel;
 
 /**
- * This writer is used to write time-value into a page. It consists of a time
- * encoder, a value encoder and respective OutputStream.
+ * This writer is used to write time-value into a page. It consists of a time encoder, a value
+ * encoder and respective OutputStream.
  */
 public class PageWriter {
 
@@ -55,8 +54,8 @@ public class PageWriter {
   private PublicBAOS valueOut;
 
   /**
-   * statistic of current page. It will be reset after calling
-   * {@code writePageHeaderAndDataIntoBuff()}
+   * statistic of current page. It will be reset after calling {@code
+   * writePageHeaderAndDataIntoBuff()}
    */
   private Statistics<?> statistics;
 
@@ -64,7 +63,7 @@ public class PageWriter {
     this(null, null);
   }
 
-  public PageWriter(MeasurementSchema measurementSchema) {
+  public PageWriter(IMeasurementSchema measurementSchema) {
     this(measurementSchema.getTimeEncoder(), measurementSchema.getValueEncoder());
     this.statistics = Statistics.getStatsByType(measurementSchema.getType());
     this.compressor = ICompressor.getCompressor(measurementSchema.getCompressor());
@@ -77,72 +76,56 @@ public class PageWriter {
     this.valueEncoder = valueEncoder;
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, boolean value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, short value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, int value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, long value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, float value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, double value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write a time value pair into encoder
-   */
+  /** write a time value pair into encoder */
   public void write(long time, Binary value) {
     timeEncoder.encode(time, timeOut);
     valueEncoder.encode(value, valueOut);
     statistics.update(time, value);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, boolean[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -151,9 +134,7 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, int[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -162,9 +143,7 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, long[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -173,9 +152,7 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, float[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -184,9 +161,7 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, double[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -195,9 +170,7 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * write time series into encoder
-   */
+  /** write time series into encoder */
   public void write(long[] timestamps, Binary[] values, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
       timeEncoder.encode(timestamps[i], timeOut);
@@ -206,17 +179,15 @@ public class PageWriter {
     statistics.update(timestamps, values, batchSize);
   }
 
-  /**
-   * flush all data remained in encoders.
-   */
+  /** flush all data remained in encoders. */
   private void prepareEndWriteOnePage() throws IOException {
     timeEncoder.flush(timeOut);
     valueEncoder.flush(valueOut);
   }
 
   /**
-   * getUncompressedBytes return data what it has been written in form of
-   * <code>size of time list, time list, value list</code>
+   * getUncompressedBytes return data what it has been written in form of <code>
+   * size of time list, time list, value list</code>
    *
    * @return a new readable ByteBuffer whose position is 0.
    */
@@ -230,32 +201,40 @@ public class PageWriter {
     return buffer;
   }
 
-  /**
-   * write the page header and data into the PageWriter's output stream.
-   */
-  public void writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer) throws IOException {
+  /** write the page header and data into the PageWriter's output stream. */
+  public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer, boolean first)
+      throws IOException {
     if (statistics.getCount() == 0) {
-      return;
+      return 0;
     }
 
     ByteBuffer pageData = getUncompressedBytes();
     int uncompressedSize = pageData.remaining();
     int compressedSize;
-    int compressedPosition = 0;
     byte[] compressedBytes = null;
 
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
-      compressedSize = pageData.remaining();
+      compressedSize = uncompressedSize;
     } else {
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
-      compressedPosition = 0;
       // data is never a directByteBuffer now, so we can use data.array()
-      compressedSize = compressor.compress(pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
+      compressedSize =
+          compressor.compress(
+              pageData.array(), pageData.position(), uncompressedSize, compressedBytes);
     }
 
     // write the page header to IOWriter
-    PageHeader header = new PageHeader(uncompressedSize, compressedSize, statistics);
-    header.serializeTo(pageBuffer);
+    int sizeWithoutStatistic = 0;
+    if (first) {
+      sizeWithoutStatistic +=
+          ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, pageBuffer);
+      sizeWithoutStatistic +=
+          ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, pageBuffer);
+    } else {
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(uncompressedSize, pageBuffer);
+      ReadWriteForEncodingUtils.writeUnsignedVarInt(compressedSize, pageBuffer);
+      statistics.serialize(pageBuffer);
+    }
 
     // write page content to temp PBAOS
     logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
@@ -264,26 +243,27 @@ public class PageWriter {
         channel.write(pageData);
       }
     } else {
-      pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
+      pageBuffer.write(compressedBytes, 0, compressedSize);
     }
     logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    return sizeWithoutStatistic;
   }
 
   /**
-   * calculate max possible memory size it occupies, including time outputStream
-   * and value outputStream, because size outputStream is never used until
-   * flushing.
+   * calculate max possible memory size it occupies, including time outputStream and value
+   * outputStream, because size outputStream is never used until flushing.
    *
    * @return allocated size in time, value and outputStream
    */
   public long estimateMaxMemSize() {
-    return timeOut.size() + valueOut.size() + timeEncoder.getMaxByteSize() + valueEncoder.getMaxByteSize();
+    return timeOut.size()
+        + valueOut.size()
+        + timeEncoder.getMaxByteSize()
+        + valueEncoder.getMaxByteSize();
   }
 
-  /**
-   * reset this page
-   */
-  public void reset(MeasurementSchema measurementSchema) {
+  /** reset this page */
+  public void reset(IMeasurementSchema measurementSchema) {
     timeOut.reset();
     valueOut.reset();
     statistics = Statistics.getStatsByType(measurementSchema.getType());
@@ -308,5 +288,4 @@ public class PageWriter {
   public Statistics<?> getStatistics() {
     return statistics;
   }
-
 }

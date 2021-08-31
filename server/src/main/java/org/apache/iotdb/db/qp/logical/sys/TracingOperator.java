@@ -18,19 +18,29 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class TracingOperator extends RootOperator {
+public class TracingOperator extends Operator {
 
-  private boolean isTracingon;
+  private boolean isTracingOn;
 
-  public TracingOperator(int tokenIntType, boolean isTracingon) {
+  public TracingOperator(int tokenIntType, boolean isTracingOn) {
     super(tokenIntType);
-    this.isTracingon = isTracingon;
+    this.isTracingOn = isTracingOn;
     operatorType = OperatorType.TRACING;
   }
 
-  public boolean isTracingon() {
-    return isTracingon;
+  public boolean isTracingOn() {
+    return isTracingOn;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new TracingPlan(isTracingOn);
   }
 }

@@ -19,27 +19,27 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
 
-  private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
-      .getMaxDegreeOfIndexNode();
-  private List<MetadataIndexEntry> children;
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+  private final List<MetadataIndexEntry> children;
   private long endOffset;
 
-  /**
-   * type of the child node at offset
-   */
-  private MetadataIndexNodeType nodeType;
+  /** type of the child node at offset */
+  private final MetadataIndexNodeType nodeType;
 
   public MetadataIndexNode(MetadataIndexNodeType nodeType) {
     children = new ArrayList<>();
@@ -47,8 +47,8 @@ public class MetadataIndexNode {
     this.nodeType = nodeType;
   }
 
-  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset,
-      MetadataIndexNodeType nodeType) {
+  public MetadataIndexNode(
+      List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;
     this.nodeType = nodeType;
@@ -75,7 +75,7 @@ public class MetadataIndexNode {
   }
 
   boolean isFull() {
-    return children.size() == MAX_DEGREE_OF_INDEX_NODE;
+    return children.size() >= config.getMaxDegreeOfIndexNode();
   }
 
   MetadataIndexEntry peek() {
@@ -87,7 +87,7 @@ public class MetadataIndexNode {
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(children.size(), outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(children.size(), outputStream);
     for (MetadataIndexEntry metadataIndexEntry : children) {
       byteLen += metadataIndexEntry.serializeTo(outputStream);
     }
@@ -98,17 +98,21 @@ public class MetadataIndexNode {
 
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
-    int size = ReadWriteIOUtils.readInt(buffer);
+    int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType =  MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
+    MetadataIndexNodeType nodeType =
+        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
     return new MetadataIndexNode(children, offset, nodeType);
   }
 
-  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key) {
-    int index = binarySearchInChildren(key);
+  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {
+    int index = binarySearchInChildren(key, exactSearch);
+    if (index == -1) {
+      return null;
+    }
     long childEndOffset;
     if (index != children.size() - 1) {
       childEndOffset = children.get(index + 1).getOffset();
@@ -118,7 +122,7 @@ public class MetadataIndexNode {
     return new Pair<>(children.get(index), childEndOffset);
   }
 
-  int binarySearchInChildren(String key) {
+  int binarySearchInChildren(String key, boolean exactSearch) {
     int low = 0;
     int high = children.size() - 1;
 
@@ -135,6 +139,12 @@ public class MetadataIndexNode {
         return mid; // key found
       }
     }
-    return low == 0 ? low : low - 1;  // key not found
+
+    // key not found
+    if (exactSearch) {
+      return -1;
+    } else {
+      return low == 0 ? low : low - 1;
+    }
   }
 }

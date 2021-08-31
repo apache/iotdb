@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+
+import java.io.IOException;
 
 public class LeafNode implements Node {
 
@@ -47,7 +48,7 @@ public class LeafNode implements Node {
       hasCached = true;
       return true;
     }
-    if (reader.hasNextBatch()) {
+    while (reader.hasNextBatch()) {
       cacheData = reader.nextBatch();
       if (cacheData.hasCurrent()) {
         cachedTime = cacheData.currentTime();
@@ -79,9 +80,7 @@ public class LeafNode implements Node {
     return cachedTime == time;
   }
 
-  /**
-   * Function for getting the value at the given time.
-   */
+  /** Function for getting the value at the given time. */
   public Object currentValue() {
     return cachedValue;
   }
@@ -90,5 +89,4 @@ public class LeafNode implements Node {
   public NodeType getType() {
     return NodeType.LEAF;
   }
-
 }

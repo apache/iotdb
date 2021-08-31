@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import java.io.IOException;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -28,26 +27,26 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
- * <p>
  * Series reader is used to query one series of one tsfile, using this reader to query the value of
  * a series with given timestamps.
- * </p>
  */
 public class FileSeriesReaderByTimestamp {
 
   protected IChunkLoader chunkLoader;
-  protected List<ChunkMetadata> chunkMetadataList;
+  protected List<IChunkMetadata> chunkMetadataList;
   private int currentChunkIndex = 0;
 
   private ChunkReader chunkReader;
   private long currentTimestamp;
   private BatchData data = null; // current batch data
 
-  /**
-   * init with chunkLoader and chunkMetaDataList.
-   */
-  public FileSeriesReaderByTimestamp(IChunkLoader chunkLoader, List<ChunkMetadata> chunkMetadataList) {
+  /** init with chunkLoader and chunkMetaDataList. */
+  public FileSeriesReaderByTimestamp(
+      IChunkLoader chunkLoader, List<IChunkMetadata> chunkMetadataList) {
     this.chunkLoader = chunkLoader;
     this.chunkMetadataList = chunkMetadataList;
     currentTimestamp = Long.MIN_VALUE;
@@ -57,9 +56,7 @@ public class FileSeriesReaderByTimestamp {
     return chunkMetadataList.get(0).getDataType();
   }
 
-  /**
-   * get value with time equals timestamp. If there is no such point, return null.
-   */
+  /** get value with time equals timestamp. If there is no such point, return null. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public Object getValueInTimestamp(long timestamp) throws IOException {
     this.currentTimestamp = timestamp;
@@ -137,7 +134,7 @@ public class FileSeriesReaderByTimestamp {
 
   private boolean constructNextSatisfiedChunkReader() throws IOException {
     while (currentChunkIndex < chunkMetadataList.size()) {
-      ChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
+      IChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
         ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
@@ -147,13 +144,12 @@ public class FileSeriesReaderByTimestamp {
     return false;
   }
 
-  private void initChunkReader(ChunkMetadata chunkMetaData) throws IOException {
-    Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+  private void initChunkReader(IChunkMetadata chunkMetaData) throws IOException {
+    Chunk chunk = chunkLoader.loadChunk((ChunkMetadata) chunkMetaData);
     this.chunkReader = new ChunkReaderByTimestamp(chunk);
   }
 
-  private boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
+  private boolean chunkSatisfied(IChunkMetadata chunkMetaData) {
     return chunkMetaData.getEndTime() >= currentTimestamp;
   }
-
 }

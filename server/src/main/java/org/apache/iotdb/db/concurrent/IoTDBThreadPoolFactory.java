@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.db.concurrent;
 
+import org.apache.thrift.server.TThreadPoolServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * This class is used to create thread pool which must contain the pool name.
- */
+/** This class is used to create thread pool which must contain the pool name. */
 public class IoTDBThreadPoolFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBThreadPoolFactory.class);
@@ -47,8 +46,8 @@ public class IoTDBThreadPoolFactory {
     return Executors.newFixedThreadPool(nthreads, new IoTThreadFactory(poolName));
   }
 
-  public static ExecutorService newFixedThreadPool(int nthreads, String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  public static ExecutorService newFixedThreadPool(
+      int nthreads, String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info("new fixed thread pool: {}, thread number: {}", poolName, nthreads);
     return Executors.newFixedThreadPool(nthreads, new IoTThreadFactory(poolName, handler));
   }
@@ -64,8 +63,8 @@ public class IoTDBThreadPoolFactory {
     return Executors.newSingleThreadExecutor(new IoTThreadFactory(poolName));
   }
 
-  public static ExecutorService newSingleThreadExecutor(String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  public static ExecutorService newSingleThreadExecutor(
+      String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info("new single thread pool: {}", poolName);
     return Executors.newSingleThreadExecutor(new IoTThreadFactory(poolName, handler));
   }
@@ -81,8 +80,8 @@ public class IoTDBThreadPoolFactory {
     return Executors.newCachedThreadPool(new IoTThreadFactory(poolName));
   }
 
-  public static ExecutorService newCachedThreadPool(String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  public static ExecutorService newCachedThreadPool(
+      String poolName, Thread.UncaughtExceptionHandler handler) {
     logger.info("new cached thread pool: {}", poolName);
     return Executors.newCachedThreadPool(new IoTThreadFactory(poolName, handler));
   }
@@ -97,8 +96,8 @@ public class IoTDBThreadPoolFactory {
     return Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory(poolName));
   }
 
-  public static ScheduledExecutorService newSingleThreadScheduledExecutor(String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  public static ScheduledExecutorService newSingleThreadScheduledExecutor(
+      String poolName, Thread.UncaughtExceptionHandler handler) {
     return Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory(poolName, handler));
   }
 
@@ -113,28 +112,34 @@ public class IoTDBThreadPoolFactory {
     return Executors.newScheduledThreadPool(corePoolSize, new IoTThreadFactory(poolName));
   }
 
-  public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize, String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  public static ScheduledExecutorService newScheduledThreadPool(
+      int corePoolSize, String poolName, Thread.UncaughtExceptionHandler handler) {
     return Executors.newScheduledThreadPool(corePoolSize, new IoTThreadFactory(poolName, handler));
   }
 
-  /**
-   * function for creating thrift rpc client thread pool.
-   */
-  public static ExecutorService createThriftRpcClientThreadPool(TThreadPoolServer.Args args, String poolName) {
+  /** function for creating thrift rpc client thread pool. */
+  public static ExecutorService createThriftRpcClientThreadPool(
+      TThreadPoolServer.Args args, String poolName) {
     SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
-    return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
-        args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName));
+    return new ThreadPoolExecutor(
+        args.minWorkerThreads,
+        args.maxWorkerThreads,
+        args.stopTimeoutVal,
+        args.stopTimeoutUnit,
+        executorQueue,
+        new IoTThreadFactory(poolName));
   }
 
-  /**
-   * function for creating thrift rpc client thread pool.
-   */
-  public static ExecutorService createThriftRpcClientThreadPool(TThreadPoolServer.Args args, String poolName,
-      Thread.UncaughtExceptionHandler handler) {
+  /** function for creating thrift rpc client thread pool. */
+  public static ExecutorService createThriftRpcClientThreadPool(
+      TThreadPoolServer.Args args, String poolName, Thread.UncaughtExceptionHandler handler) {
     SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
-    return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
-        args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName, handler));
+    return new ThreadPoolExecutor(
+        args.minWorkerThreads,
+        args.maxWorkerThreads,
+        args.stopTimeoutVal,
+        args.stopTimeoutUnit,
+        executorQueue,
+        new IoTThreadFactory(poolName, handler));
   }
-
 }

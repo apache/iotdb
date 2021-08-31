@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.jdbc;
 
+import org.apache.thrift.transport.TTransportException;
+import org.osgi.service.component.annotations.Component;
+
 import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
@@ -27,15 +30,12 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import org.apache.thrift.transport.TTransportException;
-import org.osgi.service.component.annotations.Component;
 
-@Component(service = java.sql.Driver.class, immediate = true)public class IoTDBDriver implements Driver {
-  private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
-      .getLogger(IoTDBDriver.class);
-  /**
-   * Is this driver JDBC compliant.
-   */
+@Component(service = java.sql.Driver.class, immediate = true)
+public class IoTDBDriver implements Driver {
+  private static final org.slf4j.Logger logger =
+      org.slf4j.LoggerFactory.getLogger(IoTDBDriver.class);
+  /** Is this driver JDBC compliant. */
   private static final boolean TSFILE_JDBC_COMPLIANT = false;
 
   static {
@@ -53,7 +53,7 @@ import org.osgi.service.component.annotations.Component;
   }
 
   @Override
-  public boolean acceptsURL(String url) throws SQLException {
+  public boolean acceptsURL(String url) {
     return Pattern.matches(TSFILE_URL_PREFIX, url);
   }
 
@@ -64,7 +64,8 @@ import org.osgi.service.component.annotations.Component;
     } catch (TTransportException e) {
       throw new SQLException(
           "Connection Error, please check whether the network is available or the server"
-              + " has started.");
+              + " has started.",
+          e);
     }
   }
 
@@ -86,7 +87,7 @@ import org.osgi.service.component.annotations.Component;
   }
 
   @Override
-  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) throws SQLException {
+  public DriverPropertyInfo[] getPropertyInfo(String url, Properties info) {
     // TODO Auto-generated method stub
     return new DriverPropertyInfo[0];
   }
@@ -95,5 +96,4 @@ import org.osgi.service.component.annotations.Component;
   public boolean jdbcCompliant() {
     return TSFILE_JDBC_COMPLIANT;
   }
-
 }

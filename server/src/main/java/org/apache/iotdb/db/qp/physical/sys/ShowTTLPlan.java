@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
+
+import java.util.List;
 
 public class ShowTTLPlan extends ShowPlan {
 

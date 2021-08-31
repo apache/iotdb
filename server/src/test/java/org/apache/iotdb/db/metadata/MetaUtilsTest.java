@@ -18,48 +18,98 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Arrays;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static org.junit.Assert.assertArrayEquals;
 
 public class MetaUtilsTest {
 
   @Test
   public void testSplitPathToNodes() throws IllegalPathException {
-    assertEquals(Arrays.asList("root", "sg", "d1", "s1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s1"));
 
-    assertEquals(Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s.1\""));
 
-    assertEquals(Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "\"s\\\".1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.\"s\\\".1\""));
 
-    assertEquals(Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "d1", "\"s.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".d1.\"s.1\""));
 
-    assertEquals(Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "\"s g\"", "\"d_.1\"", "\"s.1.1\"").toArray(),
         MetaUtils.splitPathToDetachedPath("root.\"s g\".\"d_.1\".\"s.1.1\""));
 
-    assertEquals(Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
+    assertArrayEquals(
+        Arrays.asList("root", "1").toArray(), MetaUtils.splitPathToDetachedPath("root.1"));
 
-    assertEquals(Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
+    assertArrayEquals(
+        Arrays.asList("root", "sg", "d1", "s", "1").toArray(),
         MetaUtils.splitPathToDetachedPath("root.sg.d1.s.1"));
 
     try {
       MetaUtils.splitPathToDetachedPath("root.sg.\"d.1\"\"s.1\"");
     } catch (IllegalPathException e) {
-      Assert.assertTrue(e.getMessage().contains("Illegal path: "));
+      Assert.assertEquals("root.sg.\"d.1\"\"s.1\" is not a legal path", e.getMessage());
     }
 
     try {
-      MetaUtils.splitPathToDetachedPath("root.sg.d1.\'s1\'");
+      MetaUtils.splitPathToDetachedPath("root..a");
     } catch (IllegalPathException e) {
-      Assert.assertTrue(e.getMessage().contains("Illegal path with single quote: "));
+      Assert.assertEquals("root..a is not a legal path", e.getMessage());
+    }
+
+    try {
+      MetaUtils.splitPathToDetachedPath("root.sg.d1.'s1'");
+    } catch (IllegalPathException e) {
+      Assert.assertEquals("root.sg.d1.'s1' is not a legal path", e.getMessage());
     }
   }
 
+  @Test
+  public void testGetMultiFullPaths() {
+    InternalMNode rootNode = new InternalMNode(null, "root");
+
+    // builds the relationship of root.a and root.aa
+    InternalMNode aNode = new InternalMNode(rootNode, "a");
+    rootNode.addChild(aNode.getName(), aNode);
+    InternalMNode aaNode = new InternalMNode(rootNode, "aa");
+    rootNode.addChild(aaNode.getName(), aaNode);
+
+    // builds the relationship of root.a.b and root.aa.bb
+    InternalMNode bNode = new InternalMNode(aNode, "b");
+    aNode.addChild(bNode.getName(), bNode);
+    InternalMNode bbNode = new InternalMNode(aaNode, "bb");
+    aaNode.addChild(bbNode.getName(), bbNode);
+
+    // builds the relationship of root.aa.bb.cc
+    InternalMNode ccNode = new InternalMNode(bbNode, "cc");
+    bbNode.addChild(ccNode.getName(), ccNode);
+
+    List<String> multiFullPaths = MetaUtils.getMultiFullPaths(rootNode);
+    Assert.assertSame(2, multiFullPaths.size());
+
+    multiFullPaths.forEach(
+        fullPath -> {
+          if (fullPath.contains("aa")) {
+            Assert.assertEquals("root.aa.bb.cc", fullPath);
+          } else {
+            Assert.assertEquals("root.a.b", fullPath);
+          }
+        });
+  }
 }

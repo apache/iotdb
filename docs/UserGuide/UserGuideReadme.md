@@ -20,10 +20,10 @@
 -->
 # IoTDB User Guide Toc
 
-We are keeping introducing more features into IoTDB. Therefore, different released versions have their user guide documents respectively.
+We keep introducing more features into IoTDB. Therefore, different released versions have their user guide documents respectively.
 
 The "In Progress Version" is for matching the master branch of IOTDB's source code Repository.
-Other documents are for matching IoTDB released version.
+Other documents are for IoTDB previous released versions.
 
 - [In progress version](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html) 
 - [Version 0.10.x](https://iotdb.apache.org/UserGuide/V0.10.x/Get%20Started/QuickStart.html)

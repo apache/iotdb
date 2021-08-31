@@ -29,8 +29,8 @@ public class ShowStorageGroupPlan extends ShowPlan {
     this.path = path;
   }
 
+  @Override
   public PartialPath getPath() {
     return this.path;
   }
 }
-

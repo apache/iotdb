@@ -20,16 +20,16 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 /**
- * TsFileLock is a special read-write lock that can be locked by one thread but unlocked by
- * another thread.
+ * TsFileLock is a special read-write lock that can be locked by one thread but unlocked by another
+ * thread.
  *
- * When the query thread crashes, the locks it used can no longer be unlocked by itself and
+ * <p>When the query thread crashes, the locks it used can no longer be unlocked by itself and
  * another thread must do the unlock for it. Unfortunately, normal Java ReentrantLock can only be
- * unlocked by the thread which locked it, so we have to use a different implementation.
- * It is also interesting to use a third-party implementation and if you do find a better one,
- * please submit an issue on our website.
+ * unlocked by the thread which locked it, so we have to use a different implementation. It is also
+ * interesting to use a third-party implementation and if you do find a better one, please submit an
+ * issue on our website.
  *
- * WARNING: as the lock holder is not recorded, the caller must assure that lock() and unlock()
+ * <p>WARNING: as the lock holder is not recorded, the caller must assure that lock() and unlock()
  * match, i.e., if you only call lock() once then do not call unlock() more than once and vice
  * versa.
  */
@@ -49,14 +49,14 @@ public class TsFileLock {
         }
       }
 
-      readCnt ++;
+      readCnt++;
     }
   }
 
   public void readUnlock() {
     synchronized (this) {
       if (readCnt > 0) {
-        readCnt --;
+        readCnt--;
         this.notifyAll();
       }
     }
@@ -64,13 +64,13 @@ public class TsFileLock {
 
   public void writeLock() {
     synchronized (this) {
-        try {
-          while (writeCnt > 0 || readCnt > 0) {
-            this.wait(1);
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          // ignore
+      try {
+        while (writeCnt > 0 || readCnt > 0) {
+          this.wait(1);
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        // ignore
       }
 
       writeCnt++;
@@ -80,7 +80,7 @@ public class TsFileLock {
   public void writeUnlock() {
     synchronized (this) {
       if (writeCnt > 0) {
-        writeCnt --;
+        writeCnt--;
         this.notifyAll();
       }
     }
@@ -92,7 +92,7 @@ public class TsFileLock {
         return false;
       }
 
-      writeCnt ++;
+      writeCnt++;
       return true;
     }
   }
@@ -103,9 +103,8 @@ public class TsFileLock {
         return false;
       }
 
-      readCnt ++;
+      readCnt++;
       return true;
     }
   }
-
 }

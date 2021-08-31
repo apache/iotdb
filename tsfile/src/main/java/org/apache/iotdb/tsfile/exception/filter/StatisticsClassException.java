@@ -31,5 +31,4 @@ public class StatisticsClassException extends TsFileRuntimeException {
   public StatisticsClassException(String message) {
     super(message);
   }
-
 }

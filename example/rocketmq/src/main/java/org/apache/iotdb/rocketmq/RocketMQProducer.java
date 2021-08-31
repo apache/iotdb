@@ -25,11 +25,10 @@ import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.remoting.common.RemotingHelper;
 import org.apache.rocketmq.remoting.exception.RemotingException;
-
-import java.io.UnsupportedEncodingException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.UnsupportedEncodingException;
 
 public class RocketMQProducer {
 
@@ -50,19 +49,21 @@ public class RocketMQProducer {
   }
 
   public void sendMessage()
-      throws UnsupportedEncodingException, InterruptedException, RemotingException, MQClientException, MQBrokerException {
+      throws UnsupportedEncodingException, InterruptedException, RemotingException,
+          MQClientException, MQBrokerException {
     for (String sql : Constant.ALL_DATA) {
-      /**
-       * Create a message instance, specifying topic, tag and message body.
-       */
-      Message msg = new Message(Constant.TOPIC, null, null,
-          (sql).getBytes(RemotingHelper.DEFAULT_CHARSET));
-      SendResult sendResult = producer.send(msg, (mqs, msg1, arg) -> {
-        Integer id = (Integer) arg;
-        int index = id % mqs.size();
-        return mqs.get(index);
-      }, Utils
-          .ConvertStringToInteger(Utils.getTimeSeries(sql)));
+      /** Create a message instance, specifying topic, tag and message body. */
+      Message msg =
+          new Message(Constant.TOPIC, null, null, (sql).getBytes(RemotingHelper.DEFAULT_CHARSET));
+      SendResult sendResult =
+          producer.send(
+              msg,
+              (mqs, msg1, arg) -> {
+                Integer id = (Integer) arg;
+                int index = id % mqs.size();
+                return mqs.get(index);
+              },
+              Utils.ConvertStringToInteger(Utils.getTimeSeries(sql)));
       logger.info(sendResult.toString());
     }
   }
@@ -88,13 +89,10 @@ public class RocketMQProducer {
   }
 
   public static void main(String[] args) throws Exception {
-    /**
-     * Instantiate with a producer group name and specify name server addresses.
-     */
-    RocketMQProducer producer = new RocketMQProducer(Constant.PRODUCER_GROUP, Constant.SERVER_ADDRESS);
-    /**
-     * Launch the instance
-     */
+    /** Instantiate with a producer group name and specify name server addresses. */
+    RocketMQProducer producer =
+        new RocketMQProducer(Constant.PRODUCER_GROUP, Constant.SERVER_ADDRESS);
+    /** Launch the instance */
     producer.start();
     producer.sendMessage();
     producer.shutdown();

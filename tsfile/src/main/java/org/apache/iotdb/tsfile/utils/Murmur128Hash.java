@@ -44,25 +44,26 @@ public class Murmur128Hash {
    * @return hashcode of value
    */
   public static int hash(String value1, long value2, int seed) {
-    return (int) innerHash(
-        BytesUtils.concatByteArray(value1.getBytes(), BytesUtils.longToBytes(value2)), 0,
-        value1.length() + 8, seed);
+    return (int)
+        innerHash(
+            BytesUtils.concatByteArray(value1.getBytes(), BytesUtils.longToBytes(value2)),
+            0,
+            value1.length() + 8,
+            seed);
   }
 
-  /**************************************
-   * Methods to perform murmur 128 hash.
-   **************************************/
+  /** Methods to perform murmur 128 hash. */
   private static long getBlock(byte[] key, int offset, int index) {
     int i8 = index << 3;
     int blockOffset = offset + i8;
-    return ((long) key[blockOffset] & 0xff) + (((long) key[blockOffset + 1] & 0xff) << 8)
-        +
-        (((long) key[blockOffset + 2] & 0xff) << 16) + (
-        ((long) key[blockOffset + 3] & 0xff) << 24) +
-        (((long) key[blockOffset + 4] & 0xff) << 32) + (
-        ((long) key[blockOffset + 5] & 0xff) << 40) +
-        (((long) key[blockOffset + 6] & 0xff) << 48) + (
-        ((long) key[blockOffset + 7] & 0xff) << 56);
+    return ((long) key[blockOffset] & 0xff)
+        + (((long) key[blockOffset + 1] & 0xff) << 8)
+        + (((long) key[blockOffset + 2] & 0xff) << 16)
+        + (((long) key[blockOffset + 3] & 0xff) << 24)
+        + (((long) key[blockOffset + 4] & 0xff) << 32)
+        + (((long) key[blockOffset + 5] & 0xff) << 40)
+        + (((long) key[blockOffset + 6] & 0xff) << 48)
+        + (((long) key[blockOffset + 7] & 0xff) << 56);
   }
 
   private static long rotl64(long v, int n) {
@@ -180,6 +181,4 @@ public class Murmur128Hash {
     h2 += h1;
     return h1 + h2;
   }
-
-
 }

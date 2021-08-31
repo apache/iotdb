@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Path;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 public class QueryExpression implements Serializable {
 
@@ -40,8 +41,7 @@ public class QueryExpression implements Serializable {
     return new QueryExpression();
   }
 
-  public static QueryExpression create(List<Path> selectedSeries,
-      IExpression expression) {
+  public static QueryExpression create(List<Path> selectedSeries, IExpression expression) {
     QueryExpression ret = new QueryExpression();
     ret.selectedSeries = selectedSeries;
     ret.expression = expression;
@@ -77,9 +77,13 @@ public class QueryExpression implements Serializable {
 
   @Override
   public String toString() {
-    StringBuilder stringBuilder = new StringBuilder("\n\t[Selected Series]:").append(selectedSeries)
-        .append("\n\t[TSDataType]:").append(dataTypes).append("\n\t[expression]:")
-        .append(expression);
+    StringBuilder stringBuilder =
+        new StringBuilder("\n\t[Selected Series]:")
+            .append(selectedSeries)
+            .append("\n\t[TSDataType]:")
+            .append(dataTypes)
+            .append("\n\t[expression]:")
+            .append(expression);
     return stringBuilder.toString();
   }
 

@@ -20,32 +20,35 @@ package org.apache.iotdb.db.concurrent;
 
 public enum ThreadName {
   METRICS_SERVICE("Metrics-ServerServiceImpl"),
-  RPC_SERVICE("RPC-ServerServiceImpl"),
+  RPC_SERVICE("RPC"),
   RPC_CLIENT("RPC-Client"),
-  MERGE_SERVICE("Merge-ServerServiceImpl"),
-  CLOSE_MERGE_SERVICE("Close-Merge-ServerServiceImpl"),
-  CLOSE_MERGE_DAEMON("Close-Merge-Daemon-Thread"),
-  CLOSE_DAEMON("Close-Daemon-Thread"),
-  MERGE_DAEMON("Merge-Daemon-Thread"),
-  MEMORY_MONITOR("IoTDB-MemMonitor-Thread"),
-  MEMORY_STATISTICS("IoTDB-MemStatistic-Thread"),
-  FLUSH_PARTIAL_POLICY("IoTDB-FlushPartialPolicy-Thread"),
-  FORCE_FLUSH_ALL_POLICY("IoTDB-ForceFlushAllPolicy-Thread"),
-  STAT_MONITOR("StatMonitor-ServerServiceImpl"),
-  FLUSH_SERVICE("Flush-ServerServiceImpl"),
-  FLUSH_SUB_TASK_SERVICE("Flush-SubTask-ServerServiceImpl"),
-  HOT_COMPACTION_SERVICE("HotCompaction-ServerServiceImpl"),
-  WAL_DAEMON("IoTDB-MultiFileLogNodeManager-Sync-Thread"),
-  WAL_FORCE_DAEMON("IoTDB-MultiFileLogNodeManager-Force-Thread"),
-  INDEX_SERVICE("Index-ServerServiceImpl"),
+  MERGE_SERVICE("Merge"),
+  CLOSE_MERGE_SERVICE("Close-Merge"),
+  CLOSE_MERGE_DAEMON("Close-Merge-Daemon"),
+  CLOSE_DAEMON("Close-Daemon"),
+  MERGE_DAEMON("Merge-Daemon"),
+  MEMORY_MONITOR("MemMonitor"),
+  MEMORY_STATISTICS("MemStatistic"),
+  FLUSH_PARTIAL_POLICY("FlushPartialPolicy"),
+  FORCE_FLUSH_ALL_POLICY("ForceFlushAllPolicy"),
+  STAT_MONITOR("StatMonitor"),
+  FLUSH_SERVICE("Flush"),
+  FLUSH_SUB_TASK_SERVICE("Flush-SubTask"),
+  COMPACTION_SERVICE("Compaction"),
+  WAL_DAEMON("WAL-Sync"),
+  WAL_FORCE_DAEMON("WAL-Force"),
+  INDEX_SERVICE("Index"),
   SYNC_CLIENT("Sync-Client"),
-  SYNC_SERVER("Sync-Server"),
+  SYNC_SERVER("Sync"),
   SYNC_MONITOR("Sync-Monitor"),
-  LOAD_TSFILE("Load TsFile"),
-  TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
-  QUERY_SERVICE("Query-ServerServiceImpl");
+  LOAD_TSFILE("Load-TsFile"),
+  TIME_COST_STATISTIC("TIME_COST_STATISTIC"),
+  QUERY_SERVICE("Query"),
+  WINDOW_EVALUATION_SERVICE("WindowEvaluationTaskPoolManager"),
+  CONTINUOUS_QUERY_SERVICE("ContinuousQueryTaskPoolManager"),
+  CLUSTER_INFO_SERVICE("ClusterInfoClient");
 
-  private String name;
+  private final String name;
 
   ThreadName(String name) {
     this.name = name;

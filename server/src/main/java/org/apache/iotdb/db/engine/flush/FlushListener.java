@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import java.io.IOException;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+
+import java.io.IOException;
 
 public interface FlushListener {
 

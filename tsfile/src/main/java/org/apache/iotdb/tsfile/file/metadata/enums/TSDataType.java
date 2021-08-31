@@ -18,12 +18,39 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.enums;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public enum TSDataType {
-  BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT;
+  /** BOOLEAN */
+  BOOLEAN((byte) 0),
+
+  /** INT32 */
+  INT32((byte) 1),
+
+  /** INT64 */
+  INT64((byte) 2),
+
+  /** FLOAT */
+  FLOAT((byte) 3),
+
+  /** DOUBLE */
+  DOUBLE((byte) 4),
+
+  /** TEXT */
+  TEXT((byte) 5),
+
+  /** VECTOR */
+  VECTOR((byte) 6);
+
+  private final byte type;
+
+  TSDataType(byte type) {
+    this.type = type;
+  }
 
   /**
    * give an integer to return a data type.
@@ -31,92 +58,67 @@ public enum TSDataType {
    * @param type -param to judge enum type
    * @return -enum type
    */
-  public static TSDataType deserialize(short type) {
+  public static TSDataType deserialize(byte type) {
     return getTsDataType(type);
   }
 
-
-  private static TSDataType getTsDataType(short type) {
-    if (type >= 6 || type < 0) {
-      throw new IllegalArgumentException("Invalid input: " + type);
-    }
+  private static TSDataType getTsDataType(byte type) {
     switch (type) {
       case 0:
-        return BOOLEAN;
+        return TSDataType.BOOLEAN;
       case 1:
-        return INT32;
+        return TSDataType.INT32;
       case 2:
-        return INT64;
+        return TSDataType.INT64;
       case 3:
-        return FLOAT;
+        return TSDataType.FLOAT;
       case 4:
-        return DOUBLE;
+        return TSDataType.DOUBLE;
+      case 5:
+        return TSDataType.TEXT;
+      case 6:
+        return TSDataType.VECTOR;
       default:
-        return TEXT;
+        throw new IllegalArgumentException("Invalid input: " + type);
     }
-  }
-
-  public static byte deserializeToByte(short type) {
-    if (type >= 6 || type < 0) {
-      throw new IllegalArgumentException("Invalid input: " + type);
-    }
-    return (byte) type;
-  }
-
-  /**
-   * give an byte to return a data type.
-   *
-   * @param type byte number
-   * @return data type
-   */
-  public static TSDataType byteToEnum(byte type) {
-    return getTsDataType(type);
   }
 
   public static TSDataType deserializeFrom(ByteBuffer buffer) {
-    return deserialize(buffer.getShort());
+    return deserialize(buffer.get());
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   public void serializeTo(ByteBuffer byteBuffer) {
-    byteBuffer.putShort(serialize());
+    byteBuffer.put(serialize());
   }
 
   public void serializeTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeShort(serialize());
+    outputStream.write(serialize());
   }
 
-  /**
-   * return a serialize data type.
-   *
-   * @return -enum type
-   */
-  public short serialize() {
-    return enumToByte();
-  }
-
-  /**
-   * @return byte number
-   */
-  public byte enumToByte() {
+  public int getDataTypeSize() {
     switch (this) {
       case BOOLEAN:
-        return 0;
-      case INT32:
         return 1;
-      case INT64:
-        return 2;
+      case INT32:
       case FLOAT:
-        return 3;
-      case DOUBLE:
         return 4;
+        // For text: return the size of reference here
       case TEXT:
-        return 5;
+      case INT64:
+      case DOUBLE:
+      case VECTOR:
+        return 8;
       default:
-        return -1;
+        throw new UnSupportedDataTypeException(this.toString());
     }
+  }
+
+  /** @return byte number */
+  public byte serialize() {
+    return type;
   }
 }

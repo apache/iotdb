@@ -35,10 +35,8 @@ mvn clean compile -pl service-rpc -am -DskipTests
 
 或者
 
-
 ```
 mvn clean compile -pl thrift
-
 ```
 
 生成代码位置：
@@ -54,5 +52,3 @@ session/src/main/java/org/apache/iotdb/session/Session.java
 服务器端代码在
 
 server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl.java
-
-

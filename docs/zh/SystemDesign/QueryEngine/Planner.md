@@ -60,4 +60,3 @@ SQL 解析采用 Antlr4
 ## 物理计划生成器
 
 * org.apache.iotdb.db.qp.strategy.PhysicalGenerator
-

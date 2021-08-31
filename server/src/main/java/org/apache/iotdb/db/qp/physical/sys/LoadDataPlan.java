@@ -18,31 +18,30 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 
 public class LoadDataPlan extends PhysicalPlan {
 
   private final String inputFilePath;
   private final String measureType;
 
-  /**
-   * Constructor of LoadDataPlan.
-   */
+  /** Constructor of LoadDataPlan. */
   public LoadDataPlan(String inputFilePath, String measureType) {
-    super(false, Operator.OperatorType.LOADDATA);
+    super(false, Operator.OperatorType.LOAD_DATA);
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
   }
 
   @Override
   public List<PartialPath> getPaths() {
-    return measureType != null ?
-        Collections.singletonList(new PartialPath(new String[]{measureType}))
+    return measureType != null
+        ? Collections.singletonList(new PartialPath(new String[] {measureType}))
         : Collections.emptyList();
   }
 
@@ -63,8 +62,8 @@ public class LoadDataPlan extends PhysicalPlan {
       return false;
     }
     LoadDataPlan that = (LoadDataPlan) o;
-    return Objects.equals(getInputFilePath(), that.getInputFilePath()) &&
-        Objects.equals(getMeasureType(), that.getMeasureType());
+    return Objects.equals(getInputFilePath(), that.getInputFilePath())
+        && Objects.equals(getMeasureType(), that.getMeasureType());
   }
 
   @Override

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -34,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,7 +44,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class SeriesAggregateReaderTest {
 
@@ -55,14 +57,13 @@ public class SeriesAggregateReaderTest {
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
-
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException, StorageEngineException {
+  public void tearDown() throws IOException {
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
@@ -72,12 +73,20 @@ public class SeriesAggregateReaderTest {
       PartialPath path = new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      QueryDataSource queryDataSource = new QueryDataSource(path, seqResources, unseqResources);
-      SeriesAggregateReader seriesReader = new SeriesAggregateReader(path, allSensors,
-          TSDataType.INT32,
-          new QueryContext(), queryDataSource, null, null, null, true);
-      AggregateResult aggregateResult = AggregateResultFactory
-          .getAggrResultByName("count", TSDataType.INT32, true);
+      QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
+      SeriesAggregateReader seriesReader =
+          new SeriesAggregateReader(
+              path,
+              allSensors,
+              TSDataType.INT32,
+              new QueryContext(),
+              queryDataSource,
+              null,
+              null,
+              null,
+              true);
+      AggregateResult aggregateResult =
+          AggregateResultFactory.getAggrResultByName("count", TSDataType.INT32, true);
       int loopTime = 0;
       while (seriesReader.hasNextFile()) {
         if (seriesReader.canUseCurrentFileStatistics()) {

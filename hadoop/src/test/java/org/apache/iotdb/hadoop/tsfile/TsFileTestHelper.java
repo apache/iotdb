@@ -18,25 +18,25 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TsFileTestHelper {
-
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileTestHelper.class);
 
@@ -55,7 +55,7 @@ public class TsFileTestHelper {
       }
 
       Schema schema = new Schema();
-      List<MeasurementSchema> schemaList = new ArrayList<>();
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
 
       // the number of rows to include in the tablet
       int rowNum = 1000000;
@@ -64,10 +64,9 @@ public class TsFileTestHelper {
 
       // add timeseries into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        MeasurementSchema measurementSchema = new MeasurementSchema("sensor_" + (i + 1),
-            TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)),
-            measurementSchema);
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
+        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)), measurementSchema);
         schemaList.add(measurementSchema);
       }
 
@@ -110,7 +109,7 @@ public class TsFileTestHelper {
     }
   }
 
-  public static void main(String[] args) throws FileNotFoundException, IOException {
+  public static void main(String[] args) throws IOException {
     String filePath = "example_mr.tsfile";
     File file = new File(filePath);
     if (file.exists()) {

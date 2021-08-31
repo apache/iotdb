@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.db.engine.merge.recover;
 
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.task.MergeTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -38,36 +41,23 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.task.MergeTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.service.IoTDB;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_START;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.merge.recover.MergeLogger.STR_UNSEQ_FILES;
 
 /**
- * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge,
- * the last available positions of each file and how many timeseries and files have been merged.
- * An example of merging 1 seqFile and 1 unseqFile containing 3 series is:
- * seqFiles
- * server/0seq.tsfile
- * unseqFiles
- * server/0unseq.tsfile
- * merge start
- * start root.mergeTest.device0.sensor0
- * server/0seq.tsfile.merge 338
- * end
- * start root.mergeTest.device0.sensor1
- * server/0seq.tsfile.merge 664
- * end
- * all ts end
- * server/0seq.tsfile 145462
- * end
- * merge end
+ * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the
+ * last available positions of each file and how many timeseries and files have been merged. An
+ * example of merging 1 seqFile and 1 unseqFile containing 3 series is: seqFiles server/0seq.tsfile
+ * unseqFiles server/0unseq.tsfile merge start start root.mergeTest.device0.sensor0
+ * server/0seq.tsfile.merge 338 end start root.mergeTest.device0.sensor1 server/0seq.tsfile.merge
+ * 664 end all ts end server/0seq.tsfile 145462 end merge end
  */
 public class LogAnalyzer {
 
@@ -88,7 +78,8 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(MergeResource resource, String taskName, File logFile, String storageGroupName) {
+  public LogAnalyzer(
+      MergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
@@ -98,6 +89,7 @@ public class LogAnalyzer {
   /**
    * Scan through the logs to find out where the last merge has stopped and store the information
    * about the progress in the fields.
+   *
    * @return a Status indicating the completed stage of the last merge.
    * @throws IOException
    */
@@ -110,7 +102,8 @@ public class LogAnalyzer {
 
         analyzeUnseqFiles(bufferedReader);
 
-        List<PartialPath> storageGroupPaths = IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
+        List<PartialPath> storageGroupPaths =
+            IoTDB.metaManager.getAllTimeseriesPath(new PartialPath(storageGroupName + ".*"));
         unmergedPaths = new ArrayList<>();
         unmergedPaths.addAll(storageGroupPaths);
 
@@ -144,7 +137,10 @@ public class LogAnalyzer {
       }
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} seq files after {}ms", taskName, mergeSeqFiles.size(),
+      logger.debug(
+          "{} found {} seq files after {}ms",
+          taskName,
+          mergeSeqFiles.size(),
           (System.currentTimeMillis() - startTime));
     }
     resource.setSeqFiles(mergeSeqFiles);
@@ -172,21 +168,26 @@ public class LogAnalyzer {
       }
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} unseq files after {}ms", taskName, mergeUnseqFiles.size(),
+      logger.debug(
+          "{} found {} unseq files after {}ms",
+          taskName,
+          mergeUnseqFiles.size(),
           (System.currentTimeMillis() - startTime));
     }
     resource.setUnseqFiles(mergeUnseqFiles);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths) throws IOException {
+  private void analyzeMergedSeries(BufferedReader bufferedReader, List<PartialPath> unmergedPaths)
+      throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
+      File mergeFile =
+          SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MergeTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -199,7 +200,7 @@ public class LogAnalyzer {
       if (currLine.contains(STR_START)) {
         // a TS starts to merge
         String[] splits = currLine.split(" ");
-        for (int i = 1; i < splits.length; i ++) {
+        for (int i = 1; i < splits.length; i++) {
           try {
             currTSList.add(new PartialPath(splits[i]));
           } catch (IllegalPathException e) {
@@ -224,8 +225,11 @@ public class LogAnalyzer {
     }
     tempFileLastPositions = null;
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} series have already been merged after {}ms", taskName,
-          mergedPaths.size(), (System.currentTimeMillis() - startTime));
+      logger.debug(
+          "{} found {} series have already been merged after {}ms",
+          taskName,
+          mergedPaths.size(),
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -261,7 +265,7 @@ public class LogAnalyzer {
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();
           if (seqFile.getTsFile().getAbsolutePath().equals(seqFilePath)) {
-            mergedCnt ++;
+            mergedCnt++;
             unmergedFileIter.remove();
             break;
           }
@@ -269,8 +273,11 @@ public class LogAnalyzer {
       }
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} files have already been merged after {}ms", taskName,
-          mergedCnt, (System.currentTimeMillis() - startTime));
+      logger.debug(
+          "{} found {} files have already been merged after {}ms",
+          taskName,
+          mergedCnt,
+          (System.currentTimeMillis() - startTime));
     }
   }
 
@@ -286,8 +293,7 @@ public class LogAnalyzer {
     return unmergedFiles;
   }
 
-  public void setUnmergedFiles(
-      List<TsFileResource> unmergedFiles) {
+  public void setUnmergedFiles(List<TsFileResource> unmergedFiles) {
     this.unmergedFiles = unmergedFiles;
   }
 

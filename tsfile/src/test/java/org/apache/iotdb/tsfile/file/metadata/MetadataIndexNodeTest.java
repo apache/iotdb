@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MetadataIndexNodeTest {
 
@@ -36,11 +38,13 @@ public class MetadataIndexNodeTest {
     list.add(new MetadataIndexEntry("s15", -1L));
     list.add(new MetadataIndexEntry("s20", -1L));
 
-    MetadataIndexNode metadataIndexNode = new MetadataIndexNode(list, -1L,
-        MetadataIndexNodeType.LEAF_MEASUREMENT);
-    Assert.assertEquals(0, metadataIndexNode.binarySearchInChildren("s0"));
-    Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s10"));
-    Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s13"));
-    Assert.assertEquals(4, metadataIndexNode.binarySearchInChildren("s23"));
+    MetadataIndexNode metadataIndexNode =
+        new MetadataIndexNode(list, -1L, MetadataIndexNodeType.LEAF_MEASUREMENT);
+    Assert.assertEquals(0, metadataIndexNode.binarySearchInChildren("s0", false));
+    Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s10", false));
+    Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s13", false));
+    Assert.assertEquals(4, metadataIndexNode.binarySearchInChildren("s23", false));
+    Assert.assertEquals(-1, metadataIndexNode.binarySearchInChildren("s13", true));
+    Assert.assertEquals(-1, metadataIndexNode.binarySearchInChildren("s23", true));
   }
 }

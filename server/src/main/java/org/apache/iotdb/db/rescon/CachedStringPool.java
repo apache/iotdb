@@ -37,7 +37,6 @@ public class CachedStringPool {
 
     private static final CachedStringPool INSTANCE = new CachedStringPool();
 
-    private InstanceHolder() {
-    }
+    private InstanceHolder() {}
   }
 }

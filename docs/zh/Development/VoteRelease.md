@@ -50,10 +50,10 @@ pub   rsa4096/28662AC6 2019-12-23 [SC]
 下载公钥
 
 ```
-gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+gpg2 --receive-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 （或 28662AC6)
 
-或 (指定 keyserver) 
-gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 (或 28662AC6)
+或 （指定 keyserver) 
+gpg2 --keyserver p80.pool.sks-keyservers.net --recv-keys 10F3B3F8A1201B79AA43F2E00FC7F131CAA00430 （或 28662AC6)
 ```
 
 ### 第二种方法
@@ -88,11 +88,11 @@ mvn -B apache-rat:check
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-source-release.zip.asc apache-iotdb-0.9.0-incubating-source-release.zip
+gpg2 --verify apache-iotdb-0.12.0-source-release.zip.asc apache-iotdb-0.12.0-source-release.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-source-release.zip
+shasum -a512 apache-iotdb-0.12.0-source-release.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```
@@ -114,11 +114,11 @@ mvnw.sh install
 * 验证签名和哈希值
 
 ```
-gpg2 --verify apache-iotdb-0.9.0-incubating-bin.zip.asc apache-iotdb-0.9.0-incubating-bin.zip
+gpg2 --verify apache-iotdb-0.12.0-bin.zip.asc apache-iotdb-0.12.0-bin.zip
 
 出现 Good Singnature 
 
-shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
+shasum -a512 apache-iotdb-0.12.0-bin.zip
 
 和对应的 .sha512 对比，一样就可以。
 ```
@@ -178,7 +178,6 @@ select * from root;
 Thanks,
 xxx
 ```
-
 
 ## 小工具
 

@@ -18,27 +18,26 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import java.io.File;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
+import java.io.File;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public LocalFileAuthorizer() throws AuthException {
-    super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
+    super(
+        new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
         new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
   }
 
   @Override
   boolean isAdmin(String username) {
-    return IoTDBConstant.ADMIN_NAME.equals(username);
+    return config.getAdminName().equals(username);
   }
-
-
 }

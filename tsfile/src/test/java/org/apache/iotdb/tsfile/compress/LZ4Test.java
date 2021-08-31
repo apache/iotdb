@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.tsfile.compress;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ThreadLocalRandom;
 import org.apache.iotdb.tsfile.compress.ICompressor.IOTDBLZ4Compressor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor.LZ4UnCompressor;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class LZ4Test {
 
@@ -39,12 +41,10 @@ public class LZ4Test {
   }
 
   @Before
-  public void setUp() {
-  }
+  public void setUp() {}
 
   @After
-  public void tearDown() {
-  }
+  public void tearDown() {}
 
   @Test
   public void testBytes() throws IOException {
@@ -65,5 +65,4 @@ public class LZ4Test {
 
     Assert.assertArrayEquals(uncom, uncompressed);
   }
-
 }

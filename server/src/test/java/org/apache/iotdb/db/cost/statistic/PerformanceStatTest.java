@@ -20,6 +20,7 @@ package org.apache.iotdb.db.cost.statistic;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,8 +47,7 @@ public class PerformanceStatTest {
     Measurement measurement = Measurement.INSTANCE;
     Operation operation = Operation.EXECUTE_JDBC_BATCH;
     measurement.addOperationLatency(operation, System.currentTimeMillis());
-    measurement.addOperationLatency(operation,
-        System.currentTimeMillis() - 8000000);
+    measurement.addOperationLatency(operation, System.currentTimeMillis() - 8000000);
 
     long batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
     Assert.assertEquals(0L, batchOpCnt);
@@ -55,8 +55,7 @@ public class PerformanceStatTest {
       measurement.start();
       measurement.startContinuousPrintStatistics();
       measurement.addOperationLatency(operation, System.currentTimeMillis());
-      measurement
-          .addOperationLatency(operation, System.currentTimeMillis() - 8000000);
+      measurement.addOperationLatency(operation, System.currentTimeMillis() - 8000000);
       Thread.currentThread().sleep(1000);
       batchOpCnt = measurement.getOperationCnt()[operation.ordinal()];
       Assert.assertEquals(2L, batchOpCnt);
@@ -102,6 +101,5 @@ public class PerformanceStatTest {
     } finally {
       measurement.stop();
     }
-
   }
 }

@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.Map;
 
 public class FillQueryPlan extends RawDataQueryPlan {
 
@@ -47,5 +48,10 @@ public class FillQueryPlan extends RawDataQueryPlan {
 
   public void setFillType(Map<TSDataType, IFill> fillType) {
     this.fillType = fillType;
+  }
+
+  @Override
+  public boolean isRawQuery() {
+    return false;
   }
 }

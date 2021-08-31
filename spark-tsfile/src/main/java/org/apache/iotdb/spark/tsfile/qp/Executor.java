@@ -18,20 +18,19 @@
  */
 package org.apache.iotdb.spark.tsfile.qp;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-/**
- * This class used to execute Queries on TSFile
- */
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+/** This class used to execute Queries on TSFile */
 public class Executor {
 
-  public static List<QueryDataSet> query(ReadOnlyTsFile reader,
-      List<QueryExpression> queryExpressions, long start, long end) {
+  public static List<QueryDataSet> query(
+      ReadOnlyTsFile reader, List<QueryExpression> queryExpressions, long start, long end) {
     List<QueryDataSet> dataSets = new ArrayList<>();
     try {
       for (QueryExpression expression : queryExpressions) {

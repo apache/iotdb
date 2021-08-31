@@ -25,12 +25,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Loader {
-  private Loader() {
-  }
+  private Loader() {}
 
-  /**
-   * function for getting resources.
-   */
+  /** function for getting resources. */
   public static Set<URL> getResources(String resource, ClassLoader classLoader) throws IOException {
     Set<URL> urlSet = new HashSet<>();
     Enumeration<URL> urlEnum = classLoader.getResources(resource);
@@ -44,9 +41,7 @@ public class Loader {
     return classLoader.getResource(resource);
   }
 
-  /**
-   * function for getting the class loader of the given object.
-   */
+  /** function for getting the class loader of the given object. */
   public static ClassLoader getClassLoaderOfObject(Object o) {
     if (o == null) {
       throw new NullPointerException("Input object cannot be null");

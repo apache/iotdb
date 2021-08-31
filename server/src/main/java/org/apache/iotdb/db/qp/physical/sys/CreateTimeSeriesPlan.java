@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -33,6 +26,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 
 public class CreateTimeSeriesPlan extends PhysicalPlan {
 
@@ -44,25 +46,35 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private Map<String, String> props = null;
   private Map<String, String> tags = null;
   private Map<String, String> attributes = null;
+  private long tagOffset = -1;
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     canBeSplit = false;
   }
 
-  public CreateTimeSeriesPlan(PartialPath path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
-      Map<String, String> attributes, String alias) {
+  public CreateTimeSeriesPlan(
+      PartialPath path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      Map<String, String> tags,
+      Map<String, String> attributes,
+      String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.props = props;
     this.tags = tags;
     this.attributes = attributes;
     this.alias = alias;
     canBeSplit = false;
+    if (props != null) {
+      this.props = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      this.props.putAll(props);
+    }
   }
 
   public PartialPath getPath() {
@@ -129,10 +141,19 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.props = props;
   }
 
+  public long getTagOffset() {
+    return tagOffset;
+  }
+
+  public void setTagOffset(long tagOffset) {
+    this.tagOffset = tagOffset;
+  }
+
   @Override
   public String toString() {
-    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
-        dataType, encoding, compressor);
+    return String.format(
+        "seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s, tagOffset: %s",
+        path, dataType, encoding, compressor, tagOffset);
   }
 
   @Override
@@ -149,6 +170,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     stream.write(dataType.ordinal());
     stream.write(encoding.ordinal());
     stream.write(compressor.ordinal());
+    stream.writeLong(tagOffset);
 
     // alias
     if (alias != null) {
@@ -186,6 +208,52 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+    buffer.put((byte) dataType.ordinal());
+    buffer.put((byte) encoding.ordinal());
+    buffer.put((byte) compressor.ordinal());
+    buffer.putLong(tagOffset);
+
+    // alias
+    if (alias != null) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // props
+    if (props != null && !props.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(props, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // tags
+    if (tags != null && !tags.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(tags, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // attributes
+    if (attributes != null && !attributes.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributes, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    buffer.putLong(index);
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
@@ -194,6 +262,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     dataType = TSDataType.values()[buffer.get()];
     encoding = TSEncoding.values()[buffer.get()];
     compressor = CompressionType.values()[buffer.get()];
+    tagOffset = buffer.getLong();
 
     // alias
     if (buffer.get() == 1) {
@@ -227,14 +296,16 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       return false;
     }
     CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
-    return Objects.equals(path, that.path) &&
-        dataType == that.dataType &&
-        encoding == that.encoding &&
-        compressor == that.compressor;
+
+    return Objects.equals(path, that.path)
+        && dataType == that.dataType
+        && encoding == that.encoding
+        && compressor == that.compressor
+        && tagOffset == that.tagOffset;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(path, dataType, encoding, compressor);
+    return Objects.hash(path, dataType, encoding, compressor, tagOffset);
   }
 }

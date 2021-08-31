@@ -21,21 +21,19 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
-/**
- * A service to handle jdbc request from client.
- */
+/** A service to handle jdbc request from client. */
 public class RPCService extends ThriftService implements RPCServiceMBean {
 
   private TSServiceImpl impl;
 
-  private RPCService() {
-  }
+  private RPCService() {}
 
-  public static final RPCService getInstance() {
+  public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
   }
 
@@ -51,22 +49,33 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   }
 
   @Override
-  public void initTProcessor() throws ClassNotFoundException,IllegalAccessException,InstantiationException{
-      impl = (TSServiceImpl) Class.forName(IoTDBDescriptor.getInstance().getConfig()
-          .getRpcImplClassName()).newInstance();
-      processor = new Processor<>(impl);
+  public void initTProcessor()
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    impl =
+        (TSServiceImpl)
+            Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
+                .newInstance();
+    processor = new Processor<>(impl);
   }
 
   @Override
-  public void initThriftServiceThread()
-      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+  public void initThriftServiceThread() throws IllegalAccessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    thriftServiceThread = new ThriftServiceThread(processor,
-        getID().getName(), ThreadName.RPC_CLIENT.getName(),
-        config.getRpcAddress(), config.getRpcPort(), config.getRpcMaxConcurrentClientNum(),
-        config.getThriftServerAwaitTimeForStopService(),
-        new RPCServiceThriftHandler(impl),
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+    try {
+      thriftServiceThread =
+          new ThriftServiceThread(
+              processor,
+              getID().getName(),
+              ThreadName.RPC_CLIENT.getName(),
+              config.getRpcAddress(),
+              config.getRpcPort(),
+              config.getRpcMaxConcurrentClientNum(),
+              config.getThriftServerAwaitTimeForStopService(),
+              new RPCServiceThriftHandler(impl),
+              IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+    } catch (RPCServiceException e) {
+      throw new IllegalAccessException(e.getMessage());
+    }
     thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
   }
 
@@ -89,7 +98,6 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
     private static final RPCService INSTANCE = new RPCService();
 
-    private RPCServiceHolder() {
-    }
+    private RPCServiceHolder() {}
   }
 }

@@ -18,13 +18,7 @@
  */
 package org.apache.iotdb.spark.tsfile.qp.common;
 
-
-import org.apache.iotdb.spark.tsfile.qp.exception.BasicOperatorException;
-
-/**
- * basic operators include < > >= <= !=.
- */
-
+/** basic operators include < > >= <= !=. */
 public class BasicOperator extends FilterOperator {
 
   private String seriesPath;
@@ -46,7 +40,7 @@ public class BasicOperator extends FilterOperator {
     return seriesValue;
   }
 
-  public void setReversedTokenIntType() throws BasicOperatorException {
+  public void setReversedTokenIntType() {
     int intType = SQLConstant.reverseWords.get(tokenIntType);
     setTokenIntType(intType);
   }
@@ -56,11 +50,9 @@ public class BasicOperator extends FilterOperator {
     return singlePath;
   }
 
-
   @Override
   public BasicOperator clone() {
-    BasicOperator ret;
-    ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
+    BasicOperator ret = new BasicOperator(this.tokenIntType, seriesPath, seriesValue);
     ret.tokenSymbol = tokenSymbol;
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;

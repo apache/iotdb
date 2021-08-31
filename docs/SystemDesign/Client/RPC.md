@@ -37,7 +37,6 @@ or
 
 ```
 mvn clean compile -pl thrift
-
 ```
 
 Generated codes:

@@ -19,8 +19,8 @@
 package org.apache.iotdb.tsfile.exception.compress;
 
 /**
- * This exception will be thrown when the codec is not supported by tsfile,
- * meaning there is no matching type defined in CompressionCodecName.
+ * This exception will be thrown when the codec is not supported by tsfile, meaning there is no
+ * matching type defined in CompressionCodecName.
  */
 public class CompressionTypeNotSupportedException extends RuntimeException {
 

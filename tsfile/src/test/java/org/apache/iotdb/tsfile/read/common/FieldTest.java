@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.exception.NullFieldException;
+
 import org.junit.Test;
 
 public class FieldTest {
@@ -28,5 +29,4 @@ public class FieldTest {
     Field field = new Field(null);
     field.getIntV();
   }
-
 }

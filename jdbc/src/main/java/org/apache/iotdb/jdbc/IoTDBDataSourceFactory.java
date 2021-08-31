@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 import javax.sql.ConnectionPoolDataSource;
 import javax.sql.DataSource;
 import javax.sql.XADataSource;
+
 import java.sql.Driver;
-import java.sql.SQLException;
 import java.util.Properties;
 
 public class IoTDBDataSourceFactory implements DataSourceFactory {
@@ -33,7 +33,7 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   private final Logger logger = LoggerFactory.getLogger(IoTDBDataSourceFactory.class);
 
   @Override
-  public DataSource createDataSource(Properties properties) throws SQLException {
+  public DataSource createDataSource(Properties properties) {
     IoTDBDataSource ds = new IoTDBDataSource();
     setProperties(ds, properties);
     return ds;
@@ -63,17 +63,17 @@ public class IoTDBDataSourceFactory implements DataSourceFactory {
   }
 
   @Override
-  public ConnectionPoolDataSource createConnectionPoolDataSource(Properties properties) throws SQLException {
+  public ConnectionPoolDataSource createConnectionPoolDataSource(Properties properties) {
     return null;
   }
 
   @Override
-  public XADataSource createXADataSource(Properties properties) throws SQLException {
+  public XADataSource createXADataSource(Properties properties) {
     return null;
   }
 
   @Override
-  public Driver createDriver(Properties properties) throws SQLException {
+  public Driver createDriver(Properties properties) {
     return new IoTDBDriver();
   }
 }

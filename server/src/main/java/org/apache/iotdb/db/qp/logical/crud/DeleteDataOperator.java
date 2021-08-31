@@ -18,12 +18,20 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-/**
- * this class extends {@code RootOperator} and process delete statement.
- */
-public class DeleteDataOperator extends SFWOperator {
+import java.util.ArrayList;
+import java.util.List;
+
+/** this class extends {@code RootOperator} and process delete statement. */
+public class DeleteDataOperator extends Operator {
+
+  private final List<PartialPath> paths;
 
   private long startTime;
   private long endTime;
@@ -31,6 +39,15 @@ public class DeleteDataOperator extends SFWOperator {
   public DeleteDataOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.DELETE;
+    paths = new ArrayList<>();
+  }
+
+  public List<PartialPath> getPaths() {
+    return paths;
+  }
+
+  public void addPath(PartialPath path) {
+    paths.add(path);
   }
 
   public long getStartTime() {
@@ -47,5 +64,11 @@ public class DeleteDataOperator extends SFWOperator {
 
   public void setEndTime(long time) {
     this.endTime = time;
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new DeletePlan(getStartTime(), getEndTime(), getPaths());
   }
 }

@@ -19,32 +19,34 @@
 
 -->
 
-# TsFile-Spark-Connector User Guide
+## Spark-TsFile
 
-## 1. About TsFile-Spark-Connector
+### About Spark-TsFile-Connector
 
-TsFile-Spark-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.
+Spark-TsFile-Connector implements the support of Spark for external data sources of Tsfile type. This enables users to read, write and query Tsfile by Spark.
 
 With this connector, you can
+
 * load a single TsFile, from either the local file system or hdfs, into Spark
 * load all files in a specific directory, from either the local file system or hdfs, into Spark
 * write data from Spark into TsFile
 
-## 2. System Requirements
+### System Requirements
 
 |Spark Version | Scala Version | Java Version | TsFile |
-|------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.10.0`|
+|:-------------: | :-------------: | :------------: |:------------: |
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.13.0-SNAPSHOT`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/iotdb/tree/master/tsfile.
+> Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
 
-## 3. Quick Start
-### Local Mode
+### Quick Start
+#### Local Mode
 
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.10.0-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar
 ```
 
 Note:
@@ -54,12 +56,12 @@ Note:
 * See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
 
-### Distributed Mode
+#### Distributed Mode
 
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar,hadoop-tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
@@ -68,7 +70,7 @@ Note:
 * Multiple jar packages are separated by commas without any spaces.
 * See https://github.com/apache/iotdb/tree/master/tsfile for how to get TsFile.
 
-## 4. Data Type Correspondence
+### Data Type Correspondence
 
 | TsFile data type | SparkSQL data type|
 | --------------| -------------- |
@@ -79,35 +81,22 @@ Note:
 | DOUBLE      		   | DoubleType     |
 | TEXT      				| StringType     |
 
-## 5. Schema Inference
+### Schema Inference
 
-The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three Measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is as follows:
-
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-</center>
-
-The existing data in the TsFile is as follows:
-
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">device:root.ln.wf01.wt01</th><th colspan="4">device:root.ln.wf02.wt02</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td></tr>
-</table>
-</center>
+The way to display TsFile is dependent on the schema. Take the following TsFile structure as an example: There are three measurements in the TsFile schema: status, temperature, and hardware. The basic information of these three measurements is listed:
 
 
+|Name|Type|Encode|
+|---|---|---|
+|status|Boolean|PLAIN|
+|temperature|Float|RLE|
+|hardware|Text|PLAIN|
 
-The corresponding SparkSQL table is as follows:
+The existing data in the TsFile are:
+
+<img width="519" alt="ST 1" src="https://user-images.githubusercontent.com/69114052/98197920-be9abc80-1f62-11eb-9efb-027f0590031c.png">
+
+The corresponding SparkSQL table is:
 
 | time | root.ln.wf02.wt02.temperature | root.ln.wf02.wt02.status | root.ln.wf02.wt02.hardware | root.ln.wf01.wt01.temperature | root.ln.wf01.wt01.status | root.ln.wf01.wt01.hardware |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|--------------------------|----------------------------|
@@ -133,11 +122,11 @@ You can also use narrow table form which as follows: (You can see part 6 about h
 
 
 
-## 6. Scala API
+### Scala API
 
 NOTE: Remember to assign necessary read and write permissions in advance.
 
-### Example 1: read from the local file system
+* Example 1: read from the local file system
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -148,7 +137,7 @@ val narrow_df = spark.read.tsfile("test.tsfile", true)
 narrow_df.show
 ```
 
-### Example 2: read from the hadoop file system
+* Example 2: read from the hadoop file system
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -159,7 +148,7 @@ val narrow_df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true)
 narrow_df.show
 ```
 
-### Example 3: read from a specific directory
+* Example 3: read from a specific directory
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -171,7 +160,7 @@ Note 1: Global time ordering of all TsFiles in a directory is not supported now.
 
 Note 2: Measurements of the same name should have the same schema.
 
-### Example 4: query in wide form
+* Example 4: query in wide form
 
 ```scala
 import org.apache.iotdb.spark.tsfile._
@@ -189,7 +178,8 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 5: query in narrow form
+* Example 5: query in narrow form
+
 ```scala
 import org.apache.iotdb.spark.tsfile._
 val df = spark.read.tsfile("hdfs://localhost:9000/test.tsfile", true) 
@@ -206,7 +196,7 @@ val newDf = spark.sql("select count(*) from tsfile_table")
 newDf.show
 ```
 
-### Example 6: write in wide form
+* Example 6: write in wide form
 
 ```scala
 // we only support wide_form table to write
@@ -220,7 +210,7 @@ val newDf = spark.read.tsfile("hdfs://localhost:9000/output")
 newDf.show
 ```
 
-## Example 6: write in narrow form
+* Example 7: write in narrow form
 
 ```scala
 // we only support wide_form table to write
@@ -235,105 +225,91 @@ newDf.show
 ```
 
 
-## Appendix A: Old Design of Schema Inference
+Appendix A: Old Design of Schema Inference
 
-The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three Measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is as follows:
+The way to display TsFile is related to TsFile Schema. Take the following TsFile structure as an example: There are three measurements in the Schema of TsFile: status, temperature, and hardware. The basic info of these three Measurements is:
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="2">Name</th><th colspan="2">Type</th><th colspan="2">Encode</th></tr>
-	<tr><td colspan="2">status</td><td colspan="2">Boolean</td><td colspan="2">PLAIN</td></tr>
-	<tr><td colspan="2">temperature</td><td colspan="2">Float</td><td colspan="2">RLE</td></tr>
-	<tr><td colspan="2">hardware</td><td colspan="2">Text</td><td colspan="2">PLAIN</td></tr>
-</table>
-<span>Basic info of Measurements</span>
-</center>
 
-The existing data in the file is as follows:
+|Name|Type|Encode|
+|---|---|---|
+|status|Boolean|PLAIN|
+|temperature|Float|RLE|
+|hardware|Text|PLAIN|
 
-<center>
-<table style="text-align:center">
-	<tr><th colspan="4">delta\_object:root.ln.wf01.wt01</th><th colspan="4">delta\_object:root.ln.wf02.wt02</th><th colspan="4">delta\_object:root.sgcc.wf03.wt01</th></tr>
-	<tr><th colspan="2">status</th><th colspan="2">temperature</th><th colspan="2">hardware</th><th colspan="2">status</th><th colspan="2">status</th><th colspan="2">temperature</th></tr>
-	<tr><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th><th>time</th><th>value</th></tr>
-	<tr><td>1</td><td>True</td><td>1</td><td>2.2</td><td>2</td><td>"aaa"</td><td>1</td><td>True</td><td>2</td><td>True</td><td>3</td><td>3.3</td></tr>
-	<tr><td>3</td><td>True</td><td>2</td><td>2.2</td><td>4</td><td>"bbb"</td><td>2</td><td>False</td><td>3</td><td>True</td><td>6</td><td>6.6</td></tr>
-	<tr><td>5</td><td> False </td><td>3</td><td>2.1</td><td>6</td><td>"ccc"</td><td>4</td><td>True</td><td>4</td><td>True</td><td>8</td><td>8.8</td></tr>
-	<tr><td>7</td><td> True </td><td>4</td><td>2.0</td><td>8</td><td>"ddd"</td><td>5</td><td>False</td><td>6</td><td>True</td><td>9</td><td>9.9</td></tr>
-</table>
-<span>A set of time-series data</span>
-</center>
-There are two ways to show it out:
 
-#### the default way
+The existing data in the file are:
 
-Two columns will be created to store the full path of the device: time(LongType) and delta_object(StringType).
+<img width="817" alt="ST 2" src="https://user-images.githubusercontent.com/69114052/98197948-cf4b3280-1f62-11eb-9c8c-c97d1adf032c.png">
+
+A set of time-series data
+
+There are two ways to show a set of time-series data:
+
+* the default way
+
+Two columns are created to store the full path of the device: time(LongType) and delta_object(StringType).
 
 - `time` : Timestamp, LongType
 - `delta_object` : Delta_object ID, StringType
 
-Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is as follows:
+Next, a column is created for each Measurement to store the specific data. The SparkSQL table structure is:
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> delta\_object(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> root.ln.wf01.wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf01.wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> root.ln.wf02.wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf01.wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.ln.wf02.wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> root.sgcc.wf03.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> root.ln.wf01.wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> root.ln.wf02.wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> root.sgcc.wf03.wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+|time(LongType)| delta\_object(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|---|---|---|---|---|
+|1| root.ln.wf01.wt01 |True|2.2|null|
+|1| root.ln.wf02.wt02 |True|null|null|
+|2| root.ln.wf01.wt01 |null|2.2|null|
+|2| root.ln.wf02.wt02 |False|null|"aaa"|
+|2| root.sgcc.wf03.wt01 |True|null|null|
+|3| root.ln.wf01.wt01 |True|2.1|null|
+|3| root.sgcc.wf03.wt01 |True|3.3|null|
+|4| root.ln.wf01.wt01 |null|2.0|null|
+|4| root.ln.wf02.wt02 |True|null|"bbb"|
+|4| root.sgcc.wf03.wt01 |True|null|null|
+|5| root.ln.wf01.wt01 |False|null|null|
+|5| root.ln.wf02.wt02 |False|null|null|
+|5| root.sgcc.wf03.wt01 |True|null|null|
+|6| root.ln.wf02.wt02 |null|null|"ccc"|
+|6| root.sgcc.wf03.wt01 |null|6.6|null|
+|7| root.ln.wf01.wt01 |True|null|null|
+|8| root.ln.wf02.wt02 |null|null|"ddd"|
+|8| root.sgcc.wf03.wt01 |null|8.8|null|
+|9| root.sgcc.wf03.wt01 |null|9.9|null|
 
 
-#### unfolding delta_object column
 
-Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. If the user wants to use this display way, the parameter "delta\_object\_name" needs to be set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column will be created for each Measurement to store the specific data.
+* unfold delta_object column
 
-Then The SparkSQL Table Structure is as follow:
+Expand the device column by "." into multiple columns, ignoring the root directory "root". Convenient for richer aggregation operations. To use this display way, the parameter "delta\_object\_name" is set in the table creation statement (refer to Example 5 in Section 5.1 of this manual), as in this example, parameter "delta\_object\_name" is set to "root.device.turbine". The number of path layers needs to be one-to-one. At this point, one column is created for each layer of the device path except the "root" layer. The column name is the name in the parameter and the value is the name of the corresponding layer of the device. Next, one column is created for each Measurement to store the specific data.
 
-<center>
-	<table style="text-align:center">
-	<tr><th>time(LongType)</th><th> group(StringType)</th><th> field(StringType)</th><th> device(StringType)</th><th>status(BooleanType)</th><th>temperature(FloatType)</th><th>hardware(StringType)</th></tr>
-	<tr><td>1</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.2</td><td>null</td></tr>
-	<tr><td>1</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.2</td><td>null</td></tr>
-	<tr><td>2</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>"aaa"</td></tr>
-	<tr><td>2</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>3</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>2.1</td><td>null</td></tr>
-	<tr><td>3</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>3.3</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>null</td><td>2.0</td><td>null</td></tr>
-	<tr><td>4</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>True</td><td>null</td><td>"bbb"</td></tr>
-	<tr><td>4</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>False</td><td>null</td><td>null</td></tr>
-	<tr><td>5</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>6</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ccc"</td></tr>
-	<tr><td>6</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>6.6</td><td>null</td></tr>
-	<tr><td>7</td><td> ln </td><td> wf01 </td><td> wt01 </td><td>True</td><td>null</td><td>null</td></tr>
-	<tr><td>8</td><td> ln </td><td> wf02 </td><td> wt02 </td><td>null</td><td>null</td><td>"ddd"</td></tr>
-	<tr><td>8</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>8.8</td><td>null</td></tr>
-	<tr><td>9</td><td> sgcc </td><td> wf03 </td><td> wt01 </td><td>null</td><td>9.9</td><td>null</td></tr>
-	</table>
-</center>
+Then SparkSQL Table Structure is as follows:
 
-TsFile-Spark-Connector can display one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name will have the same data type by default. Note that if there is a situation with the same name but different data types, TsFile-Spark-Connector will not guarantee the correctness of the results.
+|time(LongType)| group(StringType)| field(StringType)| device(StringType)|status(BooleanType)|temperature(FloatType)|hardware(StringType)|
+|---|---|---|---|---|---|---|
+|1| ln | wf01 | wt01 |True|2.2|null|
+|1| ln | wf02 | wt02 |True|null|null|
+|2| ln | wf01 | wt01 |null|2.2|null|
+|2| ln | wf02 | wt02 |False|null|"aaa"|
+|2| sgcc | wf03 | wt01 |True|null|null|
+|3| ln | wf01 | wt01 |True|2.1|null|
+|3| sgcc | wf03 | wt01 |True|3.3|null|
+|4| ln | wf01 | wt01 |null|2.0|null|
+|4| ln | wf02 | wt02 |True|null|"bbb"|
+|4| sgcc | wf03 | wt01 |True|null|null|
+|5| ln | wf01 | wt01 |False|null|null|
+|5| ln | wf02 | wt02 |False|null|null|
+|5| sgcc | wf03 | wt01 |True|null|null|
+|6| ln | wf02 | wt02 |null|null|"ccc"|
+|6| sgcc | wf03 | wt01 |null|6.6|null|
+|7| ln | wf01 | wt01 |True|null|null|
+|8| ln | wf02 | wt02 |null|null|"ddd"|
+|8| sgcc | wf03 | wt01 |null|8.8|null|
+|9| sgcc | wf03 | wt01 |null|9.9|null|
+
+
+TsFile-Spark-Connector displays one or more TsFiles as a table in SparkSQL By SparkSQL. It also allows users to specify a single directory or use wildcards to match multiple directories. If there are multiple TsFiles, the union of the measurements in all TsFiles will be retained in the table, and the measurement with the same name have the same data type by default. Note that if a situation with the same name but different data types exists, TsFile-Spark-Connector does not guarantee the correctness of the results.
 
 The writing process is to write a DataFrame as one or more TsFiles. By default, two columns need to be included: time and delta_object. The rest of the columns are used as Measurement. If user wants to write the second table structure back to TsFile, user can set the "delta\_object\_name" parameter(refer to Section 5.1 of Section 5.1 of this manual).
 
-## Appendix B: Old Note
+Appendix B: Old Note
 NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.

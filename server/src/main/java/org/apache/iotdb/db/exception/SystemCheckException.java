@@ -26,7 +26,8 @@ public class SystemCheckException extends IoTDBException {
   private static final long serialVersionUID = 3845398095925149972L;
 
   public SystemCheckException(String walFolder) {
-    super(String.format("[%s] is not a directory", walFolder),
+    super(
+        String.format("[%s] is not a directory", walFolder),
         TSStatusCode.SYSTEM_CHECK_ERROR.getStatusCode());
   }
 }

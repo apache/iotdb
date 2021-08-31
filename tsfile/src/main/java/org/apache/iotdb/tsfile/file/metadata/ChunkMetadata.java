@@ -18,13 +18,8 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -32,10 +27,15 @@ import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-/**
- * Metadata of one chunk.
- */
-public class ChunkMetadata implements Accountable {
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/** Metadata of one chunk. */
+public class ChunkMetadata implements Accountable, IChunkMetadata {
 
   private String measurementUid;
 
@@ -52,16 +52,12 @@ public class ChunkMetadata implements Accountable {
    */
   private long version;
 
-  /**
-   * A list of deleted intervals.
-   */
+  /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
 
   private boolean modified;
 
-  /**
-   * ChunkLoader of metadata, used to create ChunkReaderWrap
-   */
+  /** ChunkLoader of metadata, used to create ChunkReaderWrap */
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
@@ -72,12 +68,13 @@ public class ChunkMetadata implements Accountable {
 
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
 
-
   // used for SeriesReader to indicate whether it is a seq/unseq timeseries metadata
   private boolean isSeq = true;
+  private boolean isClosed;
+  private String filePath;
+  private byte mask;
 
-  private ChunkMetadata() {
-  }
+  private ChunkMetadata() {}
 
   /**
    * constructor of ChunkMetaData.
@@ -87,8 +84,8 @@ public class ChunkMetadata implements Accountable {
    * @param fileOffset file offset
    * @param statistics value statistics
    */
-  public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
-      Statistics statistics) {
+  public ChunkMetadata(
+      String measurementUid, TSDataType tsDataType, long fileOffset, Statistics statistics) {
     this.measurementUid = measurementUid;
     this.tsDataType = tsDataType;
     this.offsetOfChunkHeader = fileOffset;
@@ -97,9 +94,9 @@ public class ChunkMetadata implements Accountable {
 
   @Override
   public String toString() {
-    return String.format("measurementId: %s, datatype: %s, version: %d, "
-            + "Statistics: %s, deleteIntervalList: %s", measurementUid, tsDataType, version, statistics,
-        deleteIntervalList);
+    return String.format(
+        "measurementId: %s, datatype: %s, version: %d, Statistics: %s, deleteIntervalList: %s, filePath: %s",
+        measurementUid, tsDataType, version, statistics, deleteIntervalList, filePath);
   }
 
   public long getNumOfPoints() {
@@ -111,6 +108,7 @@ public class ChunkMetadata implements Accountable {
    *
    * @return Byte offset of header of this chunk (includes the marker)
    */
+  @Override
   public long getOffsetOfChunkHeader() {
     return offsetOfChunkHeader;
   }
@@ -119,6 +117,7 @@ public class ChunkMetadata implements Accountable {
     return measurementUid;
   }
 
+  @Override
   public Statistics getStatistics() {
     return statistics;
   }
@@ -142,13 +141,12 @@ public class ChunkMetadata implements Accountable {
    * @return length
    * @throws IOException IOException
    */
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public int serializeTo(OutputStream outputStream, boolean serializeStatistic) throws IOException {
     int byteLen = 0;
-
-    byteLen += ReadWriteIOUtils.write(measurementUid, outputStream);
     byteLen += ReadWriteIOUtils.write(offsetOfChunkHeader, outputStream);
-    byteLen += ReadWriteIOUtils.write(tsDataType, outputStream);
-    byteLen += statistics.serialize(outputStream);
+    if (serializeStatistic) {
+      byteLen += statistics.serialize(outputStream);
+    }
     return byteLen;
   }
 
@@ -158,22 +156,31 @@ public class ChunkMetadata implements Accountable {
    * @param buffer ByteBuffer
    * @return ChunkMetaData object
    */
-  public static ChunkMetadata deserializeFrom(ByteBuffer buffer) {
+  public static ChunkMetadata deserializeFrom(
+      ByteBuffer buffer, TimeseriesMetadata timeseriesMetadata) {
     ChunkMetadata chunkMetaData = new ChunkMetadata();
 
-    chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
+    chunkMetaData.measurementUid = timeseriesMetadata.getMeasurementId();
+    chunkMetaData.tsDataType = timeseriesMetadata.getTSDataType();
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
-    chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
-
-    chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
-
+    // if the TimeSeriesMetadataType is not 0, it means it has more than one chunk
+    // and each chunk's metadata has its own statistics
+    if ((timeseriesMetadata.getTimeSeriesMetadataType() & 0x3F) != 0) {
+      chunkMetaData.statistics = Statistics.deserialize(buffer, chunkMetaData.tsDataType);
+    } else {
+      // if the TimeSeriesMetadataType is 0, it means it has only one chunk
+      // and that chunk's metadata has no statistic
+      chunkMetaData.statistics = timeseriesMetadata.getStatistics();
+    }
     return chunkMetaData;
   }
 
+  @Override
   public long getVersion() {
     return version;
   }
 
+  @Override
   public void setVersion(long version) {
     this.version = version;
   }
@@ -211,6 +218,11 @@ public class ChunkMetadata implements Accountable {
     return chunkLoader;
   }
 
+  @Override
+  public boolean needSetChunkLoader() {
+    return chunkLoader == null;
+  }
+
   public void setChunkLoader(IChunkLoader chunkLoader) {
     this.chunkLoader = chunkLoader;
   }
@@ -224,24 +236,26 @@ public class ChunkMetadata implements Accountable {
       return false;
     }
     ChunkMetadata that = (ChunkMetadata) o;
-    return offsetOfChunkHeader == that.offsetOfChunkHeader &&
-        version == that.version &&
-        Objects.equals(measurementUid, that.measurementUid) &&
-        tsDataType == that.tsDataType &&
-        Objects.equals(deleteIntervalList, that.deleteIntervalList) &&
-        Objects.equals(statistics, that.statistics);
+    return offsetOfChunkHeader == that.offsetOfChunkHeader
+        && version == that.version
+        && Objects.equals(measurementUid, that.measurementUid)
+        && tsDataType == that.tsDataType
+        && Objects.equals(deleteIntervalList, that.deleteIntervalList)
+        && Objects.equals(statistics, that.statistics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(measurementUid, deleteIntervalList, tsDataType, statistics,
-        version, offsetOfChunkHeader);
+    return Objects.hash(
+        measurementUid, deleteIntervalList, tsDataType, statistics, version, offsetOfChunkHeader);
   }
 
+  @Override
   public boolean isModified() {
     return modified;
   }
 
+  @Override
   public void setModified(boolean modified) {
     this.modified = modified;
   }
@@ -255,17 +269,23 @@ public class ChunkMetadata implements Accountable {
   }
 
   public long calculateRamSize() {
-    return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementUid) + statistics
-        .calculateRamSize();
+    return CHUNK_METADATA_FIXED_RAM_SIZE
+        + RamUsageEstimator.sizeOf(measurementUid)
+        + statistics.calculateRamSize();
   }
 
+  public static long calculateRamSize(String measurementId, TSDataType dataType) {
+    return CHUNK_METADATA_FIXED_RAM_SIZE
+        + RamUsageEstimator.sizeOf(measurementId)
+        + Statistics.getSizeByType(dataType);
+  }
+
+  @Override
   public void setRamSize(long size) {
     this.ramSize = size;
   }
 
-  /**
-   * must use calculate ram size first
-   */
+  /** must use calculate ram size first */
   @Override
   public long getRamSize() {
     return ramSize;
@@ -276,11 +296,48 @@ public class ChunkMetadata implements Accountable {
     this.ramSize = calculateRamSize();
   }
 
+  @Override
   public void setSeq(boolean seq) {
     isSeq = seq;
   }
 
+  @Override
   public boolean isSeq() {
     return isSeq;
+  }
+
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  public void setClosed(boolean closed) {
+    isClosed = closed;
+  }
+
+  public String getFilePath() {
+    return filePath;
+  }
+
+  public void setFilePath(String filePath) {
+    this.filePath = filePath;
+  }
+
+  @Override
+  public byte getMask() {
+    return mask;
+  }
+
+  @Override
+  public boolean isTimeColumn() {
+    return mask == TsFileConstant.TIME_COLUMN_MASK;
+  }
+
+  @Override
+  public boolean isValueColumn() {
+    return mask == TsFileConstant.VALUE_COLUMN_MASK;
+  }
+
+  public void setMask(byte mask) {
+    this.mask = mask;
   }
 }

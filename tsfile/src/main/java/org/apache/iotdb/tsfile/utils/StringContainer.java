@@ -22,9 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * this class is used to contact String effectively.It contains a StringBuider
- * and initialize it until {@code toString} is called. Note:it's not thread
- * safety
+ * this class is used to contact String effectively.It contains a StringBuider and initialize it
+ * until {@code toString} is called. Note:it's not thread safety
  */
 public class StringContainer {
 
@@ -33,29 +32,22 @@ public class StringContainer {
   private StringBuilder stringBuilder;
   private ArrayList<String> sequenceList;
   private ArrayList<String> reverseList;
-  /**
-   * the summation length of all string segments.
-   */
+  /** the summation length of all string segments. */
   private int totalLength = 0;
-  /**
-   * the count of string segments.
-   */
+  /** the count of string segments. */
   private int count = 0;
+
   private boolean isUpdated = true;
   private String cache;
 
-  /**
-   * defines the constructor function for the class.
-   */
+  /** defines the constructor function for the class. */
   public StringContainer() {
     sequenceList = new ArrayList<>();
     reverseList = new ArrayList<>();
     joinSeparator = null;
   }
 
-  /**
-   * defines the constructor function for the class.
-   */
+  /** defines the constructor function for the class. */
   public StringContainer(String joinSeparator) {
     sequenceList = new ArrayList<>();
     reverseList = new ArrayList<>();
@@ -257,8 +249,8 @@ public class StringContainer {
 
   /**
    * return a sub-string in this container.<br>
-   * e.g. this container is ["aa","bbb","cc","d","ee"]; this.getSubString(0) =
-   * "a"; this.getSubString(2) ="c";this.getSubString(-1) = "ee";
+   * e.g. this container is ["aa","bbb","cc","d","ee"]; this.getSubString(0) = "a";
+   * this.getSubString(2) ="c";this.getSubString(-1) = "ee";
    *
    * @param index - the index of wanted sub-string
    * @return - substring result
@@ -266,8 +258,8 @@ public class StringContainer {
   public String getSubString(int index) {
     int realIndex = index >= 0 ? index : count + index;
     if (realIndex < 0 || realIndex >= count) {
-      throw new IndexOutOfBoundsException(String.format(
-          "Index: %d, Real Index: %d, Size: %d", index, realIndex, count));
+      throw new IndexOutOfBoundsException(
+          String.format("Index: %d, Real Index: %d, Size: %d", index, realIndex, count));
     }
     if (realIndex < reverseList.size()) {
       return reverseList.get(reverseList.size() - 1 - realIndex);
@@ -277,37 +269,40 @@ public class StringContainer {
   }
 
   /**
-   * /** return a sub-container consist of several continuous strings in this
-   * {@code container.If
-   * start <= end, return a empty container} e.g. this container is
-   * ["aa","bbb","cc","d","ee"]; this.getSubString(0,0) = ["aa"]<br>
+   * /** return a sub-container consist of several continuous strings in this {@code container.If
+   * start <= end, return a empty container} e.g. this container is ["aa","bbb","cc","d","ee"];
+   * this.getSubString(0,0) = ["aa"]<br>
    * this.getSubString(1,3) = ["bbb","cc","d"]<br>
    * this.getSubString(1,-1) = ["bbb","cc","d", "ee"]<br>
    *
    * @param start - the start index of wanted sub-string
-   * @param end   - the end index of wanted sub-string
+   * @param end - the end index of wanted sub-string
    * @return - substring result
    */
   public StringContainer getSubStringContainer(int start, int end) {
     int realStartIndex = start >= 0 ? start : count + start;
     int realEndIndex = end >= 0 ? end : count + end;
     if (realStartIndex < 0 || realStartIndex >= count) {
-      throw new IndexOutOfBoundsException(String.format(
-          "start Index: %d, Real start Index: %d, Size: %d", start, realStartIndex, count));
+      throw new IndexOutOfBoundsException(
+          String.format(
+              "start Index: %d, Real start Index: %d, Size: %d", start, realStartIndex, count));
     }
     if (realEndIndex < 0 || realEndIndex >= count) {
-      throw new IndexOutOfBoundsException(String.format(
-          "end Index: %d, Real end Index: %d, Size: %d", end, realEndIndex, count));
+      throw new IndexOutOfBoundsException(
+          String.format("end Index: %d, Real end Index: %d, Size: %d", end, realEndIndex, count));
     }
     StringContainer ret = new StringContainer(joinSeparator);
     if (realStartIndex < reverseList.size()) {
-      for (int i = reverseList.size() - 1 - realStartIndex; i >= Math.max(0,
-          reverseList.size() - 1 - realEndIndex); i--) {
+      for (int i = reverseList.size() - 1 - realStartIndex;
+          i >= Math.max(0, reverseList.size() - 1 - realEndIndex);
+          i--) {
         ret.addTail(this.reverseList.get(i));
       }
     }
     if (realEndIndex >= reverseList.size()) {
-      for (int i = Math.max(0, realStartIndex - reverseList.size()); i <= realEndIndex - reverseList.size(); i++) {
+      for (int i = Math.max(0, realStartIndex - reverseList.size());
+          i <= realEndIndex - reverseList.size();
+          i++) {
         ret.addTail(this.sequenceList.get(i));
       }
     }
@@ -332,18 +327,15 @@ public class StringContainer {
 
   @Override
   public boolean equals(Object sc) {
-    if (sc == null)
-      return false;
-    if (this.getClass() != sc.getClass())
-      return false;
+    if (sc == null) return false;
+    if (this.getClass() != sc.getClass()) return false;
     return this.equals((StringContainer) sc);
   }
 
   /**
    * judge whether the param is equal to this container.
    *
-   * @param sc -StringContainer Object to judge whether the object is equal to
-   *           this container
+   * @param sc -StringContainer Object to judge whether the object is equal to this container
    * @return boolean value to judge whether is equal
    */
   public boolean equals(StringContainer sc) {

@@ -28,6 +28,5 @@ public class QueryConstant {
   public static final String DOUBLE = "DOUBLE";
   public static final String BYTE_ARRAY = "BYTE_ARRAY";
 
-  private QueryConstant() {
-  }
+  private QueryConstant() {}
 }

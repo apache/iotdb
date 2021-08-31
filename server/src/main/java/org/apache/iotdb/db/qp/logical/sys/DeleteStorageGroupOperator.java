@@ -18,19 +18,23 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.List;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class DeleteStorageGroupOperator extends RootOperator {
+import java.util.List;
+
+public class DeleteStorageGroupOperator extends Operator {
 
   private List<PartialPath> deletePathList;
-  
+
   public DeleteStorageGroupOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.DELETE_STORAGE_GROUP;
   }
-  
+
   public List<PartialPath> getDeletePathList() {
     return deletePathList;
   }
@@ -39,5 +43,8 @@ public class DeleteStorageGroupOperator extends RootOperator {
     this.deletePathList = deletePathList;
   }
 
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator) {
+    return new DeleteStorageGroupPlan(deletePathList);
+  }
 }
-

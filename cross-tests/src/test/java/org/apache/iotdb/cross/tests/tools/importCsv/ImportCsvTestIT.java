@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.cross.tests.tools.importCsv;
 
-
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,32 +32,76 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ImportCsvTestIT extends AbstractScript {
 
   private final String CSV_FILE = "target" + File.separator + "test.csv";
 
-  private static String[] sqls = new String[]{
-      "SET STORAGE GROUP TO root.fit.d1",
-      "SET STORAGE GROUP TO root.fit.d2",
-      "SET STORAGE GROUP TO root.fit.p",
-      "CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE",
-      "CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN",
-      "CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE",
-      "CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE",
-      "CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE",
+  private static final String[] sqls =
+      new String[] {
+        "SET STORAGE GROUP TO root.fit.d1",
+        "SET STORAGE GROUP TO root.fit.d2",
+        "SET STORAGE GROUP TO root.fit.p",
+        "CREATE TIMESERIES root.fit.d1.s1 WITH DATATYPE=INT32,ENCODING=RLE",
+        "CREATE TIMESERIES root.fit.d1.s2 WITH DATATYPE=TEXT,ENCODING=PLAIN",
+        "CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE",
+        "CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE",
+        "CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE",
+      };
+
+  private final String[] noDataOutputForWindows = {
+    "````````````````````````````````````````````````",
+    "Starting IoTDB Client Import Script",
+    "````````````````````````````````````````````````",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
+    "Meet error when insert csv because 411: sub plan are empty."
+  };
+
+  private final String[] noDataOutputForUnix = {
+    "------------------------------------------",
+    "Starting IoTDB Client Import Script",
+    "------------------------------------------",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv   0% │         │ 0/2 (0:00:00 / ?) Importing...",
+    "Meet error when insert csv because 411: sub plan are empty."
+  };
+
+  private final String[] hasDataOutputForWindows = {
+    "````````````````````````````````````````````````",
+    "Starting IoTDB Client Import Script",
+    "````````````````````````````````````````````````",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv",
+    "Import from: test.csv 100%"
+  };
+
+  private final String[] hasDataOutputForUnix = {
+    "------------------------------------------",
+    "Starting IoTDB Client Import Script",
+    "------------------------------------------",
+    "Start to import data from: test.csv",
+    "",
+    "Import from: test.csv",
+    "Import from: test.csv 100%"
   };
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-
-    createSchema();
   }
 
   @After
@@ -67,8 +111,9 @@ public class ImportCsvTestIT extends AbstractScript {
 
   private static void createSchema() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : sqls) {
@@ -80,13 +125,97 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   @Test
-  public void test() throws IOException {
+  public void test() throws IOException, ClassNotFoundException {
+    createSchema();
     String os = System.getProperty("os.name").toLowerCase();
     assertTrue(generateTestCSV());
     if (os.startsWith("windows")) {
-      testOnWindows();
+      testOnWindows(hasDataOutputForWindows);
     } else {
-      testOnUnix();
+      testOnUnix(hasDataOutputForUnix);
+    }
+    File file = new File(CSV_FILE);
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  @Test
+  public void testWithoutCreateSchema() throws IOException, ClassNotFoundException {
+    String os = System.getProperty("os.name").toLowerCase();
+    assertTrue(generateTestCSV());
+    if (os.startsWith("windows")) {
+      testOnWindows(hasDataOutputForWindows);
+    } else {
+      testOnUnix(hasDataOutputForUnix);
+    }
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("select * from root")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 6, 3);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  @Test
+  public void testBigCsvFile() throws IOException, ClassNotFoundException {
+    String os = System.getProperty("os.name").toLowerCase();
+    assertTrue(generateBigCsvFile());
+    if (os.startsWith("windows")) {
+      testOnWindows(hasDataOutputForWindows);
+    } else {
+      testOnUnix(hasDataOutputForUnix);
+    }
+    File file = new File(CSV_FILE);
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      if (statement.execute("select s1 from root.fit.d1")) {
+        ResultSet resultSet = statement.getResultSet();
+        testResult(resultSet, 2, 25000);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    if (file.exists()) {
+      file.delete();
+    }
+  }
+
+  private static void testResult(
+      ResultSet resultSet, int expectedColumnNumber, int expectedRowNumber) throws SQLException {
+    if (resultSet != null) {
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int columnCount = metaData.getColumnCount();
+      assertEquals(expectedColumnNumber, columnCount);
+      int actualRowNumber = 0;
+      while (resultSet.next()) {
+        actualRowNumber++;
+      }
+      assertEquals(expectedRowNumber, actualRowNumber);
+    }
+  }
+
+  @Test
+  public void testImportHeaderCSV() throws IOException {
+    String os = System.getProperty("os.name").toLowerCase();
+    assertTrue(generateHeaderTestCSV());
+    if (os.startsWith("windows")) {
+      testOnWindows(noDataOutputForWindows);
+    } else {
+      testOnUnix(noDataOutputForUnix);
     }
     File file = new File(CSV_FILE);
     if (file.exists()) {
@@ -96,10 +225,55 @@ public class ImportCsvTestIT extends AbstractScript {
 
   private boolean generateTestCSV() {
     String[] csvText = {
-        "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
-        "1,100,'hello',200,300,400",
-        "2,500,'world',600,700,800",
-        "3,900,'IoTDB',1000,1100,1200"};
+      "Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1",
+      "1,100,'hello',200,300,400",
+      "2,500,'',600,700,800",
+      "3,900,'Io\"TDB',1000,1100,1200"
+    };
+    BufferedWriter writer;
+    try {
+      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+      writer.write("");
+      for (String s : csvText) {
+        writer.write(s);
+        writer.newLine();
+      }
+      writer.flush();
+      writer.close();
+      return true;
+    } catch (IOException e) {
+      System.out.println("failed to create test csv");
+    }
+    return false;
+  }
+
+  private boolean generateBigCsvFile() {
+    List<String> csvText = new ArrayList<>();
+    csvText.add("Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1");
+    for (int i = 0; i < 25000; i++) {
+      csvText.add(i + "," + i + "," + i + "," + i);
+    }
+    BufferedWriter writer;
+    try {
+      writer = new BufferedWriter(new FileWriter(CSV_FILE));
+      writer.write("");
+      for (String s : csvText) {
+        writer.write(s);
+        writer.newLine();
+      }
+      writer.flush();
+      writer.close();
+      return true;
+    } catch (IOException e) {
+      System.out.println("failed to create test csv");
+    }
+    return false;
+  }
+
+  private boolean generateHeaderTestCSV() {
+    String[] csvText = {
+      "Time,root.fit.d1.\"s1\",root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1"
+    };
     BufferedWriter writer;
     try {
       writer = new BufferedWriter(new FileWriter(CSV_FILE));
@@ -118,40 +292,44 @@ public class ImportCsvTestIT extends AbstractScript {
   }
 
   @Override
-  protected void testOnWindows() throws IOException {
-    final String[] output = {
-        "````````````````````````````````````````````````",
-        "Starting IoTDB Client Import Script",
-        "````````````````````````````````````````````````",
-        "Start to import data from: test.csv",
-        "",
-        "Import from: test.csv",
-        "Import from: test.csv 100%"
-    };
+  protected void testOnWindows(String[] output) throws IOException {
     String dir = getCliPath();
-    ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c",
-        dir + File.separator + "tools" + File.separator + "import-csv.bat",
-        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-        CSV_FILE);
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "cmd.exe",
+            "/c",
+            dir + File.separator + "tools" + File.separator + "import-csv.bat",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6667",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-f",
+            CSV_FILE);
     testOutput(builder, output);
   }
 
   @Override
-  protected void testOnUnix() throws IOException {
-    final String[] output = {
-        "------------------------------------------",
-        "Starting IoTDB Client Import Script",
-        "------------------------------------------",
-        "Start to import data from: test.csv",
-        "",
-        "Import from: test.csv",
-        "Import from: test.csv 100%"
-    };
+  protected void testOnUnix(String[] output) throws IOException {
+
     String dir = getCliPath();
-    ProcessBuilder builder = new ProcessBuilder("sh",
-        dir + File.separator + "tools" + File.separator + "import-csv.sh",
-        "-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f",
-        CSV_FILE);
+    ProcessBuilder builder =
+        new ProcessBuilder(
+            "sh",
+            dir + File.separator + "tools" + File.separator + "import-csv.sh",
+            "-h",
+            "127.0.0.1",
+            "-p",
+            "6667",
+            "-u",
+            "root",
+            "-pw",
+            "root",
+            "-f",
+            CSV_FILE);
     testOutput(builder, output);
   }
 }
