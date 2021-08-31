@@ -42,7 +42,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodePathLevelCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeLevelCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
@@ -54,7 +54,6 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -69,7 +68,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import com.google.gson.Gson;
@@ -92,16 +90,13 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
@@ -1028,62 +1023,19 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
+    String[] nodes = path.concatNode(PATH_WILDCARD).getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodePaths = new TreeSet<>();
-    findChildNodePathInNextLevel(root, nodes, 1, "", childNodePaths, nodes.length + 1);
+    MNodeLevelCollector<Set<String>> collector = new MNodeLevelCollector<Set<String>>(root, nodes, childNodePaths, nodes.length -1 ) {
+      @Override
+      protected void processValidNode(IMNode node, int idx) throws MetadataException {
+        resultSet.add(node.getFullPath());
+      }
+    };
+    collector.traverse();
     return childNodePaths;
-  }
-
-  /**
-   * Traverse the MTree to match all child node path in next level
-   *
-   * @param node the current traversing node
-   * @param nodes split the prefix path with '.'
-   * @param idx the current index of array nodes
-   * @param parent store the node string having traversed
-   * @param res store all matched device names
-   * @param length expected length of path
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void findChildNodePathInNextLevel(
-      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
-    if (node == null) {
-      return;
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!nodeReg.contains(PATH_WILDCARD)) {
-      if (idx == length) {
-        res.add(parent + node.getName());
-      } else {
-        findChildNodePathInNextLevel(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            res,
-            length);
-      }
-    } else {
-      if (node.getChildren().size() > 0) {
-        for (IMNode child : node.getChildren().values()) {
-          if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-            continue;
-          }
-          if (idx == length) {
-            res.add(parent + node.getName());
-          } else {
-            findChildNodePathInNextLevel(
-                child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res, length);
-          }
-        }
-      } else if (idx == length) {
-        String nodeName = node.getName();
-        res.add(parent + nodeName);
-      }
-    }
   }
 
   /**
@@ -1099,62 +1051,19 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
+    String[] nodes = path.concatNode(PATH_WILDCARD).getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodes = new TreeSet<>();
-    findChildNodeInNextLevel(root, nodes, 1, "", childNodes, nodes.length + 1);
+    MNodeLevelCollector<Set<String>> collector = new MNodeLevelCollector<Set<String>>(root, nodes, childNodes, nodes.length -1 ) {
+      @Override
+      protected void processValidNode(IMNode node, int idx) throws MetadataException {
+        resultSet.add(node.getName());
+      }
+    };
+    collector.traverse();
     return childNodes;
-  }
-
-  /**
-   * Traverse the MTree to match all child node path in next level
-   *
-   * @param node the current traversing node
-   * @param nodes split the prefix path with '.'
-   * @param idx the current index of array nodes
-   * @param parent store the node string having traversed
-   * @param res store all matched device names
-   * @param length expected length of path
-   */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void findChildNodeInNextLevel(
-      IMNode node, String[] nodes, int idx, String parent, Set<String> res, int length) {
-    if (node == null) {
-      return;
-    }
-    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
-    if (!nodeReg.contains(PATH_WILDCARD)) {
-      if (idx == length) {
-        res.add(node.getName());
-      } else {
-        findChildNodeInNextLevel(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            res,
-            length);
-      }
-    } else {
-      if (node.getChildren().size() > 0) {
-        for (IMNode child : node.getChildren().values()) {
-          if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
-            continue;
-          }
-          if (idx == length) {
-            res.add(node.getName());
-          } else {
-            findChildNodeInNextLevel(
-                child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res, length);
-          }
-        }
-      } else if (idx == length) {
-        String nodeName = node.getName();
-        res.add(nodeName);
-      }
-    }
   }
 
   /**
@@ -1202,7 +1111,12 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> res = new ArrayList<>();
-    MNodePathLevelCollector collector = new MNodePathLevelCollector(root,nodes,res, nodeLevel);
+    MNodeLevelCollector<List<PartialPath>> collector = new MNodeLevelCollector<List<PartialPath>>(root,nodes,res, nodeLevel){
+      @Override
+      protected void processValidNode(IMNode node, int idx) throws MetadataException {
+        resultSet.add(node.getPartialPath());
+      }
+    };
     collector.setStorageGroupFilter(filter);
     collector.traverse();
     return collector.getResult();
