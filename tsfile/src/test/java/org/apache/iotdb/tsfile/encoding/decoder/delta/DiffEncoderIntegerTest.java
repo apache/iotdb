@@ -33,7 +33,7 @@ import static org.junit.Assert.assertEquals;
 
 public class DiffEncoderIntegerTest {
 
-  private static final int ROW_NUM = 100_000_00;
+  private static final int ROW_NUM = 10000;
   ByteArrayOutputStream out;
   private DiffEncoder writer;
   private DiffDecoder reader;
@@ -76,7 +76,6 @@ public class DiffEncoderIntegerTest {
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt();
     }
-    System.out.println();
     shouldReadAndWrite(data, ROW_NUM);
   }
 
@@ -106,24 +105,15 @@ public class DiffEncoderIntegerTest {
   }
 
   private void shouldReadAndWrite(int[] data, int length) throws IOException {
-    System.out.println("source data size:" + 4 * length + " byte");
+    // System.out.println("source data size:" + 4 * length + " byte");
     out = new ByteArrayOutputStream();
-
-    long encodeStart = System.nanoTime();
     writeData(data, length);
-    Long encodeEnd = System.nanoTime();
-    System.out.println("encode take(ns): " + (encodeEnd - encodeStart));
-
     byte[] page = out.toByteArray();
-    System.out.println("encoding data size:" + page.length + " byte");
+    // System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
-
-    Long decodeStart = System.nanoTime();
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readInt(buffer));
     }
-    Long decodeEnd = System.nanoTime();
-    System.out.println("decode take(ns): " + (decodeEnd - decodeStart));
   }
 }

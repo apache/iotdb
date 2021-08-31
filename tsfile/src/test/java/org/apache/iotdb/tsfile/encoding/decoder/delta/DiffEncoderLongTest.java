@@ -42,7 +42,7 @@ import static org.junit.Assert.assertEquals;
 
 public class DiffEncoderLongTest {
 
-  private static int ROW_NUM = 100_000_00;
+  private static int ROW_NUM = 10000;
   private final long BASIC_FACTOR = 1l << 32;
   ByteArrayOutputStream out;
   private DiffEncoder writer;
@@ -106,12 +106,11 @@ public class DiffEncoderLongTest {
   @Test
   public void testRegularEncoding() throws IOException {
     reader.reset();
-    List<String> dates = getBetweenDate("1970-01-08", "2004-03-29");
+    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     ROW_NUM = dates.size();
-    System.out.println("ROW_NUM: " + ROW_NUM);
 
     long[] data = new long[ROW_NUM];
     for (int i = 0; i < dates.size(); i++) {
@@ -129,7 +128,7 @@ public class DiffEncoderLongTest {
   @Test
   public void testRegularWithMissingPoints() throws IOException {
     reader.reset();
-    List<String> dates = getBetweenDate("1970-01-08", "2004-04-24");
+    List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
@@ -190,24 +189,13 @@ public class DiffEncoderLongTest {
   }
 
   private void shouldReadAndWrite(long[] data, int length) throws IOException {
-    System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
-
-    long encodeStart = System.nanoTime();
     writeData(data, length);
-    Long encodeEnd = System.nanoTime();
-    System.out.println("encode take(ns): " + (encodeEnd - encodeStart));
-
     byte[] page = out.toByteArray();
-    System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
-
-    Long decodeStart = System.nanoTime();
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readLong(buffer));
     }
-    Long decodeEnd = System.nanoTime();
-    System.out.println("decode take(ns): " + (decodeEnd - decodeStart));
   }
 }
