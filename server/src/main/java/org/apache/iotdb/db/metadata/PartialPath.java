@@ -149,7 +149,7 @@ public class PartialPath extends Path implements Comparable<Path> {
       return false;
     }
     for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_WILDCARD) && !nodes[i].equals(rNodes[i])) {
+      if (!nodes[i].equals(IoTDBConstant.PATH_ONE_LEVEL_WILDCARD) && !nodes[i].equals(rNodes[i])) {
         return false;
       }
     }

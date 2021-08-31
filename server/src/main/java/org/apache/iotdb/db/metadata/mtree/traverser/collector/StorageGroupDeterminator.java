@@ -6,6 +6,8 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.Map;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+
 
 public class StorageGroupDeterminator extends StorageGroupCollector<Map<String, String>>{
 

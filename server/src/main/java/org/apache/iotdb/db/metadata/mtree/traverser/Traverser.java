@@ -9,11 +9,11 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+
 
 public abstract class Traverser {
-
-    protected static final String PATH_MULTI_LEVEL_WILDCARD = "**";
-    protected static final String PATH_ONE_LEVEL_WILDCARD = "*";
 
     protected IMNode startNode;
     protected String[] nodes;

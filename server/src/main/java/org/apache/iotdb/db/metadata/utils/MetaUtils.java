@@ -32,14 +32,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
 
 public class MetaUtils {
 
   private MetaUtils() {}
 
   public static String getNodeRegByIdx(int idx, String[] nodes) {
-    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
+    return idx >= nodes.length ? PATH_ONE_LEVEL_WILDCARD : nodes[idx];
   }
 
   /**

@@ -97,7 +97,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
 
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
@@ -913,7 +913,7 @@ public class MTree implements Serializable {
       return count;
     }else {
       for(String name:nodes){
-        if(name.contains(PATH_WILDCARD)){
+        if(name.contains(PATH_ONE_LEVEL_WILDCARD)){
           return count;
         }
       }
@@ -1023,7 +1023,7 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath path) throws MetadataException {
-    String[] nodes = path.concatNode(PATH_WILDCARD).getNodes();
+    String[] nodes = path.concatNode(PATH_ONE_LEVEL_WILDCARD).getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
@@ -1051,7 +1051,7 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodeInNextLevel(PartialPath path) throws MetadataException {
-    String[] nodes = path.concatNode(PATH_WILDCARD).getNodes();
+    String[] nodes = path.concatNode(PATH_ONE_LEVEL_WILDCARD).getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
