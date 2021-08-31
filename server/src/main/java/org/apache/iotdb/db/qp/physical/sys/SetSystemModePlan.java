@@ -17,20 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.filter.factory;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public enum FilterSerializeId {
-  AND,
-  EQ,
-  GROUP_BY,
-  GT,
-  GTEQ,
-  LT,
-  LTEQ,
-  NEQ,
-  NOT,
-  OR,
-  IN,
-  REGEXP,
-  LIKE
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import java.util.Collections;
+import java.util.List;
+
+public class SetSystemModePlan extends PhysicalPlan {
+
+  private boolean isReadOnly;
+
+  public SetSystemModePlan(boolean isReadOnly) {
+    super(false, OperatorType.SET_SYSTEM_MODE);
+    this.isReadOnly = isReadOnly;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
+
+  public boolean isReadOnly() {
+    return isReadOnly;
+  }
 }

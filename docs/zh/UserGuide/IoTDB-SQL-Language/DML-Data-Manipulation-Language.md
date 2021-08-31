@@ -661,23 +661,23 @@ select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <
 
 \<WhereClause\>中当前只支持含有'>'或'>='的时间过滤条件，任何其他过滤条件都将会返回异常。
 
-结果集为三列的结构
+结果集为四列的结构
 
 ```
-+----+----------+-----+
-|Time|timeseries|value|
-+----+----------+-----+
++----+----------+-----+--------+
+|Time|timeseries|value|dataType|
++----+----------+-----+--------+
 ```
 
 示例 1：查询 root.ln.wf01.wt01.status 的最新数据点
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+
-|                         Time|              timeseries|value|
-+-----------------------------+------------------------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|
-+-----------------------------+------------------------+-----+
++-----------------------------+------------------------+-----+--------+
+|                         Time|              timeseries|value|dataType|
++-----------------------------+------------------------+-----+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
++-----------------------------+------------------------+-----+--------+
 Total line number = 1
 It costs 0.000s
 ```
@@ -686,12 +686,12 @@ It costs 0.000s
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+
-|                         Time|                   timeseries|    value|
-+-----------------------------+-----------------------------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|
-+-----------------------------+-----------------------------+---------+
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s
 ```
@@ -783,7 +783,7 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 
 </center>
 
-需要注意的是一旦时间序列在查询时间戳 T 时刻存在有效值，线性填充就回使用这个值作为结果返回。
+需要注意的是一旦时间序列在查询时间戳 T 时刻存在有效值，线性填充就会使用这个值作为结果返回。
 除此之外，如果在 [T-before_range，T] 或 [T, T + after_range] 两个范围中任意一个范围内不存在有效填充值，则线性填充返回 null 值。
 
 在这里，我们举一个使用线性方法填充空值的示例。 SQL 语句如下：
@@ -815,7 +815,7 @@ It costs 0.017s
 当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```
-select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constant]…)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 
 表3-6中给出了所有参数的详细说明。
@@ -837,7 +837,7 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[value, constan
 在这里，我们举一个使用特定值方法填充空值的示例。 SQL语句如下：
 
 ```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [value, 2.0])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
 ```
 
 意思是：

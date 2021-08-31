@@ -22,12 +22,13 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -74,18 +75,12 @@ public class StorageGroupProcessorTest {
   private StorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
-  private boolean prevEnableTimedFlushMemtable = false;
-
   @Before
   public void setUp() throws Exception {
-    prevEnableTimedFlushMemtable = config.isEnableTimedFlushUnseqMemtable();
-    config.setEnableTimedFlushUnseqMemtable(true);
-    config.setEnableSeqSpaceCompaction(false);
-    config.setEnableUnseqSpaceCompaction(false);
     MetadataManagerHelper.initMetadata();
     EnvironmentUtils.envSetUp();
     processor = new DummySGP(systemDir, storageGroup);
-    MergeManager.getINSTANCE().start();
+    CompactionTaskManager.getInstance().start();
   }
 
   @After
@@ -93,11 +88,8 @@ public class StorageGroupProcessorTest {
     processor.syncDeleteDataFiles();
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
-    MergeManager.getINSTANCE().stop();
+    CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
-    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushMemtable);
-    config.setEnableSeqSpaceCompaction(true);
-    config.setEnableUnseqSpaceCompaction(true);
   }
 
   private void insertToStorageGroupProcessor(TSRecord record)
@@ -665,10 +657,56 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testTimedFlushMemTable()
+  public void testTimedFlushSeqMemTable()
       throws IllegalPathException, InterruptedException, WriteProcessException,
-          TriggerExecutionException {
-    // create one seq memtable & close
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // change config & reboot timed service
+    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
+    long preFLushInterval = config.getSeqMemtableFlushInterval();
+    config.setEnableTimedFlushSeqMemtable(true);
+    config.setSeqMemtableFlushInterval(5);
+    StorageEngine.getInstance().rebootTimedService();
+
+    Thread.sleep(500);
+
+    // flush the sequence memtable
+    processor.timedFlushSeqMemTable();
+
+    // wait until memtable flush task is done
+    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+    int waitCnt = 0;
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
+    config.setSeqMemtableFlushInterval(preFLushInterval);
+  }
+
+  @Test
+  public void testTimedFlushUnseqMemTable()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable & close
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertRowPlan(record));
@@ -676,19 +714,23 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    // create one unseq memtable
+    // create one unsequence memtable
     record = new TSRecord(1, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertRowPlan(record));
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
-    // check memtable's flush interval & flush the unsequence memtable
+    // change config & reboot timed service
+    boolean prevEnableTimedFlushUnseqMemtable = config.isEnableTimedFlushUnseqMemtable();
     long preFLushInterval = config.getUnseqMemtableFlushInterval();
+    config.setEnableTimedFlushUnseqMemtable(true);
     config.setUnseqMemtableFlushInterval(5);
+    StorageEngine.getInstance().rebootTimedService();
 
     Thread.sleep(500);
 
-    processor.timedFlushMemTable();
+    // flush the unsequence memtable
+    processor.timedFlushUnseqMemTable();
 
     // wait until memtable flush task is done
     Assert.assertEquals(1, processor.getWorkUnsequenceTsFileProcessors().size());
@@ -711,7 +753,68 @@ public class StorageGroupProcessorTest {
 
     Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
+    config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
     config.setUnseqMemtableFlushInterval(preFLushInterval);
+  }
+
+  @Test
+  public void testTimedCloseTsFile()
+      throws IllegalPathException, InterruptedException, WriteProcessException,
+          TriggerExecutionException, ShutdownException {
+    // create one sequence memtable
+    TSRecord record = new TSRecord(10000, deviceId);
+    record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+
+    // change config & reboot timed service
+    boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
+    long preFLushInterval = config.getSeqMemtableFlushInterval();
+    config.setEnableTimedFlushSeqMemtable(true);
+    config.setSeqMemtableFlushInterval(5);
+    boolean prevEnableTimedCloseTsFile = config.isEnableTimedCloseTsFile();
+    long prevCloseTsFileInterval = config.getCloseTsFileIntervalAfterFlushing();
+    config.setEnableTimedCloseTsFile(true);
+    config.setCloseTsFileIntervalAfterFlushing(5);
+    StorageEngine.getInstance().rebootTimedService();
+
+    Thread.sleep(500);
+
+    // flush the sequence memtable
+    processor.timedFlushSeqMemTable();
+
+    // wait until memtable flush task is done
+    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+    int waitCnt = 0;
+    while (tsFileProcessor.getFlushingMemTableSize() != 0
+        || tsFileProcessor.isManagedByFlushManager()
+        || flushManager.getNumberOfPendingTasks() != 0
+        || flushManager.getNumberOfPendingSubTasks() != 0
+        || flushManager.getNumberOfWorkingTasks() != 0
+        || flushManager.getNumberOfWorkingSubTasks() != 0) {
+      Thread.sleep(500);
+      ++waitCnt;
+      if (waitCnt % 10 == 0) {
+        logger.info("already wait {} s", waitCnt / 2);
+      }
+    }
+
+    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    Assert.assertFalse(tsFileProcessor.alreadyMarkedClosing());
+
+    // close the tsfile
+    processor.timedCloseTsFileProcessor();
+
+    Thread.sleep(500);
+
+    Assert.assertTrue(tsFileProcessor.alreadyMarkedClosing());
+
+    config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
+    config.setSeqMemtableFlushInterval(preFLushInterval);
+    config.setEnableTimedCloseTsFile(prevEnableTimedCloseTsFile);
+    config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
   }
 
   class DummySGP extends StorageGroupProcessor {
