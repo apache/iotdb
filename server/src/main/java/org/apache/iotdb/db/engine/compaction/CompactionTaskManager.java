@@ -60,7 +60,8 @@ public class CompactionTaskManager implements IService {
 
   @Override
   public void start() {
-    if (pool == null) {
+    if (pool == null
+        && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
       this.pool =
           (ScheduledThreadPoolExecutor)
               IoTDBThreadPoolFactory.newScheduledThreadPool(
