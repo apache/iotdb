@@ -24,7 +24,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -1692,6 +1694,55 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testCreateAlignedTimeseriesWithIllegalNames() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    manager.setStorageGroup(new PartialPath("root.laptop"));
+    PartialPath deviceId = new PartialPath("root.laptop.d1");
+    String[] measurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    for (String measurementId : measurementIds) {
+      PartialPath path = deviceId.concatNode(measurementId);
+      try {
+        manager.createAlignedTimeSeries(
+            path,
+            Arrays.asList("s1", "s2", "s3"),
+            Arrays.asList(
+                TSDataType.valueOf("FLOAT"),
+                TSDataType.valueOf("INT64"),
+                TSDataType.valueOf("INT32")),
+            Arrays.asList(
+                TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+            compressionType);
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals(
+            String.format(
+                "%s is not a legal path, because %s",
+                path.getFullPath(), String.format("%s is an illegal name.", measurementId)),
+            e.getMessage());
+      }
+    }
+
+    PartialPath path = deviceId.concatNode("t1");
+    for (String measurementId : measurementIds) {
+      try {
+        manager.createAlignedTimeSeries(
+            path,
+            Arrays.asList(measurementId, "s2", "s3"),
+            Arrays.asList(
+                TSDataType.valueOf("FLOAT"),
+                TSDataType.valueOf("INT64"),
+                TSDataType.valueOf("INT32")),
+            Arrays.asList(
+                TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+            compressionType);
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals(String.format("%s is an illegal name.", measurementId), e.getMessage());
+      }
+    }
+  }
+
+  @Test
   public void testGetStorageGroupNodeByPath() {
     MManager manager = IoTDB.metaManager;
     PartialPath partialPath = null;
@@ -1722,6 +1773,99 @@ public class MManagerBasicTest {
           e.getMessage());
     } catch (MetadataException e) {
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMeasurementIdWhileInsert() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    InsertPlan insertPlan;
+
+    insertPlan = getInsertPlan("\"a.b\"");
+    manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+    assertTrue(manager.isPathExist(deviceId.concatNode("\"a.b\"")));
+
+    String[] illegalMeasurementIds = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    for (String measurementId : illegalMeasurementIds) {
+      insertPlan = getInsertPlan(measurementId);
+      try {
+        manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        assertFalse(manager.isPathExist(deviceId.concatNode(measurementId)));
+      } catch (MetadataException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private InsertPlan getInsertPlan(String measurementId) throws MetadataException {
+    PartialPath deviceId = new PartialPath("root.sg.d");
+    String[] measurementList = {measurementId};
+    String[] values = {"1"};
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[1];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+    insertPlan.getDataTypes()[0] = TSDataType.INT32;
+    return insertPlan;
+  }
+
+  @Test
+  public void testTemplateSchemaNameCheckWhileCreate() {
+    MManager manager = IoTDB.metaManager;
+    String[] illegalSchemaNames = {"a.b", "time", "timestamp", "TIME", "TIMESTAMP"};
+    for (String schemaName : illegalSchemaNames) {
+      CreateTemplatePlan plan = getCreateTemplatePlan(schemaName);
+      try {
+        manager.createSchemaTemplate(plan);
+      } catch (MetadataException e) {
+        Assert.assertEquals(String.format("%s is an illegal name.", schemaName), e.getMessage());
+      }
+    }
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan(String schemaName) {
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Collections.singletonList("s0"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Collections.singletonList(TSDataType.INT32));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(compressionType);
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add(schemaName);
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+  }
+
+  @Test
+  public void testDeviceNodeAfterAutoCreateTimeseriesFailure() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath sg1 = new PartialPath("root.a.sg");
+    manager.setStorageGroup(sg1);
+
+    PartialPath deviceId = new PartialPath("root.a.d");
+    String[] measurementList = {"s"};
+    String[] values = {"1"};
+    IMeasurementMNode[] measurementMNodes = new IMeasurementMNode[1];
+    InsertPlan insertPlan = new InsertRowPlan(deviceId, 1L, measurementList, values);
+    insertPlan.setMeasurementMNodes(measurementMNodes);
+    insertPlan.getDataTypes()[0] = TSDataType.INT32;
+
+    try {
+      manager.getSeriesSchemasAndReadLockDevice(insertPlan);
+      fail();
+    } catch (MetadataException e) {
+      Assert.assertEquals(
+          "some children of root.a have already been set to storage group", e.getMessage());
+      Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
     }
   }
 }
