@@ -659,7 +659,7 @@ public class SessionExample {
 
   private static void setTimeout() throws StatementExecutionException {
     Session tempSession = new Session(LOCAL_HOST, 6667, "root", "root", 10000, 20000);
-    tempSession.setTimeout(60000);
+    tempSession.setQueryTimeout(60000);
   }
 
   private static void createClusterSession() throws IoTDBConnectionException {

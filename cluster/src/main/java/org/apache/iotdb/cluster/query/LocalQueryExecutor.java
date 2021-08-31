@@ -628,7 +628,7 @@ public class LocalQueryExecutor {
     ClusterQueryUtils.checkPathExistence(path);
     List<AggregateResult> results = new ArrayList<>();
     for (String aggregation : aggregations) {
-      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
+      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending));
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
