@@ -42,7 +42,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeLevelCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
@@ -1028,7 +1028,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodePaths = new TreeSet<>();
-    MNodeLevelCollector<Set<String>> collector = new MNodeLevelCollector<Set<String>>(root, nodes, childNodePaths, nodes.length -1 ) {
+    MNodeCollector<Set<String>> collector = new MNodeCollector<Set<String>>(root, nodes, childNodePaths) {
       @Override
       protected void processValidNode(IMNode node, int idx) throws MetadataException {
         resultSet.add(node.getFullPath());
@@ -1056,7 +1056,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     Set<String> childNodes = new TreeSet<>();
-    MNodeLevelCollector<Set<String>> collector = new MNodeLevelCollector<Set<String>>(root, nodes, childNodes, nodes.length -1 ) {
+    MNodeCollector<Set<String>> collector = new MNodeCollector<Set<String>>(root, nodes, childNodes) {
       @Override
       protected void processValidNode(IMNode node, int idx) throws MetadataException {
         resultSet.add(node.getName());
@@ -1111,12 +1111,13 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> res = new ArrayList<>();
-    MNodeLevelCollector<List<PartialPath>> collector = new MNodeLevelCollector<List<PartialPath>>(root,nodes,res, nodeLevel){
+    MNodeCollector<List<PartialPath>> collector = new MNodeCollector<List<PartialPath>>(root,nodes,res){
       @Override
       protected void processValidNode(IMNode node, int idx) throws MetadataException {
         resultSet.add(node.getPartialPath());
       }
     };
+    collector.setTargetLevel(nodeLevel);
     collector.setStorageGroupFilter(filter);
     collector.traverse();
     return collector.getResult();

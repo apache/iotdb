@@ -3,13 +3,11 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-public abstract class MNodeLevelCollector<T> extends CollectorTraverser<T>{
+public abstract class MNodeCollector<T> extends CollectorTraverser<T>{
 
-    public MNodeLevelCollector(IMNode startNode, String[] nodes, T resultSet, int targetLevel) {
+    public MNodeCollector(IMNode startNode, String[] nodes, T resultSet) {
         super(startNode, nodes, resultSet);
         isNodeTraverser = true;
-        isLevelTraverser = true;
-        this.targetLevel = targetLevel;
     }
 
     @Override
@@ -21,4 +19,5 @@ public abstract class MNodeLevelCollector<T> extends CollectorTraverser<T>{
     protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
         return false;
     }
+
 }
