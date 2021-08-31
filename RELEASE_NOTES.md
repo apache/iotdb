@@ -32,6 +32,7 @@
 * [IOTDB-1561] Support fill by specific value
 * [IOTDB-1565] Add sql: set system to readonly/writable
 * [IOTDB-1569] Timed close TsFileProcessor
+* [ISSUE-3811] Provide a data type column for the last query dataset
 * TTL can be set to the prefix path of storage group
 * add JMX monitor to all ThreadPools in the server module 
 
@@ -43,6 +44,8 @@
 * write performance optimization when replicaNum == 1
 * Optimize Primitive Array Manager
 * Function Improvement: add overlapped page rate in Tracing
+
+…t value for SOMAXCONN
 
 ## Bug Fixes
 * [IOTDB-1282] fix C++ class SessionDataSet mem-leak
@@ -75,6 +78,8 @@
 * [IOTDB-1574] Deleted file handler leak
 * [IOTDB-1580] Error result of order by time desc when enable time partition
 * [IOTDB-1584] Doesn't support order by time desc in cluster mode
+* [IOTDB-1588] Bug fix: MAX_TIME is incorrect in cluster mode
+* [IOTDB-1594] Fix show timeseries returns incorrect tag value 
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries
@@ -83,6 +88,7 @@
 * [ISSUE-3653] fix Max_time and last return inconsistent result
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
 * [ISSUE-3805] OOM caused by Chunk cache
+* [ISSUE-3865] Meaningless connection reset issues caused by low default value for SOMAXCONN
 *  Fix DataMigrationExample OOM if migrate too many timeseries 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
@@ -90,6 +96,8 @@
 * Fix thrift out of sequence in cluster module
 * Skip non exist measurement in where clause in align by device
 * fix blocking query when selecting TsFile in compaction
+* Fix redundant data in compaction recover
+* Fix load tsfile with time partition enable 
 
 ## Incompatible changes
 * [IOTDB-1485] Replace tsfile_size_threshold by unseq_tsfile_size/seq_tsfile_size
