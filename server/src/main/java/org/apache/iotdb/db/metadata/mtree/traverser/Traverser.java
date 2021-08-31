@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -26,8 +27,12 @@ public abstract class Traverser {
     // default false means fullPath pattern match
     protected boolean isPrefixMatch = false;
 
+    // level query option
     protected boolean isLevelTraverser = false;
     protected int targetLevel;
+
+    // traverse for specific storage group
+    StorageGroupFilter storageGroupFilter = null;
 
     public Traverser(IMNode startNode, String[] nodes) {
         this.startNode = startNode;
@@ -39,6 +44,12 @@ public abstract class Traverser {
     }
 
     protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
+
+        if(storageGroupFilter!=null
+                && node.isStorageGroup()
+                && !storageGroupFilter.satisfy(node.getFullPath())){
+            return;
+        }
 
         if(isLevelTraverser && level > targetLevel){
             return;
@@ -167,10 +178,14 @@ public abstract class Traverser {
         }
     }
 
-    protected void setTargetLevel(int targetLevel) {
+    public void setTargetLevel(int targetLevel) {
         this.targetLevel = targetLevel;
         if (targetLevel > 0) {
             isLevelTraverser = true;
         }
+    }
+
+    public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter){
+        this.storageGroupFilter = storageGroupFilter;
     }
 }

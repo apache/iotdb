@@ -42,6 +42,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodePathLevelCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
@@ -1201,43 +1202,10 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     List<PartialPath> res = new ArrayList<>();
-    IMNode node = root;
-    for (int i = 1; i < nodes.length; i++) {
-      if (node.getChild(nodes[i]) != null) {
-        node = node.getChild(nodes[i]);
-        if (node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
-          return res;
-        }
-      } else {
-        throw new MetadataException(nodes[i - 1] + NO_CHILDNODE_MSG + nodes[i]);
-      }
-    }
-    findNodes(node, path, res, nodeLevel - (nodes.length - 1), filter);
-    return res;
-  }
-
-  /**
-   * Get all paths under the given level.
-   *
-   * @param targetLevel Record the distance to the target level, 0 means the target level.
-   */
-  private void findNodes(
-      IMNode node,
-      PartialPath path,
-      List<PartialPath> res,
-      int targetLevel,
-      StorageGroupFilter filter) {
-    if (node == null
-        || node.isStorageGroup() && filter != null && !filter.satisfy(node.getFullPath())) {
-      return;
-    }
-    if (targetLevel == 0) {
-      res.add(path);
-      return;
-    }
-    for (IMNode child : node.getChildren().values()) {
-      findNodes(child, path.concatNode(child.toString()), res, targetLevel - 1, filter);
-    }
+    MNodePathLevelCollector collector = new MNodePathLevelCollector(root,nodes,res, nodeLevel);
+    collector.setStorageGroupFilter(filter);
+    collector.traverse();
+    return collector.getResult();
   }
 
   public void serializeTo(String snapshotPath) throws IOException {

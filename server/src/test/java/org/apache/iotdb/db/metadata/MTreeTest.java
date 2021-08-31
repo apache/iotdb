@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -885,4 +886,48 @@ public class MTreeTest {
     Assert.assertEquals(1, root.getStorageGroupNum(new PartialPath("root.sg3")));
     Assert.assertEquals(2, root.getStorageGroupNum(new PartialPath("root.*.b.*")));
   }
+
+  @Test
+  public void testGetNodeListInLevel() throws MetadataException{
+    MTree root = new MTree();
+    root.setStorageGroup(new PartialPath("root.sg1"));
+    root.createTimeseries(
+            new PartialPath("root.sg1.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+    root.createTimeseries(
+            new PartialPath("root.sg1.d1.s2"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+
+    root.setStorageGroup(new PartialPath("root.sg2"));
+    root.createTimeseries(
+            new PartialPath("root.sg2.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+    root.createTimeseries(
+            new PartialPath("root.sg2.d1.s2"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+    StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
+
+    List<PartialPath> res;
+    Assert.assertEquals(4, root.getNodesList(new PartialPath("root.**"),3,null).size());
+    Assert.assertEquals(2, root.getNodesList(new PartialPath("root.**"), 3, filter).size());
+    Assert.assertEquals(2, root.getNodesList(new PartialPath("root.*.*"),2,null).size());
+    Assert.assertEquals(1, root.getNodesList(new PartialPath("root.*.**"),2, filter).size());
+  }
+
 }
