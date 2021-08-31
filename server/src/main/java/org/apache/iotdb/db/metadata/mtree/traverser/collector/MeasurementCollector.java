@@ -7,6 +7,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import java.util.List;
+import java.util.regex.Pattern;
+
 
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
@@ -29,10 +32,35 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     public void processValidNode(IMNode node, int idx) throws MetadataException {
         IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
         if (schema instanceof MeasurementSchema) {
+            if (hasLimit) {
+                curOffset += 1;
+                if (curOffset < offset) {
+                    return;
+                }
+            }
             collectMeasurementSchema((IMeasurementMNode) node);
+            if (hasLimit) {
+                count += 1;
+            }
         } else if (schema instanceof VectorMeasurementSchema) {
             // only when idx >= nodes.length -1
-            collectVectorMeasurementSchema((IMeasurementMNode) node, idx < nodes.length ? nodes[idx] : "*");
+            List<String> measurements = schema.getValueMeasurementIdList();
+            String regex = (idx < nodes.length ? nodes[idx] : "*").replace("*", ".*");
+            for (int i = 0; i < measurements.size(); i++) {
+                if (!Pattern.matches(regex, measurements.get(i))) {
+                    continue;
+                }
+                if (hasLimit) {
+                    curOffset += 1;
+                    if (curOffset < offset) {
+                        return;
+                    }
+                }
+                collectVectorMeasurementSchema((IMeasurementMNode) node, i);
+                if (hasLimit) {
+                    count += 1;
+                }
+            }
         }
     }
 
@@ -49,6 +77,6 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
     protected abstract void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException;
 
-    protected abstract void collectVectorMeasurementSchema(IMeasurementMNode node, String reg) throws MetadataException;
+    protected abstract void collectVectorMeasurementSchema(IMeasurementMNode node, int index) throws MetadataException;
 
 }

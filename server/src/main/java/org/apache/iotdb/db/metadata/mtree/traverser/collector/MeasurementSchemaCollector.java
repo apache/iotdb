@@ -10,7 +10,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.metadata.mtree.MTree.getLastTimeStamp;
 
@@ -32,12 +31,6 @@ public class MeasurementSchemaCollector extends MeasurementCollector<List<Pair<P
 
     @Override
     protected void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException {
-        if (hasLimit) {
-            curOffset += 1;
-            if (curOffset < offset) {
-                return;
-            }
-        }
         IMeasurementSchema measurementSchema = node.getSchema();
         String[] tsRow = new String[7];
         tsRow[0] = node.getAlias();
@@ -52,43 +45,26 @@ public class MeasurementSchemaCollector extends MeasurementCollector<List<Pair<P
                         : null;
         Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
         resultSet.add(temp);
-        if (hasLimit) {
-            count += 1;
-        }
     }
 
     @Override
-    protected void collectVectorMeasurementSchema(IMeasurementMNode node, String reg) throws MetadataException {
+    protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index) throws MetadataException {
         IMeasurementSchema schema = node.getSchema();
         List<String> measurements = schema.getValueMeasurementIdList();
-        for (int i = 0; i < measurements.size(); i++) {
-            if (!Pattern.matches(reg.replace("*", ".*"), measurements.get(i))) {
-                continue;
-            }
-            if (hasLimit) {
-                curOffset += 1;
-                if (curOffset < offset) {
-                    return;
-                }
-            }
-            String[] tsRow = new String[7];
-            tsRow[0] = null;
-            tsRow[1] = getStorageGroupPath(node).getFullPath();
-            tsRow[2] = schema.getValueTSDataTypeList().get(i).toString();
-            tsRow[3] = schema.getValueTSEncodingList().get(i).toString();
-            tsRow[4] = schema.getCompressor().toString();
-            tsRow[5] = "-1";
-            tsRow[6] =
-                    needLast
-                            ? String.valueOf(getLastTimeStamp(node, queryContext))
-                            : null;
-            Pair<PartialPath, String[]> temp =
-                    new Pair<>(node.getPartialPath().concatNode(measurements.get(i)), tsRow);
-            resultSet.add(temp);
-            if (hasLimit) {
-                count += 1;
-            }
-        }
+        String[] tsRow = new String[7];
+        tsRow[0] = null;
+        tsRow[1] = getStorageGroupPath(node).getFullPath();
+        tsRow[2] = schema.getValueTSDataTypeList().get(index).toString();
+        tsRow[3] = schema.getValueTSEncodingList().get(index).toString();
+        tsRow[4] = schema.getCompressor().toString();
+        tsRow[5] = "-1";
+        tsRow[6] =
+                needLast
+                        ? String.valueOf(getLastTimeStamp(node, queryContext))
+                        : null;
+        Pair<PartialPath, String[]> temp =
+                new Pair<>(node.getPartialPath().concatNode(measurements.get(index)), tsRow);
+        resultSet.add(temp);
     }
 
     private PartialPath getStorageGroupPath(IMeasurementMNode node) throws StorageGroupNotSetException {
