@@ -45,6 +45,7 @@ public class FilterConstant {
     GREATERTHANOREQUALTO,
     GREATERTHAN,
     IN,
+    REGEXP,
     LIKE
   }
 
@@ -56,6 +57,7 @@ public class FilterConstant {
     lexerToFilterType.put(SqlBaseLexer.OPERATOR_GTE, FilterType.GREATERTHANOREQUALTO);
     lexerToFilterType.put(SqlBaseLexer.OPERATOR_GT, FilterType.GREATERTHAN);
     lexerToFilterType.put(SqlBaseLexer.OPERATOR_IN, FilterType.IN);
+    lexerToFilterType.put(SqlBaseLexer.REGEXP, FilterType.REGEXP);
     lexerToFilterType.put(SqlBaseLexer.LIKE, FilterType.LIKE);
   }
 
@@ -83,6 +85,7 @@ public class FilterConstant {
     filterNames.put(FilterType.GREATERTHANOREQUALTO, "greaterthan_or_equalto");
     filterNames.put(FilterType.GREATERTHAN, "greaterthan");
     filterNames.put(FilterType.IN, "in");
+    filterNames.put(FilterType.REGEXP, "regexp");
     filterNames.put(FilterType.LIKE, "like");
   }
 
