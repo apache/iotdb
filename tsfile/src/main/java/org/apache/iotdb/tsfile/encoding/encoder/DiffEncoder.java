@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,22 +30,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
- * <p>
- * DiffEncoder is a encoder for compressing data in type of INT32(integer) and
- * INT64(long). It is based in delta-encoding arithmetic. We adapt a hypothesis
- * that contiguous data points have similar values. Thus the difference value of
- * two adjacent points is smaller than those two point values. One integer in
- * java takes 32-bits. If a positive number is less than 2^m, the bits of this
- * integer which index from m to 31 are all 0. Given an array which length is n,
- * if all values in input data array are all positive and less than 2^m, we need
- * actually m*n, but not 32*n bits to store the array.
- * </p>
- * <p>
- * DiffEncoder calculates difference between two adjacent. Then it saves the delta
- * values. Then it counts the longest bit length {@code m} it takes for each
- * delta value, which means the bit length that maximum delta value takes. Only
- * the low {@code m} bits are saved into result byte array for all delta values.
- * </p>
+ * DiffEncoder is a encoder for compressing data in type of INT32(integer) and INT64(long). It is
+ * based in delta-encoding arithmetic. We adapt a hypothesis that contiguous data points have
+ * similar values. Thus the difference value of two adjacent points is smaller than those two point
+ * values. One integer in java takes 32-bits. If a positive number is less than 2^m, the bits of
+ * this integer which index from m to 31 are all 0. Given an array which length is n, if all values
+ * in input data array are all positive and less than 2^m, we need actually m*n, but not 32*n bits
+ * to store the array.
+ *
+ * <p>DiffEncoder calculates difference between two adjacent. Then it saves the delta values. Then
+ * it counts the longest bit length {@code m} it takes for each delta value, which means the bit
+ * length that maximum delta value takes. Only the low {@code m} bits are saved into result byte
+ * array for all delta values.
  */
 public abstract class DiffEncoder extends Encoder {
   protected static final int BLOCK_DEFAULT_SIZE = 128;
@@ -75,9 +72,7 @@ public abstract class DiffEncoder extends Encoder {
 
   protected abstract int calculateBitWidthsForDeltaBlockBuffer();
 
-  /**
-   * write all data into {@code encodingBlockBuffer}.
-   */
+  /** write all data into {@code encodingBlockBuffer}. */
   private void writeDataWithMinWidth() {
     for (int i = 0; i < writeIndex; i++) {
       writeValueToBytes(i);
@@ -92,10 +87,7 @@ public abstract class DiffEncoder extends Encoder {
     writeHeader();
   }
 
-
-  /**
-   * Write the data to byteArrayOutPutStream.
-   */
+  /** Write the data to byteArrayOutPutStream. */
   private void flushBlockBuffer(ByteArrayOutputStream out) throws IOException {
     if (writeIndex == -1) {
       return;
@@ -110,9 +102,8 @@ public abstract class DiffEncoder extends Encoder {
   }
 
   /**
-   * calling this method to flush all values which haven't encoded to result byte
-   * array.
-   * call flushBlockBuffer Funciton.
+   * calling this method to flush all values which haven't encoded to result byte array. call
+   * flushBlockBuffer Funciton.
    */
   @Override
   public void flush(ByteArrayOutputStream out) {
@@ -139,14 +130,14 @@ public abstract class DiffEncoder extends Encoder {
      * @param size - the number how many numbers to be packed into a block.
      */
     public IntDeltaEncoder(int size) {
-      super(size);// choose TS_2DIFF + initialize deltaSize=size
-      deltaBlockBuffer = new int[this.blockSize]; //temporary save the data to be encode.
-      encodingBlockBuffer = new byte[blockSize * 4]; //Save encoded data.
-      reset();//Initialization
+      super(size); // choose TS_2DIFF + initialize deltaSize=size
+      deltaBlockBuffer = new int[this.blockSize]; // temporary save the data to be encode.
+      encodingBlockBuffer = new byte[blockSize * 4]; // Save encoded data.
+      reset(); // Initialization
     }
 
     @Override
-    //calculate max BitWidth.
+    // calculate max BitWidth.
     protected int calculateBitWidthsForDeltaBlockBuffer() {
       int width = 0;
       for (int i = 0; i < writeIndex; i++) {
@@ -156,7 +147,7 @@ public abstract class DiffEncoder extends Encoder {
     }
 
     private void calcDelta(Integer value) {
-      Integer delta = value - previousValue;// calculate delta
+      Integer delta = value - previousValue; // calculate delta
       deltaBlockBuffer[writeIndex++] = delta;
     }
 
@@ -164,10 +155,10 @@ public abstract class DiffEncoder extends Encoder {
      * input a integer.
      *
      * @param value value to encode
-     * @param out   the ByteArrayOutputStream which data encode into
+     * @param out the ByteArrayOutputStream which data encode into
      */
     public void encodeValue(int value, ByteArrayOutputStream out) {
-      //writeIndex's initial value=-1, to identify the first input here.
+      // writeIndex's initial value=-1, to identify the first input here.
       if (writeIndex == -1) {
         writeIndex++;
         firstValue = value;
@@ -191,7 +182,7 @@ public abstract class DiffEncoder extends Encoder {
       }
     }
 
-    //cal width, size - leadingZeros
+    // cal width, size - leadingZeros
     private int getValueWidth(int v) {
       return 32 - Integer.numberOfLeadingZeros(v);
     }
@@ -246,7 +237,7 @@ public abstract class DiffEncoder extends Encoder {
     }
 
     private void calcDelta(Long value) {
-      Long delta = value - previousValue;// calculate delta
+      Long delta = value - previousValue; // calculate delta
       deltaBlockBuffer[writeIndex++] = delta;
     }
 
@@ -293,7 +284,7 @@ public abstract class DiffEncoder extends Encoder {
      * input a integer or long value.
      *
      * @param value value to encode
-     * @param out   - the ByteArrayOutputStream which data encode into
+     * @param out - the ByteArrayOutputStream which data encode into
      */
     public void encodeValue(long value, ByteArrayOutputStream out) {
       if (writeIndex == -1) {

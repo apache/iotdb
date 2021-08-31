@@ -27,9 +27,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * This class is a decoder for decoding the byte array that encoded by {@code
- * DiffEncoder}. DiffDecoder just supports integer and long values.<br>
- *
+ * This class is a decoder for decoding the byte array that encoded by {@code DiffEncoder}.
+ * DiffDecoder just supports integer and long values.<br>
  *
  * @see org.apache.iotdb.tsfile.encoding.encoder.DiffEncoder
  */
@@ -37,23 +36,16 @@ public abstract class DiffDecoder extends Decoder {
 
   protected byte[] deltaBuf;
 
-  /**
-   * the first value in one pack.
-   */
+  /** the first value in one pack. */
   protected int readIntTotalCount = 0;
+
   protected int nextReadIndex = 0;
-  /**
-   * max bit length of all value in a pack.
-   */
+  /** max bit length of all value in a pack. */
   protected int packWidth;
-  /**
-   * data number in this pack.
-   */
+  /** data number in this pack. */
   protected int packNum;
 
-  /**
-   * how many bytes data takes after encoding.
-   */
+  /** how many bytes data takes after encoding. */
   protected int encodingLength;
 
   public DiffDecoder() {
@@ -153,7 +145,7 @@ public abstract class DiffDecoder extends Decoder {
     @Override
     protected void readValue(int i) {
       int v = BytesUtils.bytesToInt(deltaBuf, packWidth * i, packWidth);
-      data[i] = previous  + v;
+      data[i] = previous + v;
     }
 
     @Override
@@ -242,6 +234,5 @@ public abstract class DiffDecoder extends Decoder {
     public void reset() {
       // do nothing
     }
-
   }
 }

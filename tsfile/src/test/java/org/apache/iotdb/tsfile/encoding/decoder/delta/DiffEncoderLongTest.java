@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DiffDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DiffEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -110,7 +111,7 @@ public class DiffEncoderLongTest {
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     ROW_NUM = dates.size();
-    System.out.println("ROW_NUM: "+ROW_NUM);
+    System.out.println("ROW_NUM: " + ROW_NUM);
 
     long[] data = new long[ROW_NUM];
     for (int i = 0; i < dates.size(); i++) {
@@ -168,11 +169,16 @@ public class DiffEncoderLongTest {
     if (distance < 1) {
       return list;
     }
-    Stream.iterate(startDate, d -> {
-      return d.plusDays(1);
-    }).limit(distance + 1).forEach(f -> {
-      list.add(f.toString());
-    });
+    Stream.iterate(
+            startDate,
+            d -> {
+              return d.plusDays(1);
+            })
+        .limit(distance + 1)
+        .forEach(
+            f -> {
+              list.add(f.toString());
+            });
     return list;
   }
 
@@ -187,22 +193,21 @@ public class DiffEncoderLongTest {
     System.out.println("source data size:" + 8 * length + " byte");
     out = new ByteArrayOutputStream();
 
-    long encodeStart=System.nanoTime();
+    long encodeStart = System.nanoTime();
     writeData(data, length);
-    Long encodeEnd=System.nanoTime();
-    System.out.println("encode take(ns): "+(encodeEnd-encodeStart));
+    Long encodeEnd = System.nanoTime();
+    System.out.println("encode take(ns): " + (encodeEnd - encodeStart));
 
     byte[] page = out.toByteArray();
     System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
 
-    Long decodeStart=System.nanoTime();
+    Long decodeStart = System.nanoTime();
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readLong(buffer));
     }
-    Long decodeEnd=System.nanoTime();
-    System.out.println("decode take(ns): "+(decodeEnd-decodeStart));
+    Long decodeEnd = System.nanoTime();
+    System.out.println("decode take(ns): " + (decodeEnd - decodeStart));
   }
-
 }

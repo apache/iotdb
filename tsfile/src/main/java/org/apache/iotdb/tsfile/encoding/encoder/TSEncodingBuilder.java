@@ -258,7 +258,7 @@ public abstract class TSEncodingBuilder {
   /** for INT32, INT64 */
   public static class Diff extends TSEncodingBuilder {
     @Override
-    public Encoder getEncoder(TSDataType type){
+    public Encoder getEncoder(TSDataType type) {
       switch (type) {
         case INT32:
           return new DiffEncoder.IntDeltaEncoder();
@@ -268,6 +268,7 @@ public abstract class TSEncodingBuilder {
           throw new UnSupportedDataTypeException("DIFF doesn't support data type: " + type);
       }
     }
+
     @Override
     public void initFromProps(Map<String, String> props) {
       // allowed do nothing

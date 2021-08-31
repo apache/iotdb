@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
 import org.apache.iotdb.tsfile.encoding.decoder.DiffDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DiffEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -88,11 +89,10 @@ public class DiffEncoderIntegerTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-
   @Test
-  public void testSmallInt() throws  IOException{
+  public void testSmallInt() throws IOException {
     int data[] = new int[ROW_NUM];
-    for (int i = 0; i< ROW_NUM ; i++){
+    for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i;
     }
     shouldReadAndWrite(data, ROW_NUM);
@@ -109,22 +109,21 @@ public class DiffEncoderIntegerTest {
     System.out.println("source data size:" + 4 * length + " byte");
     out = new ByteArrayOutputStream();
 
-    long encodeStart=System.nanoTime();
+    long encodeStart = System.nanoTime();
     writeData(data, length);
-    Long encodeEnd=System.nanoTime();
-    System.out.println("encode take(ns): "+(encodeEnd-encodeStart));
+    Long encodeEnd = System.nanoTime();
+    System.out.println("encode take(ns): " + (encodeEnd - encodeStart));
 
     byte[] page = out.toByteArray();
-     System.out.println("encoding data size:" + page.length + " byte");
+    System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
 
-    Long decodeStart=System.nanoTime();
+    Long decodeStart = System.nanoTime();
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readInt(buffer));
     }
-    Long decodeEnd=System.nanoTime();
-    System.out.println("decode take(ns): "+(decodeEnd-decodeStart));
+    Long decodeEnd = System.nanoTime();
+    System.out.println("decode take(ns): " + (decodeEnd - decodeStart));
   }
-
 }
