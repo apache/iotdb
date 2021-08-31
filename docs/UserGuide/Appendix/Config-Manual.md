@@ -309,6 +309,87 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1073741824 |
 |Effective| when enable\_mem\_control is false & After restart system|
 
+* enable\_timed\_flush\_seq\_memtable
+
+|Name| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|Description| whether to enable timed flush sequence memtable |
+|Type|Bool|
+|Default| false |
+|Effective| Trigger |
+
+* seq\_memtable\_flush\_interval\_in\_ms
+
+|Name| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|Int32|
+|Default| 3600000 |
+|Effective| Trigger |
+
+* seq\_memtable\_flush\_check\_interval\_in\_ms
+
+|Name| seq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description| the interval to check whether sequence memtables need flushing |
+|Type|Int32|
+|Default| 600000 |
+|Effective| Trigger |
+
+* enable\_timed\_flush\_unseq\_memtable
+
+|Name| enable\_timed\_flush\_unseq\_memtable |
+|:---:|:---|
+|Description| whether to enable timed flush unsequence memtable |
+|Type|Bool|
+|Default| false |
+|Effective| Trigger |
+
+* unseq\_memtable\_flush\_interval\_in\_ms
+
+|Name| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|Description| if a memTable's created time is older than current time minus this, the memtable will be flushed to disk |
+|Type|Int32|
+|Default| 3600000 |
+|Effective| Trigger |
+
+* unseq\_memtable\_flush\_check\_interval\_in\_ms
+
+|Name| unseq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description| the interval to check whether unsequence memtables need flushing |
+|Type|Int32|
+|Default| 600000 |
+|Effective| Trigger |
+
+* enable\_timed\_close\_tsfile
+
+|Name| enable\_timed\_close\_tsfile |
+|:---:|:---|
+|Description| whether to timed close tsfiles |
+|Type|Bool|
+|Default| false |
+|Effective| Trigger |
+
+* close\_tsfile\_interval\_after\_flushing\_in\_ms
+
+|Name| close\_tsfile\_interval\_after\_flushing\_in\_ms |
+|:---:|:---|
+|Description| if a TsfileProcessor's last working memtable flush time is older than current time minus this and its working memtable is null, the TsfileProcessor will be closed |
+|Type|Int32|
+|Default| 3600000 |
+|Effective| Trigger |
+
+* close\_tsfile\_check\_interval\_in\_ms
+
+|Name| close\_tsfile\_check\_interval\_in\_ms |
+|:---:|:---|
+|Description| the interval to check whether tsfiles need closing |
+|Type|Int32|
+|Default| 600000 |
+|Effective| Trigger |
+
 * avg\_series\_point\_number\_threshold
 
 |Name| avg\_series\_point\_number\_threshold |
