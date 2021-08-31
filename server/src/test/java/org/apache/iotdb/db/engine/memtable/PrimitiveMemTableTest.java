@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -77,6 +78,33 @@ public class PrimitiveMemTableTest {
       i++;
     }
     Assert.assertEquals(count, i);
+  }
+
+  @Test
+  public void memSeriesToStringTest() throws IOException {
+    TSDataType dataType = TSDataType.INT32;
+    WritableMemChunk series =
+        new WritableMemChunk(
+            new MeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+    int count = 100;
+    for (int i = 0; i < count; i++) {
+      series.write(i, i);
+    }
+    series.write(0, 21);
+    series.write(99, 20);
+    series.write(20, 21);
+    String str = series.toString();
+    Assert.assertFalse(series.getTVList().isSorted());
+    Assert.assertEquals(
+        "MemChunk Size: 103"
+            + System.lineSeparator()
+            + "Data type:INT32"
+            + System.lineSeparator()
+            + "First point:0 : 0"
+            + System.lineSeparator()
+            + "Last point:99 : 20"
+            + System.lineSeparator(),
+        str);
   }
 
   @Test
@@ -320,7 +348,7 @@ public class PrimitiveMemTableTest {
 
     String deviceId = "root.sg.device5";
 
-    MeasurementMNode[] mNodes = new MeasurementMNode[2];
+    IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
     IMeasurementSchema schema =
         new VectorMeasurementSchema("$#$0", measurements, dataTypes, encodings);
     mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);

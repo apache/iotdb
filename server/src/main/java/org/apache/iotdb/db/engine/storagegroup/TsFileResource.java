@@ -89,12 +89,11 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
+  private TsFileProcessor processor;
+
   public TsFileProcessor getProcessor() {
     return processor;
   }
-
-  private TsFileProcessor processor;
-
   /** time index */
   protected ITimeIndex timeIndex;
 
@@ -184,16 +183,16 @@ public class TsFileResource {
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
   }
 
-  /** unsealed TsFile */
-  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
+  /** unsealed TsFile, for writter */
+  public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
+    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
     this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
-  /** unsealed TsFile */
+  /** unsealed TsFile, for query */
   public TsFileResource(
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
@@ -470,7 +469,7 @@ public class TsFileResource {
   }
 
   public Set<String> getDevices() {
-    return timeIndex.getDevices();
+    return timeIndex.getDevices(file.getPath());
   }
 
   public boolean endTimeEmpty() {
@@ -628,10 +627,14 @@ public class TsFileResource {
     return timeIndex.stillLives(timeLowerBound);
   }
 
+  public boolean isDeviceIdExist(String deviceId) {
+    return timeIndex.checkDeviceIdExist(deviceId);
+  }
+
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!getDevices().contains(deviceId)) {
+    if (!timeIndex.checkDeviceIdExist(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -817,11 +820,11 @@ public class TsFileResource {
   }
 
   public boolean isPlanIndexOverlap(TsFileResource another) {
-    return another.maxPlanIndex >= this.minPlanIndex && another.minPlanIndex <= this.maxPlanIndex;
+    return another.maxPlanIndex > this.minPlanIndex && another.minPlanIndex < this.maxPlanIndex;
   }
 
   public boolean isPlanRangeCovers(TsFileResource another) {
-    return this.minPlanIndex <= another.minPlanIndex && another.maxPlanIndex <= this.maxPlanIndex;
+    return this.minPlanIndex < another.minPlanIndex && another.maxPlanIndex < this.maxPlanIndex;
   }
 
   public void setMaxPlanIndex(long maxPlanIndex) {

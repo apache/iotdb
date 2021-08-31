@@ -37,6 +37,7 @@ statement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
     | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | CREATE STORAGE GROUP prefixPath #createStorageGroup
     | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
@@ -85,12 +86,14 @@ statement
     | KILL QUERY INT? #killQuery
     | TRACING ON #tracingOn
     | TRACING OFF #tracingOff
+    | SET SYSTEM TO READONLY #setSystemToReadOnly
+    | SET SYSTEM TO WRITABLE #setSystemToWritable
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT DEVICES prefixPath? #countDevices
     | COUNT STORAGE GROUP prefixPath? #countStorageGroup
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD stringLiteral autoCreateSchema?#loadFiles
+    | LOAD stringLiteral loadFilesClause?#loadFiles
     | REMOVE stringLiteral #removeFile
     | MOVE stringLiteral stringLiteral #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
@@ -104,30 +107,44 @@ statement
     | START TRIGGER triggerName=ID #startTrigger
     | STOP TRIGGER triggerName=ID #stopTrigger
     | SHOW TRIGGERS #showTriggers
-    | selectClause fromClause whereClause? specialClause? #selectStatement
+    | selectClause intoClause? fromClause whereClause? specialClause? #selectStatement
+    | CREATE (CONTINUOUS QUERY | CQ) continuousQueryName=ID
+      resampleClause?
+      cqSelectIntoClause #createContinuousQueryStatement
+    | DROP (CONTINUOUS QUERY | CQ) continuousQueryName=ID #dropContinuousQueryStatement
+    | SHOW (CONTINUOUS QUERIES | CQS) #showContinuousQueriesStatement
     ;
 
 selectClause
-   : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
-   ;
+    : SELECT (LAST | topClause)? resultColumn (COMMA resultColumn)*
+    ;
 
 resultColumn
-   : expression (AS ID)?
-   ;
+    : expression (AS ID)?
+    ;
 
 expression
-   : LR_BRACKET unary=expression RR_BRACKET
-   | (PLUS | MINUS) unary=expression
-   | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
-   | leftExpression=expression (PLUS | MINUS) rightExpression=expression
-   | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
-   | suffixPath
-   | literal=SINGLE_QUOTE_STRING_LITERAL
-   ;
+    : LR_BRACKET unary=expression RR_BRACKET
+    | (PLUS | MINUS) unary=expression
+    | leftExpression=expression (STAR | DIV | MOD) rightExpression=expression
+    | leftExpression=expression (PLUS | MINUS) rightExpression=expression
+    | functionName=suffixPath LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
+    | suffixPath
+    | literal=SINGLE_QUOTE_STRING_LITERAL
+    ;
 
 functionAttribute
-   : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
-   ;
+    : COMMA functionAttributeKey=stringLiteral OPERATOR_EQ functionAttributeValue=stringLiteral
+    ;
+
+intoClause
+    : INTO intoPath (COMMA intoPath)*
+    ;
+
+intoPath
+    : fullPath
+    | nodeNameWithoutStar (DOT nodeNameWithoutStar)*
+    ;
 
 alias
     : LR_BRACKET ID RR_BRACKET
@@ -196,6 +213,7 @@ predicate
     : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
     | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
+    | (suffixPath | fullPath) (REGEXP | LIKE) stringLiteral
     ;
 
 inClause
@@ -296,6 +314,7 @@ groupByLevelClause
 typeClause
     : (dataType | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousClause RS_BRACKET
+    | (dataType | ALL) LS_BRACKET specificValueClause RS_BRACKET
     | (dataType | ALL) LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
@@ -305,6 +324,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+specificValueClause
+    : constant?
     ;
 
 previousUntilLastClause
@@ -329,6 +352,20 @@ sequenceClause
     : LR_BRACKET constant (COMMA constant)* RR_BRACKET
     ;
 
+resampleClause
+    : RESAMPLE (EVERY DURATION)? (FOR DURATION)?;
+
+cqSelectIntoClause
+    : BEGIN selectClause INTO intoPath fromClause cqGroupByTimeClause END
+    ;
+
+cqGroupByTimeClause
+    : GROUP BY TIME LR_BRACKET
+      DURATION
+      RR_BRACKET
+      (COMMA LEVEL OPERATOR_EQ INT)?
+    ;
+
 comparisonOperator
     : type = OPERATOR_GT
     | type = OPERATOR_GTE
@@ -339,7 +376,7 @@ comparisonOperator
     ;
 
 insertColumnsSpec
-    : LR_BRACKET (TIMESTAMP|TIME) (COMMA measurementName)+ RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME)? (COMMA? measurementName)+ RR_BRACKET
     ;
 measurementName
     : nodeNameWithoutStar
@@ -353,6 +390,7 @@ insertValuesSpec
 insertMultiValue
     : LR_BRACKET dateFormat (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INT (COMMA measurementValue)+ RR_BRACKET
+    | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
 measurementValue
@@ -499,6 +537,9 @@ nodeName
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
@@ -543,7 +584,6 @@ nodeNameWithoutStar
     | PREVIOUSUNTILLAST
     | METADATA
     | TIMESERIES
-    | TIMESTAMP
     | PROPERTY
     | WITH
     | DATATYPE
@@ -590,7 +630,6 @@ nodeNameWithoutStar
     | DISABLE
     | ALIGN
     | COMPRESSION
-    | TIME
     | ATTRIBUTES
     | TAGS
     | RENAME
@@ -602,12 +641,22 @@ nodeNameWithoutStar
     | SCHEMA
     | TRACING
     | OFF
+    | SYSTEM
+    | READONLY
+    | WRITABLE
     | (ID | OPERATOR_IN)? LS_BRACKET INT? ID? RS_BRACKET? ID?
     | compressor
     | GLOBAL
     | PARTITION
     | DESC
     | ASC
+    | CONTINUOUS
+    | CQ
+    | CQS
+    | BEGIN
+    | END
+    | RESAMPLE
+    | EVERY
     ;
 
 dataType
@@ -652,9 +701,10 @@ property
     : name=ID OPERATOR_EQ value=propertyValue
     ;
 
-autoCreateSchema
-    : booleanClause
-    | booleanClause INT
+loadFilesClause
+    : AUTOREGISTER OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
+    | SGLEVEL OPERATOR_EQ INT (COMMA loadFilesClause)?
+    | VERIFY OPERATOR_EQ booleanClause (COMMA loadFilesClause)?
     ;
 
 triggerEventClause
@@ -937,6 +987,18 @@ OFF
     : O F F
     ;
 
+SYSTEM
+    : S Y S T E M
+    ;
+
+READONLY
+    : R E A D O N L Y
+    ;
+
+WRITABLE
+    : W R I T A B L E
+    ;
+
 DROP
     : D R O P
     ;
@@ -1149,6 +1211,18 @@ SCHEMA
     : S C H E M A
     ;
 
+AUTOREGISTER
+    : A U T O R E G I S T E R
+    ;
+
+VERIFY
+    : V E R I F Y
+    ;
+
+SGLEVEL
+    : S G L E V E L
+    ;
+
 TEMPORARY
     : T E M P O R A R Y
     ;
@@ -1212,12 +1286,48 @@ LIKE
     : L I K E
     ;
 
+REGEXP
+    : R E G E X P
+    ;
+
 TOLERANCE
     : T O L E R A N C E
     ;
 
 EXPLAIN
     : E X P L A I N
+    ;
+
+CONTINUOUS
+    : C O N T I N U O U S
+    ;
+
+QUERIES
+    : Q U E R I E S
+    ;
+
+CQ
+    : C Q
+    ;
+
+CQS
+    : C Q S
+    ;
+
+BEGIN
+    : B E G I N
+    ;
+
+END
+    : E N D
+    ;
+
+RESAMPLE
+    : R E S A M P L E
+    ;
+
+EVERY
+    : E V E R Y
     ;
 
 DEBUG
@@ -1346,6 +1456,8 @@ NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 
@@ -1362,6 +1474,8 @@ FIRST_NAME_CHAR
     |   '%'
     |   '&'
     |   '+'
+    |   '{'
+    |   '}'
     |   CN_CHAR
     ;
 

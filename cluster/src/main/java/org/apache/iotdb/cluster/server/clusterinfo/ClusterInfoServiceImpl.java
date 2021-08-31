@@ -56,7 +56,7 @@ public class ClusterInfoServiceImpl implements ClusterInfoService.Iface {
   }
 
   @Override
-  public Map<Node, Boolean> getAllNodeStatus() throws TException {
+  public Map<Node, Integer> getAllNodeStatus() throws TException {
     return ClusterMonitor.INSTANCE.getAllNodeStatus();
   }
 

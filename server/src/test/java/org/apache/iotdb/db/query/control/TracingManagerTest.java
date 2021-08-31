@@ -75,10 +75,10 @@ public class TracingManagerTest {
       "Query Id: 10 - Start time: 2020-12-",
       "Query Id: 10 - Number of series paths: 3",
       "Query Id: 10 - Number of sequence files: 1",
-      "Query Id: 10 - SeqFile_1-1-0.tsfile root.sg.d1[1, 999], root.sg.d2[2, 998]",
+      "Query Id: 10 - SeqFiles: 1-1-0.tsfile",
       "Query Id: 10 - Number of unSequence files: 0",
-      "Query Id: 10 - Number of chunks: 3",
-      "Query Id: 10 - Average size of chunks: 1371",
+      "Query Id: 10 - Number of chunks: 3, Average data points of chunks: 1371",
+      "Query Id: 10 - Rate of overlapped pages: 50.0%, 10 overlapped pages in total 20 pages",
       "Query Id: 10 - Total cost time: "
     };
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L);
@@ -86,6 +86,7 @@ public class TracingManagerTest {
     tracingManager.writeQueryInfo(queryId, sql, 1607529600000L, 3);
     tracingManager.writeTsFileInfo(queryId, seqResources, Collections.EMPTY_SET);
     tracingManager.writeChunksInfo(queryId, 3, 4113L);
+    tracingManager.writeOverlappedPageInfo(queryId, 20, 10);
     tracingManager.writeEndTime(queryId);
     tracingManager.close();
 

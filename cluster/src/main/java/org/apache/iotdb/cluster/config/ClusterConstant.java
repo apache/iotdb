@@ -36,6 +36,10 @@ public class ClusterConstant {
 
   public static final int LOG_NUM_IN_BATCH = 100;
 
+  public static final int RETRY_WAIT_TIME_MS = 10;
+
+  public static final int THREAD_POLL_WAIT_TERMINATION_TIME_S = 10;
+
   public static final Node EMPTY_NODE = new Node();
 
   private ClusterConstant() {

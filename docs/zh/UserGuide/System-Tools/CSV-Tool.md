@@ -21,8 +21,7 @@
 
 ## 导入导出 CSV
 
-CSV工具可帮您将CSV格式的数据导入到IoTDB或者将数据从IoTDB导出到CSV文件。
-
+CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoTDB 导出到 CSV 文件。
 
 ### 使用 import-csv.sh
 
@@ -38,8 +37,7 @@ CREATE TIMESERIES root.fit.d2.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.d2.s3 WITH DATATYPE=INT32,ENCODING=RLE;
 CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 ```
-IoTDB具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用CSV导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
-
+IoTDB 具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用 CSV 导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
 
 #### 待导入 CSV 文件示例
 
@@ -49,7 +47,6 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 2,500,world,600,700,800
 3,900,"hello, \"world\"",1000,1100,1200
 ```
-
 
 #### 运行方法
 
@@ -61,7 +58,6 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 ```
 
-
 #### 运行示例
 
 ```shell
@@ -72,8 +68,6 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > tools\import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.csv
 ```
 
-
-
 #### 注意事项
 
 注意，在导入数据前，需要特殊处理下列的字符：
@@ -82,8 +76,6 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 2. `"` : "字段中的`"`需要被替换成转义字符`\"`或者用`\'`将字段括起来。
 3. `'` : "字段中的`'`需要被替换成转义字符`\'`或者用`\"`将字段括起来。
 4. 你可以输入时间格式像`yyyy-MM-dd'T'HH:mm:ss`, `yyy-MM-dd HH:mm:ss`, 或者`yyyy-MM-dd'T'HH:mm:ss.SSSZ`.
-
-
 
 ### 使用 export-csv.sh
 
@@ -97,17 +89,14 @@ Time,root.fit.d1.s1,root.fit.d1.s2,root.fit.d2.s1,root.fit.d2.s3,root.fit.p.s1
 > tools\export-csv.bat -h <ip> -p <port> -u <username> -pw <password> -td <directory> [-tf <time-format> -s <sqlfile>]
 ```
 
-在运行导出脚本之后，您需要输入一些查询或指定一些SQL文件。如果在一个SQL文件中有多个SQL，SQL应该被换行符分割。
+在运行导出脚本之后，您需要输入一些查询或指定一些 SQL 文件。如果在一个 SQL 文件中有多个 SQL，SQL 应该被换行符分割。
 
-
-
-#### SQL文件示例
+#### SQL 文件示例
 
 ```sql
 select * from root.fit.d1
 select * from root.sg1.d1
 ```
-
 
 #### 运行示例
 
@@ -131,14 +120,9 @@ select * from root.sg1.d1
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss -s sql.txt
 ```
 
-
-
 #### 注意事项
 
 注意，如果导出字段存在如下特殊字符：
 
 1. `,` : 整个字段会被用`"`括起来。
 2. `"` : 整个字段会被用`"`括起来且`"`会被替换为`\"`。
-
-
-

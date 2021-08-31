@@ -143,8 +143,7 @@ public class VectorMeasurementSchema
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
@@ -203,7 +202,17 @@ public class VectorMeasurementSchema
 
   @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
-    return measurementsToIndexMap.get(measurementId);
+    return measurementsToIndexMap.getOrDefault(measurementId, -1);
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return measurementsToIndexMap.size();
+  }
+
+  @Override
+  public boolean isCompatible(String measurementId) {
+    return measurementsToIndexMap.containsKey(measurementId);
   }
 
   @Override

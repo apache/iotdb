@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -95,6 +96,7 @@ abstract class BaseApplier implements LogApplier {
   private void handleBatchProcessException(BatchProcessException e, PhysicalPlan plan)
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     TSStatus[] failingStatus = e.getFailingStatus();
+    boolean needThrow = false;
     for (int i = 0; i < failingStatus.length; i++) {
       TSStatus status = failingStatus[i];
       // skip succeeded plans in later execution
@@ -102,6 +104,16 @@ abstract class BaseApplier implements LogApplier {
           && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && plan instanceof BatchPlan) {
         ((BatchPlan) plan).setIsExecuted(i);
+      }
+
+      if (plan instanceof DeleteTimeSeriesPlan) {
+        if (status != null && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+            logger.info("{} doesn't exist, it may has been deleted.", plan.getPaths().get(i));
+          } else {
+            needThrow = true;
+          }
+        }
       }
     }
     boolean needRetry = false;
@@ -119,7 +131,10 @@ abstract class BaseApplier implements LogApplier {
       executeAfterSync(plan);
       return;
     }
-    throw e;
+
+    if (!(plan instanceof DeleteTimeSeriesPlan) || needThrow) {
+      throw e;
+    }
   }
 
   private void executeAfterSync(PhysicalPlan plan)
@@ -170,7 +185,7 @@ abstract class BaseApplier implements LogApplier {
    * @param ignoredGroup do not pull schema from the group to avoid backward dependency
    * @throws QueryProcessException
    */
-  private void pullTimeseriesSchema(InsertPlan plan, Node ignoredGroup)
+  private void pullTimeseriesSchema(InsertPlan plan, RaftNode ignoredGroup)
       throws QueryProcessException {
     try {
       PartialPath path = plan.getPrefixPath();

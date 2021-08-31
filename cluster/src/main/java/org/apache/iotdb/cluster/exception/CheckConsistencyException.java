@@ -24,8 +24,8 @@ package org.apache.iotdb.cluster.exception;
  */
 public class CheckConsistencyException extends Exception {
 
-  public CheckConsistencyException(String errMag) {
-    super(String.format("check consistency failed, error message=%s ", errMag));
+  public CheckConsistencyException(String errMsg) {
+    super(String.format("check consistency failed, error message=%s ", errMsg));
   }
 
   public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =

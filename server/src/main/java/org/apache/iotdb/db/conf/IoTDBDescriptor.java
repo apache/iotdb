@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -45,7 +47,7 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
-  private IoTDBConfig conf = new IoTDBConfig();
+  private final IoTDBConfig conf = new IoTDBConfig();
 
   protected IoTDBDescriptor() {
     loadProps();
@@ -250,14 +252,22 @@ public class IoTDBDescriptor {
                   "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
       logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
-      long tsfileSizeThreshold =
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =
@@ -358,6 +368,12 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
+
+      conf.setSessionTimeoutThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "session_timeout_threshold",
+                  Integer.toString(conf.getSessionTimeoutThreshold()))));
 
       conf.setSyncEnable(
           Boolean.parseBoolean(
@@ -487,6 +503,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "compaction_thread_num", Integer.toString(conf.getCompactionThreadNum()))));
+
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
               properties.getProperty(
@@ -595,6 +612,13 @@ public class IoTDBDescriptor {
       conf.setDefaultTTL(
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
+
+      // the num of memtables in each storage group
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_writing_time_partition",
+                  String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
@@ -705,6 +729,12 @@ public class IoTDBDescriptor {
 
       conf.setAdminPassword(properties.getProperty("admin_password", conf.getAdminPassword()));
 
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -760,6 +790,9 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      // timed flush memtable, timed close tsfile
+      loadTimedService(properties);
+
       // set tsfile-format config
       loadTsFileProps(properties);
 
@@ -768,6 +801,9 @@ public class IoTDBDescriptor {
 
       // trigger
       loadTriggerProps(properties);
+
+      // CQ
+      loadCQProps(properties);
 
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
@@ -921,12 +957,6 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setTimeSeriesDataType(
-            properties.getProperty(
-                "time_series_data_type",
-                TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setMaxStringLength(
             Integer.parseInt(
                 properties.getProperty(
@@ -975,6 +1005,92 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
   }
 
+  // timed flush memtable, timed close tsfile
+  private void loadTimedService(Properties properties) {
+    conf.setEnableTimedFlushSeqMemtable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_flush_seq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushSeqMemtable()))));
+
+    long seqMemTableFlushInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "seq_memtable_flush_interval_in_ms",
+                    Long.toString(conf.getSeqMemtableFlushInterval()))
+                .trim());
+    if (seqMemTableFlushInterval > 0) {
+      conf.setSeqMemtableFlushInterval(seqMemTableFlushInterval);
+    }
+
+    long seqMemTableFlushCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "seq_memtable_flush_check_interval_in_ms",
+                    Long.toString(conf.getSeqMemtableFlushCheckInterval()))
+                .trim());
+    if (seqMemTableFlushCheckInterval > 0) {
+      conf.setSeqMemtableFlushCheckInterval(seqMemTableFlushCheckInterval);
+    }
+
+    conf.setEnableTimedFlushUnseqMemtable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_flush_unseq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
+
+    long unseqMemTableFlushInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "unseq_memtable_flush_interval_in_ms",
+                    Long.toString(conf.getUnseqMemtableFlushInterval()))
+                .trim());
+    if (unseqMemTableFlushInterval > 0) {
+      conf.setUnseqMemtableFlushInterval(unseqMemTableFlushInterval);
+    }
+
+    long unseqMemTableFlushCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "unseq_memtable_flush_check_interval_in_ms",
+                    Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
+                .trim());
+    if (unseqMemTableFlushCheckInterval > 0) {
+      conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
+    }
+
+    conf.setEnableTimedCloseTsFile(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_close_tsfile", Boolean.toString(conf.isEnableTimedCloseTsFile()))));
+
+    long closeTsFileIntervalAfterFlushing =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "close_tsfile_interval_after_flushing_in_ms",
+                    Long.toString(conf.getCloseTsFileIntervalAfterFlushing()))
+                .trim());
+    if (closeTsFileIntervalAfterFlushing > 0) {
+      conf.setCloseTsFileIntervalAfterFlushing(closeTsFileIntervalAfterFlushing);
+    }
+
+    long closeTsFileCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "close_tsfile_check_interval_in_ms",
+                    Long.toString(conf.getCloseTsFileCheckInterval()))
+                .trim());
+    if (closeTsFileCheckInterval > 0) {
+      conf.setCloseTsFileCheckInterval(closeTsFileCheckInterval);
+    }
+  }
+
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
@@ -994,14 +1110,26 @@ public class IoTDBDescriptor {
       // update WAL conf
       loadWALProps(properties);
 
-      long tsfileSizeThreshold =
+      // update timed flush & close conf
+      loadTimedService(properties);
+      StorageEngine.getInstance().rebootTimedService();
+
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =
@@ -1022,22 +1150,40 @@ public class IoTDBDescriptor {
 
       // update max_deduplicated_path_num
       conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_deduplicated_path_num",
+                  Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
       // update frequency_interval_in_minute
       conf.setFrequencyIntervalInMinute(
-          Integer.parseInt(properties.getProperty("frequency_interval_in_minute")));
-
+          Integer.parseInt(
+              properties.getProperty(
+                  "frequency_interval_in_minute",
+                  Integer.toString(conf.getFrequencyIntervalInMinute()))));
       // update slow_query_threshold
-      conf.setSlowQueryThreshold(Long.parseLong(properties.getProperty("slow_query_threshold")));
-
+      conf.setSlowQueryThreshold(
+          Long.parseLong(
+              properties.getProperty(
+                  "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
       // update enable_continuous_compaction
       conf.setEnableContinuousCompaction(
-          Boolean.parseBoolean(properties.getProperty("enable_continuous_compaction")));
-
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_continuous_compaction",
+                  Boolean.toString(conf.isEnableContinuousCompaction()))));
       // update merge_write_throughput_mb_per_sec
       conf.setMergeWriteThroughputMbPerSec(
-          Integer.parseInt(properties.getProperty("merge_write_throughput_mb_per_sec")));
+          Integer.parseInt(
+              properties.getProperty(
+                  "merge_write_throughput_mb_per_sec",
+                  Integer.toString(conf.getMergeWriteThroughputMbPerSec()))));
+
+      // update insert-tablet-plan's row limit for select-into
+      conf.setSelectIntoInsertTabletPlanRowLimit(
+          Integer.parseInt(
+              properties.getProperty(
+                  "select_into_insert_tablet_plan_row_limit",
+                  String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1174,6 +1320,31 @@ public class IoTDBDescriptor {
     }
   }
 
+  private void loadCQProps(Properties properties) {
+    conf.setContinuousQueryThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "continuous_query_thread_num",
+                Integer.toString(conf.getContinuousQueryThreadNum()))));
+    if (conf.getContinuousQueryThreadNum() <= 0) {
+      conf.setContinuousQueryThreadNum(Runtime.getRuntime().availableProcessors() / 2);
+    }
+
+    conf.setMaxPendingContinuousQueryTasks(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_pending_continuous_query_tasks",
+                Integer.toString(conf.getMaxPendingContinuousQueryTasks()))));
+    if (conf.getMaxPendingContinuousQueryTasks() <= 0) {
+      conf.setMaxPendingContinuousQueryTasks(64);
+    }
+
+    conf.setContinuousQueryMinimumEveryInterval(
+        DatetimeUtils.convertDurationStrToLong(
+            properties.getProperty("continuous_query_minimum_every_interval", "1s"),
+            conf.getTimestampPrecision()));
+  }
+
   /** Get default encode algorithm by data type */
   public TSEncoding getDefaultEncodingByType(TSDataType dataType) {
     switch (dataType) {
@@ -1195,5 +1366,7 @@ public class IoTDBDescriptor {
   private static class IoTDBDescriptorHolder {
 
     private static final IoTDBDescriptor INSTANCE = new IoTDBDescriptor();
+
+    private IoTDBDescriptorHolder() {}
   }
 }

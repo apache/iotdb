@@ -178,7 +178,7 @@ public class LogicalPlanSmallTest {
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     IoTDB.metaManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
-    concatPathOptimizer.transform(operator, 1000);
+    concatPathOptimizer.transform(operator);
     IoTDB.metaManager.clear();
     // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds
     // the number of sequences (%d) that can actually be returned.
@@ -343,5 +343,19 @@ public class LogicalPlanSmallTest {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
+  }
+
+  @Test
+  public void testRegexpQuery() {
+    String sqlStr = "SELECT a FROM root.sg.* WHERE a REGEXP 'string'";
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(Operator.OperatorType.QUERY, queryOperator.getType());
+    Assert.assertEquals(
+        "a",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.sg.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
   }
 }

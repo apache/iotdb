@@ -35,7 +35,13 @@ public class PlanSerializer {
   }
 
   public byte[] serialize(PhysicalPlan plan) throws IOException {
-    ByteArrayOutputStream poll = baosBlockingDeque.poll();
+    ByteArrayOutputStream poll;
+    try {
+      poll = baosBlockingDeque.take();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("take byte array output stream interrupted", e);
+    }
     poll.reset();
 
     try (DataOutputStream dataOutputStream = new DataOutputStream(poll)) {

@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
+import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
@@ -66,7 +66,19 @@ public class DataLogApplier extends BaseApplier {
     logger.debug("DataMember [{}] start applying Log {}", dataGroupMember.getName(), log);
 
     try {
-      if (log instanceof PhysicalPlanLog) {
+      if (log instanceof AddNodeLog) {
+        metaGroupMember
+            .getDataClusterServer()
+            .preAddNodeForDataGroup((AddNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
+            ((AddNodeLog) log).getMetaLogIndex());
+      } else if (log instanceof RemoveNodeLog) {
+        metaGroupMember
+            .getDataClusterServer()
+            .preRemoveNodeForDataGroup((RemoveNodeLog) log, dataGroupMember);
+        dataGroupMember.setAndSaveLastAppliedPartitionTableVersion(
+            ((RemoveNodeLog) log).getMetaLogIndex());
+      } else if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
         PhysicalPlan plan = physicalPlanLog.getPlan();
         if (plan instanceof DeletePlan) {
@@ -122,11 +134,8 @@ public class DataLogApplier extends BaseApplier {
 
   private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
-    // check if the corresponding slot is being pulled
-    PartialPath sg;
-    long time = plan.getMinTime();
     try {
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
+      IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
@@ -135,13 +144,7 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      sg = IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
     }
-    int slotId =
-        SlotPartitionTable.getSlotStrategy()
-            .calculateSlotByTime(sg.getFullPath(), time, ClusterConstant.SLOT_NUM);
-    // the slot may not be writable because it is pulling file versions, wait until it is done
-    dataGroupMember.getSlotManager().waitSlotForWrite(slotId);
     applyPhysicalPlan(plan, dataGroupMember);
   }
 }

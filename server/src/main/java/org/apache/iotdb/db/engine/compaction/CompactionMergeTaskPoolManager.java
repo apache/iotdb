@@ -161,11 +161,14 @@ public class CompactionMergeTaskPoolManager implements IService {
 
   public void submitTask(String storageGroupName, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
-    if (pool != null && !pool.isTerminated()) {
-      Future<Void> future = pool.submit(compactionMergeTask);
-      storageGroupTasks
-          .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
-          .add(future);
+    if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
+        == CompactionStrategy.LEVEL_COMPACTION) {
+      if (pool != null && !pool.isTerminated()) {
+        Future<Void> future = pool.submit(compactionMergeTask);
+        storageGroupTasks
+            .computeIfAbsent(storageGroupName, k -> new ConcurrentSkipListSet<>())
+            .add(future);
+      }
     }
   }
 

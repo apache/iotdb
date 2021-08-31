@@ -217,8 +217,7 @@ public class MeasurementSchema
   public Encoder getTimeEncoder() {
     TSEncoding timeEncoding =
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
-    TSDataType timeType =
-        TSDataType.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
     return TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType);
   }
 
@@ -394,6 +393,16 @@ public class MeasurementSchema
 
   @Override
   public int getMeasurementIdColumnIndex(String measurementId) {
-    return 0;
+    return this.measurementId.equals(measurementId) ? 0 : -1;
+  }
+
+  @Override
+  public int getMeasurementCount() {
+    return 1;
+  }
+
+  @Override
+  public boolean isCompatible(String measurementId) {
+    return this.measurementId.equals(measurementId);
   }
 }

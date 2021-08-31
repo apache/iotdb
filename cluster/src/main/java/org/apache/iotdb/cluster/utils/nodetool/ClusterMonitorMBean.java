@@ -20,6 +20,8 @@ package org.apache.iotdb.cluster.utils.nodetool;
 
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
 
@@ -28,12 +30,19 @@ import java.util.Map;
 
 public interface ClusterMonitorMBean {
 
+  /** Show the character of meta raft group. */
+  List<Pair<Node, NodeCharacter>> getMetaGroup();
+
+  /** Show the character of target data raft group whose header is this node. */
+  List<Pair<Node, NodeCharacter>> getDataGroup(int raftId) throws Exception;
+
   /**
-   * Get physical hash ring
+   * Query how many slots are still PULLING or PULLING_WRITABLE, it means whether user can
+   * add/remove a node.
    *
-   * @return Node list
+   * @return key: group, value: slot num that still in the process of data migration
    */
-  List<Node> getRing();
+  Map<PartitionGroup, Integer> getSlotNumInDataMigration() throws Exception;
 
   /**
    * Get data partition information of input path and time range.
@@ -52,14 +61,6 @@ public interface ClusterMonitorMBean {
   PartitionGroup getMetaPartition(String path);
 
   /**
-   * Get data partition groups that input node belongs to and the slot number in each partition
-   * group.
-   *
-   * @return key: the partition group, value: the slot number
-   */
-  Map<PartitionGroup, Integer> getSlotNumOfCurNode();
-
-  /**
    * Get all data partition groups and the slot number in each partition group.
    *
    * @return key: the partition group, value: the slot number
@@ -69,9 +70,9 @@ public interface ClusterMonitorMBean {
   /**
    * Get status of all nodes
    *
-   * @return key: node, value: live or not
+   * @return key: node, value: 0(live), 1(offline), 2(joining), 3(leaving)
    */
-  Map<Node, Boolean> getAllNodeStatus();
+  Map<Node, Integer> getAllNodeStatus();
 
   /**
    * @return A multi-line string with each line representing the total time consumption, invocation

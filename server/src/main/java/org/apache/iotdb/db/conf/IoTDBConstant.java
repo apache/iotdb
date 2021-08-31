@@ -93,6 +93,12 @@ public class IoTDBConstant {
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
 
+  public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
+  public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
+  public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
+
   public static final String FUNCTION_TYPE_NATIVE = "native";
   public static final String FUNCTION_TYPE_BUILTIN_UDAF = "built-in UDAF";
   public static final String FUNCTION_TYPE_BUILTIN_UDTF = "built-in UDTF";

@@ -77,6 +77,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType,
         context,
-        dataQueryPlan.isAscending());
+        dataQueryPlan.isAscending(),
+        null);
   }
 }

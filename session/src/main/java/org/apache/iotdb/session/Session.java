@@ -75,6 +75,7 @@ public class Session {
   public static final String MSG_UNSUPPORTED_DATA_TYPE = "Unsupported data type:";
   public static final String MSG_DONOT_ENABLE_REDIRECT =
       "Query do not enable redirect," + " please confirm the session and server conf.";
+  protected List<String> nodeUrls;
   protected String username;
   protected String password;
   protected int fetchSize;
@@ -83,7 +84,7 @@ public class Session {
    * Timeout of query can be set by users. If not set, default value 0 will be used, which will use
    * server configuration.
    */
-  private long timeout = 0;
+  private long queryTimeoutInMs = 0;
 
   protected boolean enableRPCCompression;
   protected int connectionTimeoutInMs;
@@ -158,7 +159,12 @@ public class Session {
   }
 
   public Session(
-      String host, int rpcPort, String username, String password, int fetchSize, long timeoutInMs) {
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      long queryTimeoutInMs) {
     this(
         host,
         rpcPort,
@@ -169,7 +175,7 @@ public class Session {
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
         Config.DEFAULT_CACHE_LEADER_MODE);
-    this.timeout = timeoutInMs;
+    this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
   public Session(String host, int rpcPort, String username, String password, ZoneId zoneId) {
@@ -240,6 +246,66 @@ public class Session {
     this.enableCacheLeader = enableCacheLeader;
   }
 
+  public Session(List<String> nodeUrls, String username, String password) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  /**
+   * Multiple nodeUrl,If one node down, connect to the next one
+   *
+   * @param nodeUrls List<String> Multiple ip:rpcPort eg.127.0.0.1:9001
+   */
+  public Session(List<String> nodeUrls, String username, String password, int fetchSize) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        fetchSize,
+        null,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
+    this(
+        nodeUrls,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        zoneId,
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE,
+        Config.DEFAULT_CACHE_LEADER_MODE);
+  }
+
+  public Session(
+      List<String> nodeUrls,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize,
+      boolean enableCacheLeader) {
+    this.nodeUrls = nodeUrls;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+    this.enableCacheLeader = enableCacheLeader;
+  }
+
   public void setFetchSize(int fetchSize) {
     this.fetchSize = fetchSize;
   }
@@ -256,7 +322,7 @@ public class Session {
     open(enableRPCCompression, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
   }
 
-  private synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
       throws IoTDBConnectionException {
     if (!isClosed) {
       return;
@@ -294,6 +360,9 @@ public class Session {
 
   public SessionConnection constructSessionConnection(
       Session session, EndPoint endpoint, ZoneId zoneId) throws IoTDBConnectionException {
+    if (endpoint == null) {
+      return new SessionConnection(session, zoneId);
+    }
     return new SessionConnection(session, endpoint, zoneId);
   }
 
@@ -473,18 +542,18 @@ public class Session {
 
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
-    return defaultSessionConnection.checkTimeseriesExists(path, timeout);
+    return defaultSessionConnection.checkTimeseriesExists(path, queryTimeoutInMs);
   }
 
-  public void setTimeout(long timeoutInMs) throws StatementExecutionException {
+  public void setQueryTimeout(long timeoutInMs) throws StatementExecutionException {
     if (timeoutInMs < 0) {
       throw new StatementExecutionException("Timeout must be >= 0, please check and try again.");
     }
-    this.timeout = timeoutInMs;
+    this.queryTimeoutInMs = timeoutInMs;
   }
 
-  public long getTimeout() {
-    return timeout;
+  public long getQueryTimeout() {
+    return queryTimeoutInMs;
   }
 
   /**
@@ -495,7 +564,7 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    return executeStatementMayRedirect(sql, timeout);
+    return executeStatementMayRedirect(sql, queryTimeoutInMs);
   }
 
   /**
@@ -525,7 +594,7 @@ public class Session {
   private SessionDataSet executeStatementMayRedirect(String sql, long timeoutInMs)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      logger.info("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
+      logger.debug("{} execute sql {}", defaultSessionConnection.getEndPoint(), sql);
       return defaultSessionConnection.executeQueryStatement(sql, timeoutInMs);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
@@ -537,7 +606,7 @@ public class Session {
             e.getEndPoint());
         // retry
         try {
-          return defaultSessionConnection.executeQueryStatement(sql, timeout);
+          return defaultSessionConnection.executeQueryStatement(sql, queryTimeoutInMs);
         } catch (RedirectException redirectException) {
           logger.error("{} redirect twice", sql, redirectException);
           throw new StatementExecutionException(sql + " redirect twice, please try again.");
@@ -679,7 +748,9 @@ public class Session {
 
   private SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
-    if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
+    if (enableCacheLeader
+        && !deviceIdToEndpoint.isEmpty()
+        && (endPoint = deviceIdToEndpoint.get(deviceId)) != null) {
       return endPointToSessionConnection.get(endPoint);
     } else {
       return defaultSessionConnection;
@@ -898,7 +969,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1120,7 +1191,7 @@ public class Session {
     EndPoint endPoint;
     SessionConnection connection;
     for (int i = 0; i < deviceIds.size(); i++) {
-      endPoint = deviceIdToEndpoint.get(deviceIds.get(i));
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(deviceIds.get(i));
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1205,7 +1276,9 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, false);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
@@ -1226,7 +1299,9 @@ public class Session {
     TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted);
     EndPoint endPoint;
     try {
-      if (enableCacheLeader && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
+      if (enableCacheLeader
+          && !deviceIdToEndpoint.isEmpty()
+          && (endPoint = deviceIdToEndpoint.get(tablet.prefixPath)) != null) {
         endPointToSessionConnection.get(endPoint).insertTablet(request);
       } else {
         defaultSessionConnection.insertTablet(request);
@@ -1313,7 +1388,7 @@ public class Session {
     SessionConnection connection;
     Map<SessionConnection, TSInsertTabletsReq> tabletGroup = new HashMap<>();
     for (Entry<String, Tablet> entry : tablets.entrySet()) {
-      endPoint = deviceIdToEndpoint.get(entry.getKey());
+      endPoint = deviceIdToEndpoint.isEmpty() ? null : deviceIdToEndpoint.get(entry.getKey());
       if (endPoint != null) {
         connection = endPointToSessionConnection.get(endPoint);
       } else {
@@ -1832,5 +1907,99 @@ public class Session {
 
   public void setEnableQueryRedirection(boolean enableQueryRedirection) {
     this.enableQueryRedirection = enableQueryRedirection;
+  }
+
+  public static class Builder {
+    private String host = Config.DEFAULT_HOST;
+    private int rpcPort = Config.DEFAULT_PORT;
+    private String username = Config.DEFAULT_USER;
+    private String password = Config.DEFAULT_PASSWORD;
+    private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+    private ZoneId zoneId = null;
+    private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
+    private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
+    private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+    List<String> nodeUrls = null;
+
+    public Builder host(String host) {
+      this.host = host;
+      return this;
+    }
+
+    public Builder port(int port) {
+      this.rpcPort = port;
+      return this;
+    }
+
+    public Builder username(String username) {
+      this.username = username;
+      return this;
+    }
+
+    public Builder password(String password) {
+      this.password = password;
+      return this;
+    }
+
+    public Builder fetchSize(int fetchSize) {
+      this.fetchSize = fetchSize;
+      return this;
+    }
+
+    public Builder zoneId(ZoneId zoneId) {
+      this.zoneId = zoneId;
+      return this;
+    }
+
+    public Builder thriftDefaultBufferSize(int thriftDefaultBufferSize) {
+      this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+      return this;
+    }
+
+    public Builder thriftMaxFrameSize(int thriftMaxFrameSize) {
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    public Builder enableCacheLeader(boolean enableCacheLeader) {
+      this.enableCacheLeader = enableCacheLeader;
+      return this;
+    }
+
+    public Builder nodeUrls(List<String> nodeUrls) {
+      this.nodeUrls = nodeUrls;
+      return this;
+    }
+
+    public Session build() {
+      if (nodeUrls != null
+          && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
+        throw new IllegalArgumentException(
+            "You should specify either nodeUrls or (host + rpcPort), but not both");
+      }
+
+      if (nodeUrls != null) {
+        return new Session(
+            nodeUrls,
+            username,
+            password,
+            fetchSize,
+            zoneId,
+            thriftDefaultBufferSize,
+            thriftMaxFrameSize,
+            enableCacheLeader);
+      }
+
+      return new Session(
+          host,
+          rpcPort,
+          username,
+          password,
+          fetchSize,
+          zoneId,
+          thriftDefaultBufferSize,
+          thriftMaxFrameSize,
+          enableCacheLeader);
+    }
   }
 }

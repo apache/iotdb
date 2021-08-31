@@ -36,7 +36,7 @@
 [![Slack Status](https://img.shields.io/badge/slack-join_chat-white.svg?logo=slack&style=social)](https://join.slack.com/t/apacheiotdb/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg)
 
 # 简介
-IoTDB (Internet of Things Database) 是一个时序数据的数据管理系统，可以为用户提供数据收集、存储和分析等特定的服务。IoTDB由于其轻量级的结构、高性能和可用的特性，以及与Hadoop和Spark生态的无缝集成，满足了工业IoTDB领域中海量数据存储、高吞吐量数据写入和复杂数据分析的需求。
+IoTDB (Internet of Things Database) 是一款时序数据库管理系统，可以为用户提供数据收集、存储和分析等服务。IoTDB由于其轻量级架构、高性能和高可用的特性，以及与 Hadoop 和 Spark 生态的无缝集成，满足了工业 IoT 领域中海量数据存储、高吞吐量数据写入和复杂数据查询分析的需求。
 
 # 主要特点
 
@@ -79,7 +79,7 @@ IoTDB的主要特点如下:
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 环境准备
 
@@ -87,6 +87,14 @@ IoTDB的主要特点如下:
 1. Java >= 1.8 (目前 1.8、11和15 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
+4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## 安装
 
@@ -98,7 +106,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
-在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
 
 ## 从源码构建
 

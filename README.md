@@ -81,7 +81,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html).
 
 ## Prerequisites
 
@@ -90,6 +90,14 @@ To use IoTDB, you need to have:
 1. Java >= 1.8 (1.8, 11, and 15 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid "too many open files" error.
+4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## Installation
 

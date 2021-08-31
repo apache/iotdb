@@ -241,8 +241,8 @@ public abstract class TsFileManagement {
     }
 
     long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-    long timeLowerBound = System.currentTimeMillis() - dataTTL;
-    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, timeLowerBound);
+    long ttlLowerBound = System.currentTimeMillis() - dataTTL;
+    MergeResource mergeResource = new MergeResource(seqMergeList, unSeqMergeList, ttlLowerBound);
 
     IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
     try {

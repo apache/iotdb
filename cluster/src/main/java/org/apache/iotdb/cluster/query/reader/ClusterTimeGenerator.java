@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -48,7 +47,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 public class ClusterTimeGenerator extends ServerTimeGenerator {
@@ -113,11 +111,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     TSDataType dataType;
     ManagedSeriesReader mergeReader;
     try {
-      dataType =
-          ((CMManager) IoTDB.metaManager)
-              .getSeriesTypesByPaths(Collections.singletonList(path), null)
-              .left
-              .get(0);
+      dataType = IoTDB.metaManager.getSeriesType(path);
       mergeReader =
           readerFactory.getSeriesReader(
               path,
@@ -179,11 +173,7 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
     PartialPath path = (PartialPath) expression.getSeriesPath();
     TSDataType dataType;
     try {
-      dataType =
-          ((CMManager) IoTDB.metaManager)
-              .getSeriesTypesByPaths(Collections.singletonList(path), null)
-              .left
-              .get(0);
+      dataType = IoTDB.metaManager.getSeriesType(path);
 
       List<PartitionGroup> partitionGroups = metaGroupMember.routeFilter(null, path);
       for (PartitionGroup partitionGroup : partitionGroups) {
@@ -203,7 +193,8 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
                   filter,
                   context,
                   dataGroupMember,
-                  queryPlan.isAscending());
+                  queryPlan.isAscending(),
+                  null);
 
           if (pointReader.hasNextTimeValuePair()) {
             this.hasLocalReader = true;
@@ -215,8 +206,8 @@ public class ClusterTimeGenerator extends ServerTimeGenerator {
         } else if (endPoint == null) {
           endPoint =
               new QueryDataSet.EndPoint(
-                  partitionGroup.getHeader().getClientIp(),
-                  partitionGroup.getHeader().getClientPort());
+                  partitionGroup.getHeader().getNode().getClientIp(),
+                  partitionGroup.getHeader().getNode().getClientPort());
         }
       }
     } catch (Exception e) {

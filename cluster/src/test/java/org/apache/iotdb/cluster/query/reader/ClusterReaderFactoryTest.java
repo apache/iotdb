@@ -46,7 +46,7 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
 
     ClusterReaderFactory readerFactory = new ClusterReaderFactory(testMetaMember);
     RemoteQueryContext context =
-        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true, 1024, -1));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
 
     try {
       SeriesRawDataBatchReader seriesReader =
@@ -58,8 +58,9 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
                   null,
                   null,
                   context,
-                  dataGroupMemberMap.get(TestUtils.getNode(10)),
-                  true);
+                  dataGroupMemberMap.get(TestUtils.getRaftNode(10, 0)),
+                  true,
+                  null);
       assertNotNull(seriesReader);
       StorageEngine.getInstance().setTTL(new PartialPath(TestUtils.getTestSg(0)), 100);
       seriesReader =
@@ -71,8 +72,9 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
                   null,
                   null,
                   context,
-                  dataGroupMemberMap.get(TestUtils.getNode(10)),
-                  true);
+                  dataGroupMemberMap.get(TestUtils.getRaftNode(10, 0)),
+                  true,
+                  null);
       assertNull(seriesReader);
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
