@@ -112,7 +112,7 @@ public abstract class Decoder {
         }
       case DICTIONARY:
         return new DictionaryDecoder();
-      case TS_2DIFF:
+      case DIFF:
         switch (dataType) {
           case INT32:
             return new DiffDecoder.IntDeltaDecoder();
