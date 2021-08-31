@@ -284,6 +284,7 @@ public class MetaGroupMember extends RaftMember {
     // load the identifier from the disk or generate a new one
     loadIdentifier();
     allNodes.add(thisNode);
+    idNodeMap.put(thisNode.nodeIdentifier, thisNode);
 
     Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
