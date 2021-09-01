@@ -76,7 +76,7 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static String targetDirectory;
 
-  private static Boolean dataType;
+  private static Boolean needDataTypePrinted;
 
   private static String queryCommand;
 
@@ -162,11 +162,11 @@ public class ExportCsv extends AbstractCsvTool {
   private static void parseSpecialParams(CommandLine commandLine) throws ArgsErrorException {
     targetDirectory = checkRequiredArg(TARGET_DIR_ARGS, TARGET_DIR_NAME, commandLine);
     targetFile = commandLine.getOptionValue(TARGET_FILE_ARGS);
-    dataType = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
+    needDataTypePrinted = Boolean.valueOf(commandLine.getOptionValue(DATA_TYPE_ARGS));
     queryCommand = commandLine.getOptionValue(QUERY_COMMAND_ARGS);
 
-    if (dataType == null) {
-      dataType = true;
+    if (needDataTypePrinted == null) {
+      needDataTypePrinted = true;
     }
     if (targetFile == null) {
       targetFile = DUMP_FILE_NAME_DEFAULT;
@@ -314,7 +314,7 @@ public class ExportCsv extends AbstractCsvTool {
     List<String> names = sessionDataSet.getColumnNames();
     List<String> types = sessionDataSet.getColumnTypes();
 
-    if (dataType == true) {
+    if (needDataTypePrinted == true) {
       for (int i = 0; i < names.size(); i++) {
         if (!names.get(i).equals("Time") && !names.get(i).equals("Device"))
           headers.add(String.format("%s(%s)", names.get(i), types.get(i)));

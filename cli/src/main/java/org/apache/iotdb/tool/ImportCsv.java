@@ -224,7 +224,7 @@ public class ImportCsv extends AbstractCsvTool {
    * @param file the File object of the CSV file that you want to import.
    */
   private static void importFromSingleFile(File file) {
-    if (file.getName().endsWith(CSV_SUFFIXS)) {
+    if (file.getName().endsWith(CSV_SUFFIXS) || file.getName().endsWith(TXT_SUFFIXS)) {
       try {
         CSVParser csvRecords = readCsvFile(file.getAbsolutePath());
         List<String> headerNames = csvRecords.getHeaderNames();
@@ -255,6 +255,8 @@ public class ImportCsv extends AbstractCsvTool {
       } catch (IOException e) {
         System.out.println("CSV file read exception because: " + e.getMessage());
       }
+    } else {
+      System.out.println("The file name must end with \"csv\" or \"txt\"!");
     }
   }
 
@@ -470,6 +472,7 @@ public class ImportCsv extends AbstractCsvTool {
         .withFirstRecordAsHeader()
         .withQuote('\'')
         .withEscape('\\')
+        .withIgnoreEmptyLines()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 
@@ -626,6 +629,9 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
+          if (!value.equals("true") || !value.equals("false")) {
+            return null;
+          }
           return Boolean.valueOf(value);
         case INT32:
           return Integer.valueOf(value);
