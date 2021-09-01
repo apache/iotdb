@@ -40,13 +40,17 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   boolean[] isExecuted;
   private InsertRowPlan[] rowPlans;
 
+  public InsertRowsOfOneDevicePlan() {
+    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
+  }
+
   public InsertRowsOfOneDevicePlan(
       PartialPath deviceId,
       Long[] insertTimes,
       List<List<String>> measurements,
       ByteBuffer[] insertValues)
       throws QueryProcessException {
-    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
+    this();
     this.prefixPath = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
@@ -75,7 +79,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
    * there's no need to validate rowPlans.
    */
   public InsertRowsOfOneDevicePlan(PartialPath deviceId, InsertRowPlan[] rowPlans) {
-    super(OperatorType.BATCH_INSERT_ONE_DEVICE);
+    this();
     this.prefixPath = deviceId;
     this.rowPlans = rowPlans;
   }
