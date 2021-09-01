@@ -119,7 +119,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private boolean allowReport = true;
 
-  /** hardLinkCleaner will periodically clean expired hardlinks created during snapshots */
+  /**
+   * hardLinkCleaner will periodically clean expired hardlinks created during snapshots
+   */
   private ScheduledExecutorService hardLinkCleanerThread;
 
   // currently, dataClientProvider is only used for those instances who do not belong to any
@@ -156,6 +158,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     dataGroupEngine = new DataGroupServiceImpls(protocolFactory, metaGroupEngine);
     dataClientProvider = new DataClientProvider(protocolFactory);
     initTasks();
+    try {
+      // we need to check config after initLocalEngines.
+      startServerCheck();
+    } catch (StartupException e) {
+      logger.error("Failed to check cluster config.", e);
+      stop();
+    }
     JMXService.registerMBean(metaGroupEngine, metaGroupEngine.getMBeanName());
   }
 
@@ -204,35 +213,18 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       return;
     }
 
-    try {
-      IoTDBConfigCheck.getInstance().checkConfig();
-    } catch (IOException e) {
-      logger.error("meet error when doing start checking", e);
-    }
-
-    // init server's configuration first, because the cluster configuration may read settings from
-    // the server's configuration.
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    // auto create schema is took over by cluster module, so we disable it in the server module.
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
-
-    // params check
-    try {
-      ClusterDescriptor.getInstance().replaceHostnameWithIp();
-    } catch (Exception e) {
-      logger.error("replace hostname with ip failed, {}", e.getMessage());
+    ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
+    // check config of iotdb,and set some configs in cluster mode
+    if (!cluster.serverCheckAndInit()) {
       return;
     }
-
     String mode = args[0];
     logger.info("Running mode {}", mode);
 
-    ClusterIoTDB cluster = ClusterIoTDBHolder.INSTANCE;
+    // initialize the current node and its services
     cluster.initLocalEngines();
-    // we start IoTDB kernel first.
-    // cluster.iotdb.active();
 
-    // then we start the cluster module.
+    // we start IoTDB kernel first. then we start the cluster module.
     if (MODE_START.equals(mode)) {
       cluster.activeStartNodeMode();
     } else if (MODE_ADD.equals(mode)) {
@@ -248,11 +240,69 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
+  private boolean serverCheckAndInit() {
+    try {
+      IoTDBConfigCheck.getInstance().checkConfig();
+    } catch (IOException e) {
+      logger.error("meet error when doing start checking", e);
+    }
+    // init server's configuration first, because the cluster configuration may read settings from
+    // the server's configuration.
+    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    // auto create schema is took over by cluster module, so we disable it in the server module.
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    // check cluster config
+    String checkResult = clusterConfigCheck();
+    if (checkResult != null) {
+      logger.error(checkResult);
+      return false;
+    }
+    return true;
+  }
+
+  private String clusterConfigCheck() {
+    try {
+      ClusterDescriptor.getInstance().replaceHostnameWithIp();
+    } catch (Exception e) {
+      return String.format("replace hostname with ip failed, %s", e.getMessage());
+    }
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    // check the initial replicateNum and refuse to start when the replicateNum <= 0
+    if (config.getReplicationNum() <= 0) {
+      return String.format(
+          "ReplicateNum should be greater than 0 instead of %d.", config.getReplicationNum());
+    }
+    // check the initial cluster size and refuse to start when the size < quorum
+    int quorum = config.getReplicationNum() / 2 + 1;
+    if (config.getSeedNodeUrls().size() < quorum) {
+      return String.format(
+          "Seed number less than quorum, seed number: %s, quorum: " + "%s.",
+          config.getSeedNodeUrls().size(), quorum);
+    }
+    // TODO duplicate code,consider to solve it later
+    Set<Node> seedNodes = new HashSet<>();
+    for (String url : config.getSeedNodeUrls()) {
+      Node node = ClusterUtils.parseNode(url);
+      if (seedNodes.contains(node)) {
+        return String.format(
+            "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
+      }
+      seedNodes.add(node);
+    }
+    return null;
+  }
+
   public void activeStartNodeMode() {
     try {
+      // start iotdb server first
+      IoTDB.getInstance().active();
+      // some work about cluster
       preInitCluster();
+      // try to build cluster
       metaGroupEngine.buildCluster();
+      // register service after cluster build
       postInitCluster();
+      // init ServiceImpl to handle request of client
       startClientRPC();
     } catch (StartupException
         | StartUpCheckFailureException
@@ -265,9 +315,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void preInitCluster() throws StartupException {
     stopRaftInfoReport();
-    startServerCheck();
     preStartCustomize();
-    iotdb.active();
     JMXService.registerMBean(this, mbeanName);
     // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
     // cluster moduel.
@@ -345,23 +393,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private void startServerCheck() throws StartupException {
     ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-    // check the initial replicateNum and refuse to start when the replicateNum <= 0
-    if (config.getReplicationNum() <= 0) {
-      String message =
-          String.format(
-              "ReplicateNum should be greater than 0 instead of %d.", config.getReplicationNum());
-      throw new StartupException(metaGroupEngine.getName(), message);
-    }
-    // check the initial cluster size and refuse to start when the size < quorum
-    int quorum = config.getReplicationNum() / 2 + 1;
-    if (config.getSeedNodeUrls().size() < quorum) {
-      String message =
-          String.format(
-              "Seed number less than quorum, seed number: %s, quorum: " + "%s.",
-              config.getSeedNodeUrls().size(), quorum);
-      throw new StartupException(metaGroupEngine.getName(), message);
-    }
-
     // assert not duplicated nodes
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
@@ -390,7 +421,6 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
 
     // assert this node is in seed nodes list
-
     if (!seedNodes.contains(thisNode)) {
       String message =
           String.format(
@@ -455,7 +485,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
-  /** Developers may perform pre-start customizations here for debugging or experiments. */
+  /**
+   * Developers may perform pre-start customizations here for debugging or experiments.
+   */
   @SuppressWarnings("java:S125") // leaving examples
   private void preStartCustomize() {
     // customize data distribution
@@ -609,6 +641,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
     private static final ClusterIoTDB INSTANCE = new ClusterIoTDB();
 
-    private ClusterIoTDBHolder() {}
+    private ClusterIoTDBHolder() {
+    }
   }
 }
