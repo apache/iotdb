@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.query.expression;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 
 import java.util.List;
 import java.util.Map;
@@ -48,8 +51,11 @@ public abstract class Expression {
 
   public abstract void collectPaths(Set<PartialPath> pathSet);
 
-  public abstract void constructTransformerBuilder(
-      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap);
+  public abstract IntermediateLayer constructIntermediateLayer(
+      UDTFPlan udtfPlan,
+      InputLayer inputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      throws QueryProcessException;
 
   public String getExpressionString() {
     if (expressionString == null) {

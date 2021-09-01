@@ -20,10 +20,13 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
@@ -68,11 +71,21 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public void constructTransformerBuilder(
-      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
-    if (!expressionTransformerBuilderMap.containsKey(this)) {
-      expressionTransformerBuilderMap.put(this, new TransformerBuilder(this));
+  public IntermediateLayer constructIntermediateLayer(
+      UDTFPlan udtfPlan,
+      InputLayer inputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      expressionIntermediateLayerMap.put(
+          this,
+          new IntermediateLayer(
+              inputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath())),
+              -1,
+              -1));
     }
+
+    return expressionIntermediateLayerMap.get(this);
   }
 
   @Override

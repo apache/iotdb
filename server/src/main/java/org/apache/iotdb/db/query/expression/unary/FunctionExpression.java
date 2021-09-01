@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -144,21 +147,20 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public void constructTransformerBuilder(
-      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
-    if (expressionTransformerBuilderMap.containsKey(this)) {
-      return;
+  public IntermediateLayer constructIntermediateLayer(
+      UDTFPlan udtfPlan,
+      InputLayer inputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      for (Expression expression : expressions) {
+        expression.constructIntermediateLayer(udtfPlan, inputLayer, expressionIntermediateLayerMap);
+      }
+
+      // todo!
     }
 
-    for (Expression expression : expressions) {
-      expression.constructTransformerBuilder(expressionTransformerBuilderMap);
-    }
-
-    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
-    for (Expression expression : expressions) {
-      transformerBuilder.addDependentExpression(expression);
-    }
-    expressionTransformerBuilderMap.put(this, transformerBuilder);
+    return expressionIntermediateLayerMap.get(this);
   }
 
   public List<PartialPath> getPaths() {

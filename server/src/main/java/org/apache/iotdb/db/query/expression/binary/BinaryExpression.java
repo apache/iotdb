@@ -20,10 +20,15 @@
 package org.apache.iotdb.db.query.expression.binary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,20 +110,34 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public void constructTransformerBuilder(
-      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
-    if (expressionTransformerBuilderMap.containsKey(this)) {
-      return;
+  public IntermediateLayer constructIntermediateLayer(
+      UDTFPlan udtfPlan,
+      InputLayer inputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      IntermediateLayer leftParentIntermediateLayer =
+          leftExpression.constructIntermediateLayer(
+              udtfPlan, inputLayer, expressionIntermediateLayerMap);
+      IntermediateLayer rightParentIntermediateLayer =
+          rightExpression.constructIntermediateLayer(
+              udtfPlan, inputLayer, expressionIntermediateLayerMap);
+
+      expressionIntermediateLayerMap.put(
+          this,
+          new IntermediateLayer(
+              constructTransformer(
+                  leftParentIntermediateLayer.constructPointReader(),
+                  rightParentIntermediateLayer.constructPointReader()),
+              -1,
+              -1));
     }
 
-    leftExpression.constructTransformerBuilder(expressionTransformerBuilderMap);
-    rightExpression.constructTransformerBuilder(expressionTransformerBuilderMap);
-
-    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
-    transformerBuilder.addDependentExpression(leftExpression);
-    transformerBuilder.addDependentExpression(rightExpression);
-    expressionTransformerBuilderMap.put(this, transformerBuilder);
+    return expressionIntermediateLayerMap.get(this);
   }
+
+  protected abstract ArithmeticBinaryTransformer constructTransformer(
+      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   public Expression getLeftExpression() {
     return leftExpression;

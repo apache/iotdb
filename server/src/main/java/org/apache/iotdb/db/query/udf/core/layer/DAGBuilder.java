@@ -17,8 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.builder;
+package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -32,6 +33,7 @@ import java.util.Map;
 public class DAGBuilder {
 
   private final UDTFPlan udtfPlan;
+  private final InputLayer inputLayer;
 
   // input
   private final List<Expression> resultColumnExpressions;
@@ -40,37 +42,31 @@ public class DAGBuilder {
 
   // all result column expressions will be split into several sub-expressions, each expression has
   // its own transformer. different result column expressions may have the same sub-expressions,
-  // but they can share the same transformer. we cache the transformer builder here to make sure
-  // that only one transformer will be built for one expression.
-  private final Map<Expression, TransformerBuilder> expressionTransformerBuilderMap;
+  // but they can share the same transformer. we cache the transformer here to make sure that only
+  // one transformer will be built for one expression.
+  private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(UDTFPlan udtfPlan) {
+  public DAGBuilder(UDTFPlan udtfPlan, InputLayer inputLayer) throws QueryProcessException {
     this.udtfPlan = udtfPlan;
+    this.inputLayer = inputLayer;
+
     resultColumnExpressions = new ArrayList<>();
     for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
       resultColumnExpressions.add(resultColumn.getExpression());
     }
     resultColumnTransformers = new Transformer[resultColumnExpressions.size()];
-    expressionTransformerBuilderMap = new HashMap<>();
+
+    expressionIntermediateLayerMap = new HashMap<>();
 
     build();
   }
 
-  public void build() {
-    constructTransformerBuilder();
-    buildTransformer();
-    buildDAG();
-  }
-
-  private void constructTransformerBuilder() {
+  public void build() throws QueryProcessException {
     for (Expression resultColumnExpression : resultColumnExpressions) {
-      resultColumnExpression.constructTransformerBuilder(expressionTransformerBuilderMap);
+      resultColumnExpression.constructIntermediateLayer(
+          udtfPlan, inputLayer, expressionIntermediateLayerMap);
     }
   }
-
-  private void buildTransformer() {}
-
-  private void buildDAG() {}
 
   public Transformer[] getResultColumnTransformers() {
     return resultColumnTransformers;

@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.builder.TransformerBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,17 +76,25 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public void constructTransformerBuilder(
-      Map<Expression, TransformerBuilder> expressionTransformerBuilderMap) {
-    if (expressionTransformerBuilderMap.containsKey(this)) {
-      return;
+  public IntermediateLayer constructIntermediateLayer(
+      UDTFPlan udtfPlan,
+      InputLayer inputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      throws QueryProcessException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      IntermediateLayer parentIntermediateLayer =
+          expression.constructIntermediateLayer(
+              udtfPlan, inputLayer, expressionIntermediateLayerMap);
+
+      expressionIntermediateLayerMap.put(
+          this,
+          new IntermediateLayer(
+              new ArithmeticNegationTransformer(parentIntermediateLayer.constructPointReader()),
+              -1,
+              -1));
     }
 
-    expression.constructTransformerBuilder(expressionTransformerBuilderMap);
-
-    TransformerBuilder transformerBuilder = new TransformerBuilder(this);
-    transformerBuilder.addDependentExpression(expression);
-    expressionTransformerBuilderMap.put(this, transformerBuilder);
+    return expressionIntermediateLayerMap.get(this);
   }
 
   @Override
