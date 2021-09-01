@@ -202,9 +202,17 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getId()
             + "",
+<<<<<<< HEAD
+        new AsyncClientPool(new AsyncDataClient.Factory(factory)),
+        new SyncClientPool(new SyncDataClient.Factory(factory)),
+        new AsyncClientPool(new AsyncDataHeartbeatClient.Factory(factory)),
+        new SyncClientPool(new SyncDataHeartbeatClient.Factory(factory)),
+        new AsyncClientPool(new SingleManagerFactory(factory)));
+=======
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.DataGroupClient));
+>>>>>>> [cluster-refactor] refactor client pool
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     mbeanName =

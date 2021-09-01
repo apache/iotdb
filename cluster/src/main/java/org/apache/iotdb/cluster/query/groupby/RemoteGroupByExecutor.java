@@ -80,16 +80,16 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
             ClusterIoTDB.getInstance()
-                .getClientProvider()
                 .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffers =
             SyncClientAdaptor.getGroupByResult(
                 client, header, executorId, curStartTime, curEndTime);
       } else {
-        try (SyncDataClient syncDataClient =
-            ClusterIoTDB.getInstance()
-                .getClientProvider()
-                .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS())) {
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              ClusterIoTDB.getInstance()
+                  .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
           try {
             aggrBuffers =
                 syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
@@ -98,6 +98,8 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             syncDataClient.getInputProtocol().getTransport().close();
             throw e;
           }
+        } finally {
+          if (syncDataClient != null) syncDataClient.returnSelf();
         }
       }
     } catch (TException e) {
@@ -130,16 +132,16 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
         AsyncDataClient client =
             ClusterIoTDB.getInstance()
-                .getClientProvider()
                 .getAsyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
         aggrBuffer =
             SyncClientAdaptor.peekNextNotNullValue(
                 client, header, executorId, nextStartTime, nextEndTime);
       } else {
-        try (SyncDataClient syncDataClient =
-            ClusterIoTDB.getInstance()
-                .getClientProvider()
-                .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS())) {
+        SyncDataClient syncDataClient = null;
+        try {
+          syncDataClient =
+              ClusterIoTDB.getInstance()
+                  .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
           try {
             aggrBuffer =
                 syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
@@ -148,6 +150,8 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
             syncDataClient.getInputProtocol().getTransport().close();
             throw e;
           }
+        } finally {
+          if (syncDataClient != null) syncDataClient.returnSelf();
         }
       }
     } catch (TException e) {

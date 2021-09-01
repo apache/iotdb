@@ -152,7 +152,6 @@ public class MultDataSourceInfo {
       throws TException, InterruptedException, IOException {
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
-            .getClientProvider()
             .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
@@ -177,11 +176,11 @@ public class MultDataSourceInfo {
   private Long applyForReaderIdSync(Node node, long timestamp) throws TException {
 
     Long newReaderId;
-    try (SyncDataClient client =
-        ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
-
+    SyncDataClient client = null;
+    try {
+      client =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       Filter newFilter;
       // add timestamp to as a timeFilter to skip the data which has been read
       if (request.isSetTimeFilterBytes()) {
@@ -199,6 +198,10 @@ public class MultDataSourceInfo {
         throw e;
       }
       return newReaderId;
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
     }
   }
 
@@ -217,15 +220,13 @@ public class MultDataSourceInfo {
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) throws TException {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

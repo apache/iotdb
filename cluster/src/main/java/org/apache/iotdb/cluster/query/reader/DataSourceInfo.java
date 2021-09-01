@@ -143,7 +143,6 @@ public class DataSourceInfo {
       throws TException, InterruptedException, IOException {
     AsyncDataClient client =
         ClusterIoTDB.getInstance()
-            .getClientProvider()
             .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
     Long newReaderId;
     if (byTimestamp) {
@@ -158,11 +157,11 @@ public class DataSourceInfo {
       throws TException {
 
     Long newReaderId;
-    try (SyncDataClient client =
-        ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
-
+    SyncDataClient client = null;
+    try {
+      client =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       try {
         if (byTimestamp) {
           newReaderId = client.querySingleSeriesByTimestamp(request);
@@ -184,6 +183,8 @@ public class DataSourceInfo {
         throw e;
       }
       return newReaderId;
+    } finally {
+      if (client != null) client.returnSelf();
     }
   }
 
@@ -206,15 +207,13 @@ public class DataSourceInfo {
   AsyncDataClient getCurAsyncClient(int timeout) throws IOException {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getAsyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getAsyncDataClient(this.curSource, timeout);
   }
 
   SyncDataClient getCurSyncClient(int timeout) throws TException {
     return isNoClient
         ? null
-        : ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(this.curSource, timeout);
+        : ClusterIoTDB.getInstance().getSyncDataClient(this.curSource, timeout);
   }
 
   public boolean isNoData() {

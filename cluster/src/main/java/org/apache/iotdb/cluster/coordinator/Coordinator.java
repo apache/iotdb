@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.coordinator;
 
 import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -64,7 +63,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -769,46 +767,27 @@ public class Coordinator {
       throws IOException {
     RaftService.AsyncClient client =
         ClusterIoTDB.getInstance()
-            .getClientProvider()
             .getAsyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
     return this.metaGroupMember.forwardPlanAsync(plan, receiver, header, client);
   }
 
   private TSStatus forwardDataPlanSync(PhysicalPlan plan, Node receiver, RaftNode header)
       throws IOException {
-    RaftService.Client client;
+    SyncDataClient client = null;
     try {
       client =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getSyncDataClient(receiver, ClusterConstant.getWriteOperationTimeoutMS());
-    } catch (TException e) {
-      throw new IOException(e);
-    }
-    return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
-  }
 
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-    return ClusterIoTDB.getInstance().getClientProvider().getAsyncDataClient(node, timeout);
+      return this.metaGroupMember.forwardPlanSync(plan, receiver, header, client);
+    } finally {
+      if (client != null) {
+        client.returnSelf();
+      }
+    }
   }
 
   public Node getThisNode() {
     return thisNode;
-  }
-
-  /**
-   * Get a thrift client that will connect to "node" using the data port.
-   *
-   * @param node the node to be connected
-   * @param timeout timeout threshold of connection
-   */
-  public SyncDataClient getSyncDataClient(Node node, int timeout) throws TException {
-    return ClusterIoTDB.getInstance().getClientProvider().getSyncDataClient(node, timeout);
   }
 }

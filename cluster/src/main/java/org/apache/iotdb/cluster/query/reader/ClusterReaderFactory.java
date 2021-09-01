@@ -945,20 +945,24 @@ public class ClusterReaderFactory {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          ClusterIoTDB.getInstance()
-              .getClientProvider()
-              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           executorId = syncDataClient.getGroupByExecutor(request);
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.getInputProtocol().getTransport().close();
           throw e;
+        }
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

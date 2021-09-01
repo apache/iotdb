@@ -4,6 +4,14 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
+<<<<<<< HEAD
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient.Factory;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.rpc.TSocketWrapper;
+
+import org.apache.thrift.protocol.TBinaryProtocol;
+=======
 import org.apache.iotdb.cluster.client.BaseClientTest;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -15,6 +23,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
 import org.junit.Before;
+>>>>>>> [cluster-refactor] refactor client pool
 import org.junit.Test;
 
 import java.io.IOException;
@@ -37,6 +46,26 @@ public class SyncMetaClientTest extends BaseClientTest {
   @Test
   public void testMetaClient() throws IOException, InterruptedException, TTransportException {
     try {
+<<<<<<< HEAD
+      SyncClientPool syncClientPool =
+          new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
+      SyncMetaClient client;
+      client = (SyncMetaClient) syncClientPool.getClient(node);
+
+      assertEquals(node, client.getTarget());
+
+      client.putBack();
+      Client newClient = syncClientPool.getClient(node);
+      assertEquals(client, newClient);
+      assertTrue(client.getInputProtocol().getTransport().isOpen());
+
+      client =
+          new SyncMetaClient(
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())));
+      // client without a belong pool will be closed after putBack()
+      client.putBack();
+      assertFalse(client.getInputProtocol().getTransport().isOpen());
+=======
       startMetaServer();
       SyncMetaClient metaClient =
           new SyncMetaClient(protocolFactory, defaultNode, ClientCategory.META);
@@ -61,6 +90,7 @@ public class SyncMetaClientTest extends BaseClientTest {
       assertCheck(metaClient);
     } catch (Exception e) {
       e.printStackTrace();
+>>>>>>> [cluster-refactor] refactor client pool
     } finally {
       stopMetaServer();
     }
@@ -70,6 +100,30 @@ public class SyncMetaClientTest extends BaseClientTest {
   public void testDataHeartbeatClient()
       throws IOException, InterruptedException, TTransportException {
     try {
+<<<<<<< HEAD
+      SyncClientPool syncClientPool =
+          new SyncClientPool(new Factory(new TBinaryProtocol.Factory()));
+      SyncMetaClient clientOut;
+      try (SyncMetaClient clientIn = (SyncMetaClient) syncClientPool.getClient(node); ) {
+        assertEquals(node, clientIn.getTarget());
+        clientOut = clientIn;
+      }
+
+      try (SyncMetaClient newClientIn = (SyncMetaClient) syncClientPool.getClient(node)) {
+        assertEquals(node, newClientIn.getTarget());
+        assertEquals(clientOut, newClientIn);
+      }
+      assertTrue(clientOut.getInputProtocol().getTransport().isOpen());
+
+      try (SyncMetaClient clientIn =
+          new SyncMetaClient(
+              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())))) {
+        clientOut = clientIn;
+      }
+
+      // client without a belong pool will be closed after putBack()
+      assertFalse(clientOut.getInputProtocol().getTransport().isOpen());
+=======
       startMetaHeartbeatServer();
       SyncMetaClient metaHeartbeatClient =
           new SyncMetaClient(protocolFactory, defaultNode, ClientCategory.META_HEARTBEAT);
@@ -91,6 +145,7 @@ public class SyncMetaClientTest extends BaseClientTest {
           metaHeartbeatClient.toString());
     } catch (Exception e) {
       e.printStackTrace();
+>>>>>>> [cluster-refactor] refactor client pool
     } finally {
       stopMetaHeartbeatServer();
     }

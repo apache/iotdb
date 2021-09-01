@@ -231,9 +231,16 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) {
     super(
         "Meta",
+<<<<<<< HEAD
+        new AsyncClientPool(new AsyncMetaClient.Factory(factory)),
+        new SyncClientPool(new SyncMetaClient.Factory(factory)),
+        new AsyncClientPool(new AsyncMetaHeartbeatClient.Factory(factory)),
+        new SyncClientPool(new SyncMetaHeartbeatClient.Factory(factory)));
+=======
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.MetaGroupClient));
+>>>>>>> [cluster-refactor] refactor client pool
     allNodes = new PartitionGroup();
     initPeerMap();
 

@@ -229,14 +229,14 @@ public class MetaPuller {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          ClusterIoTDB.getInstance()
-              .getClientProvider()
-              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           // only need measurement name
           PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
@@ -253,6 +253,10 @@ public class MetaPuller {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.getInputProtocol().getTransport().close();
           throw e;
+        }
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -416,21 +420,24 @@ public class MetaPuller {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
-              .getClientProvider()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          ClusterIoTDB.getInstance()
-              .getClientProvider()
-              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
-
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+        }
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

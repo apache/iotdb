@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -41,11 +42,11 @@ import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -144,13 +145,16 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
           try {
             if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
               AsyncDataClient client =
-                  coordinator.getAsyncDataClient(
-                      queriedNode, ClusterConstant.getReadOperationTimeoutMS());
+                  ClusterIoTDB.getInstance()
+                      .getAsyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
               client.endQuery(header, coordinator.getThisNode(), queryId, handler);
             } else {
-              try (SyncDataClient syncDataClient =
-                  coordinator.getSyncDataClient(
-                      queriedNode, ClusterConstant.getReadOperationTimeoutMS())) {
+              SyncDataClient syncDataClient = null;
+              try {
+                syncDataClient =
+                    ClusterIoTDB.getInstance()
+                        .getSyncDataClient(
+                            queriedNode, ClusterConstant.getReadOperationTimeoutMS());
                 try {
                   syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
                 } catch (TException e) {
@@ -158,9 +162,13 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
                   syncDataClient.getInputProtocol().getTransport().close();
                   throw e;
                 }
+              } finally {
+                if (syncDataClient != null) {
+                  syncDataClient.returnSelf();
+                }
               }
             }
-          } catch (IOException | TException e) {
+          } catch (TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);
           }
         }

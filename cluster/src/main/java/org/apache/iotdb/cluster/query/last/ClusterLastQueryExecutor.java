@@ -240,15 +240,13 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private ByteBuffer lastAsync(Node node, QueryContext context)
         throws TException, InterruptedException {
       ByteBuffer buffer;
-      AsyncDataClient asyncDataClient;
-      try {
-        asyncDataClient =
-            ClusterIoTDB.getInstance()
-                .getClientProvider()
-                .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      } catch (IOException e) {
+      AsyncDataClient asyncDataClient =
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+      if (asyncDataClient == null) {
         return null;
       }
+
       buffer =
           SyncClientAdaptor.last(
               asyncDataClient,
@@ -262,10 +260,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
       ByteBuffer res;
-      try (SyncDataClient syncDataClient =
-          ClusterIoTDB.getInstance()
-              .getClientProvider()
-              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           res =
               syncDataClient.last(
@@ -275,12 +274,14 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
                       context.getQueryId(),
                       queryPlan.getDeviceToMeasurements(),
                       group.getHeader(),
-                      syncDataClient.getTarget()));
+                      syncDataClient.getNode()));
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.getInputProtocol().getTransport().close();
           throw e;
         }
+      } finally {
+        if (syncDataClient != null) syncDataClient.returnSelf();
       }
       return res;
     }

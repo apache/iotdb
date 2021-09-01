@@ -219,14 +219,10 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteAsyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    AsyncDataClient asyncDataClient;
-    try {
-      asyncDataClient =
-          ClusterIoTDB.getInstance()
-              .getClientProvider()
-              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-    } catch (IOException e) {
-      logger.warn("{}: Cannot connect to {} during previous fill", metaGroupMember, node);
+    AsyncDataClient asyncDataClient =
+        ClusterIoTDB.getInstance()
+            .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+    if (asyncDataClient == null) {
       return null;
     }
 
@@ -246,10 +242,11 @@ public class ClusterPreviousFill extends PreviousFill {
   private ByteBuffer remoteSyncPreviousFill(
       Node node, PreviousFillRequest request, PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    try (SyncDataClient syncDataClient =
-        ClusterIoTDB.getInstance()
-            .getClientProvider()
-            .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS())) {
+    SyncDataClient syncDataClient = null;
+    try {
+      syncDataClient =
+          ClusterIoTDB.getInstance()
+              .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       try {
         byteBuffer = syncDataClient.previousFill(request);
       } catch (TException e) {
@@ -264,6 +261,10 @@ public class ClusterPreviousFill extends PreviousFill {
           arguments.getPath(),
           node,
           e);
+    } finally {
+      if (syncDataClient != null) {
+        syncDataClient.returnSelf();
+      }
     }
     return byteBuffer;
   }
