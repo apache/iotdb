@@ -73,12 +73,12 @@ public class ExportCsvTestIT extends AbstractScript {
     testMethod(params, null);
     CSVParser parser = readCsvFile("target/dump0.csv");
     String[] realRecords = {
-      "Time,root.test.t1.c1,root.test.t1.c2,root.test.t1.c3",
-      "1970-01-01T00:00:00.001,1.0,\"\"abc\",aa\",\"abbe's\""
+      "root.test.t1.c1,root.test.t1.c2,root.test.t1.c3", "1.0,\"\"abc\",aa\",\"abbe's\""
     };
     List<CSVRecord> records = parser.getRecords();
     for (int i = 0; i < records.size(); i++) {
       String record = StringUtils.join(records.get(i).toList(), ',');
+      record = record.substring(record.indexOf(',') + 1);
       assertEquals(realRecords[i], record);
     }
   }
@@ -93,12 +93,13 @@ public class ExportCsvTestIT extends AbstractScript {
     testMethod(params, null);
     CSVParser parser = readCsvFile("target/dump0.csv");
     String[] realRecords = {
-      "Time,root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
-      "1970-01-01T00:00:00.001,1.0,\"\"abc\",aa\",\"abbe's\""
+      "root.test.t1.c1(FLOAT),root.test.t1.c2(TEXT),root.test.t1.c3(TEXT)",
+      "1.0,\"\"abc\",aa\",\"abbe's\""
     };
     List<CSVRecord> records = parser.getRecords();
     for (int i = 0; i < records.size(); i++) {
       String record = StringUtils.join(records.get(i).toList(), ',');
+      record = record.substring(record.indexOf(',') + 1);
       assertEquals(realRecords[i], record);
     }
   }
