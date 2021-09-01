@@ -220,7 +220,9 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing "
+                        + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
+                        + "FROM root.vehicle\". Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =
@@ -262,7 +264,9 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing executeStatement. Binary statistics does not support: max"));
+                    "500: [INTERNAL_SERVER_ERROR] Exception occurred while executing "
+                        + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
+                        + "FROM root.vehicle\". Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =

@@ -382,7 +382,7 @@ public class InnerSpaceCompactionUtils {
                   }
                 }
                 if (isFileListHasModifications(
-                    readerChunkMetadataListMap.keySet(), modificationCache)) {
+                    readerChunkMetadataListMap.keySet(), modificationCache, device, sensor)) {
                   isPageEnoughLarge = false;
                   isChunkEnoughLarge = false;
                 }
@@ -490,10 +490,18 @@ public class InnerSpaceCompactionUtils {
   }
 
   private static boolean isFileListHasModifications(
-      Set<TsFileSequenceReader> readers, Map<String, List<Modification>> modificationCache) {
+      Set<TsFileSequenceReader> readers,
+      Map<String, List<Modification>> modificationCache,
+      String device,
+      String sensor)
+      throws IllegalPathException {
+    PartialPath path = new PartialPath(device, sensor);
     for (TsFileSequenceReader reader : readers) {
-      if (!getModifications(reader, modificationCache).isEmpty()) {
-        return true;
+      List<Modification> modifications = getModifications(reader, modificationCache);
+      for (Modification modification : modifications) {
+        if (modification.getPath().matchFullPath(path)) {
+          return true;
+        }
       }
     }
     return false;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
@@ -67,11 +68,10 @@ public class CompactionRecoverTask implements Callable<Void> {
     logger.info("try to synchronize CompactionScheduler");
     CompactionScheduler.decPartitionCompaction(
         logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-    CompactionScheduler.currentTaskNum.decrementAndGet();
     compactionRecoverCallBack.call();
     logger.info(
         "recover task finish, current compaction thread is {}",
-        CompactionScheduler.currentTaskNum.get());
+        CompactionTaskManager.getInstance().getTaskCount());
     return null;
   }
 

@@ -17,15 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-public abstract class AbstractCrossSpaceCompactionRecoverTask
-    extends AbstractCrossSpaceCompactionTask {
+import java.util.Collections;
+import java.util.List;
 
-  public AbstractCrossSpaceCompactionRecoverTask(
-      String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
-    super(fullStorageGroupName, timePartition, currentTaskNum);
+public class SetSystemModePlan extends PhysicalPlan {
+
+  private boolean isReadOnly;
+
+  public SetSystemModePlan(boolean isReadOnly) {
+    super(false, OperatorType.SET_SYSTEM_MODE);
+    this.isReadOnly = isReadOnly;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
+
+  public boolean isReadOnly() {
+    return isReadOnly;
   }
 }

@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
   private static final Logger LOGGER =
@@ -55,7 +56,8 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
       String storageGroupDir,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> recoverTsFileResources,
-      boolean sequence) {
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName,
         virtualStorageGroup,
@@ -63,7 +65,8 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         tsFileResourceManager,
         tsFileResourceList,
         null,
-        sequence);
+        sequence,
+        currentTaskNum);
     this.compactionLogFile = compactionLogFile;
     this.storageGroupDir = storageGroupDir;
     this.tsFileResourceList = tsFileResourceList;
@@ -142,7 +145,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             }
             InnerSpaceCompactionUtils.deleteTsFilesInDisk(
                 sourceTsFileResources, fullStorageGroupName);
-            renameLevelFilesMods(sourceTsFileResources, targetResource);
+            combineModsInCompaction(sourceTsFileResources, targetResource);
             compactionLogger.close();
           } else {
             writer.close();

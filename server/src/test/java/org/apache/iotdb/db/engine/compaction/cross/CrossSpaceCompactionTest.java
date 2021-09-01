@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
@@ -122,7 +121,7 @@ public class CrossSpaceCompactionTest {
     for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
       for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
         for (boolean compactionHasMod : compactionHasMods) {
-          // seq file
+          // generate seq file
           List<TsFileResource> seqResources = new ArrayList<>();
           Set<String> fullPath;
           if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
@@ -153,7 +152,7 @@ public class CrossSpaceCompactionTest {
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
               CompactionFileGeneratorUtils.generateTsFileResource(true, 1);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
+          CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -191,8 +190,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile1 = CompactionFileGeneratorUtils.generateTsFileResource(false, 1);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 3000L, unseqFile1);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3000L, unseqFile1);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -226,8 +224,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile2 = CompactionFileGeneratorUtils.generateTsFileResource(false, 2);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 1000L, unseqFile2);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, unseqFile2);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -261,8 +258,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile3 = CompactionFileGeneratorUtils.generateTsFileResource(false, 3);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 1000L, unseqFile3);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, unseqFile3);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -296,8 +292,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile4 = CompactionFileGeneratorUtils.generateTsFileResource(false, 4);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 3000L, unseqFile4);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3000L, unseqFile4);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -331,8 +326,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile5 = CompactionFileGeneratorUtils.generateTsFileResource(false, 5);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 0L, unseqFile5);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 0L, unseqFile5);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -366,8 +360,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource unseqFile6 = CompactionFileGeneratorUtils.generateTsFileResource(false, 6);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 5000L, unseqFile6);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 5000L, unseqFile6);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -426,7 +419,6 @@ public class CrossSpaceCompactionTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     fileSelector.getConcurrentMergeNum());
-            CompactionScheduler.currentTaskNum.incrementAndGet();
             compactionTask.call();
             CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources);
             CompactionClearUtils.clearAllCompactionFiles();
@@ -476,7 +468,7 @@ public class CrossSpaceCompactionTest {
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
               CompactionFileGeneratorUtils.generateTsFileResource(false, 1);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
+          CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -514,8 +506,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource seqFile1 = CompactionFileGeneratorUtils.generateTsFileResource(true, 1);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 0L, seqFile1);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 0L, seqFile1);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -550,8 +541,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource seqFile2 = CompactionFileGeneratorUtils.generateTsFileResource(true, 2);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 1000L, seqFile2);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, seqFile2);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -586,8 +576,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource seqFile3 = CompactionFileGeneratorUtils.generateTsFileResource(true, 3);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 3500L, seqFile3);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3500L, seqFile3);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -622,8 +611,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource seqFile4 = CompactionFileGeneratorUtils.generateTsFileResource(true, 4);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 3750L, seqFile4);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3750L, seqFile4);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -658,8 +646,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource seqFile5 = CompactionFileGeneratorUtils.generateTsFileResource(true, 5);
-          CompactionFileGeneratorUtils.writeChunkToTsFile(
-              fullPath, chunkPagePointsNum, 6250L, seqFile5);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 6250L, seqFile5);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
             Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
@@ -720,7 +707,6 @@ public class CrossSpaceCompactionTest {
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles(),
                     fileSelector.getConcurrentMergeNum());
-            CompactionScheduler.currentTaskNum.incrementAndGet();
             compactionTask.call();
             CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources.subList(1, 4));
             CompactionClearUtils.clearAllCompactionFiles();

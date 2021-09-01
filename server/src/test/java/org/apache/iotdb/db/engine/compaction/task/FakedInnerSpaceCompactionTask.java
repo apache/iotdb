@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
 
@@ -35,7 +36,8 @@ public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName,
         virtualStorageGroupName,
@@ -43,7 +45,8 @@ public class FakedInnerSpaceCompactionTask extends SizeTiredCompactionTask {
         tsFileResourceManager,
         tsFileResourceList,
         selectedTsFileResourceList,
-        sequence);
+        sequence,
+        currentTaskNum);
   }
 
   @Override

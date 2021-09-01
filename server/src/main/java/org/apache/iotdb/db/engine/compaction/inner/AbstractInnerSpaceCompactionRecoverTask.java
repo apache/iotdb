@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public abstract class AbstractInnerSpaceCompactionRecoverTask
     extends AbstractInnerSpaceCompactionTask {
 
-  public AbstractInnerSpaceCompactionRecoverTask(String storageGroupName, long timePartition) {
-    super(storageGroupName, timePartition);
+  public AbstractInnerSpaceCompactionRecoverTask(
+      String storageGroupName, long timePartition, AtomicInteger currentTaskNum) {
+    super(storageGroupName, timePartition, currentTaskNum);
   }
 }

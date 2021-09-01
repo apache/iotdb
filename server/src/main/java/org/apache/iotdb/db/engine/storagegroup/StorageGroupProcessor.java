@@ -1197,21 +1197,7 @@ public class StorageGroupProcessor {
     TsFileProcessor res = tsFileProcessorTreeMap.get(timeRangeId);
 
     if (null == res) {
-      // we have to remove oldest processor to control the num of the memtables
-      // TODO: use a method to control the number of memtables
-      if (tsFileProcessorTreeMap.size()
-          >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
-        Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
-        logger.info(
-            "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
-            sequence,
-            tsFileProcessorTreeMap.size(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
-            logicalStorageGroupName);
-        asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
-      }
-
-      // build new processor
+      // build new processor, memory control module will control the number of memtables
       res = newTsFileProcessor(sequence, timeRangeId);
       tsFileProcessorTreeMap.put(timeRangeId, res);
       tsFileResourceManager.add(res.getTsFileResource(), sequence);
@@ -1515,21 +1501,85 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void timedFlushMemTable() {
-    writeLock("timedFlushMemTable");
+  public void timedFlushSeqMemTable() {
+    writeLock("timedFlushSeqMemTable");
     try {
-      // only check unsequence tsfiles' memtables
+      // only check sequence tsfiles' memtables
       List<TsFileProcessor> tsFileProcessors =
-          new ArrayList<>(workUnsequenceTsFileProcessors.values());
-      long timestampBaseline = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
+          new ArrayList<>(workSequenceTsFileProcessors.values());
+      long timeLowerBound = System.currentTimeMillis() - config.getSeqMemtableFlushInterval();
+
       for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
-        if (tsFileProcessor.getWorkMemTableCreatedTime() < timestampBaseline) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
           logger.info(
-              "Exceed flush interval, so flush work memtable of time partition {} in storage group {}[{}]",
+              "Exceed sequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
               tsFileProcessor.getTimeRangeId(),
               logicalStorageGroupName,
               virtualStorageGroupId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void timedFlushUnseqMemTable() {
+    writeLock("timedFlushUnseqMemTable");
+    try {
+      // only check unsequence tsfiles' memtables
+      List<TsFileProcessor> tsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      long timeLowerBound = System.currentTimeMillis() - config.getUnseqMemtableFlushInterval();
+
+      for (TsFileProcessor tsFileProcessor : tsFileProcessors) {
+        if (tsFileProcessor.getWorkMemTableCreatedTime() < timeLowerBound) {
+          logger.info(
+              "Exceed unsequence memtable flush interval, so flush working memtable of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void timedCloseTsFileProcessor() {
+    writeLock("timedCloseTsFileProcessor");
+    try {
+      List<TsFileProcessor> seqTsFileProcessors =
+          new ArrayList<>(workSequenceTsFileProcessors.values());
+      long timeLowerBound =
+          System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
+      for (TsFileProcessor tsFileProcessor : seqTsFileProcessors) {
+        // working memtable is null(no more write ops) and last flush time exceeds close interval
+        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
+            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
+          logger.info(
+              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          asyncCloseOneTsFileProcessor(true, tsFileProcessor);
+        }
+      }
+
+      List<TsFileProcessor> unSeqTsFileProcessors =
+          new ArrayList<>(workUnsequenceTsFileProcessors.values());
+      timeLowerBound = System.currentTimeMillis() - config.getCloseTsFileIntervalAfterFlushing();
+      for (TsFileProcessor tsFileProcessor : unSeqTsFileProcessors) {
+        // working memtable is null(no more write ops) and last flush time exceeds close interval
+        if (tsFileProcessor.getWorkMemTableCreatedTime() == Long.MAX_VALUE
+            && tsFileProcessor.getLastWorkMemtableFlushTime() < timeLowerBound) {
+          logger.info(
+              "Exceed tsfile close interval, so close TsFileProcessor of time partition {} in storage group {}[{}]",
+              tsFileProcessor.getTimeRangeId(),
+              logicalStorageGroupName,
+              virtualStorageGroupId);
+          asyncCloseOneTsFileProcessor(false, tsFileProcessor);
         }
       }
     } finally {
@@ -1885,10 +1935,11 @@ public class StorageGroupProcessor {
         tsFileResource.getModFile().close();
       }
       logger.info(
-          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file.",
+          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
           deletion.getPath(),
           deletion.getStartTime(),
-          deletion.getEndTime());
+          deletion.getEndTime(),
+          tsFileResource.getModFile().getFilePath());
 
       tsFileResource.updatePlanIndexes(planIndex);
 
@@ -1920,9 +1971,11 @@ public class StorageGroupProcessor {
               && startTime <= lastPair.getTimestamp()
               && lastPair.getTimestamp() <= endTime) {
             ((IMeasurementMNode) measurementNode).resetCache();
-            logger.info(
-                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                measurementNode.getFullPath());
+            if (logger.isDebugEnabled()) {
+              logger.debug(
+                  "[tryToDeleteLastCache] Last cache for path: {} is set to null",
+                  measurementNode.getFullPath());
+            }
           }
         }
       }

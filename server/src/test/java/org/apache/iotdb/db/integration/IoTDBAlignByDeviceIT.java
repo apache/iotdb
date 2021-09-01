@@ -319,20 +319,22 @@ public class IoTDBAlignByDeviceIT {
   public void selectSlimitTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d0,101,1101,",
-          "2,root.vehicle.d0,10000,40000,",
-          "50,root.vehicle.d0,10000,50000,",
-          "100,root.vehicle.d0,99,199,",
-          "101,root.vehicle.d0,99,199,",
-          "102,root.vehicle.d0,80,180,",
-          "103,root.vehicle.d0,99,199,",
-          "104,root.vehicle.d0,90,190,",
-          "105,root.vehicle.d0,99,199,",
-          "106,root.vehicle.d0,99,null,",
-          "1000,root.vehicle.d0,22222,55555,",
-          "946684800000,root.vehicle.d0,null,100,",
-          "1,root.vehicle.d1,999,null,",
-          "1000,root.vehicle.d1,888,null,"
+          "1,root.vehicle.d0,1101,null,",
+          "2,root.vehicle.d0,40000,2.22,",
+          "3,root.vehicle.d0,null,3.33,",
+          "4,root.vehicle.d0,null,4.44,",
+          "50,root.vehicle.d0,50000,null,",
+          "100,root.vehicle.d0,199,null,",
+          "101,root.vehicle.d0,199,null,",
+          "102,root.vehicle.d0,180,10.0,",
+          "103,root.vehicle.d0,199,null,",
+          "104,root.vehicle.d0,190,null,",
+          "105,root.vehicle.d0,199,11.11,",
+          "106,root.vehicle.d0,null,null,",
+          "1000,root.vehicle.d0,55555,1000.11,",
+          "946684800000,root.vehicle.d0,100,null,",
+          "1,root.vehicle.d1,null,null,",
+          "1000,root.vehicle.d1,null,null,",
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -342,7 +344,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select s0,s0,s1 from root.vehicle.* slimit 2 soffset 1 align by device");
+              "select s0,s1,s2 from root.vehicle.* slimit 2 soffset 1 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -350,9 +352,9 @@ public class IoTDBAlignByDeviceIT {
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,Device,s0,s1",
+                "Time,Device,s1,s2",
                 new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT,
+                  Types.TIMESTAMP, Types.VARCHAR, Types.BIGINT, Types.FLOAT,
                 });
 
         int cnt = 0;
@@ -369,7 +371,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(14, cnt);
+        Assert.assertEquals(16, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

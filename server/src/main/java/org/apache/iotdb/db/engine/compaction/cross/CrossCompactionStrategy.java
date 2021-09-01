@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
@@ -55,7 +56,8 @@ public enum CrossCompactionStrategy {
             unSeqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
-            concurrentMergeCount);
+            concurrentMergeCount,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 
@@ -79,7 +81,8 @@ public enum CrossCompactionStrategy {
             seqTsFileResourceList,
             unSeqTsFileResourceList,
             concurrentMergeCount,
-            logFile);
+            logFile,
+            CompactionTaskManager.currentTaskNum);
     }
   }
 

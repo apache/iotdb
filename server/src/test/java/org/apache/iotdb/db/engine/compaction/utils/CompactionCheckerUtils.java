@@ -144,7 +144,8 @@ public class CompactionCheckerUtils {
    * statistical information of TsFileResource corresponds to the original data point one-to-one,
    * including startTime, endTime (device level)
    *
-   * @param sourceData All time series before merging and their corresponding data points
+   * @param sourceData All time series before merging and their corresponding data points, fullPath
+   *     -> pointList
    * @param mergedFiles The merged Files to be checked
    */
   public static void checkDataAndResource(
@@ -154,8 +155,17 @@ public class CompactionCheckerUtils {
     Map<String, List<TimeValuePair>> mergedData = readFiles(mergedFiles);
     compareSensorAndData(sourceData, mergedData);
 
-    // read from front to back
-    mergedData = new HashMap<>();
+    // check from front to back
+    checkDataFromFrontToEnd(sourceData, mergedFiles);
+
+    // check TsFileResource
+    checkTsFileResource(sourceData, mergedFiles);
+  }
+
+  private static void checkDataFromFrontToEnd(
+      Map<String, List<TimeValuePair>> sourceData, List<TsFileResource> mergedFiles)
+      throws IOException, IllegalPathException {
+    Map<String, List<TimeValuePair>> mergedData = new HashMap<>();
     Map<String, Long> fullPathPointNum = new HashMap<>();
     for (TsFileResource mergedFile : mergedFiles) {
       try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
@@ -277,8 +287,11 @@ public class CompactionCheckerUtils {
       long targetDataNum = fullPathPointNum.getOrDefault(fullPath, 0L);
       assertEquals(sourceDataNum, targetDataNum);
     }
+  }
 
-    // check TsFileResource
+  private static void checkTsFileResource(
+      Map<String, List<TimeValuePair>> sourceData, List<TsFileResource> mergedFiles)
+      throws IllegalPathException {
     Map<String, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
       PartialPath partialPath = new PartialPath(dataEntry.getKey());
@@ -340,7 +353,8 @@ public class CompactionCheckerUtils {
    * with the data before the merge one by one to ensure that the order and size of chunk and page
    * are one-to-one correspondence
    *
-   * @param chunkPagePointsNum Target chunk and page size
+   * @param chunkPagePointsNum Target chunk and page size, fullPath ->
+   *     ChunkList(PageList(pointNumInEachPage))
    * @param mergedFile The merged File to be checked
    */
   public static void checkChunkAndPage(
@@ -349,8 +363,8 @@ public class CompactionCheckerUtils {
     Map<String, List<List<Long>>> mergedChunkPagePointsNum = new HashMap<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      String device = "";
-      String sensor = "";
+      String entity = "";
+      String measurement = "";
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
@@ -368,13 +382,13 @@ public class CompactionCheckerUtils {
             ChunkHeader header = reader.readChunkHeader(marker);
             // read the next measurement and pack data of last measurement
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(device, sensor).getFullPath();
+              String fullPath = new PartialPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
               pagePointsNum = new ArrayList<>();
             }
-            sensor = header.getMeasurementID();
+            measurement = header.getMeasurementID();
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -408,13 +422,13 @@ public class CompactionCheckerUtils {
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             // read the next measurement and pack data of last device
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(device, sensor).getFullPath();
+              String fullPath = new PartialPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
               pagePointsNum = new ArrayList<>();
             }
-            device = chunkGroupHeader.getDeviceID();
+            entity = chunkGroupHeader.getDeviceID();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -425,7 +439,7 @@ public class CompactionCheckerUtils {
       }
       // pack data of last measurement
       if (pagePointsNum.size() > 0) {
-        String fullPath = new PartialPath(device, sensor).getFullPath();
+        String fullPath = new PartialPath(entity, measurement).getFullPath();
         List<List<Long>> currChunkPagePointsNum =
             mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
         currChunkPagePointsNum.add(pagePointsNum);

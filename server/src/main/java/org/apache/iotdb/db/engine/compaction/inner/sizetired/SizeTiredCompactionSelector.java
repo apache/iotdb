@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFactory;
@@ -75,32 +74,41 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
-    LOGGER.warn("Trying to get the read lock for tsFileResources");
     tsFileResources.readLock();
     LOGGER.warn(
-        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, target file num is {}",
+        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
+            + "target file num is {}, current task num is {}, total task num is {}",
         logicalStorageGroupName + "-" + virtualStorageGroupName,
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum());
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
+        CompactionTaskManager.currentTaskNum.get(),
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     int submitTaskNum = 0;
     try {
       // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
-      LOGGER.warn("Get TsFileResourceList reverse iterator");
+      LOGGER.warn("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
-        LOGGER.warn("Current File is {}", currentFile);
+        LOGGER.warn(
+            "Current File is {}, size is {}", currentFile, currentFile.getTsFile().length());
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
-        if ((CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread)
+        if ((CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread)
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
-          if (CompactionScheduler.currentTaskNum.get() >= concurrentCompactionThread) {
-            LOGGER.warn("Return selection because too many compaction thread");
+          if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
+            LOGGER.warn(
+                "Return selection because too many compaction thread, current thread num is {}",
+                CompactionTaskManager.currentTaskNum);
           } else {
             LOGGER.warn("Return selection because compaction is not enable");
           }
+          LOGGER.warn(
+              "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
+              logicalStorageGroupName + "-" + virtualStorageGroupName,
+              submitTaskNum);
           return taskSubmitted;
         }
         // the file size reach threshold
@@ -163,7 +171,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             sequence);
     for (TsFileResource resource : selectedFileList) {
       resource.setMerging(true);
-      LOGGER.warn(
+      LOGGER.info(
           "{}-{} [Compaction] start to compact TsFile {}",
           logicalStorageGroupName,
           virtualStorageGroupName,
@@ -172,7 +180,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     CompactionTaskManager.getInstance()
         .submitTask(
             logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, compactionTask);
-    LOGGER.warn(
+    LOGGER.info(
         "{}-{} [Compaction] submit a inner compaction task of {} files",
         logicalStorageGroupName,
         virtualStorageGroupName,

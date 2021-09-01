@@ -316,7 +316,7 @@ public class IoTDBFillIT {
           statement.execute(
               "select temperature,status, hardware "
                   + "from root.ln.wf01.wt01 where time = 7 "
-                  + "Fill(int32[value, 7], double[value, 7], boolean[value, true])");
+                  + "Fill(int32[7], double[7], boolean[true])");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();

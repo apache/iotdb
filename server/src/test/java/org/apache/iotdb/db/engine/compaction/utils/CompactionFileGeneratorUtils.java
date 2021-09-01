@@ -97,11 +97,11 @@ public class CompactionFileGeneratorUtils {
    * the value is also equal to the time
    *
    * @param fullPaths Set(fullPath)
-   * @param chunkPagePointsNum chunk->page->points
+   * @param chunkPagePointsNum chunkList->pageList->points
    * @param startTime The startTime to write
    * @param newTsFileResource The tsfile to write
    */
-  public static void writeChunkToTsFile(
+  public static void writeTsFile(
       Set<String> fullPaths,
       List<List<Long>> chunkPagePointsNum,
       long startTime,
@@ -152,8 +152,8 @@ public class CompactionFileGeneratorUtils {
   }
 
   /**
-   * Generate a new file. For each time series, insert a point (+1 for each point) into the file
-   * from the start time to the end time, the value is also equal to the time
+   * Generate a new file. For each time series, insert a point (time +1 for each point, time =
+   * value) into the file from the start time to the end time, the value is also equal to the time
    *
    * @param fullPaths Set(fullPath)
    * @param chunkPagePointsNum chunk->page->points([startTime, endTime),[startTime, endTime),...)

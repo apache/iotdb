@@ -39,6 +39,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
@@ -62,8 +63,9 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       TsFileResourceManager tsFileResourceManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
-      boolean sequence) {
-    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition);
+      boolean sequence,
+      AtomicInteger currentTaskNum) {
+    super(logicalStorageGroupName + "-" + virtualStorageGroupName, timePartition, currentTaskNum);
     this.tsFileResourceList = tsFileResourceList;
     this.tsFileResourceManager = tsFileResourceManager;
     this.selectedTsFileResourceList = selectedTsFileResourceList;
@@ -71,7 +73,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     this.skippedDevicesSet = new HashSet<>();
   }
 
-  public static void renameLevelFilesMods(
+  public static void combineModsInCompaction(
       Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
     List<Modification> modifications = new ArrayList<>();
     for (TsFileResource mergeTsFile : mergeTsFiles) {
@@ -107,7 +109,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
@@ -125,7 +127,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       compactionLogger.logSequence(sequence);
       compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
@@ -135,7 +137,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           compactionLogger,
           this.skippedDevicesSet,
           sequence);
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       compactionLogger.close();
     } finally {
@@ -143,7 +145,7 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
         resource.setMerging(false);
       }
     }
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
     if (Thread.currentThread().isInterrupted()) {
       throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
@@ -173,11 +175,11 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
       // delete the old files
       InnerSpaceCompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, fullStorageGroupName);
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);
-      renameLevelFilesMods(selectedTsFileResourceList, targetTsFileResource);
-      LOGGER.warn(
+      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {}",
           fullStorageGroupName,
           targetFileName);

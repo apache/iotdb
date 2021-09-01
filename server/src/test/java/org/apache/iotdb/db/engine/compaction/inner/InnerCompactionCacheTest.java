@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -95,7 +96,6 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
-    CompactionScheduler.currentTaskNum.getAndIncrement();
     SizeTiredCompactionTask sizeTiredCompactionTask =
         new SizeTiredCompactionTask(
             COMPACTION_TEST_SG,
@@ -104,7 +104,8 @@ public class InnerCompactionCacheTest extends InnerCompactionTest {
             tsFileResourceManager,
             tsFileResourceManager.getSequenceListByTimePartition(0),
             seqResources,
-            true);
+            true,
+            CompactionTaskManager.currentTaskNum);
     sizeTiredCompactionTask.call();
 
     firstChunkMetadata.setFilePath(null);

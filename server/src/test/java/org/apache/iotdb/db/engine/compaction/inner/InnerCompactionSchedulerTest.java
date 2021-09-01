@@ -60,6 +60,8 @@ public class InnerCompactionSchedulerTest {
   public void testFileSelector1() {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     tsFileResources.add(new FakedTsFileResource(30));
     tsFileResources.add(new FakedTsFileResource(30));
@@ -79,7 +81,7 @@ public class InnerCompactionSchedulerTest {
         new FakedInnerSpaceCompactionTaskFactory());
 
     long waitingTime = 0;
-    while (CompactionScheduler.getCount() != 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
       try {
         Thread.sleep(100);
         waitingTime += 100;
@@ -101,6 +103,8 @@ public class InnerCompactionSchedulerTest {
 
   @Test
   public void testFileSelector2() {
+    IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
+    IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(50);
     TsFileResourceList tsFileResources = new TsFileResourceList();
     tsFileResources.add(new FakedTsFileResource(30));
     tsFileResources.add(new FakedTsFileResource(40, true, true));
@@ -115,7 +119,7 @@ public class InnerCompactionSchedulerTest {
         new FakedInnerSpaceCompactionTaskFactory());
 
     long waitingTime = 0;
-    while (CompactionScheduler.getCount() != 0) {
+    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
       try {
         Thread.sleep(100);
         waitingTime += 100;
