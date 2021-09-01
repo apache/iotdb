@@ -527,4 +527,31 @@ public abstract class Cases {
       }
     }
   }
+
+  @Test
+  public void SetSystemReadOnlyWritableTest() throws SQLException {
+
+    String setReadOnly = "SET SYSTEM TO READONLY";
+    String createTimeSeries =
+        "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+    String setWritable = "SET SYSTEM TO WRITABLE";
+
+    writeStatement.execute(setReadOnly);
+
+    try {
+      writeStatement.executeQuery(createTimeSeries);
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage()
+              .contains("Current system mode is read-only, does not support non-query operation"));
+    }
+
+    writeStatement.execute(setWritable);
+
+    try {
+      writeStatement.executeQuery(createTimeSeries);
+    } catch (Exception e) {
+      Assert.assertEquals(null, e.getMessage());
+    }
+  }
 }
