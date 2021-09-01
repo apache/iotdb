@@ -547,11 +547,5 @@ public abstract class Cases {
     }
 
     writeStatement.execute(setWritable);
-
-    try {
-      writeStatement.execute(createTimeSeries);
-    } catch (Exception e) {
-      Assert.assertEquals(null, e.getMessage());
-    }
   }
 }
