@@ -539,7 +539,7 @@ public abstract class Cases {
     writeStatement.execute(setReadOnly);
 
     try {
-      writeStatement.executeQuery(createTimeSeries);
+      writeStatement.execute(createTimeSeries);
     } catch (Exception e) {
       Assert.assertTrue(
           e.getMessage()
@@ -549,7 +549,7 @@ public abstract class Cases {
     writeStatement.execute(setWritable);
 
     try {
-      writeStatement.executeQuery(createTimeSeries);
+      writeStatement.execute(createTimeSeries);
     } catch (Exception e) {
       Assert.assertEquals(null, e.getMessage());
     }
