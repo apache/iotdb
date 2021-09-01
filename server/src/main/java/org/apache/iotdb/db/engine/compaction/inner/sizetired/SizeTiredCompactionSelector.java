@@ -90,8 +90,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
       LOGGER.warn("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
-        LOGGER.warn(
-            "Current File is {}, size is {}", currentFile, currentFile.getTsFile().length());
+        LOGGER.warn("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
