@@ -110,6 +110,11 @@ public class CompactionSchedulerTest {
     MergeManager.getINSTANCE().stop();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
+    try {
+      Thread.sleep(10_000);
+    } catch (InterruptedException e) {
+
+    }
   }
 
   /**
