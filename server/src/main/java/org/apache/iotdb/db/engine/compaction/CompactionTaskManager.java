@@ -195,4 +195,17 @@ public class CompactionTaskManager implements IService {
   public long getFinishTaskNum() {
     return pool.getCompletedTaskCount();
   }
+
+  @TestOnly
+  public void restart() {
+    if (IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
+      this.pool =
+          (ScheduledThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newScheduledThreadPool(
+                  IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
+                  ThreadName.COMPACTION_SERVICE.getName());
+    }
+    currentTaskNum = new AtomicInteger(0);
+    logger.info("Compaction task manager started.");
+  }
 }
