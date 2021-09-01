@@ -118,6 +118,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test1() throws IOException, IllegalPathException {
+    logger.warn("Running test1");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -231,6 +232,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test2() throws IOException, IllegalPathException {
+    logger.warn("Running test2");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -339,6 +341,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test3() throws IOException, IllegalPathException {
+    logger.warn("Running test3");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -442,6 +445,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test4() throws IOException, IllegalPathException {
+    logger.warn("Running test4");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -528,6 +532,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test5() throws IOException, IllegalPathException {
+    logger.warn("Running test5");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -650,6 +655,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test6() throws IOException, IllegalPathException {
+    logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -743,6 +749,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test7() throws IOException, IllegalPathException {
+    logger.warn("Running test7");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -842,6 +849,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test8() throws IOException, IllegalPathException {
+    logger.warn("Running test8");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -928,6 +936,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test9() throws IOException, IllegalPathException {
+    logger.warn("Running test9");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1022,6 +1031,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test10() throws IOException, IllegalPathException {
+    logger.warn("Running test10");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1115,6 +1125,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test11() throws IOException, IllegalPathException {
+    logger.warn("Running test11");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1209,6 +1220,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test12() throws IOException, IllegalPathException {
+    logger.warn("Running test12");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1304,6 +1316,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test13() throws IOException, IllegalPathException {
+    logger.warn("Running test13");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1398,6 +1411,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test14() throws IOException, IllegalPathException {
+    logger.warn("Running test14");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
@@ -1492,6 +1506,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test15() throws IOException, IllegalPathException {
+    logger.warn("Running test15");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
@@ -1586,6 +1601,7 @@ public class CompactionSchedulerTest {
    */
   @Test
   public void test16() throws IOException, IllegalPathException {
+    logger.warn("Running test16");
     boolean prevEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);

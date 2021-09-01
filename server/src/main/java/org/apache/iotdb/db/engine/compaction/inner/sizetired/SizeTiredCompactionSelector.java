@@ -75,19 +75,23 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
-    LOGGER.debug(
-        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, target file num is {}",
+    LOGGER.warn(
+        "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
+            + "target file num is {}, current task num is {}, total task num is {}",
         logicalStorageGroupName + "-" + virtualStorageGroupName,
         IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize(),
-        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum());
+        IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum(),
+        CompactionTaskManager.currentTaskNum.get(),
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     int submitTaskNum = 0;
     try {
       // traverse the tsfile from new to old
       Iterator<TsFileResource> iterator = tsFileResources.reverseIterator();
-      LOGGER.debug("Current file list is {}", tsFileResources.getArrayList());
+      LOGGER.warn("Current file list is {}", tsFileResources.getArrayList());
       while (iterator.hasNext()) {
         TsFileResource currentFile = iterator.next();
-        LOGGER.debug("Current File is {}", currentFile);
+        LOGGER.warn(
+            "Current File is {}, size is {}", currentFile, currentFile.getTsFile().length());
         // if no available thread for new compaction task
         // or compaction of current type is disable
         // just return
@@ -95,13 +99,13 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
           if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
-            LOGGER.debug(
+            LOGGER.warn(
                 "Return selection because too many compaction thread, current thread num is {}",
                 CompactionTaskManager.currentTaskNum);
           } else {
-            LOGGER.debug("Return selection because compaction is not enable");
+            LOGGER.warn("Return selection because compaction is not enable");
           }
-          LOGGER.debug(
+          LOGGER.warn(
               "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
               logicalStorageGroupName + "-" + virtualStorageGroupName,
               submitTaskNum);
@@ -114,9 +118,9 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             || currentFile.isMerging()
             || !currentFile.isClosed()) {
           if (currentFile.getTsFileSize() >= targetCompactionFileSize) {
-            LOGGER.debug("Selected file list is clear because current file is too large");
+            LOGGER.warn("Selected file list is clear because current file is too large");
           } else {
-            LOGGER.debug(
+            LOGGER.warn(
                 "Selected file list is clear because current file is {}",
                 currentFile.isMerging() ? "merging" : "not closed");
           }
@@ -126,7 +130,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         }
         selectedFileList.add(currentFile);
         selectedFileSize += currentFile.getTsFileSize();
-        LOGGER.debug(
+        LOGGER.warn(
             "Add tsfile {}, current select file num is {}, size is {}",
             currentFile,
             selectedFileList.size(),
@@ -134,7 +138,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         // if the file size or file num reach threshold
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
-          LOGGER.debug(
+          LOGGER.warn(
               "Submit a compaction task because {}",
               selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
@@ -145,7 +149,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           selectedFileSize = 0L;
         }
       }
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
           logicalStorageGroupName + "-" + virtualStorageGroupName,
           submitTaskNum);
