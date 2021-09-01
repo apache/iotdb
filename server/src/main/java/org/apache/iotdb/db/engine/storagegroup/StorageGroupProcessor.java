@@ -1163,44 +1163,39 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    int columnIndex = 0;
     if (plan.isAligned()) {
-      for (IMeasurementMNode mNode : mNodes) {
-        if (plan.getValues()[columnIndex] == null) {
-          columnIndex++;
+      for (int i = 0; i < mNodes.length; i++) {
+        if (plan.getValues()[i] == null) {
           continue;
         }
         // Update cached last value with high priority
         // vector lastCache update need subSensor path
         IoTDB.metaManager.updateLastCache(
-            plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
-            plan.composeTimeValuePair(columnIndex),
+            plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+            plan.composeTimeValuePair(i),
             true,
             latestFlushedTime,
-            mNode);
-        columnIndex++;
+            mNodes[i]);
       }
     } else {
-      for (IMeasurementMNode mNode : mNodes) {
-        if (plan.getValues()[columnIndex] == null) {
-          columnIndex++;
+      for (int i = 0; i < mNodes.length; i++) {
+        if (plan.getValues()[i] == null) {
           continue;
         }
         // Update cached last value with high priority
-        if (mNode != null) {
+        if (mNodes[i] != null) {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeTimeValuePair(columnIndex), true, latestFlushedTime, mNode);
+              null, plan.composeTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
         } else {
           IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[columnIndex]),
-              plan.composeTimeValuePair(columnIndex),
+              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
+              plan.composeTimeValuePair(i),
               true,
               latestFlushedTime,
               null);
         }
-        columnIndex++;
       }
     }
   }
