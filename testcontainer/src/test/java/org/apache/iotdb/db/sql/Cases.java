@@ -85,9 +85,9 @@ public abstract class Cases {
     for (String timeSeries : timeSeriesArray) {
       try {
         writeStatement.execute(
-            String.format(
-                "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-                timeSeries));
+                String.format(
+                        "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
+                        timeSeries));
       } catch (Exception e) {
         if (timeSeries.equals("root.sg1.aa.bb")) {
           e.printStackTrace();
@@ -112,10 +112,10 @@ public abstract class Cases {
 
     // test https://issues.apache.org/jira/browse/IOTDB-1331
     writeStatement.execute(
-        "create timeseries root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+            "create timeseries root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
     String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
+            "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
+            "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
     };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -134,11 +134,11 @@ public abstract class Cases {
 
     // test https://issues.apache.org/jira/browse/IOTDB-1348
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(250, 10.0)",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(300, 20.0)",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(350, 25.0)"
-        };
+            new String[] {
+                    "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(250, 10.0)",
+                    "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(300, 20.0)",
+                    "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(350, 25.0)"
+            };
 
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -154,11 +154,11 @@ public abstract class Cases {
 
     // test https://issues.apache.org/jira/browse/IOTDB-1457
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
-          "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
-          "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
-        };
+            new String[] {
+                    "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
+                    "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
+                    "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
+            };
 
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -171,14 +171,14 @@ public abstract class Cases {
 
     // test dictionary encoding
     writeStatement.execute(
-        "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
+            "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
-        };
+            new String[] {
+                    "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, \"Nanjing\")",
+                    "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, \"Nanjing\")",
+                    "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, \"Singapore\")",
+                    "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, \"Shanghai\")"
+            };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
     }
@@ -225,9 +225,9 @@ public abstract class Cases {
 
     session.setStorageGroup("root.sg1");
     session.createTimeseries(
-        "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+            "root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
     insertRecords();
 
@@ -290,15 +290,15 @@ public abstract class Cases {
   public void testCreateFunctionPlan1() {
     try {
       PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              processor.parseSQLToPhysicalPlan(
+                      "create function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         Assert.fail();
       }
       CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
       Assert.assertEquals("udf", createFunctionPlan.getUdfName());
       Assert.assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
+              "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
       Assert.assertFalse(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       Assert.fail(e.toString());
@@ -309,15 +309,15 @@ public abstract class Cases {
   public void testCreateFunctionPlan2() { // create temporary function
     try {
       PhysicalPlan plan =
-          processor.parseSQLToPhysicalPlan(
-              "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
+              processor.parseSQLToPhysicalPlan(
+                      "create temporary function udf as \"org.apache.iotdb.db.query.udf.example.Adder\"");
       if (plan.isQuery() || !(plan instanceof CreateFunctionPlan)) {
         Assert.fail();
       }
       CreateFunctionPlan createFunctionPlan = (CreateFunctionPlan) plan;
       Assert.assertEquals("udf", createFunctionPlan.getUdfName());
       Assert.assertEquals(
-          "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
+              "org.apache.iotdb.db.query.udf.example.Adder", createFunctionPlan.getClassName());
       Assert.assertTrue(createFunctionPlan.isTemporary());
     } catch (QueryProcessException e) {
       Assert.fail(e.toString());
@@ -328,7 +328,7 @@ public abstract class Cases {
   public void testDropFunctionPlan() { // drop function
     try {
       DropFunctionPlan dropFunctionPlan =
-          (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
+              (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
       Assert.assertEquals("udf", dropFunctionPlan.getUdfName());
     } catch (QueryProcessException e) {
       Assert.fail(e.toString());
@@ -348,15 +348,15 @@ public abstract class Cases {
   @Test
   public void showTimeseriesTagsTest() throws SQLException {
     String createTimeSeries1 =
-        "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+            "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
     String createTimeSeries2 =
-        "create timeseries root.ln.wf01.wt2 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+            "create timeseries root.ln.wf01.wt2 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
     writeStatement.execute(createTimeSeries1);
     writeStatement.execute(createTimeSeries2);
     // try to read data on each node. select .*
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
+              readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -368,7 +368,7 @@ public abstract class Cases {
     // try to read data on each node. select from parent series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01 where tag1=v1");
+              readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01 where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -380,7 +380,7 @@ public abstract class Cases {
     // try to read data on each node. select from one series
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt1 where tag1=v1");
+              readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.wt1 where tag1=v1");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -403,7 +403,7 @@ public abstract class Cases {
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag1=v3"
     for (Statement readStatement : readStatements) {
       ResultSet resultSet =
-          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
+              readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag1=v3");
       int cnt = 0;
       while (resultSet.next()) {
         cnt++;
@@ -431,14 +431,14 @@ public abstract class Cases {
   public void clusterUDTFQueryTest() throws SQLException {
     // Prepare data.
     writeStatement.execute(
-        "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
+            "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
     for (int i = 10; i < 20; i++) {
       writeStatement.execute(
-          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+              String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
     }
     for (int i = 0; i < 10; i++) {
       writeStatement.execute(
-          String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
+              String.format("INSERT INTO root.sg.d(timestamp,s) VALUES(%s,%s)", i, i));
     }
 
     ResultSet resultSet = null;
@@ -473,54 +473,54 @@ public abstract class Cases {
   public void testSelectInto() throws SQLException {
     for (int i = 0; i < 10; i++) {
       writeStatement.execute(
-          String.format(
-              "CREATE timeseries root.sg.device%s.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
-              i));
+              String.format(
+                      "CREATE timeseries root.sg.device%s.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+                      i));
       writeStatement.execute(
-          String.format(
-              "CREATE timeseries root.sg.device%s.t WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
-              i));
+              String.format(
+                      "CREATE timeseries root.sg.device%s.t WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY",
+                      i));
       writeStatement.execute(
-          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(1,1)", i));
+              String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(1,1)", i));
     }
 
     writeStatement.execute(
-        "SELECT device0.s, device1.s, device2.s, device3.s, device4.s, device5.s, device6.s, device7.s, device8.s, device9.s "
-            + "INTO device0.t, device1.t, device2.t, device3.t, device4.t, device5.t, device6.t, device7.t, device8.t, device9.t "
-            + "FROM root.sg;");
+            "SELECT device0.s, device1.s, device2.s, device3.s, device4.s, device5.s, device6.s, device7.s, device8.s, device9.s "
+                    + "INTO device0.t, device1.t, device2.t, device3.t, device4.t, device5.t, device6.t, device7.t, device8.t, device9.t "
+                    + "FROM root.sg;");
 
     for (int i = 0; i < 10; i++) {
       writeStatement.execute(
-          String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(2,2)", i));
+              String.format("INSERT INTO root.sg.device%s(timestamp,s) VALUES(2,2)", i));
       writeStatement.execute(
-          String.format("SELECT device%s.s into device%s.t from root.sg;", i, i));
+              String.format("SELECT device%s.s into device%s.t from root.sg;", i, i));
     }
 
     for (Statement readStatement : readStatements) {
       for (int i = 0; i < 10; ++i) {
         try (ResultSet resultSet =
-            readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.device%s", i))) {
+                     readStatement.executeQuery(String.format("SELECT s, t FROM root.sg.device%s", i))) {
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(1, Double.parseDouble(resultSet.getString(1)), 0);
           Assert.assertEquals(
-              Double.parseDouble(resultSet.getString(1)),
-              Double.parseDouble(resultSet.getString(2)),
-              0);
+                  Double.parseDouble(resultSet.getString(1)),
+                  Double.parseDouble(resultSet.getString(2)),
+                  0);
           Assert.assertEquals(
-              Double.parseDouble(resultSet.getString(2)),
-              Double.parseDouble(resultSet.getString(3)),
-              0);
+                  Double.parseDouble(resultSet.getString(2)),
+                  Double.parseDouble(resultSet.getString(3)),
+                  0);
 
           Assert.assertTrue(resultSet.next());
           Assert.assertEquals(2, Double.parseDouble(resultSet.getString(1)), 0);
           Assert.assertEquals(
-              Double.parseDouble(resultSet.getString(1)),
-              Double.parseDouble(resultSet.getString(2)),
-              0);
+                  Double.parseDouble(resultSet.getString(1)),
+                  Double.parseDouble(resultSet.getString(2)),
+                  0);
           Assert.assertEquals(
-              Double.parseDouble(resultSet.getString(2)),
-              Double.parseDouble(resultSet.getString(3)),
-              0);
+                  Double.parseDouble(resultSet.getString(2)),
+                  Double.parseDouble(resultSet.getString(3)),
+                  0);
 
           Assert.assertFalse(resultSet.next());
         }
@@ -530,7 +530,7 @@ public abstract class Cases {
 
   @Test
   public void testAutoCreateSchemaInClusterMode()
-      throws IoTDBConnectionException, StatementExecutionException, SQLException {
+          throws IoTDBConnectionException, StatementExecutionException, SQLException {
     List<String> measurement_list = new ArrayList<>();
     measurement_list.add("s1");
     measurement_list.add("s2");
@@ -551,25 +551,25 @@ public abstract class Cases {
       session.setStorageGroup(sg);
       for (int j = 0; j < 10; j++) {
         session.createTimeseries(
-            String.format("%s.d1.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d1.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d2.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d2.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d3.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d3.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d4.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d4.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
       }
     }
 
@@ -577,7 +577,7 @@ public abstract class Cases {
     for (int i = 0; i < 10; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
@@ -627,7 +627,7 @@ public abstract class Cases {
     for (int i = 10; i < 20; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
@@ -666,7 +666,7 @@ public abstract class Cases {
       for (int i = 0; i < 20; i++) {
         for (int d = 1; d <= 4; d++) {
           ResultSet resultSet =
-              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+                  readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
           for (long t = 0; t < 3; t++) {
             Assert.assertTrue(resultSet.next());
             Assert.assertEquals(resultSet.getLong(1), t);
