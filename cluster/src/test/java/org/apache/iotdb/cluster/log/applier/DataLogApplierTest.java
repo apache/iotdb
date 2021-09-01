@@ -201,10 +201,11 @@ public class DataLogApplierTest extends IoTDBTest {
                               for (int i = 0; i < 10; i++) {
                                 timeseriesSchemas.add(TestUtils.getTestTimeSeriesSchema(4, i));
                               }
-                            } else if(path.startsWith(TestUtils.getTestSg(1))||path.startsWith(TestUtils.getTestSg(2))||path.startsWith(TestUtils.getTestSg(3))){
-                              //do nothing
-                            }
-                            else if (!path.startsWith(TestUtils.getTestSg(5))) {
+                            } else if (path.startsWith(TestUtils.getTestSg(1))
+                                || path.startsWith(TestUtils.getTestSg(2))
+                                || path.startsWith(TestUtils.getTestSg(3))) {
+                              // do nothing
+                            } else if (!path.startsWith(TestUtils.getTestSg(5))) {
                               resultHandler.onError(new StorageGroupNotSetException(path));
                               return;
                             }
