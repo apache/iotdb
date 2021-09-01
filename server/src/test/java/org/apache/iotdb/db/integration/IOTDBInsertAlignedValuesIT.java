@@ -83,7 +83,7 @@ public class IOTDBInsertAlignedValuesIT {
     rs1.next();
     Assert.assertEquals(true, rs1.getBoolean(2));
 
-    ResultSet rs2 = st1.executeQuery("select * from root.t1.wf01.wt01");
+    ResultSet rs2 = st1.executeQuery("select ** from root.t1.wf01.wt01");
     rs2.next();
     Assert.assertEquals(4000, rs2.getLong(1));
     Assert.assertEquals(true, rs2.getBoolean(2));
@@ -119,7 +119,7 @@ public class IOTDBInsertAlignedValuesIT {
     rs1.next();
     Assert.assertEquals(true, rs1.getBoolean(2));
 
-    ResultSet rs2 = st1.executeQuery("select * from root.t1.wf01.wt01");
+    ResultSet rs2 = st1.executeQuery("select ** from root.t1.wf01.wt01");
     rs2.next();
     Assert.assertEquals(4000, rs2.getLong(1));
     Assert.assertEquals(true, rs2.getBoolean(2));
@@ -161,7 +161,7 @@ public class IOTDBInsertAlignedValuesIT {
     rs1.next();
     Assert.assertEquals(null, rs1.getObject(2));
 
-    ResultSet rs2 = st1.executeQuery("select * from root.t1.wf01.wt01");
+    ResultSet rs2 = st1.executeQuery("select ** from root.t1.wf01.wt01");
     rs2.next();
     Assert.assertEquals(4000, rs2.getLong(1));
     Assert.assertEquals(true, rs2.getBoolean(2));
@@ -186,7 +186,7 @@ public class IOTDBInsertAlignedValuesIT {
     rs3.next();
     Assert.assertEquals(null, rs3.getObject(2));
 
-    ResultSet rs4 = st1.executeQuery("select * from root.t1.wf01.wt01");
+    ResultSet rs4 = st1.executeQuery("select ** from root.t1.wf01.wt01");
     rs4.next();
     Assert.assertEquals(4000, rs4.getLong(1));
     Assert.assertEquals(true, rs4.getBoolean(2));

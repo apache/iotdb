@@ -740,10 +740,6 @@ public class PlanExecutor implements IPlanExecutor {
     return new ShowDevicesDataSet(showDevicesPlan);
   }
 
-  protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getDevices(path);
-  }
-
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
     Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());

@@ -183,7 +183,7 @@ public class IoTDBSimpleQueryIT {
       String[] results = {"root.turbine.d1.s1", "root.turbine.d1.s2"};
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select last * from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select last ** from root")) {
         while (resultSet.next()) {
           String path = resultSet.getString("timeseries");
           assertEquals(results[count], path);
@@ -278,7 +278,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select ** from root");
       int count = 0;
 
       String[] timestamps = {"1", "7", "15", "16", "17", "18"};
@@ -325,7 +325,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       for (int i = 1; i < originalValues.length; i++) {
-        String sql = "select * from root where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
+        String sql = "select ** from root where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
         ResultSet resultSet = statement.executeQuery(sql);
 
         while (resultSet.next()) {
@@ -376,7 +376,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select ** from root");
       int count = 0;
 
       // will not store time = 16 since time distance to last stored time 15 is within compMinTime
@@ -413,7 +413,7 @@ public class IoTDBSimpleQueryIT {
       }
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select ** from root");
       int count = 0;
 
       String[] timestamps = {"1", "21", "41", "49"};
@@ -595,7 +595,7 @@ public class IoTDBSimpleQueryIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select * from root");
+      ResultSet resultSet = statement.executeQuery("select ** from root");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
       try {
@@ -619,7 +619,7 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery("select * from root align by device");
+        resultSet = statement.executeQuery("select ** from root align by device");
         // has time and device columns
         Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -675,7 +675,7 @@ public class IoTDBSimpleQueryIT {
           };
 
       int cur = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root order by time desc")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root order by time desc")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("Time")
@@ -1085,7 +1085,7 @@ public class IoTDBSimpleQueryIT {
 
       long count = 0;
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
         while (resultSet.next()) {
           count++;
         }
@@ -1173,13 +1173,13 @@ public class IoTDBSimpleQueryIT {
 
       List<ResultSet> resultSetList = new ArrayList<>();
 
-      ResultSet r1 = statement.executeQuery("select * from root.sg1.d0 where time <= 1");
+      ResultSet r1 = statement.executeQuery("select ** from root.sg1.d0 where time <= 1");
       resultSetList.add(r1);
 
-      ResultSet r2 = statement.executeQuery("select * from root.sg1.d1 where s0 == 1000");
+      ResultSet r2 = statement.executeQuery("select ** from root.sg1.d1 where s0 == 1000");
       resultSetList.add(r2);
 
-      ResultSet r3 = statement.executeQuery("select * from root.sg1.d0 where s1 == 10");
+      ResultSet r3 = statement.executeQuery("select ** from root.sg1.d0 where s1 == 10");
       resultSetList.add(r3);
 
       r1.next();

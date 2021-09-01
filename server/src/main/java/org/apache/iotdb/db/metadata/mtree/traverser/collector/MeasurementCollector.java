@@ -45,10 +45,10 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
                 count += 1;
             }
         } else if (schema instanceof VectorMeasurementSchema) {
-            if(idx == nodes.length && !nodes[nodes.length-1].equals(PATH_MULTI_LEVEL_WILDCARD)){
+            if(idx == nodes.length && !nodes[nodes.length-1].equals(PATH_MULTI_LEVEL_WILDCARD)&&!isPrefixMatch){
                 return;
             }
-            // only when idx > nodes.length or nodes ends with **
+            // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
             List<String> measurements = schema.getValueMeasurementIdList();
             for (int i = 0; i < measurements.size(); i++) {
                 if (hasLimit) {

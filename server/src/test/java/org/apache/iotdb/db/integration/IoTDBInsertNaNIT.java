@@ -110,7 +110,7 @@ public class IoTDBInsertNaNIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle.*");
+      boolean hasResultSet = statement.execute("select ** from root.vehicle.*");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -155,7 +155,7 @@ public class IoTDBInsertNaNIT {
           "CREATE TIMESERIES root.happy.device1.sensor1.temperature WITH DATATYPE=DOUBLE, ENCODING=RLE");
       statement.execute(
           "INSERT INTO root.happy.device1.sensor1(timestamp,temperature) values(7925, NaN)");
-      boolean hasResultSet = statement.execute("select * from root.happy.device1.sensor1");
+      boolean hasResultSet = statement.execute("select ** from root.happy.device1.sensor1");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {

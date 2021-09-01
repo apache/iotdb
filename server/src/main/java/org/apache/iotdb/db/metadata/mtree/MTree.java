@@ -47,6 +47,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementPathCol
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementSchemaCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupDeterminator;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupPathCollector;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.TSEntityPathCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
@@ -890,7 +891,7 @@ public class MTree implements Serializable {
     List<PartialPath> res = new LinkedList<>();
     MeasurementPathCollector collector = new MeasurementPathCollector(root, nodes, res, limit,offset);
     collector.traverse();
-    offset = collector.getOffset() + 1;
+    offset = collector.getCurOffset() + 1;
     res = collector.getResult();
     return new Pair<>(res, offset);
   }
@@ -1061,13 +1062,14 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct devices names
    */
-  public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
-    String[] nodes = prefixPath.getNodes();
+  public Set<PartialPath> getDevices(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(prefixPath.getFullPath());
+      throw new IllegalPathException(path.getFullPath());
     }
     Set<PartialPath> devices = new TreeSet<>();
     EntityPathCollector collector = new EntityPathCollector(root, nodes, devices);
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return collector.getResult();
   }
@@ -1091,6 +1093,17 @@ public class MTree implements Serializable {
       }
     }
     return res;
+  }
+
+  public Set<PartialPath> getDevicesForTimeseries(PartialPath timeseries) throws MetadataException {
+    String[] nodes = timeseries.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(timeseries.getFullPath());
+    }
+    Set<PartialPath> devices = new TreeSet<>();
+    TSEntityPathCollector collector = new TSEntityPathCollector(root, nodes, devices);
+    collector.traverse();
+    return collector.getResult();
   }
 
   /** Get all paths from root to the given level */

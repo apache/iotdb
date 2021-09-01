@@ -196,7 +196,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testDisableAlign() {
-    String sqlStr = "select * from root.vehicle disable align";
+    String sqlStr = "select ** from root.vehicle disable align";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
@@ -205,7 +205,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testNotDisableAlign() {
-    String sqlStr = "select * from root.vehicle";
+    String sqlStr = "select ** from root.vehicle";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
@@ -214,7 +214,7 @@ public class LogicalPlanSmallTest {
 
   @Test(expected = ParseCancellationException.class)
   public void testDisableAlignConflictAlignByDevice() {
-    String sqlStr = "select * from root.vehicle disable align align by device";
+    String sqlStr = "select ** from root.vehicle disable align align by device";
     LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
   }
 

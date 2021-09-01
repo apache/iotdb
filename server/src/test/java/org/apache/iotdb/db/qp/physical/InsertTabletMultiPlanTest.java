@@ -92,7 +92,7 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
 
     executor.insertTablet(insertMultiTabletPlan);
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.multi");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(60, dataSet.getPaths().size());
     while (dataSet.hasNext()) {

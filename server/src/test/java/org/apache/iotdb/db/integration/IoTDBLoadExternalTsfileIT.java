@@ -367,7 +367,7 @@ public class IoTDBLoadExternalTsfileIT {
         Statement statement = connection.createStatement()) {
 
       // check query result
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT ** FROM root");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;
@@ -496,7 +496,7 @@ public class IoTDBLoadExternalTsfileIT {
           new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
 
       // check query result
-      hasResultSet = statement.execute("SELECT  * FROM root");
+      hasResultSet = statement.execute("SELECT ** FROM root");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         int cnt = 0;

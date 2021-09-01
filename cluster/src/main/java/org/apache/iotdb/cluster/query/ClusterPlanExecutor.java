@@ -286,13 +286,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<PartialPath> getDevices(PartialPath path) throws MetadataException {
-    // make sure this node knows all storage groups
-    ((CMManager) IoTDB.metaManager).syncMetaLeader();
-    return ((CMManager) IoTDB.metaManager).getMatchedDevices(path);
-  }
-
-  @Override
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
 

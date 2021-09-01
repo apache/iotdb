@@ -96,7 +96,7 @@ public class IoTDBMergeIT {
           String.format("INSERT INTO root.mergeTest(timestamp,s1) VALUES (%d,%d)", 3, 3));
       statement.execute("FLUSH");
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.mergeTest")) {
         int cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -156,7 +156,7 @@ public class IoTDBMergeIT {
         }
 
         int cnt;
-        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+        try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.mergeTest")) {
           cnt = 0;
           while (resultSet.next()) {
             long time = resultSet.getLong("Time");
@@ -234,7 +234,7 @@ public class IoTDBMergeIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.mergeTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -301,7 +301,7 @@ public class IoTDBMergeIT {
       statement.execute("MERGE");
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.mergeTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");

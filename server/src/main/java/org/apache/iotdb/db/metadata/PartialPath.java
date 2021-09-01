@@ -32,6 +32,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_ONE_LEVEL_WILDCARD;
 
 /**
  * A prefix path, suffix path or fullPath generated from SQL. Usually used in the IoTDB server
@@ -136,24 +140,53 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   /**
-   * Test if this PartialPath matches a full path. rPath is supposed to be a full timeseries path
-   * without wildcards. e.g. "root.sg.device.*" matches path "root.sg.device.s1" whereas it does not
-   * match "root.sg.device" and "root.sg.vehicle.s1"
+   * Test if this PartialPath matches a full path.
+   * This partialPath acts as a full path pattern.
+   * rPath is supposed to be a full timeseries path without wildcards.
+   * e.g. "root.sg.device.*" matches path "root.sg.device.s1"
+   * whereas it does not match "root.sg.device" and "root.sg.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
    */
   public boolean matchFullPath(PartialPath rPath) {
-    String[] rNodes = rPath.getNodes();
-    if (rNodes.length < nodes.length) {
+    return matchFullPath(rPath.getNodes(),0,0,false);
+  }
+
+  private boolean matchFullPath(
+          String[] pathNodes,
+          int pathIndex,
+          int patternIndex,
+          boolean multiLevelWild){
+    if(pathIndex == pathNodes.length && patternIndex == nodes.length){
+      return true;
+    }else if(patternIndex == nodes.length && multiLevelWild){
+      return matchFullPath(pathNodes,pathIndex + 1, patternIndex, true);
+    }else if(pathIndex >= pathNodes.length || patternIndex>= nodes.length){
       return false;
     }
-    for (int i = 0; i < nodes.length; i++) {
-      if (!nodes[i].equals(IoTDBConstant.PATH_ONE_LEVEL_WILDCARD) && !nodes[i].equals(rNodes[i])) {
-        return false;
+
+    String pathNode = pathNodes[pathIndex];
+    String patternNode = nodes[patternIndex];
+    boolean isMatch = false;
+    if(patternNode.equals(PATH_MULTI_LEVEL_WILDCARD)){
+      isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, true);
+    }else{
+      if(patternNode.contains(PATH_ONE_LEVEL_WILDCARD)){
+        if(Pattern.matches(patternNode.replace("*", ".*"), pathNode)){
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      }else{
+        if(patternNode.equals(pathNode)){
+          isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
+        }
+      }
+
+      if(!isMatch && multiLevelWild){
+        isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex,true);
       }
     }
-    return true;
+    return isMatch;
   }
 
   @Override

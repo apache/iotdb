@@ -438,7 +438,7 @@ public class IoTDBSelectIntoIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select * into target from root.sg.d1");
+      statement.execute("select ** into target from root.sg.d1");
       fail();
     } catch (SQLException throwable) {
       assertTrue(

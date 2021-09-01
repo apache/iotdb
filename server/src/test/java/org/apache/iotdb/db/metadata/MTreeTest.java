@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -295,6 +296,11 @@ public class MTreeTest {
       assertEquals(2, result2.size());
       assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
       assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
+
+      Pair<List<PartialPath>,Integer> result3 = root.getAllTimeseriesPathWithAlias(new PartialPath("root.a.**"), 2, 0);
+      assertEquals(2, result3.left.size());
+      assertEquals(2, result3.right.intValue());
+
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -714,7 +720,8 @@ public class MTreeTest {
         Collections.emptyMap(),
         null);
 
-    assertEquals(2, root.getDevices(new PartialPath("root.**")).size());
+    assertEquals(2, root.getDevices(new PartialPath("root"), true).size());
+    assertEquals(2, root.getDevices(new PartialPath("root.**"), false).size());
     assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.**")));
     assertEquals(2, root.getAllTimeseriesPath(new PartialPath("root.**")).size());
     assertEquals(2, root.getAllTimeseriesPathWithAlias(new PartialPath("root.**"), 0, 0).left.size());
@@ -917,11 +924,50 @@ public class MTreeTest {
             null);
     StorageGroupFilter filter = storageGroup -> storageGroup.equals("root.sg1");
 
-    List<PartialPath> res;
     Assert.assertEquals(4, root.getNodesList(new PartialPath("root.**"),3,null).size());
     Assert.assertEquals(2, root.getNodesList(new PartialPath("root.**"), 3, filter).size());
     Assert.assertEquals(2, root.getNodesList(new PartialPath("root.*.*"),2,null).size());
     Assert.assertEquals(1, root.getNodesList(new PartialPath("root.*.**"),2, filter).size());
+  }
+
+  @Test
+  public void testGetDeviceForTimeseries() throws MetadataException{
+    MTree root = new MTree();
+    root.setStorageGroup(new PartialPath("root.sg1"));
+    root.createTimeseries(
+            new PartialPath("root.sg1.d1.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+    root.createTimeseries(
+            new PartialPath("root.sg1.d1.s2"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+
+    root.setStorageGroup(new PartialPath("root.sg2"));
+    root.createTimeseries(
+            new PartialPath("root.sg2.d2.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+    root.createTimeseries(
+            new PartialPath("root.sg2.d2.s2"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null);
+
+    Assert.assertEquals(2, root.getDevicesForTimeseries(new PartialPath("root.**")).size());
+    Assert.assertEquals(1, root.getDevicesForTimeseries(new PartialPath("root.*.d1.*")).size());
+    Assert.assertEquals(2, root.getDevicesForTimeseries(new PartialPath("root.*.d*.*")).size());
   }
 
 }

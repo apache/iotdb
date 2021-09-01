@@ -647,7 +647,7 @@ public class PhysicalPlanTest {
               createFunctionPlan.isTemporary(),
               true);
 
-      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle";
+      String sqlStr = "select *, udf(*, *), *, udf(*, *), * from root.vehicle.**";
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
 
       UDFRegistrationService.getInstance().deregister(createFunctionPlan.getUdfName());

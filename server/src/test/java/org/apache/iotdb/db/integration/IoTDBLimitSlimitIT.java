@@ -123,7 +123,7 @@ public class IoTDBLimitSlimitIT {
       "1,101,\n" + "2,10000,\n" + "50,10000,\n",
       "SELECT s1,s2 FROM root.vehicle.d0 where s1>190 or s2<10.0 limit 3 offset 2",
       "3,null,3.33,\n" + "4,null,4.44,\n" + "50,50000,null,\n",
-      "select * from root.vehicle.d0 slimit 1",
+      "select ** from root.vehicle.d0 slimit 1",
       "1,101,\n"
           + "2,10000,\n"
           + "50,10000,\n"
@@ -135,11 +135,11 @@ public class IoTDBLimitSlimitIT {
           + "105,99,\n"
           + "106,99,\n"
           + "1000,22222,\n",
-      "select * from root.vehicle.d0 slimit 1 soffset 2",
+      "select ** from root.vehicle.d0 slimit 1 soffset 2",
       "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
       "select d0 from root.vehicle slimit 1 soffset 2",
       "2,2.22,\n" + "3,3.33,\n" + "4,4.44,\n" + "102,10.0,\n" + "105,11.11,\n" + "1000,1000.11,\n",
-      "select * from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
+      "select ** from root.vehicle.d0 where s1>190 or s2 < 10.0 limit 3 offset 1 slimit 1 soffset 2 ",
       "3,3.33,\n" + "4,4.44,\n" + "105,11.11,\n"
     };
     executeSQL(sqlS);

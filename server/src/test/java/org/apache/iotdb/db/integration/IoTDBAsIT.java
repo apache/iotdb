@@ -420,7 +420,7 @@ public class IoTDBAsIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
-      statement.execute("select * as speed from root.sg.d1 align by device");
+      statement.execute("select ** as speed from root.sg.d1 align by device");
       fail();
     } catch (Exception e) {
       Assert.assertTrue(

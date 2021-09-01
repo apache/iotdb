@@ -1116,7 +1116,7 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        Set<PartialPath> allDevices = getDevices(pathUnderSG);
+        Set<PartialPath> allDevices = getDevicesByPrefix(pathUnderSG);
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),

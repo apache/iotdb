@@ -26,6 +26,9 @@ public abstract class CollectorTraverser<T> extends Traverser {
         this.resultSet = resultSet;
         this.limit = limit;
         this.offset = offset;
+        if(limit!=0||offset!=0){
+            hasLimit = true;
+        }
     }
 
     protected void traverse(IMNode node, int idx, boolean multiLevelWildcard, int level) throws MetadataException {
@@ -43,8 +46,8 @@ public abstract class CollectorTraverser<T> extends Traverser {
         this.resultSet = resultSet;
     }
 
-    public int getOffset() {
-        return offset;
+    public int getCurOffset() {
+        return curOffset;
     }
 
     public void setNeedLast(boolean needLast) {

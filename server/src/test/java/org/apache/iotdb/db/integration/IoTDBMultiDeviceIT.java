@@ -238,10 +238,10 @@ public class IoTDBMultiDeviceIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
+  // "select ** from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
-    String selectSql = "select * from root";
+    String selectSql = "select ** from root";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -269,10 +269,10 @@ public class IoTDBMultiDeviceIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
+  // "select ** from root.vehicle" : test select wild data
   @Test
   public void selectAfterDeleteTest() throws ClassNotFoundException {
-    String selectSql = "select * from root";
+    String selectSql = "select ** from root";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -280,10 +280,10 @@ public class IoTDBMultiDeviceIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("DELETE FROM root.fans.* WHERE time <= 1000");
-      statement.execute("DELETE FROM root.car.* WHERE time <= 1000");
-      statement.execute("DELETE FROM root.fans.* WHERE time >= 200500 and time < 201000");
-      statement.execute("DELETE FROM root.car.* WHERE time >= 200500 and time < 201000");
+      statement.execute("DELETE FROM root.fans.** WHERE time <= 1000");
+      statement.execute("DELETE FROM root.car.** WHERE time <= 1000");
+      statement.execute("DELETE FROM root.fans.** WHERE time >= 200500 and time < 201000");
+      statement.execute("DELETE FROM root.car.** WHERE time >= 200500 and time < 201000");
 
       boolean hasResultSet = statement.execute(selectSql);
       Assert.assertTrue(hasResultSet);

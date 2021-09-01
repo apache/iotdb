@@ -183,7 +183,7 @@ public class IoTDBAutoCreateSchemaIT {
   }
 
   private void insertAutoCreate1Tool() throws SQLException {
-    boolean hasResult = statement.execute("select * from root.sg1");
+    boolean hasResult = statement.execute("select ** from root.sg1");
     Assert.assertTrue(hasResult);
 
     Set<String> strSet = new HashSet<>();

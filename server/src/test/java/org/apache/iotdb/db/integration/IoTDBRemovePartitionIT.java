@@ -81,7 +81,7 @@ public class IoTDBRemovePartitionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.test1")) {
         int count = 0;
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
@@ -110,7 +110,7 @@ public class IoTDBRemovePartitionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.test1")) {
         int count = 0;
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
@@ -120,7 +120,7 @@ public class IoTDBRemovePartitionIT {
         assertEquals(10, count);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test2")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.test2")) {
         int count = 0;
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
@@ -144,7 +144,7 @@ public class IoTDBRemovePartitionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.test1")) {
         assertFalse(resultSet.next());
       }
     } catch (Exception e) {
@@ -159,7 +159,7 @@ public class IoTDBRemovePartitionIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE PARTITION root.test2 0,1,2,3,4");
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test2")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.test2")) {
         int count = 0;
         while (resultSet.next()) {
           assertEquals(count / 2 * 100 + count % 2 * 50 + 500, resultSet.getLong(1));
@@ -181,15 +181,15 @@ public class IoTDBRemovePartitionIT {
         Statement statement = connection.createStatement()) {
       statement.execute("set storage group to root.test");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
     } catch (Exception e) {
@@ -205,17 +205,17 @@ public class IoTDBRemovePartitionIT {
         Statement statement = connection.createStatement()) {
       statement.execute("set storage group to root.test");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(3,true)");
       statement.execute("merge");
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         while (resultSet.next()) {
           count++;
         }
@@ -234,17 +234,17 @@ public class IoTDBRemovePartitionIT {
         Statement statement = connection.createStatement()) {
       statement.execute("set storage group to root.test");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
       statement.execute("merge");
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         while (resultSet.next()) {
           count++;
         }
@@ -265,14 +265,14 @@ public class IoTDBRemovePartitionIT {
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
       statement.execute("flush");
       statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
+      statement.execute("select ** from root.test.wf02.wt02");
       statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
       statement.execute("flush");
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
       }
     } catch (Exception e) {

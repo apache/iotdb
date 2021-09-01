@@ -64,7 +64,7 @@ public abstract class Traverser {
                 }
             }
 
-            if (!multiLevelWildcard) {
+            if (!multiLevelWildcard && !isPrefixMatch) {
                 return;
             }
 
@@ -179,5 +179,9 @@ public abstract class Traverser {
 
     public void setStorageGroupFilter(StorageGroupFilter storageGroupFilter) {
         this.storageGroupFilter = storageGroupFilter;
+    }
+
+    public void setPrefixMatch(boolean isPrefixMatch){
+        this.isPrefixMatch = isPrefixMatch;
     }
 }

@@ -90,7 +90,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1100, 1200, 1300, 1400};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -118,7 +118,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1200, 1100, 2200, 1000};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -145,7 +145,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1100, 1200, 1300, 1400};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -172,7 +172,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1200, 1100, 2200, 1000};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -200,7 +200,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1100, 1200, 1300, 1400};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -228,7 +228,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       int[] result = new int[] {1200, 1100, 2200, 1000};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           int salary = resultSet.getInt("root.db_0.tab0.salary");
@@ -256,7 +256,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       String[] result = new String[] {"Nanjing", "Nanjing", "Beijing", "Shanghai"};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           String city = resultSet.getString("root.db_0.tab0.city");
@@ -284,7 +284,7 @@ public class IoTDBEncodingIT {
       statement.execute("flush");
 
       String[] result = new String[] {"Nanjing", "Nanjing", "Shanghai", "Beijing"};
-      try (ResultSet resultSet = statement.executeQuery("select * from root.db_0.tab0")) {
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.db_0.tab0")) {
         int index = 0;
         while (resultSet.next()) {
           String city = resultSet.getString("root.db_0.tab0.city");

@@ -802,7 +802,7 @@ public class IoTDBAggregationSmallDataIT {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root");
+      boolean hasResultSet = statement.execute("SELECT ** FROM root");
       if (hasResultSet) {
         try (ResultSet resultSet = statement.getResultSet()) {
           int cnt = 0;

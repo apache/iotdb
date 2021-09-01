@@ -72,7 +72,7 @@ public class IoTDBTimePartitionIT {
       }
 
       String[] retArray = new String[] {"20.0", "19.0", "18.0"};
-      boolean hasResultSet = statement.execute("select * from root.group_1.d_1 order by time desc");
+      boolean hasResultSet = statement.execute("select ** from root.group_1.d_1 order by time desc");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;

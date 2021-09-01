@@ -18,6 +18,15 @@ public class EntityPathCollector extends EntityCollector<Set<PartialPath>>{
 
     @Override
     protected void processValidNode(IMNode node, int idx) throws MetadataException {
+        if (hasLimit) {
+            curOffset += 1;
+            if (curOffset < offset) {
+                return;
+            }
+        }
         resultSet.add(node.getPartialPath());
+        if (hasLimit) {
+            count += 1;
+        }
     }
 }

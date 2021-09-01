@@ -85,7 +85,7 @@ public class MQTTSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select ** from root"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -148,7 +148,7 @@ public class MQTTSinkTest {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      Assert.assertTrue(statement.execute("select * from root"));
+      Assert.assertTrue(statement.execute("select ** from root"));
 
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

@@ -218,7 +218,7 @@ public class IoTDBAddSubDeviceIT {
       statement.execute("INSERT INTO root.sg1.d1.s1 (timestamp, s1) VALUES(0, 2)");
       statement.execute("INSERT INTO root.sg1.d1.s1 (timestamp, s2) VALUES(0, 3)");
 
-      boolean hasResultSet = statement.execute("SELECT * FROM root.sg1.d1");
+      boolean hasResultSet = statement.execute("SELECT ** FROM root.sg1.d1");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

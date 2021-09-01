@@ -155,7 +155,7 @@ public class IoTDBLikeIT {
   @Test(expected = Exception.class)
   public void testLikeNonTextCloumn() throws SQLException {
     Statement st1 = connection.createStatement();
-    st1.execute("select * from root.t1.wf01.wt01 where temperature like '1'");
+    st1.execute("select ** from root.t1.wf01.wt01 where temperature like '1'");
   }
 
   private String outputResultStr(ResultSet resultSet) throws SQLException {

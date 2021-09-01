@@ -803,8 +803,16 @@ public class MManager {
    *     wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices paths with given prefixPath.
    */
-  public Set<PartialPath> getDevices(PartialPath prefixPath) throws MetadataException {
-    return mtree.getDevices(prefixPath);
+  public Set<PartialPath> getDevicesByPrefix(PartialPath prefixPath) throws MetadataException {
+    return mtree.getDevices(prefixPath, true);
+  }
+
+  public Set<PartialPath> getDevicesForTimeseries(PartialPath timeseries) throws MetadataException {
+    return mtree.getDevicesForTimeseries(timeseries);
+  }
+
+  public Set<PartialPath> getDevices(PartialPath pathPattern) throws MetadataException {
+    return mtree.getDevices(pathPattern, false);
   }
 
   public List<ShowDevicesResult> getDevices(ShowDevicesPlan plan) throws MetadataException {
@@ -925,13 +933,13 @@ public class MManager {
     List<IMeasurementMNode> allMatchedNodes = tagManager.getMatchedTimeseriesInIndex(plan, context);
 
     List<ShowTimeSeriesResult> res = new LinkedList<>();
-    String[] prefixNodes = plan.getPath().getNodes();
+    PartialPath pathPattern = plan.getPath();
     int curOffset = -1;
     int count = 0;
     int limit = plan.getLimit();
     int offset = plan.getOffset();
     for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (match(leaf.getPartialPath(), prefixNodes)) {
+      if (pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;
           if (curOffset < offset || count == limit) {
@@ -962,20 +970,6 @@ public class MManager {
       }
     }
     return res;
-  }
-
-  /** whether the full path has the prefixNodes */
-  private boolean match(PartialPath fullPath, String[] prefixNodes) {
-    String[] nodes = fullPath.getNodes();
-    if (nodes.length < prefixNodes.length) {
-      return false;
-    }
-    for (int i = 0; i < prefixNodes.length; i++) {
-      if (!"*".equals(prefixNodes[i]) && !prefixNodes[i].equals(nodes[i])) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
