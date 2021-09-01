@@ -31,6 +31,8 @@ import java.util.Map;
 
 public class DAGBuilder {
 
+  private final UDTFPlan udtfPlan;
+
   // input
   private final List<Expression> resultColumnExpressions;
   // output
@@ -43,12 +45,15 @@ public class DAGBuilder {
   private final Map<Expression, TransformerBuilder> expressionTransformerBuilderMap;
 
   public DAGBuilder(UDTFPlan udtfPlan) {
+    this.udtfPlan = udtfPlan;
     resultColumnExpressions = new ArrayList<>();
     for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
       resultColumnExpressions.add(resultColumn.getExpression());
     }
     resultColumnTransformers = new Transformer[resultColumnExpressions.size()];
     expressionTransformerBuilderMap = new HashMap<>();
+
+    build();
   }
 
   public void build() {

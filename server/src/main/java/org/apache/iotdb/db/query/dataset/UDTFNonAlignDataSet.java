@@ -113,6 +113,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
       valueBufferList.add(timeValueByteBufferPair.right);
     }
 
+    // todo: control upper bound here
     inputLayer.updateRowRecordListEvictionUpperBound();
 
     tsQueryNonAlignDataSet.setTimeList(timeBufferList);

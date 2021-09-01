@@ -39,7 +39,7 @@ public abstract class UDFQueryTransformer extends Transformer {
   protected UDFQueryTransformer(UDTFExecutor executor) {
     this.executor = executor;
     udfOutputDataType = executor.getConfigurations().getOutputDataType();
-    udfOutput = executor.getCollector().getPointReaderUsingEvictionStrategy();
+    udfOutput = executor.getCollector().constructPointReaderUsingTrivialEvictionStrategy();
     terminated = false;
   }
 
