@@ -1171,7 +1171,7 @@ public class CompactionSchedulerTest {
     assertEquals(100, tsFileResourceManager.getTsFileList(false).size());
     CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
     totalWaitingTime = 0;
-    while (tsFileResourceManager.getTsFileList(false).size() > 75) {
+    while (CompactionTaskManager.currentTaskNum.get() > 0) {
       try {
         Thread.sleep(10);
         totalWaitingTime += 10;
