@@ -908,17 +908,7 @@ public class MTree implements Serializable {
     }
     CounterTraverser counter = new MeasurementCounter(root, nodes);
     counter.traverse();
-    int count = counter.getCount();
-    if(count > 0){
-      return count;
-    }else {
-      for(String name:nodes){
-        if(name.contains(PATH_ONE_LEVEL_WILDCARD)){
-          return count;
-        }
-      }
-      throw new PathNotExistException(prefixPath.getFullPath());
-    }
+    return counter.getCount();
   }
 
   /**

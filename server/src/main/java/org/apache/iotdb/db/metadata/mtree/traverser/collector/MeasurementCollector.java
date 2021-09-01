@@ -10,6 +10,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+
 
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
@@ -43,13 +45,12 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
                 count += 1;
             }
         } else if (schema instanceof VectorMeasurementSchema) {
-            // only when idx >= nodes.length -1
+            if(idx == nodes.length && !nodes[nodes.length-1].equals(PATH_MULTI_LEVEL_WILDCARD)){
+                return;
+            }
+            // only when idx > nodes.length or nodes ends with **
             List<String> measurements = schema.getValueMeasurementIdList();
-            String regex = (idx < nodes.length ? nodes[idx] : "*").replace("*", ".*");
             for (int i = 0; i < measurements.size(); i++) {
-                if (!Pattern.matches(regex, measurements.get(i))) {
-                    continue;
-                }
                 if (hasLimit) {
                     curOffset += 1;
                     if (curOffset < offset) {
@@ -67,8 +68,25 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     @Override
     protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
         if (idx == nodes.length - 1) {
-            if (((IMeasurementMNode) node).getSchema() instanceof VectorMeasurementSchema) {
-                processValidNode(node, idx);
+            IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+            if (schema instanceof VectorMeasurementSchema) {
+                List<String> measurements = schema.getValueMeasurementIdList();
+                String regex = nodes[idx].replace("*", ".*");
+                for (int i = 0; i < measurements.size(); i++) {
+                    if (!Pattern.matches(regex, measurements.get(i))) {
+                        continue;
+                    }
+                    if (hasLimit) {
+                        curOffset += 1;
+                        if (curOffset < offset) {
+                            break;
+                        }
+                    }
+                    collectVectorMeasurementSchema((IMeasurementMNode) node, i);
+                    if (hasLimit) {
+                        count += 1;
+                    }
+                }
             }
         }
         return true;

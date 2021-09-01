@@ -295,7 +295,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector"));
+      manager.deleteTimeseries(new PartialPath("root.laptop.d1.vector.*"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -395,19 +395,9 @@ public class MManagerBasicTest {
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
       assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop")), 0);
+      assertEquals(manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1")), 0);
 
-      try {
-        manager.getAllTimeseriesCount(new PartialPath("root.laptop"));
-        fail();
-      }catch (MetadataException e){
-        Assert.assertEquals(e.getMessage(),"Path [root.laptop] does not exist");
-      }
-      try {
-        manager.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"));
-        fail("Expected exception");
-      } catch (MetadataException e) {
-        assertEquals("Path [root.laptop.d3.s1] does not exist", e.getMessage());
-      }
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1182,7 +1172,7 @@ public class MManagerBasicTest {
       // show timeseries root.laptop.d1.vector
       showTimeSeriesPlan =
           new ShowTimeSeriesPlan(
-              new PartialPath("root.laptop.d1.vector"), false, null, null, 0, 0, false);
+              new PartialPath("root.laptop.d1.vector.*"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
       assertEquals(3, result.size());
       for (int i = 0; i < result.size(); i++) {

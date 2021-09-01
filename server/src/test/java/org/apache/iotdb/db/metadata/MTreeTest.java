@@ -681,13 +681,7 @@ public class MTreeTest {
 
       assertEquals(4, root.getAllTimeseriesCount(new PartialPath("root.laptop.**")));
       assertEquals(2, root.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
-      PartialPath partialPath = new PartialPath("root.laptop.d1.s3");
-      try {
-        root.getAllTimeseriesCount(partialPath);
-        fail("Expected exception");
-      } catch (MetadataException e) {
-        assertEquals("Path [root.laptop.d1.s3] does not exist", e.getMessage());
-      }
+      assertEquals(0, root.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
 
       assertEquals(2, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*"), 2));
       assertEquals(4, root.getNodesCountInGivenLevel(new PartialPath("root.laptop.*.*"), 3));

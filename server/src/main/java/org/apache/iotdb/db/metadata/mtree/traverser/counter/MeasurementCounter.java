@@ -10,6 +10,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
+
 
 public class MeasurementCounter extends CounterTraverser {
 
@@ -29,27 +31,26 @@ public class MeasurementCounter extends CounterTraverser {
         if (schema instanceof MeasurementSchema) {
             count++;
         } else if (schema instanceof VectorMeasurementSchema) {
-            // only when idx >= nodes.length -1
-            List<String> measurements = schema.getValueMeasurementIdList();
-            if (idx >= nodes.length) {
-                count += ((IMeasurementMNode) node).getMeasurementCount();
-            } else {
+            if(idx == nodes.length && !nodes[nodes.length-1].equals(PATH_MULTI_LEVEL_WILDCARD)){
+                return;
+            }
+            // only when idx > nodes.length or nodes ends with **
+            count += ((IMeasurementMNode) node).getMeasurementCount();
+        }
+    }
+
+    @Override
+    protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
+        if (idx == nodes.length - 1) {
+            IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
+            if (schema instanceof VectorMeasurementSchema) {
+                List<String> measurements = schema.getValueMeasurementIdList();
                 String regex = nodes[idx].replace("*", ".*");
                 for (String measurement : measurements) {
                     if (Pattern.matches(regex, measurement)) {
                         count++;
                     }
                 }
-            }
-        }
-    }
-
-    @Override
-    protected boolean processInternalValid(IMNode node, int idx) throws MetadataException {
-        IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
-        if (schema instanceof VectorMeasurementSchema) {
-            if (idx == nodes.length - 1) {
-                processValidNode(node, idx);
             }
         }
         return true;
