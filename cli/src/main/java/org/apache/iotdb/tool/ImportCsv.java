@@ -629,7 +629,7 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
-          if (!value.equals("true") || !value.equals("false")) {
+          if (!value.equals("true") && !value.equals("false")) {
             return null;
           }
           return Boolean.valueOf(value);
