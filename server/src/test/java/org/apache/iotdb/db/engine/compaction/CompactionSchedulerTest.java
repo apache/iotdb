@@ -58,6 +58,7 @@ public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final long MAX_WAITING_TIME = 240_000;
+  static final long SCHEDULE_AGAIN_TIME = 30_000;
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",
@@ -125,6 +126,7 @@ public class CompactionSchedulerTest {
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -176,6 +178,16 @@ public class CompactionSchedulerTest {
         fail();
         break;
       }
+      if (totalWaitingTime % 10_000 == 0) {
+        logger.warn(
+            "sequence file num is {}, unsequence file num is {}",
+            tsFileResourceManager.getTsFileList(true).size(),
+            tsFileResourceManager.getTsFileList(false).size());
+      }
+      if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+        logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+        CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+      }
     }
     totalWaitingTime = 0;
     while (tsFileResourceManager.getTsFileList(false).size() > 1) {
@@ -185,6 +197,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -206,6 +228,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -239,6 +271,7 @@ public class CompactionSchedulerTest {
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);
@@ -287,6 +320,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -314,6 +357,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -396,6 +449,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -418,6 +481,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -507,6 +580,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -539,6 +622,7 @@ public class CompactionSchedulerTest {
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
@@ -593,6 +677,10 @@ public class CompactionSchedulerTest {
               tsFileResourceManager.getTsFileList(true).size(),
               1);
         }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -607,6 +695,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -629,6 +727,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -662,6 +770,7 @@ public class CompactionSchedulerTest {
     boolean prevEnableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(true);
     int prevCompactionConcurrentThread =
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(1);
@@ -710,6 +819,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -723,6 +842,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -804,6 +933,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -824,6 +963,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -911,6 +1060,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -991,6 +1150,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1005,6 +1174,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1086,6 +1265,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1100,6 +1289,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1180,6 +1379,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1194,6 +1403,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1276,6 +1495,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1290,6 +1519,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1371,6 +1610,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1385,6 +1634,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1466,6 +1725,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1480,6 +1749,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1561,6 +1840,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1575,6 +1864,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
@@ -1656,6 +1955,16 @@ public class CompactionSchedulerTest {
           fail();
           break;
         }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
+        }
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -1670,6 +1979,16 @@ public class CompactionSchedulerTest {
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
+        }
+        if (totalWaitingTime % 10_000 == 0) {
+          logger.warn(
+              "sequence file num is {}, unsequence file num is {}",
+              tsFileResourceManager.getTsFileList(true).size(),
+              tsFileResourceManager.getTsFileList(false).size());
+        }
+        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          CompactionScheduler.scheduleCompaction(tsFileResourceManager, 0);
         }
       } catch (InterruptedException e) {
         e.printStackTrace();
