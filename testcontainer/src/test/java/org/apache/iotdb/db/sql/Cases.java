@@ -531,6 +531,7 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaInClusterMode()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    session.setEnableCacheLeader(false);
     List<String> measurement_list = new ArrayList<>();
     measurement_list.add("s1");
     measurement_list.add("s2");

@@ -1909,6 +1909,10 @@ public class Session {
     this.enableQueryRedirection = enableQueryRedirection;
   }
 
+  public void setEnableCacheLeader(boolean enableCacheLeader) {
+    this.enableCacheLeader = enableCacheLeader;
+  }
+
   public static class Builder {
     private String host = Config.DEFAULT_HOST;
     private int rpcPort = Config.DEFAULT_PORT;
