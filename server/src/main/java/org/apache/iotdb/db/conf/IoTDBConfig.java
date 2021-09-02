@@ -606,7 +606,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /** whether enable MTree snapshot */
   private boolean enableMTreeSnapshot = false;
@@ -621,7 +621,7 @@ public class IoTDBConfig {
   private int mtreeSnapshotThresholdTime = 3600;
 
   /** Time range for partitioning data inside each storage group, the unit is second */
-  private long partitionInterval = 604800;
+  private long partitionInterval = 10;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,

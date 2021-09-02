@@ -421,6 +421,9 @@ public class TsFileRewriteTool implements AutoCloseable {
       }
       batchData.next();
     }
+    partitionChunkWriterMap.values().forEach(writer -> {
+      writer.sealCurrentPage();
+    });
   }
 
   /** check if the file has correct magic strings and version number */
