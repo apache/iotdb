@@ -995,7 +995,7 @@ Numbers and English characters: ^[A-Za-z0-9]+$
 Beginning with a: ^a.*
 ```
 
-更多语法请参照 [SQL REFERENCE](../Appendix/SQL-Reference.md).
+For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
