@@ -924,7 +924,78 @@ Total line number = 2
 It costs 0.002s
 ```
 
+### Fuzzy query
 
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of Text type data
+
+Like statement：
+
+Example 1: Query data containing c in value under root.sg.device,% means any 0 or more characters
+
+```
+IoTDB> select * from root.sg.device where value like '%cc%'
++-----------------------------+-----------------------------+
+|                         Time|         root.sg.device.value|
++-----------------------------+-----------------------------+
+|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                           cc|
++-----------------------------+-----------------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query root.sg.device The middle of the value value is b, before and after it is a single character, _ means any single character
+```
+IoTDB> select * from root.sg.device where value like '_b_'
++-----------------------------+-----------------------------+
+|                         Time|         root.sg.device.value|
++-----------------------------+-----------------------------+
+|2017-11-07T23:59:00.000+08:00|                          abc| 
++-----------------------------+-----------------------------+
+Total line number = 1
+It costs 0.002s
+```
+
+Regexp statement：
+
+The filter conditions that need to be passed in are regular expressions in the Java standard library style
+
+Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+```
+IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
++-----------------------------+-----------------------------+
+|                         Time|         root.sg.device.value|
++-----------------------------+-----------------------------+
+|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                           cc|
++-----------------------------+-----------------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+```
+IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
++-----------------------------+-----------------------------+
+|                         Time|         root.sg.device.value|
++-----------------------------+-----------------------------+
+|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                           cc|
++-----------------------------+-----------------------------+
+Total line number = 2
+It costs 0.002s
+```
+
+Examples of common regular matching:
+
+```
+All characters with a length of 3-20: ^.{3,20}$
+Uppercase english characters: ^[A-Z]+$
+Numbers and English characters: ^[A-Za-z0-9]+$
+Beginning with a: ^a.*
+```
+
+更多语法请参照 [SQL REFERENCE](../Appendix/SQL-Reference.md).
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
