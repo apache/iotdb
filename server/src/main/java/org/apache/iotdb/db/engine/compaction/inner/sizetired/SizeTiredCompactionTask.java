@@ -106,7 +106,8 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList).getName();
+        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList, sequence)
+            .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
     LOGGER.info(

@@ -162,29 +162,44 @@ public class TsFileNameGenerator {
             + TSFILE_SUFFIX);
   }
 
-  public static File getInnerCompactionFileName(List<TsFileResource> tsFileResources)
-      throws IOException {
+  public static File getInnerCompactionFileName(
+      List<TsFileResource> tsFileResources, boolean sequence) throws IOException {
     long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
     long minVersion = Long.MAX_VALUE;
+    long maxVersion = Long.MIN_VALUE;
     long maxInnerMergeCount = Long.MIN_VALUE;
     long maxCrossMergeCount = Long.MIN_VALUE;
     for (TsFileResource resource : tsFileResources) {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       minTime = Math.min(tsFileName.time, minTime);
+      maxTime = Math.max(tsFileName.time, maxTime);
       minVersion = Math.min(tsFileName.version, minVersion);
+      maxVersion = Math.max(tsFileName.version, maxVersion);
       maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
       maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
     }
-    return new File(
-        tsFileResources.get(0).getTsFile().getParent(),
-        minTime
-            + FILE_NAME_SEPARATOR
-            + minVersion
-            + FILE_NAME_SEPARATOR
-            + (maxInnerMergeCount + 1)
-            + FILE_NAME_SEPARATOR
-            + maxCrossMergeCount
-            + TSFILE_SUFFIX);
+    return sequence
+        ? new File(
+            tsFileResources.get(0).getTsFile().getParent(),
+            minTime
+                + FILE_NAME_SEPARATOR
+                + minVersion
+                + FILE_NAME_SEPARATOR
+                + (maxInnerMergeCount + 1)
+                + FILE_NAME_SEPARATOR
+                + maxCrossMergeCount
+                + TSFILE_SUFFIX)
+        : new File(
+            tsFileResources.get(0).getTsFile().getParent(),
+            maxTime
+                + FILE_NAME_SEPARATOR
+                + maxVersion
+                + FILE_NAME_SEPARATOR
+                + (maxInnerMergeCount + 1)
+                + FILE_NAME_SEPARATOR
+                + maxCrossMergeCount
+                + TSFILE_SUFFIX);
   }
 
   public static class TsFileName {

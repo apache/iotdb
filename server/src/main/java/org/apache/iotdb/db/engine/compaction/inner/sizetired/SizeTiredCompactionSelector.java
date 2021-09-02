@@ -138,7 +138,8 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         if (selectedFileSize >= targetCompactionFileSize
             || selectedFileList.size() >= config.getMaxCompactionCandidateFileNum()) {
           LOGGER.debug(
-              "Submit a compaction task because {}",
+              "Submit a {} inner space compaction task because {}",
+              sequence ? "sequence" : "unsequence",
               selectedFileSize > targetCompactionFileSize ? "file size enough" : "file num enough");
           // submit the task
           createAndSubmitTask(selectedFileList);
