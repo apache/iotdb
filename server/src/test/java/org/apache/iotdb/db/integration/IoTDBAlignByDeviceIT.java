@@ -844,7 +844,8 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select *, '11' from root.vehicle.** align by device");
+      boolean hasResultSet =
+          statement.execute("select *, '11' from root.vehicle.** align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

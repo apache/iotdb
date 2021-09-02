@@ -99,8 +99,8 @@ public class PartialPathTest {
     Assert.assertFalse(p1.matchFullPath(new PartialPath("")));
 
     PartialPath path = new PartialPath("root.sg.d.s");
-    String[] patterns={"root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s"};
-    for(String pattern:patterns){
+    String[] patterns = {"root.**", "root.**.s", "root.sg.*.s", "root.*.*.*", "root.sg.d.s"};
+    for (String pattern : patterns) {
       Assert.assertTrue(new PartialPath(pattern).matchFullPath(path));
     }
   }

@@ -101,7 +101,8 @@ public class InsertRowPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
 
-    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {

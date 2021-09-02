@@ -967,7 +967,8 @@ public class IoTDBTagIT {
       assertEquals(ret, res);
       assertEquals(ret.size(), count);
 
-      hasResult = statement.execute("show timeseries root.ln.** where description contains 'test1'");
+      hasResult =
+          statement.execute("show timeseries root.ln.** where description contains 'test1'");
       assertTrue(hasResult);
       count = 0;
       res.clear();

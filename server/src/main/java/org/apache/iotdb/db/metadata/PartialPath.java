@@ -140,50 +140,46 @@ public class PartialPath extends Path implements Comparable<Path> {
   }
 
   /**
-   * Test if this PartialPath matches a full path.
-   * This partialPath acts as a full path pattern.
-   * rPath is supposed to be a full timeseries path without wildcards.
-   * e.g. "root.sg.device.*" matches path "root.sg.device.s1"
-   * whereas it does not match "root.sg.device" and "root.sg.vehicle.s1"
+   * Test if this PartialPath matches a full path. This partialPath acts as a full path pattern.
+   * rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg.device.*"
+   * matches path "root.sg.device.s1" whereas it does not match "root.sg.device" and
+   * "root.sg.vehicle.s1"
    *
    * @param rPath a plain full path of a timeseries
    * @return true if a successful match, otherwise return false
    */
   public boolean matchFullPath(PartialPath rPath) {
-    return matchFullPath(rPath.getNodes(),0,0,false);
+    return matchFullPath(rPath.getNodes(), 0, 0, false);
   }
 
   private boolean matchFullPath(
-          String[] pathNodes,
-          int pathIndex,
-          int patternIndex,
-          boolean multiLevelWild){
-    if(pathIndex == pathNodes.length && patternIndex == nodes.length){
+      String[] pathNodes, int pathIndex, int patternIndex, boolean multiLevelWild) {
+    if (pathIndex == pathNodes.length && patternIndex == nodes.length) {
       return true;
-    }else if(patternIndex == nodes.length && multiLevelWild){
-      return matchFullPath(pathNodes,pathIndex + 1, patternIndex, true);
-    }else if(pathIndex >= pathNodes.length || patternIndex>= nodes.length){
+    } else if (patternIndex == nodes.length && multiLevelWild) {
+      return matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
+    } else if (pathIndex >= pathNodes.length || patternIndex >= nodes.length) {
       return false;
     }
 
     String pathNode = pathNodes[pathIndex];
     String patternNode = nodes[patternIndex];
     boolean isMatch = false;
-    if(patternNode.equals(PATH_MULTI_LEVEL_WILDCARD)){
+    if (patternNode.equals(PATH_MULTI_LEVEL_WILDCARD)) {
       isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, true);
-    }else{
-      if(patternNode.contains(PATH_ONE_LEVEL_WILDCARD)){
-        if(Pattern.matches(patternNode.replace("*", ".*"), pathNode)){
+    } else {
+      if (patternNode.contains(PATH_ONE_LEVEL_WILDCARD)) {
+        if (Pattern.matches(patternNode.replace("*", ".*"), pathNode)) {
           isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
         }
-      }else{
-        if(patternNode.equals(pathNode)){
+      } else {
+        if (patternNode.equals(pathNode)) {
           isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex + 1, false);
         }
       }
 
-      if(!isMatch && multiLevelWild){
-        isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex,true);
+      if (!isMatch && multiLevelWild) {
+        isMatch = matchFullPath(pathNodes, pathIndex + 1, patternIndex, true);
       }
     }
     return isMatch;

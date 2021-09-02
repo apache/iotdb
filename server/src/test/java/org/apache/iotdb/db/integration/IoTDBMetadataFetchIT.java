@@ -438,7 +438,9 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "COUNT DEVICES root.ln.**", "COUNT DEVICES", "COUNT DEVICES root.ln.wf01.wt01.temperature"
+            "COUNT DEVICES root.ln.**",
+            "COUNT DEVICES",
+            "COUNT DEVICES root.ln.wf01.wt01.temperature"
           };
       String[] standards = new String[] {"1,\n", "1,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {

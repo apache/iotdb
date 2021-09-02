@@ -227,7 +227,8 @@ public class IoTDBQueryDemoIT {
       // test 1: fetchSize < limitNumber
       statement.setFetchSize(4);
       Assert.assertEquals(4, statement.getFetchSize());
-      boolean hasResultSet = statement.execute("select ** from root where time>10 limit 5 offset 3");
+      boolean hasResultSet =
+          statement.execute("select ** from root where time>10 limit 5 offset 3");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();

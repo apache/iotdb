@@ -714,7 +714,8 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(-mtree.getAllTimeseriesCount(storageGroup.concatNode(PATH_MULTI_LEVEL_WILDCARD)));
+        totalSeriesNumber.addAndGet(
+            -mtree.getAllTimeseriesCount(storageGroup.concatNode(PATH_MULTI_LEVEL_WILDCARD)));
         // clear cached MNode
         if (!allowToCreateNewSeries
             && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {

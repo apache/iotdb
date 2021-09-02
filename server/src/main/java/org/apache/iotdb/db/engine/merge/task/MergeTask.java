@@ -45,8 +45,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
-
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
  * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
@@ -147,7 +145,8 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<PartialPath> devices = IoTDB.metaManager.getDevicesByPrefix(new PartialPath(storageGroupName));
+    Set<PartialPath> devices =
+        IoTDB.metaManager.getDevicesByPrefix(new PartialPath(storageGroupName));
     Map<PartialPath, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<PartialPath> unmergedSeries = new ArrayList<>();
     for (PartialPath device : devices) {

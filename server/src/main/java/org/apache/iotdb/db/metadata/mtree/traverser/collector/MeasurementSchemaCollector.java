@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -13,74 +31,77 @@ import java.util.List;
 
 import static org.apache.iotdb.db.metadata.mtree.MTree.getLastTimeStamp;
 
-public class MeasurementSchemaCollector extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
+public class MeasurementSchemaCollector
+    extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
 
-    QueryContext queryContext;
+  QueryContext queryContext;
 
-    public MeasurementSchemaCollector(IMNode startNode, String[] nodes, List<Pair<PartialPath, String[]>> resultSet) {
-        super(startNode, nodes, resultSet);
+  public MeasurementSchemaCollector(
+      IMNode startNode, String[] nodes, List<Pair<PartialPath, String[]>> resultSet) {
+    super(startNode, nodes, resultSet);
+  }
+
+  public MeasurementSchemaCollector(
+      IMNode startNode,
+      String[] nodes,
+      List<Pair<PartialPath, String[]>> resultSet,
+      int limit,
+      int offset) {
+    super(startNode, nodes, resultSet, limit, offset);
+  }
+
+  public void setQueryContext(QueryContext queryContext) {
+    this.queryContext = queryContext;
+  }
+
+  @Override
+  protected void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException {
+    IMeasurementSchema measurementSchema = node.getSchema();
+    String[] tsRow = new String[7];
+    tsRow[0] = node.getAlias();
+    tsRow[1] = getStorageGroupPath(node).getFullPath();
+    tsRow[2] = measurementSchema.getType().toString();
+    tsRow[3] = measurementSchema.getEncodingType().toString();
+    tsRow[4] = measurementSchema.getCompressor().toString();
+    tsRow[5] = String.valueOf(node.getOffset());
+    tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+    Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
+    resultSet.add(temp);
+  }
+
+  @Override
+  protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
+      throws MetadataException {
+    IMeasurementSchema schema = node.getSchema();
+    List<String> measurements = schema.getValueMeasurementIdList();
+    String[] tsRow = new String[7];
+    tsRow[0] = null;
+    tsRow[1] = getStorageGroupPath(node).getFullPath();
+    tsRow[2] = schema.getValueTSDataTypeList().get(index).toString();
+    tsRow[3] = schema.getValueTSEncodingList().get(index).toString();
+    tsRow[4] = schema.getCompressor().toString();
+    tsRow[5] = "-1";
+    tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
+    Pair<PartialPath, String[]> temp =
+        new Pair<>(node.getPartialPath().concatNode(measurements.get(index)), tsRow);
+    resultSet.add(temp);
+  }
+
+  private PartialPath getStorageGroupPath(IMeasurementMNode node)
+      throws StorageGroupNotSetException {
+    if (node == null) {
+      return null;
     }
-
-    public MeasurementSchemaCollector(IMNode startNode, String[] nodes, List<Pair<PartialPath, String[]>> resultSet, int limit, int offset) {
-        super(startNode, nodes, resultSet, limit, offset);
+    IMNode temp = node;
+    while (temp != null) {
+      if (temp.isStorageGroup()) {
+        break;
+      }
+      temp = temp.getParent();
     }
-
-    public void setQueryContext(QueryContext queryContext) {
-        this.queryContext = queryContext;
+    if (temp == null) {
+      throw new StorageGroupNotSetException(node.getFullPath());
     }
-
-    @Override
-    protected void collectMeasurementSchema(IMeasurementMNode node) throws MetadataException {
-        IMeasurementSchema measurementSchema = node.getSchema();
-        String[] tsRow = new String[7];
-        tsRow[0] = node.getAlias();
-        tsRow[1] = getStorageGroupPath(node).getFullPath();
-        tsRow[2] = measurementSchema.getType().toString();
-        tsRow[3] = measurementSchema.getEncodingType().toString();
-        tsRow[4] = measurementSchema.getCompressor().toString();
-        tsRow[5] = String.valueOf(node.getOffset());
-        tsRow[6] =
-                needLast
-                        ? String.valueOf(getLastTimeStamp(node, queryContext))
-                        : null;
-        Pair<PartialPath, String[]> temp = new Pair<>(node.getPartialPath(), tsRow);
-        resultSet.add(temp);
-    }
-
-    @Override
-    protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index) throws MetadataException {
-        IMeasurementSchema schema = node.getSchema();
-        List<String> measurements = schema.getValueMeasurementIdList();
-        String[] tsRow = new String[7];
-        tsRow[0] = null;
-        tsRow[1] = getStorageGroupPath(node).getFullPath();
-        tsRow[2] = schema.getValueTSDataTypeList().get(index).toString();
-        tsRow[3] = schema.getValueTSEncodingList().get(index).toString();
-        tsRow[4] = schema.getCompressor().toString();
-        tsRow[5] = "-1";
-        tsRow[6] =
-                needLast
-                        ? String.valueOf(getLastTimeStamp(node, queryContext))
-                        : null;
-        Pair<PartialPath, String[]> temp =
-                new Pair<>(node.getPartialPath().concatNode(measurements.get(index)), tsRow);
-        resultSet.add(temp);
-    }
-
-    private PartialPath getStorageGroupPath(IMeasurementMNode node) throws StorageGroupNotSetException {
-        if (node == null) {
-            return null;
-        }
-        IMNode temp = node;
-        while (temp != null) {
-            if (temp.isStorageGroup()) {
-                break;
-            }
-            temp = temp.getParent();
-        }
-        if (temp == null) {
-            throw new StorageGroupNotSetException(node.getFullPath());
-        }
-        return temp.getPartialPath();
-    }
+    return temp.getPartialPath();
+  }
 }
