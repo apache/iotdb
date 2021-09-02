@@ -149,16 +149,26 @@ public class ImportCsv extends AbstractCsvTool {
           useFormatter = (timeFormatter != null);
         }
         for (Entry<String, List<Integer>> deviceToPositions : devicesToPositions.entrySet()) {
-          String device = deviceToPositions.getKey();
-          devices.add(device);
-
-          times.add(parseTime(cols[0], useFormatter, timeFormatter));
-
           List<String> values = new ArrayList<>();
           for (int position : deviceToPositions.getValue()) {
             values.add(cols[position]);
           }
+          boolean isAllBlank = true;
+          for (String value : values) {
+            if (value != null && !"".equals(value)) {
+              isAllBlank = false;
+              break;
+            }
+          }
+          if (isAllBlank) {
+            continue;
+          }
           valuesList.add(values);
+
+          String device = deviceToPositions.getKey();
+          devices.add(device);
+
+          times.add(parseTime(cols[0], useFormatter, timeFormatter));
 
           measurementsList.add(devicesToMeasurements.get(device));
         }
@@ -182,7 +192,9 @@ public class ImportCsv extends AbstractCsvTool {
       }
       // TODO change it to insertTablet, now is slow
       try {
-        session.insertRecords(devices, times, measurementsList, valuesList);
+        if (lineNumber % 10000 != 0) {
+          session.insertRecords(devices, times, measurementsList, valuesList);
+        }
       } catch (StatementExecutionException e) {
         if (e.getMessage().contains("failed to insert measurements")) {
           System.out.println("Meet error when insert csv because " + e.getMessage());
