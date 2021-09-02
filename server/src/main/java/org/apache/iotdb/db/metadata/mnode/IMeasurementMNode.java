@@ -49,7 +49,7 @@ public interface IMeasurementMNode extends IMNode {
 
   void setTriggerExecutor(TriggerExecutor triggerExecutor);
 
-  ILastCacheContainer getLastCacheEntry();
+  ILastCacheContainer getLastCacheContainer();
 
-  void setLastCacheEntry(ILastCacheContainer lastCacheEntry);
+  void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
 }

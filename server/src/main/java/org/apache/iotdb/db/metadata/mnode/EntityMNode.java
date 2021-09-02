@@ -115,7 +115,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
     this.useTemplate = useTemplate;
   }
 
-  public ILastCacheContainer getLastCacheEntry(String measurementId) {
+  public ILastCacheContainer getLastCacheContainer(String measurementId) {
     checkLastCacheMap();
     return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheContainer());
   }

@@ -60,17 +60,17 @@ public class LastCacheManager {
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
-      return lastCacheEntry.getCachedLast();
+      return lastCacheContainer.getCachedLast();
     } else {
       String measurementId = seriesPath.getMeasurement();
       if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        return lastCacheEntry.getCachedLast();
+        return lastCacheContainer.getCachedLast();
       } else {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
-          return lastCacheEntry.getCachedLast(
+          return lastCacheContainer.getCachedLast(
               schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
         }
         return null;
@@ -100,20 +100,20 @@ public class LastCacheManager {
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
-      lastCacheEntry.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     } else {
       String measurementId = seriesPath.getMeasurement();
       if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheEntry.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+        lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       } else {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheEntry.isEmpty()) {
-            lastCacheEntry.init(schema.getMeasurementCount());
+          if (lastCacheContainer.isEmpty()) {
+            lastCacheContainer.init(schema.getMeasurementCount());
           }
-          lastCacheEntry.updateCachedLast(
+          lastCacheContainer.updateCachedLast(
               schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()),
               timeValuePair,
               highPriorityUpdate,
@@ -137,20 +137,20 @@ public class LastCacheManager {
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (seriesPath == null) {
-      lastCacheEntry.resetLastCache();
+      lastCacheContainer.resetLastCache();
     } else {
       String measurementId = seriesPath.getMeasurement();
       if (measurementId.equals(node.getName()) || measurementId.equals(node.getAlias())) {
-        lastCacheEntry.resetLastCache();
+        lastCacheContainer.resetLastCache();
       } else {
         IMeasurementSchema schema = node.getSchema();
         if (schema instanceof VectorMeasurementSchema) {
-          if (lastCacheEntry.isEmpty()) {
-            lastCacheEntry.init(schema.getMeasurementCount());
+          if (lastCacheContainer.isEmpty()) {
+            lastCacheContainer.init(schema.getMeasurementCount());
           }
-          lastCacheEntry.resetLastCache(
+          lastCacheContainer.resetLastCache(
               schema.getMeasurementIdColumnIndex(seriesPath.getMeasurement()));
         }
       }
@@ -167,12 +167,12 @@ public class LastCacheManager {
 
     // if entityMNode doesn't have this child, the child is derived from template
     if (!entityMNode.hasChild(measurement)) {
-      ILastCacheContainer lastCacheEntry = entityMNode.getLastCacheEntry(measurement);
+      ILastCacheContainer lastCacheContainer = entityMNode.getLastCacheContainer(measurement);
       IMeasurementSchema schema = node.getSchema();
-      if (lastCacheEntry.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
-        lastCacheEntry.init(schema.getMeasurementCount());
+      if (lastCacheContainer.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
+        lastCacheContainer.init(schema.getMeasurementCount());
       }
-      node.setLastCacheEntry(lastCacheEntry);
+      node.setLastCacheContainer(lastCacheContainer);
     }
   }
 
@@ -185,7 +185,7 @@ public class LastCacheManager {
     // process lastCache of timeseries represented by measurementNode
     for (IMNode measurementNode : node.getChildren().values()) {
       if (measurementNode != null) {
-        ((IMeasurementMNode) measurementNode).getLastCacheEntry().resetLastCache();
+        ((IMeasurementMNode) measurementNode).getLastCacheContainer().resetLastCache();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[tryToDeleteLastCacheByDevice] Last cache for path: {} is set to null",
@@ -217,7 +217,7 @@ public class LastCacheManager {
       IEntityMNode node, PartialPath originalPath, long startTime, long endTime) {
     PartialPath path;
     IMeasurementSchema schema;
-    ILastCacheContainer lastCacheEntry;
+    ILastCacheContainer lastCacheContainer;
 
     // process lastCache of timeseries represented by measurementNode
     IMeasurementMNode measurementMNode;
@@ -228,12 +228,12 @@ public class LastCacheManager {
       path = child.getPartialPath();
       measurementMNode = (IMeasurementMNode) child;
       if (originalPath.matchFullPath(path)) {
-        lastCacheEntry = measurementMNode.getLastCacheEntry();
-        if (lastCacheEntry == null) {
+        lastCacheContainer = measurementMNode.getLastCacheContainer();
+        if (lastCacheContainer == null) {
           continue;
         }
         schema = measurementMNode.getSchema();
-        deleteLastCache(path, schema, lastCacheEntry, startTime, endTime);
+        deleteLastCache(path, schema, lastCacheContainer, startTime, endTime);
       }
     }
 
@@ -242,12 +242,12 @@ public class LastCacheManager {
     for (Map.Entry<String, ILastCacheContainer> entry : node.getTemplateLastCaches().entrySet()) {
       path = node.getPartialPath().concatNode(entry.getKey());
       if (originalPath.matchFullPath(path)) {
-        lastCacheEntry = entry.getValue();
-        if (lastCacheEntry == null) {
+        lastCacheContainer = entry.getValue();
+        if (lastCacheContainer == null) {
           continue;
         }
         schema = template.getSchemaMap().get(entry.getKey());
-        deleteLastCache(path, schema, lastCacheEntry, startTime, endTime);
+        deleteLastCache(path, schema, lastCacheContainer, startTime, endTime);
       }
     }
   }
@@ -255,7 +255,7 @@ public class LastCacheManager {
   private static void deleteLastCache(
       PartialPath path,
       IMeasurementSchema schema,
-      ILastCacheContainer lastCacheEntry,
+      ILastCacheContainer lastCacheContainer,
       long startTime,
       long endTime) {
     TimeValuePair lastPair;
@@ -263,11 +263,11 @@ public class LastCacheManager {
       int index;
       for (String measurement : schema.getValueMeasurementIdList()) {
         index = schema.getMeasurementIdColumnIndex(measurement);
-        lastPair = lastCacheEntry.getCachedLast(index);
+        lastPair = lastCacheContainer.getCachedLast(index);
         if (lastPair != null
             && startTime <= lastPair.getTimestamp()
             && lastPair.getTimestamp() <= endTime) {
-          lastCacheEntry.resetLastCache(index);
+          lastCacheContainer.resetLastCache(index);
           if (logger.isDebugEnabled()) {
             logger.debug(
                 "[tryToDeleteLastCache] Last cache for path: {} is set to null",
@@ -276,11 +276,11 @@ public class LastCacheManager {
         }
       }
     } else {
-      lastPair = lastCacheEntry.getCachedLast();
+      lastPair = lastCacheContainer.getCachedLast();
       if (lastPair != null
           && startTime <= lastPair.getTimestamp()
           && lastPair.getTimestamp() <= endTime) {
-        lastCacheEntry.resetLastCache();
+        lastCacheContainer.resetLastCache();
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());

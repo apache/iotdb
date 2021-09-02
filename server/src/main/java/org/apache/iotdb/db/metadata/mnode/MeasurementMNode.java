@@ -56,7 +56,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
 
   /** last value cache */
-  private volatile ILastCacheContainer lastCacheEntry = null;
+  private volatile ILastCacheContainer lastCacheContainer = null;
 
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
@@ -154,20 +154,20 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public ILastCacheContainer getLastCacheEntry() {
-    if (lastCacheEntry == null) {
+  public ILastCacheContainer getLastCacheContainer() {
+    if (lastCacheContainer == null) {
       synchronized (this) {
-        if (lastCacheEntry == null) {
-          lastCacheEntry = new LastCacheContainer();
+        if (lastCacheContainer == null) {
+          lastCacheContainer = new LastCacheContainer();
         }
       }
     }
-    return lastCacheEntry;
+    return lastCacheContainer;
   }
 
   @Override
-  public void setLastCacheEntry(ILastCacheContainer lastCacheEntry) {
-    this.lastCacheEntry = lastCacheEntry;
+  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
+    this.lastCacheContainer = lastCacheContainer;
   }
 
   @Override

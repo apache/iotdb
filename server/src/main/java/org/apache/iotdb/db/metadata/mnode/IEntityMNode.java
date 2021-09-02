@@ -36,7 +36,7 @@ public interface IEntityMNode extends IMNode {
 
   void setUseTemplate(boolean useTemplate);
 
-  ILastCacheContainer getLastCacheEntry(String measurementId);
+  ILastCacheContainer getLastCacheContainer(String measurementId);
 
   Map<String, ILastCacheContainer> getTemplateLastCaches();
 
