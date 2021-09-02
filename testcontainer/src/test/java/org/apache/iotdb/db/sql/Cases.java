@@ -34,6 +34,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,10 +45,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.fail;
 
@@ -547,5 +547,157 @@ public abstract class Cases {
     }
 
     writeStatement.execute(setWritable);
+  }
+
+  @Test
+  public void testAutoCreateSchemaInClusterMode()
+      throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    session.setEnableCacheLeader(false);
+    List<String> measurement_list = new ArrayList<>();
+    measurement_list.add("s1");
+    measurement_list.add("s2");
+    measurement_list.add("s3");
+
+    List<TSDataType> type_list = new ArrayList<>();
+    type_list.add(TSDataType.INT64);
+    type_list.add(TSDataType.INT64);
+    type_list.add(TSDataType.INT64);
+
+    List<Object> value_list = new ArrayList<>();
+    value_list.add(1L);
+    value_list.add(2L);
+    value_list.add(3L);
+
+    for (int i = 0; i < 5; i++) {
+      String sg = "root.sg" + String.valueOf(i);
+      session.setStorageGroup(sg);
+      for (int j = 0; j < 10; j++) {
+        session.createTimeseries(
+            String.format("%s.d1.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d2.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d3.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+        session.createTimeseries(
+            String.format("%s.d4.s%s", sg, j),
+            TSDataType.INT64,
+            TSEncoding.RLE,
+            CompressionType.SNAPPY);
+      }
+    }
+
+    // step 1: insert into existing time series.
+    for (int i = 0; i < 5; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+      }
+    }
+
+    List<List<String>> measurements_list = new ArrayList<>();
+    List<List<Object>> values_list = new ArrayList<>();
+    List<List<TSDataType>> types_List = new ArrayList<>();
+    List<String> device_list = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      String device_path = String.format("root.sg%s.d2", i);
+      device_list.add(device_path);
+      types_List.add(type_list);
+      measurements_list.add(measurement_list);
+      values_list.add(value_list);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> time_list = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        time_list.add(t);
+      }
+      session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
+    }
+
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
+
+    Map<String, Tablet> tabletMap = new HashMap<>();
+    for (int i = 0; i < 5; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1L);
+        tablet.addValue("s2", rowIndex, 2L);
+        tablet.addValue("s3", rowIndex, 3L);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    // step 2: test auto create sg and time series schema
+    for (int i = 5; i < 10; i++) {
+      for (long t = 0; t < 3; t++) {
+        session.insertRecord(
+            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+      }
+    }
+
+    device_list.clear();
+    for (int i = 5; i < 10; i++) {
+      String device_path = String.format("root.sg%s.d2", i);
+      device_list.add(device_path);
+    }
+
+    for (long t = 0; t < 3; t++) {
+      List<Long> time_list = new ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        time_list.add(t);
+      }
+      session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
+    }
+
+    tabletMap.clear();
+    for (int i = 5; i < 10; i++) {
+      Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, row);
+        tablet.addValue("s1", rowIndex, 1L);
+        tablet.addValue("s2", rowIndex, 2L);
+        tablet.addValue("s3", rowIndex, 3L);
+      }
+      session.insertTablet(tablet);
+      tablet.setPrefixPath(String.format("root.sg%s.d4", i));
+      tabletMap.put(String.format("root.sg%s.d4", i), tablet);
+    }
+
+    session.insertTablets(tabletMap);
+
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; i++) {
+        for (int d = 1; d <= 4; d++) {
+          ResultSet resultSet =
+              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+          for (long t = 0; t < 3; t++) {
+            Assert.assertTrue(resultSet.next());
+            Assert.assertEquals(resultSet.getLong(1), t);
+            Assert.assertEquals(resultSet.getString(2), "1");
+            Assert.assertEquals(resultSet.getString(3), "2");
+            Assert.assertEquals(resultSet.getString(4), "3");
+          }
+        }
+      }
+    }
   }
 }
