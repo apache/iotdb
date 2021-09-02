@@ -966,12 +966,12 @@ The filter conditions that need to be passed in are regular expressions in the J
 Example 1: Query a string composed of 26 English characters for the value under root.sg.device
 ```
 IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
-+-----------------------------+-----------------------------+
-|                         Time|         root.sg.device.value|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                           cc|
-+-----------------------------+-----------------------------+
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
 Total line number = 2
 It costs 0.002s
 ```
@@ -979,12 +979,12 @@ It costs 0.002s
 Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
 ```
 IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
-+-----------------------------+-----------------------------+
-|                         Time|         root.sg.device.value|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                           cc|
-+-----------------------------+-----------------------------+
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
 Total line number = 2
 It costs 0.002s
 ```
