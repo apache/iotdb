@@ -168,7 +168,7 @@ public class IoTDBDeletionIT {
               + " WHERE time <= 350");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 150");
 
-      try (ResultSet set = statement.executeQuery("SELECT ** FROM root.vehicle.d0")) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
@@ -207,7 +207,7 @@ public class IoTDBDeletionIT {
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
-      try (ResultSet set = statement.executeQuery("SELECT ** FROM root.vehicle.d0")) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
@@ -216,7 +216,7 @@ public class IoTDBDeletionIT {
       }
 
       // after merge completes
-      try (ResultSet set = statement.executeQuery("SELECT ** FROM root.vehicle.d0")) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
@@ -277,7 +277,7 @@ public class IoTDBDeletionIT {
       }
 
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time > 50 and time <= 250");
-      try (ResultSet set = statement.executeQuery("SELECT ** FROM root.vehicle.d0")) {
+      try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;

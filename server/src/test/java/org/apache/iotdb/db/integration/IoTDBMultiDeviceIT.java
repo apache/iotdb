@@ -238,10 +238,9 @@ public class IoTDBMultiDeviceIT {
     }
   }
 
-  // "select ** from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
-    String selectSql = "select ** from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -269,10 +268,9 @@ public class IoTDBMultiDeviceIT {
     }
   }
 
-  // "select ** from root.vehicle" : test select wild data
   @Test
   public void selectAfterDeleteTest() throws ClassNotFoundException {
-    String selectSql = "select ** from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

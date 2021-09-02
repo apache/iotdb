@@ -94,7 +94,7 @@ public class IoTDBTimeZoneIT {
    * root.timezone(timestamp,tz1) values(2018-1-1T13:00:09+08:00,12) insert into
    * root.timezone(timestamp,tz1) values(2018-1-1T12:00:10+07:00,13)
    *
-   * <p>select ** from root
+   * <p>select * from root.**
    */
   @Test
   public void timezoneTest() throws ClassNotFoundException, SQLException, TException {
@@ -127,7 +127,7 @@ public class IoTDBTimeZoneIT {
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:10+07:00", "13"));
 
-      boolean hasResultSet = statement.execute("select ** from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       Assert.assertTrue(hasResultSet);
 
       ResultSet resultSet = statement.getResultSet();

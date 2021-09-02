@@ -437,7 +437,7 @@ public class IoTDBSeriesReaderIT {
     Statement statement = connection.createStatement();
     statement.execute(
         "CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
-    ResultSet resultSet = statement.executeQuery("select ** from root.vehicle.d_empty");
+    ResultSet resultSet = statement.executeQuery("select * from root.vehicle.d_empty");
     try {
       assertFalse(resultSet.next());
     } finally {

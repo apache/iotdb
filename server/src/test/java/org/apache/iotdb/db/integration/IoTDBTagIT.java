@@ -367,7 +367,7 @@ public class IoTDBTagIT {
               + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)");
 
       boolean hasResult =
-          statement.execute("show timeseries root.turbine.d1.* where tag1=v1 limit 2 offset 1");
+          statement.execute("show timeseries root.turbine.d1.** where tag1=v1 limit 2 offset 1");
       assertTrue(hasResult);
       int count = 0;
       try (ResultSet resultSet = statement.getResultSet()) {

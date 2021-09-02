@@ -473,7 +473,7 @@ public class IoTDBInsertWithQueryIT {
 
   // test count
   private void selectAndCount(int res) throws ClassNotFoundException {
-    String selectSql = "select ** from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -503,7 +503,7 @@ public class IoTDBInsertWithQueryIT {
 
   // test order
   private void select() throws ClassNotFoundException {
-    String selectSql = "select ** from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

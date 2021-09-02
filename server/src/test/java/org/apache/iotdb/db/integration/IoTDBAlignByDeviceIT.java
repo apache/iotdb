@@ -162,7 +162,7 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select ** from root.vehicle.** align by device");
+      boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -407,7 +407,7 @@ public class IoTDBAlignByDeviceIT {
       // single device
       boolean hasResultSet =
           statement.execute(
-              "select ** from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device");
+              "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -625,7 +625,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select ** from root.vehicle.** where time = 3 Fill(int32[previous, 5ms]) align by device");
+              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1236,7 +1236,7 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select ** from root.vehicle.d* align by device");
+      boolean hasResultSet = statement.execute("select * from root.vehicle.d* align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1290,7 +1290,7 @@ public class IoTDBAlignByDeviceIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-          statement.execute("select ** from root.vehicle.* where s1 == 1101 align by device");
+          statement.execute("select * from root.vehicle.* where s1 == 1101 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {

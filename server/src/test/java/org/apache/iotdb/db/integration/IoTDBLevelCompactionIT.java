@@ -90,7 +90,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -275,7 +275,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -336,7 +336,7 @@ public class IoTDBLevelCompactionIT {
       statement.execute("FLUSH");
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -410,7 +410,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -480,7 +480,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -555,7 +555,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -625,7 +625,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -694,7 +694,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -762,7 +762,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -830,7 +830,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -898,7 +898,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -974,7 +974,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -998,7 +998,7 @@ public class IoTDBLevelCompactionIT {
         statement.execute("FLUSH");
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -1071,7 +1071,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -1155,7 +1155,7 @@ public class IoTDBLevelCompactionIT {
       }
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");
@@ -1177,7 +1177,7 @@ public class IoTDBLevelCompactionIT {
         statement.execute("FLUSH");
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SELECT ** FROM root.compactionTest")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.compactionTest")) {
         cnt = 0;
         while (resultSet.next()) {
           long time = resultSet.getLong("Time");

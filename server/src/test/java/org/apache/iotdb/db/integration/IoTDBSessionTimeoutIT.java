@@ -74,7 +74,7 @@ public class IoTDBSessionTimeoutIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       Thread.sleep(SESSION_TIMEOUT / 2);
-      statement.execute("select ** from root.sg.d1");
+      statement.execute("select * from root.sg.d1");
     } catch (Exception e) {
       fail(e.getMessage());
     }

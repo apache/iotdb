@@ -45,7 +45,7 @@ public class TracingManagerTest {
 
   private final String tracingDir = IoTDBDescriptor.getInstance().getConfig().getTracingDir();
   private TracingManager tracingManager;
-  private final String sql = "select ** from root.sg.device1 where time > 10";
+  private final String sql = "select * from root.sg.device1 where time > 10";
   private final long queryId = 10;
 
   private Set<TsFileResource> seqResources = new HashSet<>();

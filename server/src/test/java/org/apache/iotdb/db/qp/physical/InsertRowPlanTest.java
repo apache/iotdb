@@ -101,8 +101,7 @@ public class InsertRowPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(rowPlan);
 
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
@@ -124,7 +123,7 @@ public class InsertRowPlanTest {
         "[vector, vector, vector]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1.vector");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
@@ -203,7 +202,7 @@ public class InsertRowPlanTest {
     executor.insert(rowPlan);
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1.vector");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {

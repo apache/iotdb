@@ -102,7 +102,7 @@ public class IoTDBWithoutAnyNullIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-          statement.execute("select ** from root.testWithoutAnyNull.d1 WITHOUT NULL ANY");
+          statement.execute("select * from root.testWithoutAnyNull.d1 WITHOUT NULL ANY");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -137,7 +137,7 @@ public class IoTDBWithoutAnyNullIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select ** from root.testWithoutAnyNull.d1 WHERE time >= 10 WITHOUT NULL ANY");
+              "select * from root.testWithoutAnyNull.d1 WHERE time >= 10 WITHOUT NULL ANY");
 
       int cnt;
       assertTrue(hasResultSet);
@@ -178,7 +178,7 @@ public class IoTDBWithoutAnyNullIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select ** from root.testWithoutAnyNull.d1 WITHOUT NULL ANY limit 5 offset 1");
+              "select * from root.testWithoutAnyNull.d1 WITHOUT NULL ANY limit 5 offset 1");
 
       assertTrue(hasResultSet);
       int cnt;

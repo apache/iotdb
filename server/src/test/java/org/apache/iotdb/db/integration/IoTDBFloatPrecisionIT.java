@@ -108,7 +108,7 @@ public class IoTDBFloatPrecisionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select ** from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       Assert.assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -139,7 +139,7 @@ public class IoTDBFloatPrecisionIT {
       }
 
       statement.execute("flush");
-      try (ResultSet resultSet = statement.executeQuery("select ** from root")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.**")) {
         cnt = 0;
         while (resultSet.next()) {
           assertEquals(TIMESTAMP + "", resultSet.getString(TIMESTAMP_STR));
