@@ -112,7 +112,6 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         }
         // the file size reach threshold
         // or meet an unelectable file
-        // submit a task
         if (currentFile.getTsFileSize() >= targetCompactionFileSize
             || currentFile.isMerging()
             || !currentFile.isClosed()) {

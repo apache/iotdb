@@ -113,11 +113,14 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           sourceTsFileResources.add(resource);
         }
         try {
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target);
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
           // if not complete compaction, resume merge
           if (writer.hasCrashed()) {
             if (offset > 0) {
-              writer.getIOWriterOut().truncate(offset - 1);
+              if (writer.getFile().length() > offset) {
+                writer.dropLastChunkGroupMetadata();
+              }
+              writer.getIOWriterOut().truncate(offset);
             }
             writer.close();
             CompactionLogger compactionLogger =
