@@ -23,9 +23,9 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 import java.util.List;
 
-public class MultiInputIntermediateLayer implements IntermediateLayer {
+public class MultiInputSingleOutputIntermediateLayer implements IntermediateLayer {
 
-  public MultiInputIntermediateLayer(
+  public MultiInputSingleOutputIntermediateLayer(
       List<LayerPointReader> parentLayerPointReaders, long queryId, float memoryBudgetInMB) {}
 
   @Override
