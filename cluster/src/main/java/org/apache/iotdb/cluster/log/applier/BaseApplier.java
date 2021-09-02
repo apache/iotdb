@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -95,37 +96,41 @@ abstract class BaseApplier implements LogApplier {
   private void handleBatchProcessException(
       BatchProcessException e, InsertPlan plan, DataGroupMember dataGroupMember)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    TSStatus[] failingStatus = e.getFailingStatus();
-    for (int i = 0; i < failingStatus.length; i++) {
-      TSStatus status = failingStatus[i];
-      // skip succeeded plans in later execution
-      if (status != null
-          && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && plan instanceof BatchPlan) {
-        ((BatchPlan) plan).setIsExecuted(i);
-      }
-    }
-
-    boolean needRetry = false, hasError = false;
-    for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
-      TSStatus status = failingStatus[i];
-      if (status != null) {
-        if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePartition()) {
+      TSStatus[] failingStatus = e.getFailingStatus();
+      for (int i = 0; i < failingStatus.length; i++) {
+        TSStatus status = failingStatus[i];
+        // skip succeeded plans in later execution
+        if (status != null
+            && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && plan instanceof BatchPlan) {
-          ((BatchPlan) plan).unsetIsExecuted(i);
-          needRetry = true;
-        } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          hasError = true;
+          ((BatchPlan) plan).setIsExecuted(i);
         }
       }
-    }
-    if (hasError) {
+
+      boolean needRetry = false, hasError = false;
+      for (int i = 0, failingStatusLength = failingStatus.length; i < failingStatusLength; i++) {
+        TSStatus status = failingStatus[i];
+        if (status != null) {
+          if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
+              && plan instanceof BatchPlan) {
+            ((BatchPlan) plan).unsetIsExecuted(i);
+            needRetry = true;
+          } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            hasError = true;
+          }
+        }
+      }
+      if (hasError) {
+        throw e;
+      }
+      if (needRetry) {
+        pullTimeseriesSchema(plan, dataGroupMember.getHeader());
+        plan.recoverFromFailure();
+        getQueryExecutor().processNonQuery(plan);
+      }
+    } else {
       throw e;
-    }
-    if (needRetry) {
-      pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-      plan.recoverFromFailure();
-      getQueryExecutor().processNonQuery(plan);
     }
   }
 
@@ -198,23 +203,25 @@ abstract class BaseApplier implements LogApplier {
     } catch (BatchProcessException e) {
       handleBatchProcessException(e, plan, dataGroupMember);
     } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-      // check if this is caused by metadata missing, if so, pull metadata and retry
-      Throwable metaMissingException = SchemaUtils.findMetaMissingException(e);
-      boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePartition()) {
+        // check if this is caused by metadata missing, if so, pull metadata and retry
+        Throwable metaMissingException = SchemaUtils.findMetaMissingException(e);
+        boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
 
-      if (causedByPathNotExist) {
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "Timeseries is not found locally[{}], try pulling it from another group: {}",
-              metaGroupMember.getName(),
-              e.getCause().getMessage());
+        if (causedByPathNotExist) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(
+                "Timeseries is not found locally[{}], try pulling it from another group: {}",
+                metaGroupMember.getName(),
+                e.getCause().getMessage());
+          }
+          pullTimeseriesSchema(plan, dataGroupMember.getHeader());
+          plan.recoverFromFailure();
+          getQueryExecutor().processNonQuery(plan);
+        } else {
+          throw e;
         }
-        pullTimeseriesSchema(plan, dataGroupMember.getHeader());
-        plan.recoverFromFailure();
-        getQueryExecutor().processNonQuery(plan);
-      } else {
-        throw e;
-      }
+      } else throw e;
     }
   }
 

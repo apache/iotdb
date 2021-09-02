@@ -99,7 +99,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   private static final Logger logger = LoggerFactory.getLogger(DataLogApplierTest.class);
   private boolean partialWriteEnabled;
-
+  private boolean isPartitionEnabled;
   private TestMetaGroupMember testMetaGroupMember =
       new TestMetaGroupMember() {
         @Override
@@ -172,6 +172,8 @@ public class DataLogApplierTest extends IoTDBTest {
     NodeStatusManager.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
     partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
+    isPartitionEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
     testMetaGroupMember.setClientProvider(
         new DataClientProvider(new Factory()) {
           @Override
@@ -254,6 +256,7 @@ public class DataLogApplierTest extends IoTDBTest {
     super.tearDown();
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);
     IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(isPartitionEnabled);
   }
 
   @Test
