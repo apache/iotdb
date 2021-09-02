@@ -926,7 +926,7 @@ It costs 0.002s
 
 ### Fuzzy query
 
-Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of Text type data
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
 
 Like statement：
 
