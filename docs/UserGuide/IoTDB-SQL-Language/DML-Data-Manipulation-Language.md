@@ -926,32 +926,35 @@ It costs 0.002s
 
 ### Fuzzy query
 
-Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of Text type data
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
 
-Like statement：
+Like statement:
 
-Example 1: Query data containing c in value under root.sg.device,% means any 0 or more characters
+Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+The percentage (`%`) wildcard matches any string of zero or more characters.
+
 
 ```
 IoTDB> select * from root.sg.device where value like '%cc%'
-+-----------------------------+-----------------------------+
-|                         Time|         root.sg.device.value|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:59:00.000+08:00|                     aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                           cc|
-+-----------------------------+-----------------------------+
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
+|2017-11-07T23:59:00.000+08:00|                  cc|
++-----------------------------+--------------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-Example 2: Query root.sg.device The middle of the value value is b, before and after it is a single character, _ means any single character
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+The underscore (`_`) wildcard matches any single character.
 ```
 IoTDB> select * from root.sg.device where value like '_b_'
-+-----------------------------+-----------------------------+
-|                         Time|         root.sg.device.value|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:59:00.000+08:00|                          abc| 
-+-----------------------------+-----------------------------+
++-----------------------------+--------------------+
+|                         Time|root.sg.device.value|
++-----------------------------+--------------------+
+|2017-11-07T23:59:00.000+08:00|                 abc| 
++-----------------------------+--------------------+
 Total line number = 1
 It costs 0.002s
 ```
