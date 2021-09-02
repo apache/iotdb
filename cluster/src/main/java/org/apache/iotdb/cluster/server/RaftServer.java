@@ -57,6 +57,13 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class RaftServer implements RaftService.AsyncIface, RaftService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
+
+  // Heartbeat client connection timeout should not be larger than heartbeat interval, otherwise
+  // the thread pool of sending heartbeats or requesting votes may be used up by waiting for
+  // establishing connection with some slow or dead nodes.
+  private static final int heartbeatClientConnTimeoutMs =
+      Math.min((int) RaftServer.getHeartbeatIntervalMs(), RaftServer.getConnectionTimeoutInMS());
+
   private static int connectionTimeoutInMS =
       ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   private static int readOperationTimeoutMS =
@@ -137,6 +144,10 @@ public abstract class RaftServer implements RaftService.AsyncIface, RaftService.
 
   public static void setElectionTimeoutMs(long electionTimeoutMs) {
     RaftServer.electionTimeoutMs = electionTimeoutMs;
+  }
+
+  public static int getHeartbeatClientConnTimeoutMs() {
+    return heartbeatClientConnTimeoutMs;
   }
 
   /**

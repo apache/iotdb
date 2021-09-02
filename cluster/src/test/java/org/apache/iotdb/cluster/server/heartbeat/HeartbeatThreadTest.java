@@ -148,8 +148,7 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() throws Exception {
-    ClusterConstant.setElectionLeastTimeOutMs(200L);
-    ClusterConstant.setElectionRandomTimeOutMs(50L);
+    ClusterConstant.setElectionMaxWaitMs(50L);
     RaftServer.setHeartbeatIntervalMs(100L);
     RaftServer.setElectionTimeoutMs(1000L);
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();

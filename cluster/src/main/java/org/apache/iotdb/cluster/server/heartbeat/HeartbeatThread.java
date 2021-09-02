@@ -70,7 +70,7 @@ public class HeartbeatThread implements Runnable {
   public void run() {
     logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
-    long electionWait = ClusterConstant.getElectionLeastTimeOutMs() + getElectionRandomTimeOutMs();
+    long electionWait = getElectionRandomWaitMs();
     try {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
@@ -93,7 +93,7 @@ public class HeartbeatThread implements Runnable {
             long heartbeatInterval =
                 System.currentTimeMillis() - localMember.getLastHeartbeatReceivedTime();
             long randomElectionTimeout =
-                RaftServer.getElectionTimeoutMs() + getElectionRandomTimeOutMs();
+                RaftServer.getElectionTimeoutMs() + getElectionRandomWaitMs();
             if (heartbeatInterval >= randomElectionTimeout) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
@@ -269,8 +269,7 @@ public class HeartbeatThread implements Runnable {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
         // sleep random time to reduce election conflicts
-        long electionWait =
-            ClusterConstant.getElectionLeastTimeOutMs() + getElectionRandomTimeOutMs();
+        long electionWait = getElectionRandomWaitMs();
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
         Thread.sleep(electionWait);
       }
@@ -437,7 +436,7 @@ public class HeartbeatThread implements Runnable {
             });
   }
 
-  private long getElectionRandomTimeOutMs() {
-    return Math.abs(random.nextLong() % ClusterConstant.getElectionRandomTimeOutMs());
+  private long getElectionRandomWaitMs() {
+    return Math.abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
   }
 }
