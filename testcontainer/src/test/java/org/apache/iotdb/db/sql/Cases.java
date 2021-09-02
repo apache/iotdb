@@ -546,38 +546,38 @@ public abstract class Cases {
     value_list.add(2L);
     value_list.add(3L);
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       String sg = "root.sg" + String.valueOf(i);
       session.setStorageGroup(sg);
       for (int j = 0; j < 10; j++) {
         session.createTimeseries(
-            String.format("%s.d1.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d1.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d2.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d2.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d3.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d3.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
         session.createTimeseries(
-            String.format("%s.d4.s%s", sg, j),
-            TSDataType.INT64,
-            TSEncoding.RLE,
-            CompressionType.SNAPPY);
+                String.format("%s.d4.s%s", sg, j),
+                TSDataType.INT64,
+                TSEncoding.RLE,
+                CompressionType.SNAPPY);
       }
     }
 
     // step 1: insert into existing time series.
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
@@ -585,7 +585,7 @@ public abstract class Cases {
     List<List<Object>> values_list = new ArrayList<>();
     List<List<TSDataType>> types_List = new ArrayList<>();
     List<String> device_list = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       String device_path = String.format("root.sg%s.d2", i);
       device_list.add(device_path);
       types_List.add(type_list);
@@ -595,7 +595,7 @@ public abstract class Cases {
 
     for (long t = 0; t < 3; t++) {
       List<Long> time_list = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 5; i++) {
         time_list.add(t);
       }
       session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
@@ -607,7 +607,7 @@ public abstract class Cases {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Map<String, Tablet> tabletMap = new HashMap<>();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
       for (long row = 0; row < 3; row++) {
         int rowIndex = tablet.rowSize++;
@@ -624,29 +624,29 @@ public abstract class Cases {
     session.insertTablets(tabletMap);
 
     // step 2: test auto create sg and time series schema
-    for (int i = 10; i < 20; i++) {
+    for (int i = 5; i < 10; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+                String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
       }
     }
 
     device_list.clear();
-    for (int i = 10; i < 20; i++) {
+    for (int i = 5; i < 10; i++) {
       String device_path = String.format("root.sg%s.d2", i);
       device_list.add(device_path);
     }
 
     for (long t = 0; t < 3; t++) {
       List<Long> time_list = new ArrayList<>();
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 5; i++) {
         time_list.add(t);
       }
       session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
     }
 
     tabletMap.clear();
-    for (int i = 10; i < 20; i++) {
+    for (int i = 5; i < 10; i++) {
       Tablet tablet = new Tablet(String.format("root.sg%s.d3", i), schemaList, 10);
       for (long row = 0; row < 3; row++) {
         int rowIndex = tablet.rowSize++;
@@ -663,10 +663,10 @@ public abstract class Cases {
     session.insertTablets(tabletMap);
 
     for (Statement readStatement : readStatements) {
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < 10; i++) {
         for (int d = 1; d <= 4; d++) {
           ResultSet resultSet =
-              readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
+                  readStatement.executeQuery(String.format("SELECT s1,s2,s3 from root.sg%s.d%s", i, d));
           for (long t = 0; t < 3; t++) {
             Assert.assertTrue(resultSet.next());
             Assert.assertEquals(resultSet.getLong(1), t);
