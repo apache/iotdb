@@ -18,16 +18,25 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
 public class SetSystemModePlan extends PhysicalPlan {
 
   private boolean isReadOnly;
+
+  public SetSystemModePlan() {
+    super(false, OperatorType.SET_SYSTEM_MODE);
+  }
 
   public SetSystemModePlan(boolean isReadOnly) {
     super(false, OperatorType.SET_SYSTEM_MODE);
@@ -41,5 +50,29 @@ public class SetSystemModePlan extends PhysicalPlan {
 
   public boolean isReadOnly() {
     return isReadOnly;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.writeByte((byte) PhysicalPlanType.SET_SYSTEM_MODE.ordinal());
+
+    outputStream.writeBoolean(isReadOnly);
+    outputStream.writeLong(index);
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.SET_SYSTEM_MODE.ordinal());
+
+    ReadWriteIOUtils.write(isReadOnly, buffer);
+
+    buffer.putLong(index);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {
+
+    isReadOnly = buffer.get() == 1;
+    this.index = buffer.getLong();
   }
 }

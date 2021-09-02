@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingDeviceTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -356,6 +357,9 @@ public abstract class PhysicalPlan {
         case DROP_FUNCTION:
           plan = new DropFunctionPlan();
           break;
+        case SET_SYSTEM_MODE:
+          plan = new SetSystemModePlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -407,7 +411,8 @@ public abstract class PhysicalPlan {
     SET_USING_DEVICE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_FUNCTION,
-    DROP_FUNCTION
+    DROP_FUNCTION,
+    SET_SYSTEM_MODE
   }
 
   public long getIndex() {
