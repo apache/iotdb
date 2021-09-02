@@ -20,8 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
-import org.apache.iotdb.db.metadata.lastCache.entry.LastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -56,7 +56,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
 
   /** last value cache */
-  private volatile ILastCacheEntry lastCacheEntry = null;
+  private volatile ILastCacheContainer lastCacheEntry = null;
 
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
@@ -154,11 +154,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public ILastCacheEntry getLastCacheEntry() {
+  public ILastCacheContainer getLastCacheEntry() {
     if (lastCacheEntry == null) {
       synchronized (this) {
         if (lastCacheEntry == null) {
-          lastCacheEntry = new LastCacheEntry();
+          lastCacheEntry = new LastCacheContainer();
         }
       }
     }
@@ -166,7 +166,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void setLastCacheEntry(ILastCacheEntry lastCacheEntry) {
+  public void setLastCacheEntry(ILastCacheContainer lastCacheEntry) {
     this.lastCacheEntry = lastCacheEntry;
   }
 

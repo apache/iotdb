@@ -1662,6 +1662,16 @@ public class MManager {
     // do nothing
   }
 
+  /**
+   * update the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
@@ -1681,6 +1691,14 @@ public class MManager {
         seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
   }
 
+  /**
+   * get the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   * @return the last cache value
+   */
   public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     try {
       if (node == null) {
@@ -1694,6 +1712,13 @@ public class MManager {
     return LastCacheManager.getLastCache(seriesPath, node);
   }
 
+  /**
+   * reset the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   */
   public void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     if (node == null) {
       try {
@@ -1707,6 +1732,11 @@ public class MManager {
     LastCacheManager.resetLastCache(seriesPath, node);
   }
 
+  /**
+   * delete all the last cache value of any timeseries or aligned timeseries under the device
+   *
+   * @param deviceId path of device
+   */
   public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
     IMNode node = getDeviceNode(deviceId);
     if (node.isEntity()) {
@@ -1714,6 +1744,15 @@ public class MManager {
     }
   }
 
+  /**
+   * delete the last cache value of timeseries or component of some aligned timeseries, which is
+   * under the device and matching the originalPath
+   *
+   * @param deviceId path of device
+   * @param originalPath origin timeseries path
+   * @param startTime startTime
+   * @param endTime endTime
+   */
   public void deleteLastCacheByDevice(
       PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
       throws MetadataException {

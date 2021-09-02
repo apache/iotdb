@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.entry.value;
+package org.apache.iotdb.db.metadata.lastCache.container.value;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class MonadLastCacheValue implements ILastCacheValue {
+public class UnaryLastCacheValue implements ILastCacheValue {
 
   private static final String INDEX_OPERATION_ON_MONAD_EXCEPTION =
       "Cannot operate data on any index but 0 on MonadLastCacheValue";
@@ -31,7 +31,7 @@ public class MonadLastCacheValue implements ILastCacheValue {
 
   private TsPrimitiveType value;
 
-  public MonadLastCacheValue(long timestamp, TsPrimitiveType value) {
+  public UnaryLastCacheValue(long timestamp, TsPrimitiveType value) {
     this.timestamp = timestamp;
     this.value = value;
   }

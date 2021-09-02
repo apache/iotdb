@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.entry;
+package org.apache.iotdb.db.metadata.lastCache.container;
 
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 /** this interface declares the operations of LastCache data */
-public interface ILastCacheEntry {
+public interface ILastCacheContainer {
 
   // if vector, entry need schema size to init LastCache Value list
   void init(int size);

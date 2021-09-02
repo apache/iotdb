@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.lastCache;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -40,18 +40,27 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+// this class provides all the operations on last cache
 public class LastCacheManager {
 
   private static final Logger logger = LoggerFactory.getLogger(LastCacheManager.class);
 
+  /**
+   * get the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   * @return the last cache value
+   */
   public static TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     if (node == null) {
       return null;
     }
 
-    checkIsEntityTemplateLastCache(node);
+    checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
       return lastCacheEntry.getCachedLast();
     } else {
@@ -69,6 +78,16 @@ public class LastCacheManager {
     }
   }
 
+  /**
+   * update the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   */
   public static void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
@@ -79,9 +98,9 @@ public class LastCacheManager {
       return;
     }
 
-    checkIsEntityTemplateLastCache(node);
+    checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
       lastCacheEntry.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
     } else {
@@ -104,14 +123,21 @@ public class LastCacheManager {
     }
   }
 
+  /**
+   * reset the last cache value of time series of given seriesPath
+   *
+   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
+   */
   public static void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     if (node == null) {
       return;
     }
 
-    checkIsEntityTemplateLastCache(node);
+    checkIsTemplateLastCacheAndSetIfAbsent(node);
 
-    ILastCacheEntry lastCacheEntry = node.getLastCacheEntry();
+    ILastCacheContainer lastCacheEntry = node.getLastCacheEntry();
     if (seriesPath == null) {
       lastCacheEntry.resetLastCache();
     } else {
@@ -131,7 +157,7 @@ public class LastCacheManager {
     }
   }
 
-  private static void checkIsEntityTemplateLastCache(IMeasurementMNode node) {
+  private static void checkIsTemplateLastCacheAndSetIfAbsent(IMeasurementMNode node) {
     IEntityMNode entityMNode = node.getParent();
     if (entityMNode == null) {
       // cluster cached remote measurementMNode doesn't have parent
@@ -141,7 +167,7 @@ public class LastCacheManager {
 
     // if entityMNode doesn't have this child, the child is derived from template
     if (!entityMNode.hasChild(measurement)) {
-      ILastCacheEntry lastCacheEntry = entityMNode.getLastCacheEntry(measurement);
+      ILastCacheContainer lastCacheEntry = entityMNode.getLastCacheEntry(measurement);
       IMeasurementSchema schema = node.getSchema();
       if (lastCacheEntry.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
         lastCacheEntry.init(schema.getMeasurementCount());
@@ -150,6 +176,11 @@ public class LastCacheManager {
     }
   }
 
+  /**
+   * delete all the last cache value of any timeseries or aligned timeseries under the entity
+   *
+   * @param node entity node
+   */
   public static void deleteLastCacheByDevice(IEntityMNode node) {
     // process lastCache of timeseries represented by measurementNode
     for (IMNode measurementNode : node.getChildren().values()) {
@@ -163,7 +194,7 @@ public class LastCacheManager {
       }
     }
     // process lastCache of timeseries represented by template
-    for (Map.Entry<String, ILastCacheEntry> entry : node.getTemplateLastCaches().entrySet()) {
+    for (Map.Entry<String, ILastCacheContainer> entry : node.getTemplateLastCaches().entrySet()) {
       entry.getValue().resetLastCache();
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -173,11 +204,20 @@ public class LastCacheManager {
     }
   }
 
+  /**
+   * delete the last cache value of timeseries or component of some aligned timeseries, which is
+   * under the entity and matching the originalPath
+   *
+   * @param node entity node
+   * @param originalPath origin timeseries path
+   * @param startTime startTime
+   * @param endTime endTime
+   */
   public static void deleteLastCacheByDevice(
       IEntityMNode node, PartialPath originalPath, long startTime, long endTime) {
     PartialPath path;
     IMeasurementSchema schema;
-    ILastCacheEntry lastCacheEntry;
+    ILastCacheContainer lastCacheEntry;
 
     // process lastCache of timeseries represented by measurementNode
     IMeasurementMNode measurementMNode;
@@ -199,7 +239,7 @@ public class LastCacheManager {
 
     // process lastCache of timeseries represented by template
     Template template = node.getUpperTemplate();
-    for (Map.Entry<String, ILastCacheEntry> entry : node.getTemplateLastCaches().entrySet()) {
+    for (Map.Entry<String, ILastCacheContainer> entry : node.getTemplateLastCaches().entrySet()) {
       path = node.getPartialPath().concatNode(entry.getKey());
       if (originalPath.matchFullPath(path)) {
         lastCacheEntry = entry.getValue();
@@ -215,7 +255,7 @@ public class LastCacheManager {
   private static void deleteLastCache(
       PartialPath path,
       IMeasurementSchema schema,
-      ILastCacheEntry lastCacheEntry,
+      ILastCacheContainer lastCacheEntry,
       long startTime,
       long endTime) {
     TimeValuePair lastPair;
@@ -249,6 +289,14 @@ public class LastCacheManager {
     }
   }
 
+  /**
+   * get the last value of timeseries represented by given measurementMNode get last value from
+   * cache in measurementMNode if absent, get last value from file
+   *
+   * @param node measurementMNode representing the target timeseries
+   * @param queryContext query context
+   * @return the last value
+   */
   public static long getLastTimeStamp(IMeasurementMNode node, QueryContext queryContext) {
     TimeValuePair last = getLastCache(null, node);
     if (last != null) {

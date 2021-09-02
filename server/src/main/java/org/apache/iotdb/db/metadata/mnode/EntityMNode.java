@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
-import org.apache.iotdb.db.metadata.lastCache.entry.LastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 
 import java.util.Collections;
 import java.util.Map;
@@ -37,7 +37,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
 
   private volatile boolean useTemplate = false;
 
-  private volatile Map<String, ILastCacheEntry> lastCacheMap = null;
+  private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
 
   /**
    * Constructor of MNode.
@@ -115,13 +115,13 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
     this.useTemplate = useTemplate;
   }
 
-  public ILastCacheEntry getLastCacheEntry(String measurementId) {
+  public ILastCacheContainer getLastCacheEntry(String measurementId) {
     checkLastCacheMap();
-    return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheEntry());
+    return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheContainer());
   }
 
   @Override
-  public Map<String, ILastCacheEntry> getTemplateLastCaches() {
+  public Map<String, ILastCacheContainer> getTemplateLastCaches() {
     return lastCacheMap == null ? Collections.emptyMap() : lastCacheMap;
   }
 

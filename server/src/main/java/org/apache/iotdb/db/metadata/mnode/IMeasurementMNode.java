@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.metadata.lastCache.entry.ILastCacheEntry;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -49,7 +49,7 @@ public interface IMeasurementMNode extends IMNode {
 
   void setTriggerExecutor(TriggerExecutor triggerExecutor);
 
-  ILastCacheEntry getLastCacheEntry();
+  ILastCacheContainer getLastCacheEntry();
 
-  void setLastCacheEntry(ILastCacheEntry lastCacheEntry);
+  void setLastCacheEntry(ILastCacheContainer lastCacheEntry);
 }

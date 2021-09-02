@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.lastCache.entry;
+package org.apache.iotdb.db.metadata.lastCache.container;
 
-import org.apache.iotdb.db.metadata.lastCache.entry.value.ILastCacheValue;
-import org.apache.iotdb.db.metadata.lastCache.entry.value.MonadLastCacheValue;
-import org.apache.iotdb.db.metadata.lastCache.entry.value.VectorLastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.container.value.ILastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.container.value.UnaryLastCacheValue;
+import org.apache.iotdb.db.metadata.lastCache.container.value.VectorLastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
-public class LastCacheEntry implements ILastCacheEntry {
+public class LastCacheContainer implements ILastCacheContainer {
 
   ILastCacheValue lastCacheValue;
 
@@ -57,7 +57,7 @@ public class LastCacheEntry implements ILastCacheEntry {
       // update cache.
       if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
         lastCacheValue =
-            new MonadLastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
+            new UnaryLastCacheValue(timeValuePair.getTimestamp(), timeValuePair.getValue());
       }
     } else if (timeValuePair.getTimestamp() > lastCacheValue.getTimestamp()
         || (timeValuePair.getTimestamp() == lastCacheValue.getTimestamp() && highPriorityUpdate)) {
