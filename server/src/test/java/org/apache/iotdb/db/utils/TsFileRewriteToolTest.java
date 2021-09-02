@@ -262,8 +262,6 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  
-
   private void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
@@ -331,7 +329,7 @@ public class TsFileRewriteToolTest {
       }
     }
   }
-  
+
   @Test
   public void splitOneTsfileWithTwoPagesTest() {
     createOneTsFileWithTwoPages(DEVICE1, SENSOR1);
@@ -347,15 +345,16 @@ public class TsFileRewriteToolTest {
       TsFileWriter tsFileWriter = new TsFileWriter(f);
       // add measurements into file schema
       try {
-        tsFileWriter.registerTimeseries(new Path(device, sensor),
+        tsFileWriter.registerTimeseries(
+            new Path(device, sensor),
             new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
       } catch (WriteProcessException e) {
         Assert.fail(e.getMessage());
       }
 
       long timestamp = 1;
-      // First page is crossing time partitions 
-      // Time stamp (1, 3600001) 
+      // First page is crossing time partitions
+      // Time stamp (1, 3600001)
       TSRecord tsRecord = new TSRecord(timestamp, device);
       DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
       tsRecord.addTuple(dataPoint);
@@ -366,7 +365,7 @@ public class TsFileRewriteToolTest {
       tsRecord.addTuple(dataPoint);
       tsFileWriter.write(tsRecord);
       // Second page is in one time partition
-      // Time stamp (3600002, 3600003) 
+      // Time stamp (3600002, 3600003)
       for (int i = 0; i < 2; i++) {
         timestamp++;
         tsRecord = new TSRecord(timestamp, device);
@@ -405,8 +404,7 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  public void queryAndCheckTsFile(
-      String tsFilePath, int index, String device, String sensor)
+  public void queryAndCheckTsFile(String tsFilePath, int index, String device, String sensor)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
         ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
@@ -416,7 +414,7 @@ public class TsFileRewriteToolTest {
       QueryExpression queryExpression = QueryExpression.create(paths, null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
       if (index == 0) {
-       // First file, contains time stamp 1
+        // First file, contains time stamp 1
         int count = 0;
         while (queryDataSet.hasNext()) {
           count++;
