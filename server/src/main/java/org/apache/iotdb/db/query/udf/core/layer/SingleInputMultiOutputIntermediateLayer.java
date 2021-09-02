@@ -28,16 +28,16 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 
-public class SingleInputIntermediateLayer implements IntermediateLayer {
+public class SingleInputMultiOutputIntermediateLayer implements IntermediateLayer {
 
-  private static final int CACHE_BLOCK_SIZE = 1;
+  private static final int CACHE_BLOCK_SIZE = 2;
 
   private final TSDataType dataType;
   private final LayerPointReader parentLayerPointReader;
   private final ElasticSerializableTVList tvList;
   private final SafetyLine safetyLine;
 
-  public SingleInputIntermediateLayer(
+  public SingleInputMultiOutputIntermediateLayer(
       LayerPointReader parentLayerPointReader, long queryId, float memoryBudgetInMB)
       throws QueryProcessException {
     this.parentLayerPointReader = parentLayerPointReader;
