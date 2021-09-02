@@ -168,16 +168,6 @@ public class TsFileRewriteToolTest {
   }
 
   @Test
-  public void splitOneTsfileWithTwoPagesTest() {
-    HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
-    List<String> sensors = new ArrayList<>();
-    sensors.add(SENSOR1);
-    deviceSensorsMap.put(DEVICE1, sensors);
-    createOneTsFileWithTwoPages(deviceSensorsMap);
-    splitTwoPagesFileAndQueryCheck(deviceSensorsMap);
-  }
-
-  @Test
   public void loadFileTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
@@ -231,66 +221,6 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  private void splitTwoPagesFileAndQueryCheck(HashMap<String, List<String>> deviceSensorsMap) {
-    File tsFile = new File(path);
-    TsFileResource tsFileResource = new TsFileResource(tsFile);
-    List<TsFileResource> splitResource = new ArrayList<>();
-    try {
-      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
-    } catch (IOException | WriteProcessException e) {
-      Assert.fail(e.getMessage());
-    }
-    Assert.assertEquals(2, splitResource.size());
-
-    for (int i = 0; i < splitResource.size(); i++) {
-      try {
-        queryAndCheckTsFile(splitResource.get(i).getTsFilePath(), i, deviceSensorsMap);
-        long partitionId = splitResource.get(i).getTimePartition();
-        Assert.assertEquals(i, partitionId);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  public void queryAndCheckTsFile(
-      String tsFilePath, int index, HashMap<String, List<String>> deviceSensorsMap)
-      throws IOException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
-      ArrayList<Path> paths = new ArrayList<>();
-      for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-        String device = entry.getKey();
-        for (String sensor : entry.getValue()) {
-          paths.add(new Path(device, sensor));
-        }
-      }
-
-      QueryExpression queryExpression = QueryExpression.create(paths, null);
-      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
-      if (index == 0) {
-        System.out.println(index);
-        System.out.println();
-        while (queryDataSet.hasNext()) {
-          RowRecord rowRecord = queryDataSet.next();
-          long timeStamp = rowRecord.getTimestamp();
-          System.out.println(timeStamp);
-          //Assert.assertEquals(1, timeStamp);
-        }
-      } else {
-        System.out.println(index);
-        System.out.println();
-        while (queryDataSet.hasNext()) {
-          RowRecord rowRecord = queryDataSet.next();
-          long timeStamp = rowRecord.getTimestamp();
-          System.out.println(timeStamp);
-          //Assert.assertEquals(newPartitionInterval + 2, timeStamp);
-        }
-      }
-      
-    }
-  }
-
   private void createOneTsFileWithOnlyOnePage(HashMap<String, List<String>> deviceSensorsMap) {
     try {
       File f = FSFactoryProducer.getFSFactory().getFile(path);
@@ -332,69 +262,7 @@ public class TsFileRewriteToolTest {
     }
   }
 
-  private void createOneTsFileWithTwoPages(HashMap<String, List<String>> deviceSensorsMap) {
-    TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
-    int originMaxNumberOfPointsInPage = fileConfig.getMaxNumberOfPointsInPage();
-    fileConfig.setMaxNumberOfPointsInPage(2);
-    try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
-      // add measurements into file schema
-      try {
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          for (String sensor : entry.getValue()) {
-            tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
-                new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
-          }
-        }
-      } catch (WriteProcessException e) {
-        Assert.fail(e.getMessage());
-      }
-
-      long timestamp = 1;
-      // First page is crossing time partitions
-      for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-        String device = entry.getKey();
-        TSRecord tsRecord = new TSRecord(timestamp, device);
-        for (String sensor : entry.getValue()) {
-          DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
-          tsRecord.addTuple(dataPoint);
-        }
-        tsFileWriter.write(tsRecord);
-      }
-      timestamp += newPartitionInterval;
-      for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-        String device = entry.getKey();
-        TSRecord tsRecord = new TSRecord(timestamp, device);
-        for (String sensor : entry.getValue()) {
-          DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
-          tsRecord.addTuple(dataPoint);
-        }
-        tsFileWriter.write(tsRecord);
-      }
-      // Second page is in one time partition 
-      for (int i = 0; i < 2; i++) {
-        timestamp++;
-        for (Map.Entry<String, List<String>> entry : deviceSensorsMap.entrySet()) {
-          String device = entry.getKey();
-          TSRecord tsRecord = new TSRecord(timestamp, device);
-          for (String sensor : entry.getValue()) {
-            DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
-            tsRecord.addTuple(dataPoint);
-          }
-          tsFileWriter.write(tsRecord);
-        }
-      }
-      tsFileWriter.flushAllChunkGroups();
-      tsFileWriter.close();
-      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
-    } catch (Throwable e) {
-      Assert.fail(e.getMessage());
-      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
-    }
-  }
+  
 
   private void createOneTsFile(HashMap<String, List<String>> deviceSensorsMap) {
     try {
@@ -460,6 +328,113 @@ public class TsFileRewriteToolTest {
           Assert.assertEquals(timeStamp + VALUE_OFFSET, rowRecord.getFields().get(i).getLongV());
         }
         count += 1000;
+      }
+    }
+  }
+  
+  @Test
+  public void splitOneTsfileWithTwoPagesTest() {
+    createOneTsFileWithTwoPages(DEVICE1, SENSOR1);
+    splitTwoPagesFileAndQueryCheck(DEVICE1, SENSOR1);
+  }
+
+  private void createOneTsFileWithTwoPages(String device, String sensor) {
+    TSFileConfig fileConfig = TSFileDescriptor.getInstance().getConfig();
+    int originMaxNumberOfPointsInPage = fileConfig.getMaxNumberOfPointsInPage();
+    fileConfig.setMaxNumberOfPointsInPage(2);
+    try {
+      File f = FSFactoryProducer.getFSFactory().getFile(path);
+      TsFileWriter tsFileWriter = new TsFileWriter(f);
+      // add measurements into file schema
+      try {
+        tsFileWriter.registerTimeseries(new Path(device, sensor),
+            new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+      } catch (WriteProcessException e) {
+        Assert.fail(e.getMessage());
+      }
+
+      long timestamp = 1;
+      // First page is crossing time partitions 
+      // Time stamp (1, 3600001) 
+      TSRecord tsRecord = new TSRecord(timestamp, device);
+      DataPoint dataPoint = new LongDataPoint(sensor, timestamp);
+      tsRecord.addTuple(dataPoint);
+      tsFileWriter.write(tsRecord);
+      timestamp += newPartitionInterval;
+      tsRecord = new TSRecord(timestamp, device);
+      dataPoint = new LongDataPoint(sensor, timestamp);
+      tsRecord.addTuple(dataPoint);
+      tsFileWriter.write(tsRecord);
+      // Second page is in one time partition
+      // Time stamp (3600002, 3600003) 
+      for (int i = 0; i < 2; i++) {
+        timestamp++;
+        tsRecord = new TSRecord(timestamp, device);
+        dataPoint = new LongDataPoint(sensor, timestamp);
+        tsRecord.addTuple(dataPoint);
+        tsFileWriter.write(tsRecord);
+      }
+      tsFileWriter.flushAllChunkGroups();
+      tsFileWriter.close();
+      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
+    } catch (Throwable e) {
+      Assert.fail(e.getMessage());
+      fileConfig.setMaxNumberOfPointsInPage(originMaxNumberOfPointsInPage);
+    }
+  }
+
+  private void splitTwoPagesFileAndQueryCheck(String device, String sensor) {
+    File tsFile = new File(path);
+    TsFileResource tsFileResource = new TsFileResource(tsFile);
+    List<TsFileResource> splitResource = new ArrayList<>();
+    try {
+      TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResource);
+    } catch (IOException | WriteProcessException e) {
+      Assert.fail(e.getMessage());
+    }
+    Assert.assertEquals(2, splitResource.size());
+
+    for (int i = 0; i < splitResource.size(); i++) {
+      try {
+        queryAndCheckTsFile(splitResource.get(i).getTsFilePath(), i, device, sensor);
+        long partitionId = splitResource.get(i).getTimePartition();
+        Assert.assertEquals(i, partitionId);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  public void queryAndCheckTsFile(
+      String tsFilePath, int index, String device, String sensor)
+      throws IOException {
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
+        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+      ArrayList<Path> paths = new ArrayList<>();
+      paths.add(new Path(device, sensor));
+
+      QueryExpression queryExpression = QueryExpression.create(paths, null);
+      QueryDataSet queryDataSet = readTsFile.query(queryExpression);
+      if (index == 0) {
+       // First file, contains time stamp 1
+        int count = 0;
+        while (queryDataSet.hasNext()) {
+          count++;
+          RowRecord rowRecord = queryDataSet.next();
+          long timeStamp = rowRecord.getTimestamp();
+          Assert.assertEquals(1, timeStamp);
+        }
+        Assert.assertEquals(1, count);
+      } else {
+        // Second file, contains time stamp 3600001, 3600002, 3600003
+        int count = 0;
+        while (queryDataSet.hasNext()) {
+          count++;
+          RowRecord rowRecord = queryDataSet.next();
+          long timeStamp = rowRecord.getTimestamp();
+          Assert.assertEquals(newPartitionInterval + count, timeStamp);
+        }
+        Assert.assertEquals(3, count);
       }
     }
   }

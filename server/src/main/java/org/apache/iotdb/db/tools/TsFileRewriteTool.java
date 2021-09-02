@@ -193,7 +193,10 @@ public class TsFileRewriteTool implements AutoCloseable {
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
               boolean needToDecode = checkIfNeedToDecode(dataType, encoding, pageHeader);
               needToDecodeInfo.add(needToDecode);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
+              ByteBuffer pageData =
+                  !needToDecode
+                      ? reader.readCompressedPage(pageHeader)
+                      : reader.readPage(pageHeader, header.getCompressionType());
               pageHeadersInChunk.add(pageHeader);
               dataInChunk.add(pageData);
               dataSize -= pageHeader.getSerializedPageSize();
