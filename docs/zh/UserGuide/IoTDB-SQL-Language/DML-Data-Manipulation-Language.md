@@ -695,8 +695,6 @@ Total line number = 2
 It costs 0.002s
 ```
 
-
-#### 空值填充
 ### 模糊查询
 
 模糊查询分为Like语句和Regexp语句，都可以支持对Text类型的数据进行模糊匹配
