@@ -42,6 +42,7 @@ public class RegexpOperator extends FunctionOperator {
   public RegexpOperator(int tokenIntType, PartialPath path, String value) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.REGEXP;
+    this.singlePath = path;
     this.value = value;
     isLeaf = true;
     isSingle = true;
