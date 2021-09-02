@@ -414,9 +414,9 @@ public class InsertRowPlan extends InsertPlan {
         ReadWriteIOUtils.write((String) values[i], outputStream);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], outputStream);
-        if (isNeedInferType){
+        if (isNeedInferType) {
           ReadWriteIOUtils.write(values[i].toString(), outputStream);
-        }else {
+        } else {
           switch (dataTypes[i]) {
             case BOOLEAN:
               ReadWriteIOUtils.write((Boolean) values[i], outputStream);
