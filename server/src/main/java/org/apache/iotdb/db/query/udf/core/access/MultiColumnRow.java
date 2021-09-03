@@ -23,14 +23,14 @@ import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-public class RowImpl implements Row {
+public class MultiColumnRow implements Row {
 
   private final int[] columnIndexes;
   private final TSDataType[] dataTypes;
 
   private Object[] rowRecord;
 
-  public RowImpl(int[] columnIndexes, TSDataType[] dataTypes) {
+  public MultiColumnRow(int[] columnIndexes, TSDataType[] dataTypes) {
     this.columnIndexes = columnIndexes;
     this.dataTypes = dataTypes;
   }

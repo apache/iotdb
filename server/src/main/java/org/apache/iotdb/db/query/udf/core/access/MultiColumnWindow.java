@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
-public class RowWindowImpl implements RowWindow {
+public class MultiColumnWindow implements RowWindow {
 
   private final ElasticSerializableRowRecordList rowRecordList;
 
@@ -36,10 +36,10 @@ public class RowWindowImpl implements RowWindow {
   private final TSDataType[] dataTypes;
   private final IntList windowRowIndexes;
 
-  private final RowImpl row;
-  private final RowIteratorImpl rowIterator;
+  private final MultiColumnRow row;
+  private MultiColumnWindowIterator rowIterator;
 
-  public RowWindowImpl(
+  public MultiColumnWindow(
       ElasticSerializableRowRecordList rowRecordList,
       int[] columnIndexes,
       TSDataType[] dataTypes,
@@ -48,8 +48,7 @@ public class RowWindowImpl implements RowWindow {
     this.columnIndexes = columnIndexes;
     this.dataTypes = dataTypes;
     this.windowRowIndexes = windowRowIndexes;
-    row = new RowImpl(columnIndexes, dataTypes);
-    rowIterator = new RowIteratorImpl(rowRecordList, columnIndexes, dataTypes, windowRowIndexes);
+    row = new MultiColumnRow(columnIndexes, dataTypes);
   }
 
   @Override
@@ -74,6 +73,11 @@ public class RowWindowImpl implements RowWindow {
 
   @Override
   public RowIterator getRowIterator() {
+    if (rowIterator == null) {
+      rowIterator =
+          new MultiColumnWindowIterator(rowRecordList, columnIndexes, dataTypes, windowRowIndexes);
+    }
+
     rowIterator.reset();
     return rowIterator;
   }

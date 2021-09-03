@@ -21,38 +21,34 @@ package org.apache.iotdb.db.query.udf.core.access;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.db.query.udf.datastructure.primitive.IntList;
-import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 
 import java.io.IOException;
 
-public class RowIteratorImpl implements RowIterator {
+public class ElasticSerializableTVListBackedSingleColumnWindowIterator implements RowIterator {
 
-  private final ElasticSerializableRowRecordList rowRecordList;
-  private final IntList windowRowIndexes;
-  private final RowImpl row;
+  private final int beginIndex;
+  private final int size;
+  private final ElasticSerializableTVListBackedSingleColumnRow row;
   private int rowIndex;
 
-  public RowIteratorImpl(
-      ElasticSerializableRowRecordList rowRecordList,
-      int[] columnIndexes,
-      TSDataType[] dataTypes,
-      IntList windowRowIndexes) {
-    this.rowRecordList = rowRecordList;
-    this.windowRowIndexes = windowRowIndexes;
-    row = new RowImpl(columnIndexes, dataTypes);
+  // [beginIndex, endIndex)
+  public ElasticSerializableTVListBackedSingleColumnWindowIterator(
+      ElasticSerializableTVList tvList, int beginIndex, int endIndex) {
+    this.beginIndex = beginIndex;
+    size = endIndex - beginIndex;
+    row = new ElasticSerializableTVListBackedSingleColumnRow(tvList, beginIndex);
     rowIndex = -1;
   }
 
   @Override
   public boolean hasNextRow() {
-    return rowIndex < windowRowIndexes.size() - 1;
+    return rowIndex < size - 1;
   }
 
   @Override
   public Row next() throws IOException {
-    return row.setRowRecord(rowRecordList.getRowRecord(windowRowIndexes.get(++rowIndex)));
+    return row.seek(++rowIndex + beginIndex);
   }
 
   @Override

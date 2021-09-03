@@ -19,9 +19,47 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
-public interface IntermediateLayer {
+public abstract class IntermediateLayer {
 
-  LayerPointReader constructPointReader();
+  protected final long queryId;
+  protected final float memoryBudgetInMB;
+
+  protected IntermediateLayer(long queryId, float memoryBudgetInMB) {
+    this.queryId = queryId;
+    this.memoryBudgetInMB = memoryBudgetInMB;
+  }
+
+  public abstract LayerPointReader constructPointReader();
+
+  public abstract LayerRowReader constructRowReader();
+
+  public final LayerRowWindowReader constructRowWindowReader(
+      AccessStrategy strategy, float memoryBudgetInMB) {
+    switch (strategy.getAccessStrategyType()) {
+      case SLIDING_TIME_WINDOW:
+        return constructRowSlidingTimeWindowReader(
+            (SlidingTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
+      case SLIDING_SIZE_WINDOW:
+        return constructRowSlidingSizeWindowReader(
+            (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
+      default:
+        throw new IllegalStateException(
+            "Unexpected access strategy: " + strategy.getAccessStrategyType());
+    }
+  }
+
+  protected abstract LayerRowWindowReader constructRowSlidingSizeWindowReader(
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB);
+
+  protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB);
+
+  public abstract void updateEvictionUpperBound();
 }
