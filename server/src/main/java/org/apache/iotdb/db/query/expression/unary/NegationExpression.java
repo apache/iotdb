@@ -25,9 +25,9 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputMultiOutputIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 
 import java.util.ArrayList;
@@ -79,13 +79,13 @@ public class NegationExpression extends Expression {
   @Override
   public IntermediateLayer constructIntermediateLayer(
       UDTFPlan udtfPlan,
-      InputLayer inputLayer,
+      UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
       throws QueryProcessException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       IntermediateLayer parentIntermediateLayer =
           expression.constructIntermediateLayer(
-              udtfPlan, inputLayer, expressionIntermediateLayerMap);
+              udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap);
 
       expressionIntermediateLayerMap.put(
           this,

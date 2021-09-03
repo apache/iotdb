@@ -49,7 +49,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.List;
 
-public class InputLayer {
+public class UDFLayer {
 
   private long queryId;
 
@@ -61,7 +61,7 @@ public class InputLayer {
   private SafetyLine safetyLine;
 
   /** InputLayerWithoutValueFilter */
-  public InputLayer(
+  public UDFLayer(
       long queryId,
       float memoryBudgetInMB,
       List<PartialPath> paths,
@@ -75,7 +75,7 @@ public class InputLayer {
   }
 
   /** InputLayerWithValueFilter */
-  public InputLayer(
+  public UDFLayer(
       long queryId,
       float memoryBudgetInMB,
       List<PartialPath> paths,

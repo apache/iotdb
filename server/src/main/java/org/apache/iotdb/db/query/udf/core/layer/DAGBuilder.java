@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,42 +33,47 @@ import java.util.Map;
 public class DAGBuilder {
 
   private final UDTFPlan udtfPlan;
-  private final InputLayer inputLayer;
+  private final UDFLayer rawTimeSeriesInputLayer;
 
   // input
   private final List<Expression> resultColumnExpressions;
   // output
-  private final Transformer[] resultColumnTransformers;
+  private final LayerPointReader[] resultColumnPointReaders;
 
   // all result column expressions will be split into several sub-expressions, each expression has
-  // its own transformer. different result column expressions may have the same sub-expressions,
-  // but they can share the same transformer. we cache the transformer here to make sure that only
-  // one transformer will be built for one expression.
+  // its own result point reader. different result column expressions may have the same
+  // sub-expressions, but they can share the same point reader. we cache the point reader here to
+  // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(UDTFPlan udtfPlan, InputLayer inputLayer) throws QueryProcessException {
+  public DAGBuilder(UDTFPlan udtfPlan, UDFLayer inputLayer) throws QueryProcessException {
     this.udtfPlan = udtfPlan;
-    this.inputLayer = inputLayer;
+    this.rawTimeSeriesInputLayer = inputLayer;
 
     resultColumnExpressions = new ArrayList<>();
     for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
       resultColumnExpressions.add(resultColumn.getExpression());
     }
-    resultColumnTransformers = new Transformer[resultColumnExpressions.size()];
+    resultColumnPointReaders = new LayerPointReader[resultColumnExpressions.size()];
 
     expressionIntermediateLayerMap = new HashMap<>();
 
     build();
   }
 
-  public void build() throws QueryProcessException {
-    for (Expression resultColumnExpression : resultColumnExpressions) {
-      resultColumnExpression.constructIntermediateLayer(
-          udtfPlan, inputLayer, expressionIntermediateLayerMap);
+  public DAGBuilder build() throws QueryProcessException {
+    for (int i = 0; i < resultColumnExpressions.size(); ++i) {
+      resultColumnPointReaders[i] =
+          resultColumnExpressions
+              .get(i)
+              .constructIntermediateLayer(
+                  udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap)
+              .constructPointReader();
     }
+    return this;
   }
 
-  public Transformer[] getResultColumnTransformers() {
-    return resultColumnTransformers;
+  public LayerPointReader[] getResultColumnPointReaders() {
+    return resultColumnPointReaders;
   }
 }

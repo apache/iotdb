@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 
 import java.util.List;
 import java.util.Map;
@@ -53,7 +53,7 @@ public abstract class Expression {
 
   public abstract IntermediateLayer constructIntermediateLayer(
       UDTFPlan udtfPlan,
-      InputLayer inputLayer,
+      UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
       throws QueryProcessException;
 

@@ -36,7 +36,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.core.layer.InputLayer;
+import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
@@ -67,7 +67,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   protected final long queryId;
   protected final UDTFPlan udtfPlan;
-  protected final InputLayer inputLayer;
+  protected final UDFLayer udfLayer;
 
   protected LayerPointReader[] transformers;
 
@@ -84,8 +84,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer =
-        new InputLayer(
+    udfLayer =
+        new UDFLayer(
             queryId,
             UDF_READER_MEMORY_BUDGET_IN_MB,
             deduplicatedPaths,
@@ -108,8 +108,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    inputLayer =
-        new InputLayer(
+    udfLayer =
+        new UDFLayer(
             queryId,
             UDF_READER_MEMORY_BUDGET_IN_MB,
             deduplicatedPaths,
@@ -167,13 +167,13 @@ public abstract class UDTFDataSet extends QueryDataSet {
     switch (accessStrategy.getAccessStrategyType()) {
       case ROW_BY_ROW:
         transformers[columnIndex] =
-            new UDFQueryRowTransformer(inputLayer.constructRowReader(readerIndexes), executor);
+            new UDFQueryRowTransformer(udfLayer.constructRowReader(readerIndexes), executor);
         break;
       case SLIDING_SIZE_WINDOW:
       case SLIDING_TIME_WINDOW:
         transformers[columnIndex] =
             new UDFQueryRowWindowTransformer(
-                inputLayer.constructRowWindowReader(
+                udfLayer.constructRowWindowReader(
                     readerIndexes, accessStrategy, memoryBudgetForSingleWindowTransformer),
                 executor);
         break;
@@ -254,7 +254,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   private LayerPointReader constructPointReaderBySeriesName(String seriesName) {
-    return inputLayer.constructPointReader(udtfPlan.getReaderIndex(seriesName));
+    return udfLayer.constructPointReader(udtfPlan.getReaderIndex(seriesName));
   }
 
   public void finalizeUDFs(long queryId) {
