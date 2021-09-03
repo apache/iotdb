@@ -79,6 +79,7 @@
 * [IOTDB-1584] Doesn't support order by time desc in cluster mode
 * [IOTDB-1588] Bug fix: MAX_TIME is incorrect in cluster mode
 * [IOTDB-1594] Fix show timeseries returns incorrect tag value 
+* [IOTDB-1610] Fix TsFileRewriteTool writing incorrect data file
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
 * [ISSUE-3436] Fix query result not right after deleting multiple time interval of one timeseries
