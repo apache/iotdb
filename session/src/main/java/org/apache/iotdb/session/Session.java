@@ -1909,6 +1909,10 @@ public class Session {
     this.enableQueryRedirection = enableQueryRedirection;
   }
 
+  public boolean isEnableCacheLeader() {
+    return enableCacheLeader;
+  }
+
   public void setEnableCacheLeader(boolean enableCacheLeader) {
     this.enableCacheLeader = enableCacheLeader;
   }

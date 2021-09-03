@@ -552,6 +552,7 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaInClusterMode()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    boolean isEnableCacheLeader = session.isEnableCacheLeader();
     session.setEnableCacheLeader(false);
     List<String> measurement_list = new ArrayList<>();
     measurement_list.add("s1");
@@ -699,5 +700,6 @@ public abstract class Cases {
         }
       }
     }
+    session.setEnableCacheLeader(isEnableCacheLeader);
   }
 }
