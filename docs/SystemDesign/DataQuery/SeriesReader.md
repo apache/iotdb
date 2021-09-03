@@ -131,10 +131,7 @@ while (aggregateReader.hasNextChunk()) {
 
 ``` 
 // Get the value of the given timestamp, or null if none exists (requires that the //timestamp passed in is incremented)
-Object getValueInTimestamp(long timestamp) throws IOException;
-
-// Given a batch of timestamp values, return a batch of results (reduce the number //of method calls)
-Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
+Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException;
 ```
 
 #### General use process
@@ -142,11 +139,7 @@ Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
 This interface is used in queries with value filtering. After TimeGenerator generates a timestamp, use this interface to obtain the value corresponding to the timestamp.
 
 ```
-Object value = readerByTimestamp.getValueInTimestamp(timestamp);
-
-or
-
-Object[] values = readerByTimestamp.getValueInTimestamp(timestamps);
+Object[] values = readerByTimestamp.getValueInTimestamp(timestamps, length);
 ```
 
 ## Concrete implementation class
@@ -319,10 +312,18 @@ if (readPageData()) {
 }
 
 /*
- * If there is a chunk and a page, return page
+ * If there is a chunk, return chunk
  */
-while (seriesReader.hasNextChunk()) {
-  if (readPageData()) {
+if (readChunkData()) {
+  hasCachedBatchData = true;
+  return true;
+}
+
+/*
+ * If there is a file and a chunk , return chunk
+ */
+while (seriesReader.hasNextFile()) {
+  if (readChunkData()) {
     hasCachedBatchData = true;
     return true;
   }
@@ -349,7 +350,14 @@ if (readPageData(timestamp)) {
 /*
  * Determine if the next chunk has the current search time, skip it if it can
  */
-while (seriesReader.hasNextChunk()) {
+if (readChunkData(timestamp)) {
+  return true;
+}
+
+/*
+ * Determine if the next File has the current search time, skip it if it can
+ */
+while (seriesReader.hasNextFile()) {
   Statistics statistics = seriesReader.currentChunkStatistics();
   if (!satisfyTimeFilter(statistics)) {
     seriesReader.skipCurrentChunk();
@@ -358,7 +366,7 @@ while (seriesReader.hasNextChunk()) {
   /*
    * The chunk cannot be skipped, continue to check the page in the chunk
    */
-  if (readPageData(timestamp)) {
+  if (readChunkData(timestamp)) {
     return true;
   }
 }
