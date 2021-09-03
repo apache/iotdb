@@ -451,19 +451,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             throw new IOException();
           }
         }
-        long timePartition = targetResource.getTimePartition();
-        List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-        for (String file : sourceFileList) {
-          // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource sourceTsFileResource = getTsFileResource(file, isSeq);
-          if (sourceTsFileResource == null) {
-            throw new IOException();
-          }
-          sourceTsFileResources.add(sourceTsFileResource);
-        }
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
-        List<Modification> modifications = new ArrayList<>();
-        // if not complete compaction, remove target file
         if (writer.hasCrashed()) {
           targetResource.remove();
           if (isSeq) {
@@ -474,6 +462,19 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         } else {
           // complete compaction, delete source files
           writer.close();
+          long timePartition = targetResource.getTimePartition();
+          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+          for (String file : sourceFileList) {
+            // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+            TsFileResource sourceTsFileResource = getTsFileResource(file, isSeq);
+            if (sourceTsFileResource == null) {
+              // if sourceTsFileResource is null, it has been deleted
+              continue;
+            }
+            sourceTsFileResources.add(sourceTsFileResource);
+          }
+          List<Modification> modifications = new ArrayList<>();
+          // if not complete compaction, remove target file
           writeLock();
           try {
             if (Thread.currentThread().isInterrupted()) {
