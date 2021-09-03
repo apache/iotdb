@@ -1259,7 +1259,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLikeQuery() throws QueryProcessException, MetadataException {
+  public void testRegexpQuery() throws QueryProcessException, MetadataException {
     IoTDB.metaManager.createTimeseries(
         new PartialPath("root.vehicle.d5.s1"),
         TSDataType.TEXT,
@@ -1267,7 +1267,7 @@ public class PhysicalPlanTest {
         CompressionType.UNCOMPRESSED,
         null);
 
-    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 LIKE 'string*'";
+    String sqlStr = "SELECT * FROM root.vehicle.d5 WHERE s1 REGEXP 'string*'";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     IExpression queryFilter = ((RawDataQueryPlan) plan).getExpression();
     IExpression expect =
