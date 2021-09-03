@@ -27,11 +27,12 @@
 * [IOTDB-1399] Add a session interface to connect multiple nodes
 * [IOTDB-1466] Support device template
 * [IOTDB-1491] UDTF query supported in cluster
-* [IOTDB-1536] Support fuzzy query
 * [IOTDB-1496] Timed flush memtable
+* [IOTDB-1536] Support fuzzy query REGEXP
 * [IOTDB-1561] Support fill by specific value
 * [IOTDB-1565] Add sql: set system to readonly/writable
 * [IOTDB-1569] Timed close TsFileProcessor
+* [IOTDB-1586] Support mysql-style Like clause 
 * [ISSUE-3811] Provide a data type column for the last query dataset
 * TTL can be set to the prefix path of storage group
 * add JMX monitor to all ThreadPools in the server module 
