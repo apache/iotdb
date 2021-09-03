@@ -167,7 +167,8 @@ public class PlannerTest {
     PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
     assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
-    String queryStatement1 = "select * from root.vehicle.** where root.vehicle.device1.sensor1 > 50";
+    String queryStatement1 =
+        "select * from root.vehicle.** where root.vehicle.device1.sensor1 > 50";
     PhysicalPlan plan7 = processor.parseSQLToPhysicalPlan(queryStatement1);
     assertEquals(OperatorType.QUERY, plan7.getOperatorType());
 

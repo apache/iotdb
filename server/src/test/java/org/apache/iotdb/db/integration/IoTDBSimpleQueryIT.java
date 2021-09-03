@@ -325,7 +325,8 @@ public class IoTDBSimpleQueryIT {
       statement.execute("flush");
 
       for (int i = 1; i < originalValues.length; i++) {
-        String sql = "select * from root.** where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
+        String sql =
+            "select * from root.** where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
         ResultSet resultSet = statement.executeQuery(sql);
 
         while (resultSet.next()) {
@@ -675,7 +676,8 @@ public class IoTDBSimpleQueryIT {
           };
 
       int cur = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.** order by time desc")) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.** order by time desc")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("Time")
