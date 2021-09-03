@@ -623,8 +623,9 @@ public abstract class RaftLogManager {
 
     startTime = Statistic.RAFT_SENDER_COMMIT_APPEND_AND_STABLE_LOGS.getOperationStartTime();
     try {
-      // As the operations here are so simple that we can think the execution
-      // are success or fail at same time approximately.
+      // Operations here are so simple that the execution could be thought
+      // success or fail together approximately.
+      // TODO: make it real atomic
       getCommittedEntryManager().append(entries);
       Log lastLog = entries.get(entries.size() - 1);
       getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
@@ -639,9 +640,7 @@ public abstract class RaftLogManager {
       // TODO: let node quit the raft group once encounter the error
       logger.error("{}: Unexpected error:", name, e);
     } catch (IOException e) {
-      // The exception happens because persistent entries fail which should block the service
-      // continue accept data. We need to know that since then, the persisted raft log for the
-      // group has corrupted.
+      // The exception will block the raft service continue accept log.
       // TODO: Notify user that the persisted logs before these entries(include) are corrupted.
       // TODO: An idea is that we can degrade the service by disable raft log persistent for
       // TODO: the group. It needs fine-grained control for the config of Raft log persistence.
