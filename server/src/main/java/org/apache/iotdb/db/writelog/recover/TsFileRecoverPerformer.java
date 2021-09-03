@@ -228,13 +228,13 @@ public class TsFileRecoverPerformer {
                 // deletion is valid for current chunk
                 long modsStartTime = modification.getStartTime();
                 long modsEndTime = modification.getEndTime();
-                if (startTime >= modsStartTime && startTime <= modsEndTime) {
+                if (startTime >= modsStartTime && endTime <= modsEndTime) {
+                  startTime = Long.MAX_VALUE;
+                  endTime = Long.MIN_VALUE;
+                } else if (startTime >= modsStartTime && startTime <= modsEndTime) {
                   startTime = modsEndTime + 1;
                 } else if (endTime >= modsStartTime && endTime <= modsEndTime) {
                   endTime = modsStartTime - 1;
-                } else if (startTime >= modsStartTime && endTime <= modsEndTime) {
-                  startTime = Long.MAX_VALUE;
-                  endTime = Long.MIN_VALUE;
                 }
               }
             }
