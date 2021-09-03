@@ -1663,14 +1663,19 @@ public class MManager {
   }
 
   /**
-   * update the last cache value of time series of given seriesPath
+   * Update the last cache value of time series of given seriesPath.
+   *
+   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
+   * is null, MManager will use the seriesPath to search the node.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
    *
    * @param seriesPath the path of timeseries or component of aligned timeseries
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
-   * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   * @param node the measurementMNode holding the lastCache
    */
   public void updateLastCache(
       PartialPath seriesPath,
@@ -1692,11 +1697,15 @@ public class MManager {
   }
 
   /**
-   * get the last cache value of time series of given seriesPath
+   * Get the last cache value of time series of given seriesPath.
+   *
+   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
+   * is null, MManager will use the seriesPath to search the node.
+   *
+   * <p>Invoking scenario: last cache read during last Query
    *
    * @param seriesPath the path of timeseries or component of aligned timeseries
-   * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   * @param node the measurementMNode holding the lastCache
    * @return the last cache value
    */
   public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
@@ -1713,11 +1722,13 @@ public class MManager {
   }
 
   /**
-   * reset the last cache value of time series of given seriesPath
+   * Reset the last cache value of time series of given seriesPath.
+   *
+   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
+   * is null, MManager will use the seriesPath to search the node.
    *
    * @param seriesPath the path of timeseries or component of aligned timeseries
-   * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
+   * @param node the measurementMNode holding the lastCache
    */
   public void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
     if (node == null) {
