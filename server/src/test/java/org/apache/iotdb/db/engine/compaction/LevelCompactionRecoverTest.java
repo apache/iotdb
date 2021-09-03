@@ -203,6 +203,17 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
       }
     }
     assertEquals(500, count);
+    deleteFileIfExists(
+        new File(
+            TestConstant.BASE_OUTPUT_PATH.concat(
+                0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 1
+                    + IoTDBConstant.FILE_NAME_SEPARATOR
+                    + 0
+                    + ".tsfile")));
 
     CompactionLogger compactionLogger =
         new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
@@ -709,5 +720,23 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
       }
     }
     assertEquals(500, count);
+  }
+
+  public void deleteFileIfExists(File file) {
+    long waitingTime = 0l;
+    while (file.exists()) {
+      file.delete();
+      System.gc();
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+
+      }
+      waitingTime += 100;
+      if (waitingTime > 20_000) {
+        System.out.println("fail to delete " + file);
+        break;
+      }
+    }
   }
 }

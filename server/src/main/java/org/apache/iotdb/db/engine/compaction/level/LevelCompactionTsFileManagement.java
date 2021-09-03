@@ -486,7 +486,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             writeUnlock();
           }
           for (TsFileResource tsFileResource : sourceTsFileResources) {
-            logger.warn(
+            logger.info(
                 "{} recover storage group delete source file {}",
                 storageGroupName,
                 tsFileResource.getTsFile().getName());
