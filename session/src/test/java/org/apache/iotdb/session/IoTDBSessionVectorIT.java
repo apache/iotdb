@@ -68,7 +68,7 @@ public class IoTDBSessionVectorIT {
     try {
       insertTabletWithAlignedTimeseriesMethod();
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1");
+      SessionDataSet dataSet = selectTest("select ** from root.sg_1.d1");
       assertEquals(dataSet.getColumnNames().size(), 3);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
@@ -96,7 +96,7 @@ public class IoTDBSessionVectorIT {
       insertTabletWithAlignedTimeseriesMethod();
       insertRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
-      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
       assertEquals(dataSet.getColumnNames().size(), 2);
       assertEquals(dataSet.getColumnNames().get(0), "Time");
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");

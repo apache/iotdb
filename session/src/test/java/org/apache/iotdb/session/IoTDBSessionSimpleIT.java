@@ -180,7 +180,7 @@ public class IoTDBSessionSimpleIT {
     expected.add(TSDataType.TEXT.name());
 
     Set<String> actual = new HashSet<>();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
     while (dataSet.hasNext()) {
       actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
@@ -283,7 +283,7 @@ public class IoTDBSessionSimpleIT {
     expected.add(TSDataType.TEXT.name());
 
     Set<String> actual = new HashSet<>();
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
     while (dataSet.hasNext()) {
       actual.add(dataSet.next().getFields().get(3).getStringValue());
     }
