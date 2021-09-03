@@ -700,6 +700,31 @@ public abstract class Cases {
         }
       }
     }
+
+    //test create time series without sg
+    for (int i=0;i<5;i++){
+      session.createTimeseries(
+              String.format("root.sg1%s.d1.s1",i), TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+
+    List<String> path = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for(int i=5;i<10;i++){
+      path.add(String.format("root.sg1%s.d1.s1",i));
+      dataTypes.add(TSDataType.INT64);
+      encodings.add(TSEncoding.RLE);
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    session.createMultiTimeseries(path,dataTypes,encodings,compressionTypes,null,null,null,null);
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 10; i++) {
+          ResultSet resultSet =
+                  readStatement.executeQuery(String.format("show timeseries root.sg1%s.d1.s1", i));
+            Assert.assertTrue(resultSet.next());
+      }
+    }
     session.setEnableCacheLeader(isEnableCacheLeader);
   }
 }
