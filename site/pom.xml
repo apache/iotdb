@@ -459,6 +459,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.12.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.12.x.zip</outputFileName>
                                 </configuration>
@@ -551,6 +553,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.11.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.11.x.zip</outputFileName>
                                 </configuration>
@@ -643,6 +647,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.10.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.10.x.zip</outputFileName>
                                 </configuration>
@@ -735,6 +741,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.9.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.9.x.zip</outputFileName>
                                 </configuration>
@@ -827,6 +835,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.8.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.8.x.zip</outputFileName>
                                 </configuration>
