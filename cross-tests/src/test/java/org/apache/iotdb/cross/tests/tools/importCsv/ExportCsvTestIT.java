@@ -139,7 +139,7 @@ public class ExportCsvTestIT extends AbstractScript {
         };
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
-    String[] sql = {"select * from root"};
+    String[] sql = {"select * from root.**"};
     assertTrue(generateSQLFile(sql));
     if (os.startsWith("windows")) {
       testOnWindows(output);
@@ -175,7 +175,7 @@ public class ExportCsvTestIT extends AbstractScript {
         };
     prepareData();
     String os = System.getProperty("os.name").toLowerCase();
-    String[] sql = {"select count(*) from root"};
+    String[] sql = {"select count(*) from root.**"};
     generateSQLFile(sql);
     if (os.startsWith("windows")) {
       testOnWindows(output);
