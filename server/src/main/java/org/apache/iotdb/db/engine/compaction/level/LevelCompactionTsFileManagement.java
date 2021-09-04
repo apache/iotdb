@@ -451,9 +451,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           } else {
             unSequenceRecoverTsFileResources.clear();
           }
-        } else {
+        } else if ((targetResource = getTsFileResource(targetFile, isSeq)) != null) {
           // complete compaction, delete source files
-          long timePartition = -1;
+          long timePartition = targetResource.getTimePartition();
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String file : sourceFileList) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
@@ -462,12 +462,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               // if sourceTsFileResource is null, it has been deleted
               continue;
             }
-            if (timePartition == -1) {
-              timePartition = sourceTsFileResource.getTimePartition();
-            }
             sourceTsFileResources.add(sourceTsFileResource);
           }
-          if (timePartition != -1) {
+          if (sourceFileList.size() != 0) {
             List<Modification> modifications = new ArrayList<>();
             // if not complete compaction, remove target file
             writeLock();
