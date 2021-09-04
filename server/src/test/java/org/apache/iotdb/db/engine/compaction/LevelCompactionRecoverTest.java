@@ -114,6 +114,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
 
     CompactionLogger compactionLogger =
@@ -212,6 +213,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -247,6 +249,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
 
     CompactionLogger compactionLogger =
@@ -315,6 +318,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -350,6 +354,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
 
     CompactionLogger compactionLogger =
@@ -423,6 +428,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -458,6 +464,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
 
     CompactionLogger compactionLogger =
@@ -549,6 +556,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -587,6 +595,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
 
     CompactionLogger compactionLogger =
@@ -655,6 +664,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
     IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
   }
@@ -699,6 +709,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -742,6 +753,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -809,6 +821,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
@@ -886,6 +899,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
         count++;
       }
     }
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 
