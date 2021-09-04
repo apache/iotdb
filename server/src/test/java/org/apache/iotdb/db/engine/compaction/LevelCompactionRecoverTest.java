@@ -399,6 +399,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       levelCompactionTsFileManagement.remove(resource, true);
+      System.gc();
       resource.delete();
       assertFalse(resource.getTsFile().exists());
     }
@@ -527,6 +528,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     }
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       levelCompactionTsFileManagement.remove(resource, true);
+      System.gc();
       resource.delete();
       assertFalse(resource.getTsFile().exists());
     }
