@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -444,15 +443,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource = getRecoverTsFileResource(targetFile, isSeq);
-        if (targetResource == null) {
-          // new file already merged but old file not deleted
-          targetResource = getTsFileResource(targetFile, isSeq);
-          if (targetResource == null) {
-            throw new IOException();
-          }
-        }
-        RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
-        if (writer.hasCrashed()) {
+        if (targetResource != null) {
+          // target tsfile is not compeleted
           targetResource.remove();
           if (isSeq) {
             sequenceRecoverTsFileResources.clear();
@@ -461,8 +453,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         } else {
           // complete compaction, delete source files
-          writer.close();
-          long timePartition = targetResource.getTimePartition();
+          long timePartition = -1;
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (String file : sourceFileList) {
             // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
@@ -471,29 +462,34 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
               // if sourceTsFileResource is null, it has been deleted
               continue;
             }
+            if (timePartition == -1) {
+              timePartition = sourceTsFileResource.getTimePartition();
+            }
             sourceTsFileResources.add(sourceTsFileResource);
           }
-          List<Modification> modifications = new ArrayList<>();
-          // if not complete compaction, remove target file
-          writeLock();
-          try {
-            if (Thread.currentThread().isInterrupted()) {
-              throw new InterruptedException(
-                  String.format("%s [Compaction] abort", storageGroupName));
+          if (timePartition != -1) {
+            List<Modification> modifications = new ArrayList<>();
+            // if not complete compaction, remove target file
+            writeLock();
+            try {
+              if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedException(
+                    String.format("%s [Compaction] abort", storageGroupName));
+              }
+              int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
+              deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
+            } finally {
+              writeUnlock();
             }
-            int level = TsFileResource.getMergeLevel(new File(sourceFileList.get(0)).getName());
-            deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
-          } finally {
-            writeUnlock();
+            for (TsFileResource tsFileResource : sourceTsFileResources) {
+              logger.info(
+                  "{} recover storage group delete source file {}",
+                  storageGroupName,
+                  tsFileResource.getTsFile().getName());
+            }
+            deleteLevelFilesInDisk(sourceTsFileResources);
+            renameLevelFilesMods(modifications, sourceTsFileResources, targetResource);
           }
-          for (TsFileResource tsFileResource : sourceTsFileResources) {
-            logger.info(
-                "{} recover storage group delete source file {}",
-                storageGroupName,
-                tsFileResource.getTsFile().getName());
-          }
-          deleteLevelFilesInDisk(sourceTsFileResources);
-          renameLevelFilesMods(modifications, sourceTsFileResources, targetResource);
         }
       }
     } catch (IOException | InterruptedException e) {
