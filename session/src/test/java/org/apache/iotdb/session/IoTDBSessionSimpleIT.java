@@ -1002,6 +1002,81 @@ public class IoTDBSessionSimpleIT {
     session.close();
   }
 
+  @Test
+  public void testexecuteStatement() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> datatypes = new ArrayList<>();
+    List<List<Object>> values = new ArrayList<>();
+
+    addLine(
+        times,
+        measurements,
+        datatypes,
+        values,
+        2L,
+        "s2",
+        "s3",
+        TSDataType.INT32,
+        TSDataType.INT64,
+        3,
+        4L);
+    addLine(
+        times,
+        measurements,
+        datatypes,
+        values,
+        3L,
+        "s1",
+        "s2",
+        TSDataType.INT32,
+        TSDataType.INT32,
+        1,
+        2);
+    addLine(
+        times,
+        measurements,
+        datatypes,
+        values,
+        1L,
+        "s4",
+        "s5",
+        TSDataType.FLOAT,
+        TSDataType.BOOLEAN,
+        5.0f,
+        Boolean.TRUE);
+
+    session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values, true);
+    boolean result = session.executeStatement("select * from root.sg.d1");
+    assertTrue(result);
+    session.close();
+
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    if (!System.getProperty("sun.jnu.encoding").contains("UTF-8")) {
+      logger.error("The system does not support UTF-8, so skip Chinese test...");
+      session.close();
+      return;
+    }
+    String storageGroup = "root.sg";
+    session.setStorageGroup(storageGroup);
+
+    try {
+      session.createTimeseries(
+          "root.sg.d1..s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("", e);
+    }
+
+    result = session.executeStatement("SHOW TIMESERIES");
+    assertFalse(result);
+
+    session.deleteStorageGroup(storageGroup);
+    session.close();
+  }
+
   private void checkResult(Session session)
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");

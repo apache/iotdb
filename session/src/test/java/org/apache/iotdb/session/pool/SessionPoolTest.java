@@ -192,6 +192,24 @@ public class SessionPoolTest {
   }
 
   @Test
+  public void testExecuteStatement() {
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    write10Data(pool, true);
+    boolean result = false;
+    try {
+      result = pool.executeStatement("select * from root.sg1.d1 where time > 1");
+      assertTrue(result);
+      result = pool.executeStatement("select * from root.sg1.d1 where time > 11");
+      assertFalse(result);
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      logger.error("tryIfTheServerIsRestartButDataIsGotten", e);
+      fail(e.getMessage());
+    } finally {
+      pool.close();
+    }
+  }
+
+  @Test
   public void executeRawDataQuery() {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     ExecutorService service = Executors.newFixedThreadPool(10);

@@ -559,6 +559,21 @@ public class Session {
   /**
    * execute query sql
    *
+   * @param sql any sql statement
+   * @return <code>true</code> if the first result is a <code>SessionDataset</code> object; <code>
+   *     false</code> if it is an update count or there are no results
+   * @throws IoTDBConnectionException if a database access error occurs.
+   * @throws StatementExecutionException when the statement failed.
+   */
+  public boolean executeStatement(String sql)
+      throws StatementExecutionException, IoTDBConnectionException {
+    SessionDataSet dataSet = executeStatementMayRedirect(sql, queryTimeoutInMs);
+    return dataSet.hasNext();
+  }
+
+  /**
+   * execute query sql
+   *
    * @param sql query statement
    * @return result set
    */

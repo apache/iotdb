@@ -1114,6 +1114,36 @@ public class SessionPool {
   }
 
   /**
+   * Executes the given SQL statement.
+   *
+   * @param sql any SQL statement
+   * @return <code>true</code> if the first result is a <code>SessionDataset</code> object; <code>
+   *     false</code> if it is an update count or there are no results
+   * @throws IoTDBConnectionException if a database access error occurs.
+   * @throws StatementExecutionException when the statement failed.
+   */
+  @SuppressWarnings("squid:S2095") // Suppress wrapper not closed warning
+  public boolean executeStatement(String sql)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        SessionDataSet resp = session.executeQueryStatement(sql);
+        return resp.hasNext();
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("executeStatement failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    // never go here
+    return false;
+  }
+
+  /**
    * execure query sql users must call closeResultSet(SessionDataSetWrapper) if they do not use the
    * SessionDataSet any more. users do not need to call sessionDataSet.closeOpeationHandler() any
    * more.
