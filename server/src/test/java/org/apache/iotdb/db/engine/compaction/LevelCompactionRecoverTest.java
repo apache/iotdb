@@ -59,7 +59,6 @@ import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.COMPA
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.SOURCE_NAME;
 import static org.apache.iotdb.db.engine.compaction.utils.CompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 public class LevelCompactionRecoverTest extends LevelCompactionTest {
@@ -399,9 +398,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     compactionLogger.close();
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       levelCompactionTsFileManagement.remove(resource, true);
-      System.gc();
-      resource.delete();
-      assertFalse(resource.getTsFile().exists());
+      deleteFileIfExists(resource.getTsFile());
     }
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
@@ -528,9 +525,7 @@ public class LevelCompactionRecoverTest extends LevelCompactionTest {
     }
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       levelCompactionTsFileManagement.remove(resource, true);
-      System.gc();
-      resource.delete();
-      assertFalse(resource.getTsFile().exists());
+      deleteFileIfExists(resource.getTsFile());
     }
     levelCompactionTsFileManagement.add(targetTsFileResource, true);
     levelCompactionTsFileManagement.recover();
