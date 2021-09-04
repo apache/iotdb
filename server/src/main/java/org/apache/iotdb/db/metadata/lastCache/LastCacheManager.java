@@ -48,7 +48,7 @@ public class LastCacheManager {
   /**
    * get the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    * @return the last cache value
@@ -81,7 +81,7 @@ public class LastCacheManager {
   /**
    * update the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -126,7 +126,7 @@ public class LastCacheManager {
   /**
    * reset the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    */
@@ -205,8 +205,8 @@ public class LastCacheManager {
   }
 
   /**
-   * delete the last cache value of timeseries or component of some aligned timeseries, which is
-   * under the entity and matching the originalPath
+   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
+   * is under the entity and matching the originalPath
    *
    * @param node entity node
    * @param originalPath origin timeseries path

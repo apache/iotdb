@@ -24,6 +24,12 @@ import org.apache.iotdb.db.metadata.lastCache.container.value.UnaryLastCacheValu
 import org.apache.iotdb.db.metadata.lastCache.container.value.VectorLastCacheValue;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
+/**
+ * This class possesses the ILastCacheValue and implements the basic last cache operations.
+ *
+ * <p>The ILastCacheValue may be extended to ILastCacheValue List in future to support batched last
+ * value cache.
+ */
 public class LastCacheContainer implements ILastCacheContainer {
 
   ILastCacheValue lastCacheValue;

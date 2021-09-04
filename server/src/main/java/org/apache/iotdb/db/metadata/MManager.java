@@ -1671,7 +1671,7 @@ public class MManager {
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -1704,7 +1704,7 @@ public class MManager {
    *
    * <p>Invoking scenario: last cache read during last Query
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache
    * @return the last cache value
    */
@@ -1727,7 +1727,7 @@ public class MManager {
    * <p>MManager will process lastCache in the given node if the node is not null. If the given node
    * is null, MManager will use the seriesPath to search the node.
    *
-   * @param seriesPath the path of timeseries or component of aligned timeseries
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache
    */
   public void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
@@ -1746,6 +1746,8 @@ public class MManager {
   /**
    * delete all the last cache value of any timeseries or aligned timeseries under the device
    *
+   * <p>Invoking scenario (1) after upload tsfile
+   *
    * @param deviceId path of device
    */
   public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
@@ -1756,8 +1758,10 @@ public class MManager {
   }
 
   /**
-   * delete the last cache value of timeseries or component of some aligned timeseries, which is
-   * under the device and matching the originalPath
+   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
+   * is under the device and matching the originalPath
+   *
+   * <p>Invoking scenario (1) delete timeseries
    *
    * @param deviceId path of device
    * @param originalPath origin timeseries path
