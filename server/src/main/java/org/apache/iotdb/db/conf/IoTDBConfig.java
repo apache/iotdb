@@ -803,12 +803,12 @@ public class IoTDBConfig {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
-  public int getConcurrentWritingTimePartition() {
-    return concurrentWritingTimePartition;
-  }
-
   void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
+  }
+
+  public int getConcurrentWritingTimePartition() {
+    return concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
