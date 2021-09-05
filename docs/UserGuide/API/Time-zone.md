@@ -45,6 +45,12 @@ JDBC: (IoTDBConnection) connection.getTimeZone();
 Session: session.getTimeZone();
 ```
 
+In CLI:
+
+```sql
+SHOW time_zone
+```
+
 ## Time zone usage scenarios
 
 The IoTDB server only stores and processes time stamps, and the time zone is only used to interact with clients. The specific scenarios are as follows:
