@@ -811,10 +811,6 @@ public class IoTDBConfig {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
-  public int getConcurrentWritingTimePartition() {
-    return concurrentWritingTimePartition;
-  }
-
   public int getDefaultFillInterval() {
     return defaultFillInterval;
   }
