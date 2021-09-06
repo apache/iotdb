@@ -20,8 +20,12 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.access.Row;
+import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.core.access.ElasticSerializableTVListBackedSingleColumnRow;
+import org.apache.iotdb.db.query.udf.core.access.ElasticSerializableTVListBackedSingleColumnWindow;
 import org.apache.iotdb.db.query.udf.core.layer.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
@@ -66,20 +70,9 @@ public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
 
       @Override
       public boolean next() throws QueryProcessException, IOException {
-        if (hasCached) {
-          return true;
-        }
-
-        if (currentPointIndex < tvList.size() - 1) {
-          ++currentPointIndex;
-          hasCached = true;
-        }
-
-        // tvList.size() - 1 <= currentPointIndex
-        if (!hasCached && parentLayerPointReader.next()) {
-          cachePoint();
-          parentLayerPointReader.readyForNext();
-
+        if (!hasCached
+            && (currentPointIndex < tvList.size() - 1
+                || LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList))) {
           ++currentPointIndex;
           hasCached = true;
         }
@@ -87,43 +80,11 @@ public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
         return hasCached;
       }
 
-      private void cachePoint() throws IOException, QueryProcessException {
-        switch (dataType) {
-          case INT32:
-            tvList.putInt(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentInt());
-            break;
-          case INT64:
-            tvList.putLong(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentLong());
-            break;
-          case FLOAT:
-            tvList.putFloat(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentFloat());
-            break;
-          case DOUBLE:
-            tvList.putDouble(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentDouble());
-            break;
-          case BOOLEAN:
-            tvList.putBoolean(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentBoolean());
-            break;
-          case TEXT:
-            tvList.putBinary(
-                parentLayerPointReader.currentTime(), parentLayerPointReader.currentBinary());
-            break;
-          default:
-            throw new UnsupportedOperationException(dataType.name());
-        }
-      }
-
       @Override
       public void readyForNext() {
         hasCached = false;
 
         safetyPile.moveForwardTo(currentPointIndex + 1);
-        // todo: reduce the update rate
         tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
       }
 
@@ -171,18 +132,205 @@ public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
 
   @Override
   public LayerRowReader constructRowReader() {
-    return null;
+
+    return new LayerRowReader() {
+
+      private final SafetyPile safetyPile = safetyLine.addSafetyPile();
+      private final ElasticSerializableTVListBackedSingleColumnRow row =
+          new ElasticSerializableTVListBackedSingleColumnRow(tvList, -1);
+
+      private boolean hasCached = false;
+      private int currentRowIndex = -1;
+
+      @Override
+      public boolean next() throws QueryProcessException, IOException {
+        if (!hasCached
+            && ((currentRowIndex < tvList.size() - 1)
+                || LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList))) {
+          row.seek(++currentRowIndex);
+          hasCached = true;
+        }
+
+        return hasCached;
+      }
+
+      @Override
+      public void readyForNext() {
+        hasCached = false;
+
+        safetyPile.moveForwardTo(currentRowIndex + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {dataType};
+      }
+
+      @Override
+      public long currentTime() throws IOException {
+        return row.getTime();
+      }
+
+      @Override
+      public Row currentRow() {
+        return row;
+      }
+    };
   }
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
       SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    return null;
+
+    return new LayerRowWindowReader() {
+
+      private final int windowSize = strategy.getWindowSize();
+      private final int slidingStep = strategy.getSlidingStep();
+
+      private final SafetyPile safetyPile = safetyLine.addSafetyPile();
+      private final ElasticSerializableTVListBackedSingleColumnWindow window =
+          new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+
+      private boolean hasCached = false;
+      private int beginIndex = -slidingStep;
+
+      @Override
+      public boolean next() throws IOException, QueryProcessException {
+        if (hasCached) {
+          return true;
+        }
+
+        beginIndex += slidingStep;
+        int endIndex = beginIndex + windowSize;
+
+        int pointsToBeCollected = endIndex - tvList.size();
+        if (0 < pointsToBeCollected) {
+          hasCached =
+              LayerCacheUtils.cachePoints(
+                      dataType, parentLayerPointReader, tvList, pointsToBeCollected)
+                  != 0;
+          window.seek(beginIndex, tvList.size());
+        } else {
+          hasCached = true;
+          window.seek(beginIndex, endIndex);
+        }
+
+        return hasCached;
+      }
+
+      @Override
+      public void readyForNext() {
+        hasCached = false;
+
+        safetyPile.moveForwardTo(beginIndex + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {dataType};
+      }
+
+      @Override
+      public RowWindow currentWindow() {
+        return window;
+      }
+    };
   }
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    return null;
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws IOException, QueryProcessException {
+
+    final long timeInterval = strategy.getTimeInterval();
+    final long slidingStep = strategy.getSlidingStep();
+    final long displayWindowEnd = strategy.getDisplayWindowEnd();
+
+    final SafetyPile safetyPile = safetyLine.addSafetyPile();
+    final ElasticSerializableTVListBackedSingleColumnWindow window =
+        new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+
+    long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
+    if (tvList.size() == 0
+        && LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)
+        && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+      // display window begin should be set to the same as the min timestamp of the query result
+      // set
+      nextWindowTimeBeginGivenByStrategy = tvList.getTime(0);
+    }
+    long finalNextWindowTimeBeginGivenByStrategy = nextWindowTimeBeginGivenByStrategy;
+
+    final boolean hasAtLeastOneRow = tvList.size() != 0;
+
+    return new LayerRowWindowReader() {
+
+      private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
+      private int nextIndexBegin = 0;
+
+      @Override
+      public boolean next() throws IOException, QueryProcessException {
+        if (displayWindowEnd <= nextWindowTimeBegin) {
+          return false;
+        }
+        if (!hasAtLeastOneRow || 0 < tvList.size()) {
+          return true;
+        }
+
+        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        int oldTVListSize = tvList.size();
+        while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
+          if (!LayerCacheUtils.cachePoint(dataType, parentLayerPointReader, tvList)) {
+            if (displayWindowEnd == Long.MAX_VALUE
+                // display window end == the max timestamp of the query result set
+                && oldTVListSize == tvList.size()) {
+              return false;
+            } else {
+              break;
+            }
+          }
+        }
+
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeBegin <= tvList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          if (i == tvList.size() - 1) {
+            nextIndexBegin = tvList.size();
+          }
+        }
+
+        int nextIndexEnd = tvList.size();
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeEnd <= tvList.getTime(i)) {
+            nextIndexEnd = i;
+            break;
+          }
+        }
+        window.seek(nextIndexBegin, nextIndexEnd);
+
+        return true;
+      }
+
+      @Override
+      public void readyForNext() {
+        nextWindowTimeBegin += slidingStep;
+
+        safetyPile.moveForwardTo(nextIndexBegin + 1);
+        tvList.setEvictionUpperBound(safetyLine.getSafetyLine());
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {dataType};
+      }
+
+      @Override
+      public RowWindow currentWindow() {
+        return window;
+      }
+    };
   }
 }
