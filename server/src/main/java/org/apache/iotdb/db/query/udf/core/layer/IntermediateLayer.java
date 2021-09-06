@@ -27,6 +27,8 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
+import java.io.IOException;
+
 public abstract class IntermediateLayer {
 
   protected final long queryId;
@@ -61,5 +63,6 @@ public abstract class IntermediateLayer {
       throws QueryProcessException;
 
   protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB);
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException, IOException;
 }

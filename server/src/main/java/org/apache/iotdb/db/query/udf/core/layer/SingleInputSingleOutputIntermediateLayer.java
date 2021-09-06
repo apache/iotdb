@@ -37,11 +37,13 @@ import java.io.IOException;
 public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer {
 
   private final LayerPointReader parentLayerPointReader;
+  private final TSDataType dataType;
 
   public SingleInputSingleOutputIntermediateLayer(
       long queryId, float memoryBudgetInMB, LayerPointReader parentLayerPointReader) {
     super(queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;
+    dataType = parentLayerPointReader.getDataType();
   }
 
   @Override
@@ -101,7 +103,6 @@ public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer 
       private final int windowSize = strategy.getWindowSize();
       private final int slidingStep = strategy.getSlidingStep();
 
-      private final TSDataType dataType = parentLayerPointReader.getDataType();
       private final ElasticSerializableTVList tvList =
           ElasticSerializableTVList.newElasticSerializableTVList(
               dataType, queryId, memoryBudgetInMB, 2);
@@ -122,7 +123,7 @@ public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer 
 
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
-          hasCached = collectPoints(pointsToBeCollected) != 0;
+          hasCached = collectPoints(pointsToBeCollected, tvList) != 0;
           window.seek(beginIndex, tvList.size());
         } else {
           hasCached = true;
@@ -130,47 +131,6 @@ public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer 
         }
 
         return hasCached;
-      }
-
-      /** @return number of actually collected, which may be less than or equals to pointNumber */
-      private int collectPoints(int pointNumber) throws QueryProcessException, IOException {
-        int count = 0;
-
-        while (parentLayerPointReader.next() && count < pointNumber) {
-          ++count;
-
-          switch (dataType) {
-            case INT32:
-              tvList.putInt(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentInt());
-              break;
-            case INT64:
-              tvList.putLong(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentLong());
-              break;
-            case FLOAT:
-              tvList.putFloat(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentFloat());
-              break;
-            case DOUBLE:
-              tvList.putDouble(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentDouble());
-              break;
-            case BOOLEAN:
-              tvList.putBoolean(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentBoolean());
-              break;
-            case TEXT:
-              tvList.putBinary(
-                  parentLayerPointReader.currentTime(), parentLayerPointReader.currentBinary());
-              break;
-            default:
-          }
-
-          parentLayerPointReader.readyForNext();
-        }
-
-        return count;
       }
 
       @Override
@@ -192,7 +152,138 @@ public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer 
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
-    return null;
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException, IOException {
+
+    final long timeInterval = strategy.getTimeInterval();
+    final long slidingStep = strategy.getSlidingStep();
+    final long displayWindowEnd = strategy.getDisplayWindowEnd();
+
+    final ElasticSerializableTVList tvList =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            dataType, queryId, memoryBudgetInMB, 2);
+    final ElasticSerializableTVListBackedSingleColumnWindow window =
+        new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+
+    long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
+    if (tvList.size() == 0 && parentLayerPointReader.next()) {
+      collectPoints(1, tvList);
+
+      if (nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+        // display window begin should be set to the same as the min timestamp of the query result
+        // set
+        nextWindowTimeBeginGivenByStrategy = tvList.getTime(0);
+      }
+    }
+    long finalNextWindowTimeBeginGivenByStrategy = nextWindowTimeBeginGivenByStrategy;
+
+    final boolean hasAtLeastOneRow = tvList.size() != 0;
+
+    return new LayerRowWindowReader() {
+
+      private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
+      private int nextIndexBegin = 0;
+
+      @Override
+      public boolean next() throws IOException, QueryProcessException {
+        if (displayWindowEnd <= nextWindowTimeBegin) {
+          return false;
+        }
+        if (!hasAtLeastOneRow || 0 < tvList.size()) {
+          return true;
+        }
+
+        long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
+        int oldTVListSize = tvList.size();
+        while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
+          if (parentLayerPointReader.next()) {
+            collectPoints(1, tvList);
+          } else if (displayWindowEnd == Long.MAX_VALUE
+              // display window end == the max timestamp of the query result set
+              && oldTVListSize == tvList.size()) {
+            return false;
+          } else {
+            break;
+          }
+        }
+
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeBegin <= tvList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          if (i == tvList.size() - 1) {
+            nextIndexBegin = tvList.size();
+          }
+        }
+
+        int nextIndexEnd = tvList.size();
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeEnd <= tvList.getTime(i)) {
+            nextIndexEnd = i;
+            break;
+          }
+        }
+        window.seek(nextIndexBegin, nextIndexEnd);
+
+        return true;
+      }
+
+      @Override
+      public void readyForNext() {
+        nextWindowTimeBegin += slidingStep;
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {dataType};
+      }
+
+      @Override
+      public RowWindow currentWindow() {
+        return window;
+      }
+    };
+  }
+
+  /** @return number of actually collected, which may be less than or equals to pointNumber */
+  private int collectPoints(int pointNumber, ElasticSerializableTVList tvList)
+      throws QueryProcessException, IOException {
+    int count = 0;
+
+    while (parentLayerPointReader.next() && count < pointNumber) {
+      ++count;
+
+      switch (dataType) {
+        case INT32:
+          tvList.putInt(parentLayerPointReader.currentTime(), parentLayerPointReader.currentInt());
+          break;
+        case INT64:
+          tvList.putLong(
+              parentLayerPointReader.currentTime(), parentLayerPointReader.currentLong());
+          break;
+        case FLOAT:
+          tvList.putFloat(
+              parentLayerPointReader.currentTime(), parentLayerPointReader.currentFloat());
+          break;
+        case DOUBLE:
+          tvList.putDouble(
+              parentLayerPointReader.currentTime(), parentLayerPointReader.currentDouble());
+          break;
+        case BOOLEAN:
+          tvList.putBoolean(
+              parentLayerPointReader.currentTime(), parentLayerPointReader.currentBoolean());
+          break;
+        case TEXT:
+          tvList.putBinary(
+              parentLayerPointReader.currentTime(), parentLayerPointReader.currentBinary());
+          break;
+        default:
+      }
+
+      parentLayerPointReader.readyForNext();
+    }
+
+    return count;
   }
 }
