@@ -307,10 +307,10 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check sequence tsfiles' memtables) Unit: ms
    */
-  private long seqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+  private long seqMemtableFlushInterval = 60 * 60 * 1000L;
 
   /** The interval to check whether sequence memtables need flushing. Unit: ms */
-  private long seqMemtableFlushCheckInterval = 60 * 60 * 1000L;
+  private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
   private boolean enableTimedFlushUnseqMemtable = true;
@@ -319,10 +319,10 @@ public class IoTDBConfig {
    * If a memTable's created time is older than current time minus this, the memtable will be
    * flushed to disk.(only check unsequence tsfiles' memtables) Unit: ms
    */
-  private long unseqMemtableFlushInterval = 12 * 60 * 60 * 1000L;
+  private long unseqMemtableFlushInterval = 60 * 60 * 1000L;
 
   /** The interval to check whether unsequence memtables need flushing. Unit: ms */
-  private long unseqMemtableFlushCheckInterval = 60 * 60 * 1000L;
+  private long unseqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed close tsfiles. */
   private boolean enableTimedCloseTsFile = true;
@@ -331,10 +331,10 @@ public class IoTDBConfig {
    * If a TsfileProcessor's last working memtable flush time is older than current time minus this
    * and its working memtable is null, the TsfileProcessor will be closed. Unit: ms
    */
-  private long closeTsFileIntervalAfterFlushing = 12 * 60 * 60 * 1000L;
+  private long closeTsFileIntervalAfterFlushing = 60 * 60 * 1000L;
 
   /** The interval to check whether tsfiles need closing. Unit: ms */
-  private long closeTsFileCheckInterval = 60 * 60 * 1000L;
+  private long closeTsFileCheckInterval = 10 * 60 * 1000L;
 
   /** When average series point number reaches this, flush the memtable to disk */
   private int avgSeriesPointNumberThreshold = 10000;
@@ -803,12 +803,12 @@ public class IoTDBConfig {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
   }
 
-  public int getConcurrentWritingTimePartition() {
-    return concurrentWritingTimePartition;
-  }
-
   void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
     this.concurrentWritingTimePartition = concurrentWritingTimePartition;
+  }
+
+  public int getConcurrentWritingTimePartition() {
+    return concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {

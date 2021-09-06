@@ -658,12 +658,12 @@ Rules:
 3. The result set of last query will always be displayed in a fixed three column table format.
 For example, "select last s1, s2 from root.sg.d1, root.sg.d2", the query result would be:
 
-| Time | Path         | Value |
-| ---  | ------------ | ----- |
-|  5   | root.sg.d1.s1| 100   |
-|  2   | root.sg.d1.s2| 400   |
-|  4   | root.sg.d2.s1| 250   |
-|  9   | root.sg.d2.s2| 600   |
+| Time | Path          | Value | dataType |
+| ---  | ------------- |------ | -------- |
+|  5   | root.sg.d1.s1 | 100   | INT32    |
+|  2   | root.sg.d1.s2 | 400   | INT32    |
+|  4   | root.sg.d2.s1 | 250   | INT32    |
+|  9   | root.sg.d2.s2 | 600   | INT32    |
 
 4. It is not supported to use "diable align" in LAST query. 
 

@@ -1032,6 +1032,15 @@ public abstract class RaftMember {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
+      // if a single log exceeds the threshold
+      // we need to return error code to the client as in server mode
+      if (log.serialize().capacity() + Integer.BYTES
+          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        logger.error(
+            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+                + "or reduce the size of requests you send.");
+        return StatusUtils.INTERNAL_ERROR;
+      }
       logManager.append(log);
     }
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
@@ -1077,6 +1086,14 @@ public abstract class RaftMember {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+      // just like processPlanLocally,we need to check the size of log
+      if (log.serialize().capacity() + Integer.BYTES
+          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+        logger.error(
+            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+                + "or reduce the size of requests you send.");
+        return StatusUtils.INTERNAL_ERROR;
+      }
       // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);

@@ -147,7 +147,7 @@ public abstract class Cases {
     for (Statement readStatement : readStatements) {
       resultSet = readStatement.executeQuery("select last * from root.ln.wf01.wt01;");
       Assert.assertTrue(resultSet.next());
-      double last = Double.parseDouble(resultSet.getString(3));
+      double last = Double.parseDouble(resultSet.getString("value"));
       Assert.assertEquals(25.0, last, 0.1);
       resultSet.close();
     }
@@ -243,7 +243,7 @@ public abstract class Cases {
     while (sessionDataSet.hasNext()) {
       count++;
       List<Field> fields = sessionDataSet.next().getFields();
-      Assert.assertEquals("[root.sg1.d1.s1, 1]", fields.toString());
+      Assert.assertEquals("[root.sg1.d1.s1,1,INT64]", fields.toString().replace(" ", ""));
     }
     Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
@@ -526,5 +526,26 @@ public abstract class Cases {
         }
       }
     }
+  }
+
+  @Test
+  public void SetSystemReadOnlyWritableTest() throws SQLException {
+
+    String setReadOnly = "SET SYSTEM TO READONLY";
+    String createTimeSeries =
+        "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+    String setWritable = "SET SYSTEM TO WRITABLE";
+
+    writeStatement.execute(setReadOnly);
+
+    try {
+      writeStatement.execute(createTimeSeries);
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage()
+              .contains("Current system mode is read-only, does not support non-query operation"));
+    }
+
+    writeStatement.execute(setWritable);
   }
 }
