@@ -27,9 +27,9 @@ import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
 import java.util.List;
 
-public class MultiInputSingleOutputIntermediateLayer extends IntermediateLayer {
+public class MultiInputColumnSingleReferenceIntermediateLayer extends IntermediateLayer {
 
-  public MultiInputSingleOutputIntermediateLayer(
+  public MultiInputColumnSingleReferenceIntermediateLayer(
       long queryId, float memoryBudgetInMB, List<LayerPointReader> parentLayerPointReaders) {
     super(queryId, memoryBudgetInMB);
   }

@@ -34,12 +34,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 
-public class SingleInputSingleOutputIntermediateLayer extends IntermediateLayer {
+public class SingleInputColumnSingleReferenceIntermediateLayer extends IntermediateLayer {
 
   private final LayerPointReader parentLayerPointReader;
   private final TSDataType dataType;
 
-  public SingleInputSingleOutputIntermediateLayer(
+  public SingleInputColumnSingleReferenceIntermediateLayer(
       long queryId, float memoryBudgetInMB, LayerPointReader parentLayerPointReader) {
     super(queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;

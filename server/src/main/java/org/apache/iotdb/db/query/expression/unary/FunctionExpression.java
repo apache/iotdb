@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.MultiInputMultiOutputIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
@@ -165,7 +165,8 @@ public class FunctionExpression extends Expression {
       }
 
       expressionIntermediateLayerMap.put(
-          this, new MultiInputMultiOutputIntermediateLayer(parentLayerPointReaders, -1, -1));
+          this,
+          new MultiInputColumnMultiReferenceIntermediateLayer(parentLayerPointReaders, -1, -1));
     }
 
     return expressionIntermediateLayerMap.get(this);

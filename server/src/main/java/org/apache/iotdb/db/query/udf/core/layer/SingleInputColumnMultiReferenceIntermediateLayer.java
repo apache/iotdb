@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 
-public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
+public class SingleInputColumnMultiReferenceIntermediateLayer extends IntermediateLayer {
 
   private static final int CACHE_BLOCK_SIZE = 2;
 
@@ -45,7 +45,7 @@ public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
   private final ElasticSerializableTVList tvList;
   private final SafetyLine safetyLine;
 
-  public SingleInputMultiOutputIntermediateLayer(
+  public SingleInputColumnMultiReferenceIntermediateLayer(
       long queryId, float memoryBudgetInMB, LayerPointReader parentLayerPointReader)
       throws QueryProcessException {
     super(queryId, memoryBudgetInMB);

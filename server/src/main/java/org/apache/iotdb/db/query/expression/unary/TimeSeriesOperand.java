@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.SingleInputMultiOutputIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -80,7 +80,7 @@ public class TimeSeriesOperand extends Expression {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       expressionIntermediateLayerMap.put(
           this,
-          new SingleInputMultiOutputIntermediateLayer(
+          new SingleInputColumnMultiReferenceIntermediateLayer(
               rawTimeSeriesInputLayer.constructPointReader(
                   udtfPlan.getReaderIndex(path.getFullPath())),
               -1,
