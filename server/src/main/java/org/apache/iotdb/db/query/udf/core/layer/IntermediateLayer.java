@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
@@ -41,7 +42,7 @@ public abstract class IntermediateLayer {
   public abstract LayerRowReader constructRowReader();
 
   public final LayerRowWindowReader constructRowWindowReader(
-      AccessStrategy strategy, float memoryBudgetInMB) {
+      AccessStrategy strategy, float memoryBudgetInMB) throws QueryProcessException {
     switch (strategy.getAccessStrategyType()) {
       case SLIDING_TIME_WINDOW:
         return constructRowSlidingTimeWindowReader(
@@ -56,10 +57,9 @@ public abstract class IntermediateLayer {
   }
 
   protected abstract LayerRowWindowReader constructRowSlidingSizeWindowReader(
-      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB);
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException;
 
   protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB);
-
-  public abstract void updateEvictionUpperBound();
 }

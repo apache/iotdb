@@ -31,8 +31,8 @@ import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
-import org.apache.iotdb.db.query.udf.core.access.RowImpl;
-import org.apache.iotdb.db.query.udf.core.access.RowWindowImpl;
+import org.apache.iotdb.db.query.udf.core.access.MultiColumnRow;
+import org.apache.iotdb.db.query.udf.core.access.MultiColumnWindow;
 import org.apache.iotdb.db.query.udf.core.layer.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
@@ -68,7 +68,7 @@ public class UDFLayer {
       List<TSDataType> dataTypes,
       List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
-    constructInputLayer(
+    construct(
         queryId,
         memoryBudgetInMB,
         new RawQueryDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
@@ -84,14 +84,18 @@ public class UDFLayer {
       List<IReaderByTimestamp> readers,
       List<Boolean> cached)
       throws QueryProcessException {
-    constructInputLayer(
+    construct(
         queryId,
         memoryBudgetInMB,
         new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
   }
 
-  private void constructInputLayer(
-      long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
+  public UDFLayer(long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
+      throws QueryProcessException {
+    construct(queryId, memoryBudgetInMB, queryDataSet);
+  }
+
+  private void construct(long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
       throws QueryProcessException {
     this.queryId = queryId;
     this.queryDataSet = queryDataSet;
@@ -242,7 +246,7 @@ public class UDFLayer {
     private boolean hasCachedRowRecord;
     private Object[] cachedRowRecord;
 
-    private final RowImpl row;
+    private final MultiColumnRow row;
 
     public InputLayerRowReader(int[] columnIndexes) {
       safetyPile = safetyLine.addSafetyPile();
@@ -253,7 +257,7 @@ public class UDFLayer {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
 
-      row = new RowImpl(columnIndexes, dataTypes);
+      row = new MultiColumnRow(columnIndexes, dataTypes);
     }
 
     @Override
@@ -321,7 +325,7 @@ public class UDFLayer {
 
     private final int windowSize;
     private final IntList rowIndexes;
-    private final RowWindowImpl rowWindow;
+    private final MultiColumnWindow rowWindow;
 
     private final int slidingStep;
 
@@ -343,7 +347,7 @@ public class UDFLayer {
           windowSize < SerializableIntList.calculateCapacity(memoryBudgetInMB)
               ? new WrappedIntArray(windowSize)
               : new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
+      rowWindow = new MultiColumnWindow(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       slidingStep = accessStrategy.getSlidingStep();
 
@@ -452,7 +456,7 @@ public class UDFLayer {
     private final long displayWindowEnd;
 
     private final IntList rowIndexes;
-    private final RowWindowImpl rowWindow;
+    private final MultiColumnWindow rowWindow;
 
     private long nextWindowTimeBegin;
     private int nextIndexBegin;
@@ -475,7 +479,7 @@ public class UDFLayer {
       displayWindowEnd = accessStrategy.getDisplayWindowEnd();
 
       rowIndexes = new ElasticSerializableIntList(queryId, memoryBudgetInMB, 2);
-      rowWindow = new RowWindowImpl(rowRecordList, columnIndexes, dataTypes, rowIndexes);
+      rowWindow = new MultiColumnWindow(rowRecordList, columnIndexes, dataTypes, rowIndexes);
 
       nextWindowTimeBegin = accessStrategy.getDisplayWindowBegin();
       nextIndexBegin = 0;

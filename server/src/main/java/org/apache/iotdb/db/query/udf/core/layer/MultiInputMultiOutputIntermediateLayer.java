@@ -19,17 +19,40 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 
 import java.util.List;
 
-public class MultiInputMultiOutputIntermediateLayer implements IntermediateLayer {
+public class MultiInputMultiOutputIntermediateLayer extends IntermediateLayer {
 
   public MultiInputMultiOutputIntermediateLayer(
-      List<LayerPointReader> parentLayerPointReaders, long queryId, float memoryBudgetInMB) {}
+      long queryId, float memoryBudgetInMB, List<LayerPointReader> parentLayerPointReaders) {
+    super(queryId, memoryBudgetInMB);
+  }
 
   @Override
   public LayerPointReader constructPointReader() {
+    return null;
+  }
+
+  @Override
+  public LayerRowReader constructRowReader() {
+    return null;
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    return null;
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
     return null;
   }
 }

@@ -76,14 +76,12 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
     return rowIterator;
   }
 
-  private RowWindow seek(int beginIndex, int endIndex) {
+  public void seek(int beginIndex, int endIndex) {
     this.beginIndex = beginIndex;
     this.endIndex = endIndex;
     size = endIndex - beginIndex;
 
     row.seek(beginIndex);
     rowIterator = null;
-
-    return this;
   }
 }

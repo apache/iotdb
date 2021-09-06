@@ -20,27 +20,33 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.core.layer.SafetyLine.SafetyPile;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowReader;
+import org.apache.iotdb.db.query.udf.core.reader.LayerRowWindowReader;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 
-public class SingleInputMultiOutputIntermediateLayer implements IntermediateLayer {
+public class SingleInputMultiOutputIntermediateLayer extends IntermediateLayer {
 
   private static final int CACHE_BLOCK_SIZE = 2;
 
-  private final TSDataType dataType;
   private final LayerPointReader parentLayerPointReader;
+  private final TSDataType dataType;
   private final ElasticSerializableTVList tvList;
   private final SafetyLine safetyLine;
 
   public SingleInputMultiOutputIntermediateLayer(
-      LayerPointReader parentLayerPointReader, long queryId, float memoryBudgetInMB)
+      long queryId, float memoryBudgetInMB, LayerPointReader parentLayerPointReader)
       throws QueryProcessException {
+    super(queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;
+
     dataType = parentLayerPointReader.getDataType();
     tvList =
         ElasticSerializableTVList.newElasticSerializableTVList(
@@ -161,5 +167,22 @@ public class SingleInputMultiOutputIntermediateLayer implements IntermediateLaye
         return tvList.getBinary(currentPointIndex);
       }
     };
+  }
+
+  @Override
+  public LayerRowReader constructRowReader() {
+    return null;
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    return null;
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+    return null;
   }
 }
