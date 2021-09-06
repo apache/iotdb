@@ -42,8 +42,6 @@
                 </os>
             </activation>
             <properties>
-                <os.suffix>linux</os.suffix>
-                <os.classifier>linux-x86_64</os.classifier>
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-${cmake-version}-Linux-x86_64/</cmake.root.dir>
             </properties>
