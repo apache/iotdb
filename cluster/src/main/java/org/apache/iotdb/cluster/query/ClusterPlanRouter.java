@@ -517,18 +517,25 @@ public class ClusterPlanRouter {
       throws MetadataException {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     Map<PartitionGroup, List<InsertRowPlan>> groupPlanMap = new HashMap<>();
+    Map<PartitionGroup, List<Integer>> groupPlanIndexMap = new HashMap<>();
     PartialPath storageGroup = getMManager().getStorageGroupPath(plan.getPrefixPath());
-    for (InsertRowPlan p : plan.getRowPlans()) {
+    for (int i = 0; i < plan.getRowPlans().length; i++) {
+      InsertRowPlan p = plan.getRowPlans()[i];
       PartitionGroup group = partitionTable.route(storageGroup.getFullPath(), p.getTime());
       List<InsertRowPlan> groupedPlans =
           groupPlanMap.computeIfAbsent(group, k -> new ArrayList<>());
+      List<Integer> groupedPlanIndex =
+          groupPlanIndexMap.computeIfAbsent(group, k -> new ArrayList<>());
       groupedPlans.add(p);
+      groupedPlanIndex.add(plan.getRowPlanIndexList()[i]);
     }
 
     for (Entry<PartitionGroup, List<InsertRowPlan>> entry : groupPlanMap.entrySet()) {
       PhysicalPlan reducedPlan =
           new InsertRowsOfOneDevicePlan(
-              plan.getPrefixPath(), entry.getValue().toArray(new InsertRowPlan[0]));
+              plan.getPrefixPath(),
+              entry.getValue().toArray(new InsertRowPlan[0]),
+              groupPlanIndexMap.get(entry.getKey()).stream().mapToInt(i -> i).toArray());
       result.put(reducedPlan, entry.getKey());
     }
     return result;
