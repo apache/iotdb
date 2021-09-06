@@ -118,7 +118,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       return schema.getType();
     } else {
       int index = schema.getMeasurementIdColumnIndex(measurementId);
-      return schema.getValueTSDataTypeList().get(index);
+      return schema.getSubMeasurementsTSDataTypeList().get(index);
     }
   }
 

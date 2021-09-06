@@ -49,13 +49,13 @@ public interface IMeasurementSchema {
 
   Map<String, String> getProps();
 
-  List<String> getValueMeasurementIdList();
+  List<String> getSubMeasurementsList();
 
-  List<TSDataType> getValueTSDataTypeList();
+  List<TSDataType> getSubMeasurementsTSDataTypeList();
 
-  List<TSEncoding> getValueTSEncodingList();
+  List<TSEncoding> getSubMeasurementsTSEncodingList();
 
-  List<Encoder> getValueEncoderList();
+  List<Encoder> getSubMeasurementsEncoderList();
 
   int getMeasurementIdColumnIndex(String measurementId);
 

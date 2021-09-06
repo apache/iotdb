@@ -1094,7 +1094,7 @@ public class StorageGroupProcessor {
     for (int i = 0; i < mNodes.length; i++) {
       // Don't update cached last value for vector type
       if (mNodes[i] != null && plan.isAligned()) {
-        columnIndex += mNodes[i].getSchema().getValueMeasurementIdList().size();
+        columnIndex += mNodes[i].getSchema().getSubMeasurementsList().size();
       } else {
         if (plan.getColumns()[i] == null) {
           columnIndex++;

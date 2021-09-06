@@ -20,12 +20,10 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -95,16 +93,10 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    // TODO Maybe we should get VectorPartialPath above from MTree
-    // Currently, the above processing will only produce PartialPath instead of VectorPartialPath
-    // even if the queried time series is vector
-    // So, we need to transform the PartialPath to VectorPartialPath if is is a vector.
-    if (!isRawQuery()) {
-      transformPaths(IoTDB.metaManager);
-    } else {
+    if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
-      transformVectorPaths(physicalGenerator, columnForDisplaySet);
+      // transformVectorPaths(physicalGenerator, columnForDisplaySet);
     }
   }
 
@@ -175,15 +167,6 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public Map<String, Set<String>> getDeviceToMeasurements() {
     return deviceToMeasurements;
-  }
-
-  public void transformPaths(MManager mManager) throws MetadataException {
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
-      if (path instanceof VectorPartialPath) {
-        deduplicatedPaths.set(i, path);
-      }
-    }
   }
 
   /**

@@ -79,7 +79,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.thrift.TException;
@@ -227,7 +226,7 @@ public class CMManager extends MManager {
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (String subSensorId : measurementSchema.getValueMeasurementIdList()) {
+          for (String subSensorId : measurementSchema.getSubMeasurementsList()) {
             cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode, false);
           }
           cacheMeta(
@@ -261,20 +260,6 @@ public class CMManager extends MManager {
   @Override
   public IMeasurementSchema getSeriesSchema(PartialPath fullPath) throws MetadataException {
     return super.getSeriesSchema(fullPath, getMeasurementMNode(fullPath));
-  }
-
-  /**
-   * Transform the PartialPath to VectorPartialPath if it is a sub sensor of one vector. otherwise,
-   * we don't change it.
-   */
-  @Override
-  public PartialPath transformPath(PartialPath partialPath) throws MetadataException {
-    IMeasurementMNode node = getMeasurementMNode(partialPath);
-    if (node.getSchema() instanceof MeasurementSchema) {
-      return partialPath;
-    } else {
-      return toVectorPath(partialPath);
-    }
   }
 
   private IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {

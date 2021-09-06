@@ -98,7 +98,7 @@ public class Tablet {
     int indexInSchema = 0;
     for (IMeasurementSchema schema : schemas) {
       if (schema.getType() == TSDataType.VECTOR) {
-        for (String measurementId : schema.getValueMeasurementIdList()) {
+        for (String measurementId : schema.getSubMeasurementsList()) {
           measurementIndex.put(measurementId, indexInSchema);
         }
       } else {
@@ -125,7 +125,7 @@ public class Tablet {
     IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
       int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
-      TSDataType dataType = measurementSchema.getValueTSDataTypeList().get(indexInVector);
+      TSDataType dataType = measurementSchema.getSubMeasurementsTSDataTypeList().get(indexInVector);
       addValueOfDataType(dataType, rowIndex, indexInVector, value);
     } else {
       addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
@@ -210,7 +210,7 @@ public class Tablet {
     int valueColumnsSize = 0;
     for (IMeasurementSchema schema : schemas) {
       if (schema instanceof VectorMeasurementSchema) {
-        valueColumnsSize += schema.getValueMeasurementIdList().size();
+        valueColumnsSize += schema.getSubMeasurementsList().size();
       } else {
         valueColumnsSize++;
       }
@@ -231,8 +231,8 @@ public class Tablet {
   }
 
   private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
-    for (int i = 0; i < schema.getValueMeasurementIdList().size(); i++) {
-      TSDataType dataType = schema.getValueTSDataTypeList().get(i);
+    for (int i = 0; i < schema.getSubMeasurementsList().size(); i++) {
+      TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(i);
       values[idx] = createValueColumnOfDataType(dataType);
       idx++;
     }
@@ -281,8 +281,8 @@ public class Tablet {
         valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
         columnIndex++;
       } else {
-        for (int j = 0; j < schema.getValueTSDataTypeList().size(); j++) {
-          TSDataType dataType = schema.getValueTSDataTypeList().get(j);
+        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
+          TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(j);
           valueOccupation += calOccupationOfOneColumn(dataType, columnIndex);
           columnIndex++;
         }

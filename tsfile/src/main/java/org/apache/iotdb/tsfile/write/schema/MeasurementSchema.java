@@ -222,22 +222,22 @@ public class MeasurementSchema
   }
 
   @Override
-  public List<String> getValueMeasurementIdList() {
+  public List<String> getSubMeasurementsList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<TSDataType> getValueTSDataTypeList() {
+  public List<TSDataType> getSubMeasurementsTSDataTypeList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<TSEncoding> getValueTSEncodingList() {
+  public List<TSEncoding> getSubMeasurementsTSEncodingList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
   @Override
-  public List<Encoder> getValueEncoderList() {
+  public List<Encoder> getSubMeasurementsEncoderList() {
     throw new UnsupportedOperationException("unsupported method for MeasurementSchema");
   }
 
