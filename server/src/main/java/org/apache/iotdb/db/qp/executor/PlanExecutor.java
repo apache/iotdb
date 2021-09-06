@@ -1057,7 +1057,8 @@ public class PlanExecutor implements IPlanExecutor {
           path,
           deletePlan.getDeleteStartTime(),
           deletePlan.getDeleteEndTime(),
-          deletePlan.getIndex());
+          deletePlan.getIndex(),
+          deletePlan.getPartitionFilter());
     }
   }
 
@@ -1278,10 +1279,15 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws QueryProcessException {
     try {
-      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex);
+      StorageEngine.getInstance().delete(path, startTime, endTime, planIndex, timePartitionFilter);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -1617,7 +1623,9 @@ public class PlanExecutor implements IPlanExecutor {
     for (int i = 0; i < deletePathList.size(); i++) {
       PartialPath path = deletePathList.get(i);
       try {
-        StorageEngine.getInstance().deleteTimeseries(path, deleteTimeSeriesPlan.getIndex());
+        StorageEngine.getInstance()
+            .deleteTimeseries(
+                path, deleteTimeSeriesPlan.getIndex(), deleteTimeSeriesPlan.getPartitionFilter());
         String failed = IoTDB.metaManager.deleteTimeseries(path);
         if (failed != null) {
           deleteTimeSeriesPlan
