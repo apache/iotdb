@@ -53,6 +53,7 @@
             <activation>
                 <os>
                     <family>unix</family>
+                    <arch>aarch64</arch>
                 </os>
             </activation>
             <properties>
