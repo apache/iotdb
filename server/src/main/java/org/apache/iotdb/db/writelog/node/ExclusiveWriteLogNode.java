@@ -118,6 +118,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
         sync();
       }
     } catch (BufferOverflowException e) {
+      // if the size of a single plan bigger than logBufferWorking
+      // we need to clear the buffer to drop something wrong that has written.
+      logBufferWorking.clear();
       throw new IOException("Log cannot fit into the buffer, please increase wal_buffer_size", e);
     } finally {
       lock.unlock();
