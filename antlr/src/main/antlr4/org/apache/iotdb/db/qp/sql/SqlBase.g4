@@ -43,7 +43,7 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON prefixPath whereClause? indexWithClause #createIndex //not support yet
     | DROP INDEX indexName=ID ON prefixPath #dropIndex //not support yet
-    | MERGE #merge
+    | MERGE prefixPath? (COMMA prefixPath)* (booleanClause)?#merge
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache

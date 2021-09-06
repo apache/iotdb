@@ -37,13 +37,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.ContinuousQueryException;
-import org.apache.iotdb.db.exception.QueryIdNotExsitException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -430,7 +424,16 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private void operateMerge(MergePlan plan) throws StorageEngineException {
+  private void operateMerge(MergePlan plan)
+      throws StorageGroupNotSetException, StorageEngineException {
+    if (!plan.getPaths().isEmpty()) {
+      List<PartialPath> noExistSg = checkStorageGroupExist(plan.getPaths());
+      if (!noExistSg.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        noExistSg.forEach(storageGroup -> sb.append(storageGroup.getFullPath()).append(","));
+        throw new StorageGroupNotSetException(sb.subSequence(0, sb.length() - 1).toString(), true);
+      }
+    }
     if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
       StorageEngine.getInstance().mergeAll(true);
     } else {

@@ -383,4 +383,55 @@ public class IoTDBMergeIT {
       assertEquals(4, cnt);
     }
   }
+
+  @Test
+  public void testMergeGivenGroup() throws ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    String insertTemplate =
+        "INSERT INTO root.group%d(timestamp, s1, s2, s3) VALUES (%d, %d, %f, %s)";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.group1");
+      statement.execute("SET STORAGE GROUP TO root.group2");
+      statement.execute("SET STORAGE GROUP TO root.group3");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 10; j < 20; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+        }
+      }
+      statement.execute("MERGE");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 0; j < 10; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+        }
+      }
+      statement.execute("MERGE root.group1");
+      statement.execute("MERGE root.group2,root.group3");
+
+      for (int i = 1; i <= 3; i++) {
+        for (int j = 0; j < 30; j++) {
+          statement.execute(String.format(insertTemplate, i, j, j, j * 0.1, j));
+        }
+      }
+      statement.execute("MERGE root.group1 TRUE");
+      statement.execute("MERGE root.group2,root.group3 FALSE");
+
+      int i = 0;
+      try (ResultSet resultSet =
+          statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
+        while (resultSet.next()) {
+          i++;
+        }
+      }
+      assertEquals(30, i);
+
+    } catch (Exception e) {
+      logger.error("testFlushGivenGroup failed", e);
+      fail(e.getMessage());
+    }
+  }
 }

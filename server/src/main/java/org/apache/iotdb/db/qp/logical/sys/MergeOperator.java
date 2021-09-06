@@ -19,13 +19,26 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+import java.util.List;
+
 public class MergeOperator extends Operator {
+
+  public List<PartialPath> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public void setStorageGroupList(List<PartialPath> storageGroupList) {
+    this.storageGroupList = storageGroupList;
+  }
+
+  private List<PartialPath> storageGroupList;
 
   public MergeOperator(int tokenIntType) {
     super(tokenIntType);
@@ -36,9 +49,9 @@ public class MergeOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     if (tokenIntType == SQLConstant.TOK_FULL_MERGE) {
-      return new MergePlan(OperatorType.FULL_MERGE);
+      return new MergePlan(OperatorType.FULL_MERGE, storageGroupList);
     } else {
-      return new MergePlan();
+      return new MergePlan(storageGroupList);
     }
   }
 }

@@ -24,7 +24,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -147,5 +149,25 @@ public class SerializationTest {
         assertEquals(plan.isSync(), planB.isSync());
       }
     }
+  }
+
+  @Test
+  public void testMerge() throws IOException, IllegalPathException {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    MergePlan plan = new MergePlan(Operator.OperatorType.MERGE, storageGroups);
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      plan.serialize(dataOutputStream);
+      ByteBuffer buffer = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+      MergePlan planB = (MergePlan) PhysicalPlan.Factory.create(buffer);
+      assertEquals(plan.getPaths(), planB.getPaths());
+    }
+
+    ByteBuffer buffer = ByteBuffer.allocate(4096);
+    plan.serialize(buffer);
+    buffer.flip();
+    MergePlan planB = (MergePlan) PhysicalPlan.Factory.create(buffer);
+    assertEquals(plan.getPaths(), planB.getPaths());
   }
 }

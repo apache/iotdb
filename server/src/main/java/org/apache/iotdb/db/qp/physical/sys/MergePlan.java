@@ -22,12 +22,12 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 public class MergePlan extends PhysicalPlan {
 
@@ -39,9 +39,43 @@ public class MergePlan extends PhysicalPlan {
     super(false, OperatorType.MERGE);
   }
 
+  public MergePlan(OperatorType operatorType, List<PartialPath> storageGroups) {
+    super(false, operatorType);
+    if (storageGroups == null) {
+      this.storageGroupPartitionIds = null;
+    } else {
+      this.storageGroupPartitionIds = new HashMap<>();
+      for (PartialPath path : storageGroups) {
+        this.storageGroupPartitionIds.put(path, null);
+      }
+    }
+  }
+
+  public MergePlan(List<PartialPath> storageGroups) {
+    super(false, OperatorType.MERGE);
+    if (storageGroups == null) {
+      this.storageGroupPartitionIds = null;
+    } else {
+      this.storageGroupPartitionIds = new HashMap<>();
+      for (PartialPath path : storageGroups) {
+        this.storageGroupPartitionIds.put(path, null);
+      }
+    }
+  }
+
+  private Map<PartialPath, List<Pair<Long, Boolean>>> storageGroupPartitionIds;
+
   @Override
   public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+    if (storageGroupPartitionIds == null) {
+      return Collections.emptyList();
+    }
+    List<PartialPath> ret = new ArrayList<>();
+    for (Map.Entry<PartialPath, List<Pair<Long, Boolean>>> entry :
+        storageGroupPartitionIds.entrySet()) {
+      ret.add(entry.getKey());
+    }
+    return ret;
   }
 
   @Override
