@@ -443,6 +443,7 @@ public class IoTDBSessionVectorIT {
       typeList.add(types);
       valueList.add(values);
     }
-    session.insertAlignedRecordsOfOneDevice(prefixPath, times, subMeasurementsList, typeList, valueList);
+    session.insertAlignedRecordsOfOneDevice(
+        prefixPath, times, subMeasurementsList, typeList, valueList);
   }
 }
