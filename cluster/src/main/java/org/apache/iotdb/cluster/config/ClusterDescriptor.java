@@ -179,6 +179,16 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
 
+    config.setHeartbeatIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "heartbeat_interval_ms", String.valueOf(config.getHeartbeatIntervalMs()))));
+
+    config.setElectionTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "election_timeout_ms", String.valueOf(config.getElectionTimeoutMs()))));
+
     config.setReadOperationTimeoutMS(
         Integer.parseInt(
             properties.getProperty(

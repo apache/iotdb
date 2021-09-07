@@ -298,8 +298,26 @@ To stop the services of all the nodes on a single machine, you need to execute t
 
 | Name        | connection\_timeout\_ms                                      |
 | ----------- | ------------------------------------------------------------ |
-| Description | Heartbeat timeout time period between nodes in the same raft group, in milliseconds |
+| Description | Thrift socket and connection timeout between raft nodes, in milliseconds. **Note that the timeout of the connection used for sending heartbeats and requesting votes will be adjust to min(heartbeat\_interval\_ms, connection\_timeout\_ms).** |
 | Type        | Int32                                                        |
+| Default     | 20000                                                        |
+| Effective   | After restart system                                         |
+
+- heartbeat\_interval\_ms
+
+| Name        | heartbeat\_interval\_ms                                      |
+| ----------- | ------------------------------------------------------------ |
+| Description | The time period between heartbeat broadcasts in leader, in milliseconds |
+| Type        | Int64                                                        |
+| Default     | 1000                                                         |
+| Effective   | After restart system                                         |
+
+- election\_timeout\_ms
+
+| Name        | election\_timeout\_ms                                        |
+| ----------- | ------------------------------------------------------------ |
+| Description | The election timeout in follower, or the time waiting for request votes in elector, in milliseconds |
+| Type        | Int64                                                        |
 | Default     | 20000                                                        |
 | Effective   | After restart system                                         |
 
@@ -374,4 +392,3 @@ To stop the services of all the nodes on a single machine, you need to execute t
 | Type        | BOOLEAN                                |
 | Default     | true                                   |
 | Effective   | After restart system                   |
-

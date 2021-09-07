@@ -24,11 +24,12 @@ import org.apache.iotdb.db.utils.TestOnly;
 public class ClusterConstant {
 
   /**
-   * We only change the two values in tests to reduce test time, so they are essentially constant.
+   * We only change the value in tests to reduce test time, so they are essentially constant. A
+   * failed election will restart in [0, max(heartbeatInterval, 50ms)). If this range is too small,
+   * a stale node may frequently issue elections and thus makes the leader step down.
    */
-  private static long electionLeastTimeOutMs = 2 * 1000L;
-
-  private static long electionRandomTimeOutMs = 3 * 1000L;
+  private static long electionMaxWaitMs =
+      Math.max(ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs(), 50L);
 
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
@@ -46,25 +47,12 @@ public class ClusterConstant {
     // constant class
   }
 
-  /**
-   * a failed election will restart in 2s~5s, this should be at least as long as a heartbeat
-   * interval, or a stale node may frequently issue elections and thus makes the leader step down
-   */
-  public static long getElectionLeastTimeOutMs() {
-    return electionLeastTimeOutMs;
-  }
-
-  public static long getElectionRandomTimeOutMs() {
-    return electionRandomTimeOutMs;
+  public static long getElectionMaxWaitMs() {
+    return electionMaxWaitMs;
   }
 
   @TestOnly
-  public static void setElectionLeastTimeOutMs(long electionLeastTimeOutMs) {
-    ClusterConstant.electionLeastTimeOutMs = electionLeastTimeOutMs;
-  }
-
-  @TestOnly
-  public static void setElectionRandomTimeOutMs(long electionRandomTimeOutMs) {
-    ClusterConstant.electionRandomTimeOutMs = electionRandomTimeOutMs;
+  public static void setElectionMaxWaitMs(long electionMaxWaitMs) {
+    ClusterConstant.electionMaxWaitMs = electionMaxWaitMs;
   }
 }
