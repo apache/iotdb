@@ -1747,6 +1747,7 @@ public class TSServiceImpl implements TSIService.Iface {
             req.valuesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
     insertTabletPlan.setRowCount(req.sizeList.get(i));
     insertTabletPlan.setDataTypes(req.typesList.get(i));
+    insertTabletPlan.setAligned(req.isAligned);
     return insertTabletPlan;
   }
 

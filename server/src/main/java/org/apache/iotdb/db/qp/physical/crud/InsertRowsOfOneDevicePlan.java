@@ -198,4 +198,12 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     }
     isExecuted[i] = false;
   }
+
+  @Override
+  public void setAligned(boolean isAligned) {
+    super.setAligned(isAligned);
+    for (InsertRowPlan rowPlan : rowPlans) {
+      rowPlan.setAligned(isAligned);
+    }
+  }
 }

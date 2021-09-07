@@ -973,7 +973,7 @@ public class Session {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList);
+      insertStringRecordsWithLeaderCache(deviceIds, times, measurementsList, valuesList, false);
     } else {
       TSInsertStringRecordsReq request =
           genTSInsertStringRecordsReq(deviceIds, times, measurementsList, valuesList, false);
@@ -1007,7 +1007,7 @@ public class Session {
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertStringRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, valuesList);
+      insertStringRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, valuesList, true);
     } else {
       TSInsertStringRecordsReq request =
           genTSInsertStringRecordsReq(prefixPaths, times, subMeasurementsList, valuesList, true);
@@ -1023,7 +1023,8 @@ public class Session {
       List<String> deviceIds,
       List<Long> times,
       List<List<String>> measurementsList,
-      List<List<String>> valuesList)
+      List<List<String>> valuesList,
+      boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, TSInsertStringRecordsReq> recordsGroup = new HashMap<>();
     EndPoint endPoint;
@@ -1037,6 +1038,7 @@ public class Session {
       }
       TSInsertStringRecordsReq request =
           recordsGroup.computeIfAbsent(connection, k -> new TSInsertStringRecordsReq());
+      request.setIsAligned(isAligned);
       updateTSInsertStringRecordsReq(
           request, deviceIds.get(i), times.get(i), measurementsList.get(i), valuesList.get(i));
     }
@@ -1113,7 +1115,8 @@ public class Session {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList);
+      insertRecordsWithLeaderCache(
+          deviceIds, times, measurementsList, typesList, valuesList, false);
     } else {
       TSInsertRecordsReq request =
           genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
@@ -1148,7 +1151,8 @@ public class Session {
           "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
     }
     if (enableCacheLeader) {
-      insertRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, typesList, valuesList);
+      insertRecordsWithLeaderCache(
+          prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
     } else {
       TSInsertRecordsReq request =
           genTSInsertRecordsReq(
@@ -1339,7 +1343,8 @@ public class Session {
       List<Long> times,
       List<List<String>> measurementsList,
       List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
+      List<List<Object>> valuesList,
+      boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, TSInsertRecordsReq> recordsGroup = new HashMap<>();
     EndPoint endPoint;
@@ -1353,6 +1358,7 @@ public class Session {
       }
       TSInsertRecordsReq request =
           recordsGroup.computeIfAbsent(connection, k -> new TSInsertRecordsReq());
+      request.setIsAligned(isAligned);
       updateTSInsertRecordsReq(
           request,
           deviceIds.get(i),
