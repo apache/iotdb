@@ -20,13 +20,10 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +70,18 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
     this.recoverTsFileResources = recoverTsFileResources;
   }
 
+  /**
+   * Clear unfinished compaction task, there are several situations:
+   *
+   * <ol>
+   *   <li><b>Target file is uncompleted</b>: delete the target file and compaction log.
+   *   <li><b>Target file is completed, not all source files have been deleted</b>: delete the
+   *       source files and compaction logs
+   *   <li><b>Target file is completed, all source files have been deleted, compaction log file
+   *       exists</b>: delete the compaction log
+   *   <li><b>No compaction log file exists</b>: do nothing
+   * </ol>
+   */
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
@@ -95,71 +104,32 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           }
           return;
         }
-        // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+
         TsFileResource targetResource = getRecoverTsFileResource(targetFile);
         if (targetResource == null) {
-          targetResource = getSourceTsFile(targetFile);
-          if (targetResource == null) {
-            throw new IOException(
-                String.format("Cannot find compaction target file %s", targetFile));
+          // the target resource is in the recover list, it is not completed
+          targetResource.remove();
+        } else if ((targetResource = getSourceTsFile(targetFile)) != null) {
+          // the target resource is in the tsfile list, it is completed
+          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+          tsFileResourceList.writeLock();
+          try {
+            for (String file : sourceFileList) {
+              // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+              TsFileResource resource = getSourceTsFile(file);
+              tsFileResourceList.remove(resource);
+              sourceTsFileResources.add(resource);
+            }
+          } finally {
+            tsFileResourceList.writeUnlock();
           }
-        }
-        List<TsFileResource> sourceTsFileResources = new ArrayList<>();
 
-        for (String file : sourceFileList) {
-          // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-          TsFileResource resource = getSourceTsFile(file);
-          resource.setMerging(true);
-          sourceTsFileResources.add(resource);
-        }
-        try {
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(target, false);
-          // if not complete compaction, resume merge
-          if (writer.hasCrashed()) {
-            if (offset > 0) {
-              if (writer.getFile().length() > offset) {
-                writer.dropLastChunkGroupMetadata();
-              }
-              writer.getIOWriterOut().truncate(offset);
-            }
-            writer.close();
-            CompactionLogger compactionLogger =
-                new CompactionLogger(storageGroupDir, fullStorageGroupName);
-            InnerSpaceCompactionUtils.compact(
-                targetResource,
-                sourceTsFileResources,
-                fullStorageGroupName,
-                compactionLogger,
-                deviceSet,
-                isSeq);
-            // complete compaction and delete source file
-            tsFileResourceList.writeLock();
-            try {
-              if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException(
-                    String.format("%s [Compaction] abort", fullStorageGroupName));
-              }
-              tsFileResourceList.insertBefore(sourceTsFileResources.get(0), targetResource);
-              for (TsFileResource resource : tsFileResourceList) {
-                tsFileResourceList.remove(resource);
-              }
-            } finally {
-              tsFileResourceList.writeUnlock();
-            }
-            InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-                sourceTsFileResources, fullStorageGroupName);
-            combineModsInCompaction(sourceTsFileResources, targetResource);
-            compactionLogger.close();
-          } else {
-            writer.close();
-          }
-        } finally {
-          for (TsFileResource resource : sourceTsFileResources) {
-            resource.setMerging(false);
-          }
+          InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+              sourceTsFileResources, fullStorageGroupName);
+          combineModsInCompaction(sourceTsFileResources, targetResource);
         }
       }
-    } catch (IOException | IllegalPathException | InterruptedException e) {
+    } catch (IOException e) {
       LOGGER.error("recover inner space compaction error", e);
     } finally {
       if (compactionLogFile.exists()) {
