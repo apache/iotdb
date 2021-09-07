@@ -95,20 +95,6 @@ public class InsertRowPlan extends InsertPlan {
     isNeedInferType = true;
   }
 
-  /** should be deprecated after insertRecords() and insertRowsOfOneDevice() support vector */
-  public InsertRowPlan(
-      PartialPath prefixPath, long insertTime, String[] measurementList, ByteBuffer values)
-      throws QueryProcessException {
-    super(Operator.OperatorType.INSERT);
-    this.time = insertTime;
-    this.prefixPath = prefixPath;
-    this.measurements = measurementList;
-    this.dataTypes = new TSDataType[measurementList.length];
-    this.values = new Object[measurementList.length];
-    this.fillValues(values);
-    isNeedInferType = false;
-  }
-
   public InsertRowPlan(
       PartialPath prefixPath,
       long insertTime,
@@ -347,7 +333,11 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(DataOutputStream stream) throws IOException {
     stream.writeLong(time);
-    putString(stream, prefixPath.getFullPath());
+    if (isAligned) {
+      putString(stream, originalPrefixPath.getFullPath());
+    } else {
+      putString(stream, prefixPath.getFullPath());
+    }
     serializeMeasurementsAndValues(stream);
   }
 
@@ -498,7 +488,11 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
-    putString(buffer, prefixPath.getFullPath());
+    if (isAligned) {
+      putString(buffer, originalPrefixPath.getFullPath());
+    } else {
+      putString(buffer, prefixPath.getFullPath());
+    }
     serializeMeasurementsAndValues(buffer);
   }
 

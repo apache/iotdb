@@ -41,29 +41,31 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   private InsertRowPlan[] rowPlans;
 
   public InsertRowsOfOneDevicePlan(
-      PartialPath deviceId,
+      PartialPath prefixPath,
       Long[] insertTimes,
       List<List<String>> measurements,
-      ByteBuffer[] insertValues)
+      ByteBuffer[] insertValues,
+      boolean isAligned)
       throws QueryProcessException {
     super(OperatorType.BATCH_INSERT_ONE_DEVICE);
-    this.prefixPath = deviceId;
+    this.prefixPath = prefixPath;
     rowPlans = new InsertRowPlan[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
       rowPlans[i] =
           new InsertRowPlan(
-              deviceId,
+              prefixPath,
               insertTimes[i],
               measurements.get(i).toArray(new String[0]),
-              insertValues[i]);
+              insertValues[i],
+              isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + deviceId + ", time:" + insertTimes[i]);
+            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
             "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
-                + deviceId
+                + prefixPath
                 + ", time:"
                 + insertTimes[i]);
       }
@@ -197,13 +199,5 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       isExecuted = new boolean[getBatchSize()];
     }
     isExecuted[i] = false;
-  }
-
-  @Override
-  public void setAligned(boolean isAligned) {
-    super.setAligned(isAligned);
-    for (InsertRowPlan rowPlan : rowPlans) {
-      rowPlan.setAligned(isAligned);
-    }
   }
 }

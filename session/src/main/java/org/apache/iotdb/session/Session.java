@@ -924,7 +924,7 @@ public class Session {
 
   /**
    * insert aligned data in one row, if you want improve your performance, please use
-   * insertAlignedRecords method or insertTablet method
+   * insertAlignedRecords method or insertTablet method.
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)

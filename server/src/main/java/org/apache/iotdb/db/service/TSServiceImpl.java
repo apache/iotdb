@@ -1450,8 +1450,8 @@ public class TSServiceImpl implements TSIService.Iface {
               new PartialPath(req.getPrefixPath()),
               req.getTimestamps().toArray(new Long[0]),
               req.getMeasurementsList(),
-              req.getValuesList().toArray(new ByteBuffer[0]));
-      plan.setAligned(req.isAligned);
+              req.getValuesList().toArray(new ByteBuffer[0]),
+              req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
