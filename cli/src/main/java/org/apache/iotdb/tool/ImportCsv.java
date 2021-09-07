@@ -169,6 +169,12 @@ public class ImportCsv extends AbstractCsvTool {
     }
 
     importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);
+    //    SimpleDateFormat simpleDateFormat = formatterInit("2021/09/06 10:03:000+08:00");
+    //    try {
+    //      System.out.println(simpleDateFormat.parse("2021/09/06 10:03:000-08:00"));
+    //    } catch (ParseException e) {
+    //      e.printStackTrace();
+    //    }
   }
 
   /**
@@ -336,7 +342,13 @@ public class ImportCsv extends AbstractCsvTool {
                 if (!measurements.isEmpty()) {
                   try {
                     if (timeFormatter == null) {
-                      times.add(Long.valueOf(record.get("Time")));
+                      try {
+                        times.add(Long.valueOf(record.get("Time")));
+                      } catch (Exception e) {
+                        System.out.println(
+                            "Meet error when insert csv because the format of time is not supported");
+                        System.exit(0);
+                      }
                     } else {
                       times.add(timeFormatter.parse(record.get("Time")).getTime());
                     }
@@ -352,6 +364,7 @@ public class ImportCsv extends AbstractCsvTool {
         session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
       } catch (StatementExecutionException | IoTDBConnectionException e) {
         System.out.println("Meet error when insert csv because " + e.getMessage());
+        System.exit(0);
       }
     }
     if (!failedRecords.isEmpty()) {
@@ -438,7 +451,17 @@ public class ImportCsv extends AbstractCsvTool {
                         }
                         if (!measurements.isEmpty()) {
                           try {
-                            times.add(timeFormatter.parse(record.get("Time")).getTime());
+                            if (timeFormatter == null) {
+                              try {
+                                times.add(Long.valueOf(record.get("Time")));
+                              } catch (Exception e) {
+                                System.out.println(
+                                    "Meet error when insert csv because the format of time is not supported");
+                                System.exit(0);
+                              }
+                            } else {
+                              times.add(timeFormatter.parse(record.get("Time")).getTime());
+                            }
                           } catch (ParseException e) {
                             e.printStackTrace();
                           }
@@ -452,6 +475,7 @@ public class ImportCsv extends AbstractCsvTool {
                     device, times, measurementsList, typesList, valuesList);
               } catch (StatementExecutionException | IoTDBConnectionException e) {
                 System.out.println("Meet error when insert csv because " + e.getMessage());
+                System.exit(0);
               }
             });
     if (!failedRecords.isEmpty()) {
