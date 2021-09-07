@@ -49,7 +49,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
    * Suppose there is an InsertRowsOfOneDevicePlan, which contains 5 InsertRowPlans,
    * rowPlans={InsertRowPlan_0, InsertRowPlan_1, InsertRowPlan_2, InsertRowPlan_3, InsertRowPlan_4},
    * then the rowPlanIndexList={0, 1, 2, 3, 4} respectively. But when the InsertRowsOfOneDevicePlan
-   * is split into two InsertRowsOfOneDevicePlans according to different storage group in cluster
+   * is split into two InsertRowsOfOneDevicePlans according to the time partition in cluster
    * version, suppose that the InsertRowsOfOneDevicePlan_1's rowPlanIndexList = {InsertRowPlan_0,
    * InsertRowPlan_3, InsertRowPlan_4}, then InsertRowsOfOneDevicePlan_1's rowPlanIndexList = {0, 3,
    * 4}; InsertRowsOfOneDevicePlan_2's rowPlanIndexList = {InsertRowPlan_1, InsertRowPlan_2} then
@@ -58,7 +58,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   private int[] rowPlanIndexList;
 
   /** record the result of insert rows */
-  private Map<Integer, TSStatus> results = new HashMap<>();
+  private Map<Integer, TSStatus> results = new HashMap<>(0);
 
   public InsertRowsOfOneDevicePlan() {
     super(OperatorType.BATCH_INSERT_ONE_DEVICE);
@@ -74,7 +74,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     this.prefixPath = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     rowPlanIndexList = new int[insertTimes.length];
-    results = new HashMap<>(insertTimes.length);
     for (int i = 0; i < insertTimes.length; i++) {
       rowPlans[i] =
           new InsertRowPlan(
@@ -107,7 +106,6 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     this.prefixPath = deviceId;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
-    this.results = new HashMap<>(rowPlans.length);
   }
 
   @Override
