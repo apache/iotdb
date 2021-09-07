@@ -110,7 +110,7 @@ We call the middle part of a path between two "." as a layer, and thus `root.A.B
 
 It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
 
-Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. Users can use escape characters nest double quotation marks, for example, root.sg.d1."s.\"t\"1". 
 
 The characters supported in LayerName without double quotes are as below:
 
@@ -145,6 +145,8 @@ When `*` appears in the middle of the path, it represents `*` itself, i.e., a la
 > Note1: `*` cannot be placed at the beginning of the path.
 
 > Note2: A path with `*` at the end has the same meaning as a prefix path, e.g., `root.vehicle.*` and `root.vehicle` is the same.
+
+> Note3: When * create created, the following path cannot contain * at the same time.
 
 * Timestamp
 
