@@ -96,7 +96,7 @@ public class RawDataQueryPlan extends QueryPlan {
     if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
-      // transformVectorPaths(physicalGenerator, columnForDisplaySet);
+      transformVectorPaths(physicalGenerator, columnForDisplaySet);
     }
   }
 

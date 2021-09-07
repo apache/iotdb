@@ -1102,16 +1102,9 @@ public class MManager {
       Map<IMNode, PartialPath> nodeToPartialPath,
       Map<IMNode, List<Integer>> nodeToIndex,
       PartialPath path,
-      int index)
-      throws MetadataException {
+      int index) {
     if (!nodeToPartialPath.containsKey(node)) {
-      if (node.getSchema() instanceof MeasurementSchema) {
-        nodeToPartialPath.put(node, path);
-      } else {
-        List<PartialPath> subSensorsPathList = new ArrayList<>();
-        subSensorsPathList.add(path);
-        nodeToPartialPath.put(node, new VectorPartialPath(node.getFullPath(), subSensorsPathList));
-      }
+      nodeToPartialPath.put(node, path);
       nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
     } else {
       // if nodeToPartialPath contains node
@@ -1121,7 +1114,8 @@ public class MManager {
         nodeToIndex.get(node).add(index);
       } else {
         // could be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node)).addSubSensor(path);
+        ((VectorPartialPath) nodeToPartialPath.get(node))
+            .addSubSensor(((VectorPartialPath) path).getSubSensorsPathList());
         nodeToIndex.get(node).add(index);
       }
     }
