@@ -522,6 +522,36 @@ public class SessionPool {
   }
 
   /**
+   * Insert aligned data in batch format, which can reduce the overhead of network. This method is
+   * just like jdbc batch insert, we pack some insert request in batch and send them to server If
+   * you want improve your performance, please see insertTablet method.
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedRecords(
+      List<String> deviceIds,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedRecords(deviceIds, times, measurementsList, typesList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedRecords failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+  /**
    * Insert data that belong to the same device in batch format, which can reduce the overhead of
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
    * send them to server If you want improve your performance, please see insertTablet method
@@ -591,7 +621,7 @@ public class SessionPool {
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
-   * method
+   * method.
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -611,7 +641,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn("insertAlignedRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -624,7 +654,7 @@ public class SessionPool {
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
-   * method
+   * method.
    *
    * @param haveSorted whether the times list has been ordered.
    * @see Session#insertTablet(Tablet)
@@ -640,13 +670,13 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecordsOfOneDevice(
+        session.insertAlignedRecordsOfOneDevice(
             deviceId, times, measurementsList, typesList, valuesList, haveSorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecordsOfOneDevice failed", e);
+        logger.warn("insertAlignedRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -688,7 +718,7 @@ public class SessionPool {
   /**
    * Insert aligned data in batch format, which can reduce the overhead of network. This method is
    * just like jdbc batch insert, we pack some insert request in batch and send them to server If
-   * you want improve your performance, please see insertTablet method
+   * you want improve your performance, please see insertTablet method.
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -706,7 +736,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecords failed", e);
+        logger.warn("insertAlignedRecords failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -748,7 +778,7 @@ public class SessionPool {
 
   /**
    * insert aligned data in one row, if you want improve your performance, please use insertRecords
-   * method or insertTablet method
+   * method or insertTablet method.
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -768,7 +798,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn("insertAlignedRecord failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
@@ -806,7 +836,7 @@ public class SessionPool {
 
   /**
    * insert aligned data in one row, if you want improve your performance, please use
-   * insertAlignedRecords method or insertTablet method
+   * insertAlignedRecords method or insertTablet method.
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -822,7 +852,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        logger.warn("insertRecord failed", e);
+        logger.warn("insertAlignedRecord failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);

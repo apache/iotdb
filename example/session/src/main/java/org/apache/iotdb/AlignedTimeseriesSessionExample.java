@@ -423,17 +423,20 @@ public class AlignedTimeseriesSessionExample {
     List<List<Object>> valueList = new ArrayList<>();
 
     for (long time = 1; time < 5; time++) {
-      prefixPaths.add(ROOT_SG2_D1_VECTOR4);
-      List<Object> values = new ArrayList<>();
       List<String> subMeasurements = new ArrayList<>();
-      List<TSDataType> types = new ArrayList<>();
       subMeasurements.add("s1");
       subMeasurements.add("s2");
+
+      List<TSDataType> types = new ArrayList<>();
       types.add(TSDataType.INT64);
       types.add(TSDataType.INT32);
-      times.add(time);
+
+      List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2);
+
+      prefixPaths.add(ROOT_SG2_D1_VECTOR4);
+      times.add(time);
       subMeasurementsList.add(subMeasurements);
       typeList.add(types);
       valueList.add(values);
@@ -449,14 +452,16 @@ public class AlignedTimeseriesSessionExample {
     List<List<String>> valueList = new ArrayList<>();
 
     for (long time = 1; time < 5; time++) {
-      prefixPaths.add(ROOT_SG2_D1_VECTOR5);
-      List<String> values = new ArrayList<>();
       List<String> subMeasurements = new ArrayList<>();
       subMeasurements.add("s1");
       subMeasurements.add("s2");
-      times.add(time);
+
+      List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
+
+      prefixPaths.add(ROOT_SG2_D1_VECTOR5);
+      times.add(time);
       subMeasurementsList.add(subMeasurements);
       valueList.add(values);
     }
@@ -471,16 +476,19 @@ public class AlignedTimeseriesSessionExample {
     List<List<Object>> valueList = new ArrayList<>();
 
     for (long time = 10; time < 15; time++) {
-      List<Object> values = new ArrayList<>();
       List<String> subMeasurements = new ArrayList<>();
-      List<TSDataType> types = new ArrayList<>();
       subMeasurements.add("s1");
       subMeasurements.add("s2");
+
+      List<TSDataType> types = new ArrayList<>();
       types.add(TSDataType.INT64);
       types.add(TSDataType.INT32);
-      times.add(time);
+
+      List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2);
+
+      times.add(time);
       subMeasurementsList.add(subMeasurements);
       typeList.add(types);
       valueList.add(values);
