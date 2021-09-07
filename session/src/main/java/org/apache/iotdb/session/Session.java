@@ -1543,7 +1543,7 @@ public class Session {
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(deviceId, time, measurements, values);
+        genTSInsertStringRecordReq(deviceId, time, measurements, values, false);
     defaultSessionConnection.testInsertRecord(request);
   }
 
