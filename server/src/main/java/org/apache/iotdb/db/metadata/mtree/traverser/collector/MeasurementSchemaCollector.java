@@ -27,6 +27,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import static org.apache.iotdb.db.metadata.mtree.MTree.getLastTimeStamp;
@@ -36,18 +37,15 @@ public class MeasurementSchemaCollector
 
   QueryContext queryContext;
 
-  public MeasurementSchemaCollector(
-      IMNode startNode, String[] nodes, List<Pair<PartialPath, String[]>> resultSet) {
-    super(startNode, nodes, resultSet);
+  public MeasurementSchemaCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    this.resultSet = new LinkedList<>();
   }
 
-  public MeasurementSchemaCollector(
-      IMNode startNode,
-      String[] nodes,
-      List<Pair<PartialPath, String[]>> resultSet,
-      int limit,
-      int offset) {
-    super(startNode, nodes, resultSet, limit, offset);
+  public MeasurementSchemaCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
+    this.resultSet = new LinkedList<>();
   }
 
   public void setQueryContext(QueryContext queryContext) {

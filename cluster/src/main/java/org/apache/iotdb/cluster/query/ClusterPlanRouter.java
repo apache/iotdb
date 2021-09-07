@@ -397,8 +397,7 @@ public class ClusterPlanRouter {
     return values;
   }
 
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
-      throws StorageGroupNotSetException, IllegalPathException {
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan) throws MetadataException {
     // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
     Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath());

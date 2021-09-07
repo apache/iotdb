@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 
@@ -34,14 +35,13 @@ public abstract class CollectorTraverser<T> extends Traverser {
 
   protected T resultSet;
 
-  public CollectorTraverser(IMNode startNode, String[] nodes, T resultSet) {
-    super(startNode, nodes);
-    this.resultSet = resultSet;
+  public CollectorTraverser(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
-  public CollectorTraverser(IMNode startNode, String[] nodes, T resultSet, int limit, int offset) {
-    super(startNode, nodes);
-    this.resultSet = resultSet;
+  public CollectorTraverser(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path);
     this.limit = limit;
     this.offset = offset;
     if (limit != 0 || offset != 0) {

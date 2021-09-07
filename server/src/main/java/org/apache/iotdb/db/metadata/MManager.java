@@ -1601,7 +1601,7 @@ public class MManager {
    * @param path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs
    */
-  public Map<String, String> determineStorageGroup(PartialPath path) throws IllegalPathException {
+  public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
     Map<String, String> sgPathMap = mtree.determineStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());

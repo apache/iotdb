@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -48,7 +50,12 @@ public abstract class Traverser {
   // traverse for specific storage group
   StorageGroupFilter storageGroupFilter = null;
 
-  public Traverser(IMNode startNode, String[] nodes) {
+  public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
+      throw new IllegalPathException(
+          path.getFullPath(), path.getFullPath() + " doesn't start with " + startNode.getName());
+    }
     this.startNode = startNode;
     this.nodes = nodes;
   }

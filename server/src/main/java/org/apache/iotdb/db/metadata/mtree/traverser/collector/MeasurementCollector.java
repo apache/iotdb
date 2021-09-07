@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -32,14 +33,14 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 
 public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
 
-  public MeasurementCollector(IMNode startNode, String[] nodes, T resultSet) {
-    super(startNode, nodes, resultSet);
+  public MeasurementCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
     isMeasurementTraverser = true;
   }
 
-  public MeasurementCollector(
-      IMNode startNode, String[] nodes, T resultSet, int limit, int offset) {
-    super(startNode, nodes, resultSet, limit, offset);
+  public MeasurementCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
     isMeasurementTraverser = true;
   }
 

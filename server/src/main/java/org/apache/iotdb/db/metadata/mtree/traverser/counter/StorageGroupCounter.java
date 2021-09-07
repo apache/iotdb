@@ -19,12 +19,13 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public class StorageGroupCounter extends CounterTraverser {
 
-  public StorageGroupCounter(IMNode startNode, String[] nodes) {
-    super(startNode, nodes);
+  public StorageGroupCounter(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
   @Override

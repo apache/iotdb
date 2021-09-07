@@ -28,14 +28,16 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 
 public class TSEntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
 
-  public TSEntityPathCollector(IMNode startNode, String[] nodes, Set<PartialPath> resultSet) {
-    super(startNode, nodes, resultSet);
+  public TSEntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    this.resultSet = new TreeSet<>();
   }
 
   @Override

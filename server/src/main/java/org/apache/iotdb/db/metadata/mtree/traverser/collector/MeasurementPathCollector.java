@@ -23,17 +23,19 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 
+import java.util.LinkedList;
 import java.util.List;
 
 public class MeasurementPathCollector extends MeasurementCollector<List<PartialPath>> {
 
-  public MeasurementPathCollector(IMNode startNode, String[] nodes, List<PartialPath> resultSet) {
-    super(startNode, nodes, resultSet);
+  public MeasurementPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
   }
 
-  public MeasurementPathCollector(
-      IMNode startNode, String[] nodes, List<PartialPath> resultSet, int limit, int offset) {
-    super(startNode, nodes, resultSet, limit, offset);
+  public MeasurementPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
+    this.resultSet = new LinkedList<>();
   }
 
   @Override

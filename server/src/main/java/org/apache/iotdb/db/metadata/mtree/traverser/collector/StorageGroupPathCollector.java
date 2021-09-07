@@ -22,17 +22,20 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+import java.util.LinkedList;
 import java.util.List;
 
 public class StorageGroupPathCollector extends StorageGroupCollector<List<PartialPath>> {
 
-  public StorageGroupPathCollector(IMNode startNode, String[] nodes, List<PartialPath> resultSet) {
-    super(startNode, nodes, resultSet);
+  public StorageGroupPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    this.resultSet = new LinkedList<>();
   }
 
-  public StorageGroupPathCollector(
-      IMNode startNode, String[] nodes, List<PartialPath> resultSet, int limit, int offset) {
-    super(startNode, nodes, resultSet, limit, offset);
+  public StorageGroupPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, limit, offset);
+    this.resultSet = new LinkedList<>();
   }
 
   @Override

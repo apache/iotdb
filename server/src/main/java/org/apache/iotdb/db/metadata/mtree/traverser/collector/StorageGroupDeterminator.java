@@ -20,16 +20,19 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_MULTI_LEVEL_WILDCARD;
 
 public class StorageGroupDeterminator extends StorageGroupCollector<Map<String, String>> {
 
-  public StorageGroupDeterminator(IMNode startNode, String[] nodes, Map<String, String> resultSet) {
-    super(startNode, nodes, resultSet);
+  public StorageGroupDeterminator(IMNode startNode, PartialPath path) throws MetadataException {
+    super(startNode, path);
+    this.resultSet = new HashMap<>();
     collectInternal = true;
   }
 
