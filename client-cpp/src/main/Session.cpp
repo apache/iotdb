@@ -566,7 +566,7 @@ void Session::close() {
 void Session::insertRecord(string deviceId, int64_t time, vector <string> &measurements, vector <string> &values) {
     shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
-    req->__set_deviceId(deviceId);
+    req->__set_prefixPath(deviceId);
     req->__set_timestamp(time);
     req->__set_measurements(measurements);
     req->__set_values(values);
@@ -609,7 +609,7 @@ Session::insertRecords(vector <string> &deviceIds, vector <int64_t> &times, vect
     }
     shared_ptr <TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
+    request->__set_prefixPaths(deviceIds);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     request->__set_valuesList(valuesList);
@@ -635,7 +635,7 @@ void Session::insertRecords(vector <string> &deviceIds, vector <int64_t> &times,
     }
     shared_ptr <TSInsertRecordsReq> request(new TSInsertRecordsReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
+    request->__set_prefixPaths(deviceIds);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -686,7 +686,7 @@ void Session::insertRecordsOfOneDevice(string deviceId, vector <int64_t> &times,
     }
     unique_ptr <TSInsertRecordsOfOneDeviceReq> request(new TSInsertRecordsOfOneDeviceReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceId(deviceId);
+    request->__set_prefixPath(deviceId);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     vector <string> bufferList;
@@ -769,7 +769,7 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
             sortTablet(*(tablets[item.first]));
         }
 
-        request->deviceIds.push_back(item.second->deviceId);
+        request->prefixPaths.push_back(item.second->deviceId);
         vector <string> measurements;
         vector<int> dataTypes;
         for (pair <string, TSDataType::TSDataType> schema : item.second->schemas) {
@@ -841,7 +841,7 @@ void Session::testInsertRecords(vector <string> &deviceIds, vector <int64_t> &ti
     }
     shared_ptr <TSInsertStringRecordsReq> request(new TSInsertStringRecordsReq());
     request->__set_sessionId(sessionId);
-    request->__set_deviceIds(deviceIds);
+    request->__set_prefixPaths(deviceIds);
     request->__set_timestamps(times);
     request->__set_measurementsList(measurementsList);
     request->__set_valuesList(valuesList);
