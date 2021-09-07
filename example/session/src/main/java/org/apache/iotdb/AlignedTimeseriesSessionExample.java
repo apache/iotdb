@@ -33,7 +33,9 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @SuppressWarnings("squid:S106")
 public class AlignedTimeseriesSessionExample {
@@ -44,6 +46,9 @@ public class AlignedTimeseriesSessionExample {
   private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
   private static final String ROOT_SG1_D1_VECTOR4 = "root.sg_1.d1.vector4";
   private static final String ROOT_SG1_D1_VECTOR5 = "root.sg_1.d1.vector5";
+  private static final String ROOT_SG1_D1_VECTOR6 = "root.sg_1.d1.vector6";
+  private static final String ROOT_SG1_D1_VECTOR7 = "root.sg_1.d1.vector7";
+  private static final String ROOT_SG1_D1_VECTOR8 = "root.sg_1.d1.vector8";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -64,6 +69,7 @@ public class AlignedTimeseriesSessionExample {
     //    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
     //    insertNullableTabletWithAlignedTimeseries();
+    insertTabletsWithAlignedTimeseries();
     //
     //    selectTest();
     //    selectWithValueFilterTest();
@@ -479,5 +485,110 @@ public class AlignedTimeseriesSessionExample {
     }
     session.insertAlignedRecordsOfOneDevice(
         ROOT_SG1_D1_VECTOR5, times, subMeasurementsList, typeList, valueList);
+  }
+
+  private static void insertTabletsWithAlignedTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+
+    List<IMeasurementSchema> schemaList1 = new ArrayList<>();
+    schemaList1.add(
+        new VectorMeasurementSchema(
+            "vector6",
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+    List<IMeasurementSchema> schemaList2 = new ArrayList<>();
+    schemaList2.add(
+        new VectorMeasurementSchema(
+            "vector7",
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+    List<IMeasurementSchema> schemaList3 = new ArrayList<>();
+    schemaList3.add(
+        new VectorMeasurementSchema(
+            "vector8",
+            new String[] {"s1", "s2", "s3"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+
+    Tablet tablet1 = new Tablet(ROOT_SG1_D1_VECTOR6, schemaList1, 100);
+    Tablet tablet2 = new Tablet(ROOT_SG1_D1_VECTOR7, schemaList2, 100);
+    Tablet tablet3 = new Tablet(ROOT_SG1_D1_VECTOR8, schemaList3, 100);
+    tablet1.setAligned(true);
+    tablet2.setAligned(true);
+    tablet3.setAligned(true);
+
+    Map<String, Tablet> tabletMap = new HashMap<>();
+    tabletMap.put(ROOT_SG1_D1_VECTOR6, tablet1);
+    tabletMap.put(ROOT_SG1_D1_VECTOR7, tablet2);
+    tabletMap.put(ROOT_SG1_D1_VECTOR8, tablet3);
+
+    // Method 1 to add tablet data
+    long timestamp = System.currentTimeMillis();
+    for (long row = 0; row < 100; row++) {
+      int row1 = tablet1.rowSize++;
+      int row2 = tablet2.rowSize++;
+      int row3 = tablet3.rowSize++;
+      tablet1.addTimestamp(row1, timestamp);
+      tablet2.addTimestamp(row2, timestamp);
+      tablet3.addTimestamp(row3, timestamp);
+      for (int i = 0; i < 3; i++) {
+        long value = new SecureRandom().nextLong();
+        tablet1.addValue(schemaList1.get(0).getValueMeasurementIdList().get(i), row1, value);
+        tablet2.addValue(schemaList2.get(0).getValueMeasurementIdList().get(i), row2, value);
+        tablet3.addValue(schemaList3.get(0).getValueMeasurementIdList().get(i), row3, value);
+      }
+      if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+        session.insertTablets(tabletMap, true);
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet1.rowSize != 0) {
+      session.insertTablets(tabletMap, true);
+      tablet1.reset();
+      tablet2.reset();
+      tablet3.reset();
+    }
+
+    // Method 2 to add tablet data
+    long[] timestamps1 = tablet1.timestamps;
+    Object[] values1 = tablet1.values;
+    long[] timestamps2 = tablet2.timestamps;
+    Object[] values2 = tablet2.values;
+    long[] timestamps3 = tablet3.timestamps;
+    Object[] values3 = tablet3.values;
+
+    for (long time = 0; time < 100; time++) {
+      int row1 = tablet1.rowSize++;
+      int row2 = tablet2.rowSize++;
+      int row3 = tablet3.rowSize++;
+      timestamps1[row1] = time;
+      timestamps2[row2] = time;
+      timestamps3[row3] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor1 = (long[]) values1[i];
+        sensor1[row1] = i;
+        long[] sensor2 = (long[]) values2[i];
+        sensor2[row2] = i;
+        long[] sensor3 = (long[]) values3[i];
+        sensor3[row3] = i;
+      }
+      if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+        session.insertTablets(tabletMap, true);
+
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+    }
+
+    if (tablet1.rowSize != 0) {
+      session.insertTablets(tabletMap, true);
+      tablet1.reset();
+      tablet2.reset();
+      tablet3.reset();
+    }
   }
 }
