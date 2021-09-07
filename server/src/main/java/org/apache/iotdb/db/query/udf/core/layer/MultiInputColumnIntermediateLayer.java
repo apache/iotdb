@@ -191,7 +191,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       private final int slidingStep = strategy.getSlidingStep();
 
       private final ElasticSerializableRowRecordList rowRecordList =
-          new ElasticSerializableRowRecordList(dataTypes, queryId, memoryBudgetInMB, 2);
+          new ElasticSerializableRowRecordList(
+              dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
       private final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
           new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 
@@ -250,7 +251,8 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
     final UDFInputDataSet udfInputDataSet = this;
     final ElasticSerializableRowRecordList rowRecordList =
-        new ElasticSerializableRowRecordList(dataTypes, queryId, memoryBudgetInMB, 2);
+        new ElasticSerializableRowRecordList(
+            dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableRowRecordListBackedMultiColumnWindow window =
         new ElasticSerializableRowRecordListBackedMultiColumnWindow(rowRecordList);
 

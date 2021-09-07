@@ -104,7 +104,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
       private final ElasticSerializableTVList tvList =
           ElasticSerializableTVList.newElasticSerializableTVList(
-              dataType, queryId, memoryBudgetInMB, 2);
+              dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
       private final ElasticSerializableTVListBackedSingleColumnWindow window =
           new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
@@ -163,7 +163,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
     final ElasticSerializableTVList tvList =
         ElasticSerializableTVList.newElasticSerializableTVList(
-            dataType, queryId, memoryBudgetInMB, 2);
+            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 

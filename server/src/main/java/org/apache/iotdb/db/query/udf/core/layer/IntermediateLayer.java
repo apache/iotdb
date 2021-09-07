@@ -31,6 +31,8 @@ import java.io.IOException;
 
 public abstract class IntermediateLayer {
 
+  protected static final int CACHE_BLOCK_SIZE = 2;
+
   protected final long queryId;
   protected final float memoryBudgetInMB;
 
@@ -44,7 +46,7 @@ public abstract class IntermediateLayer {
   public abstract LayerRowReader constructRowReader();
 
   public final LayerRowWindowReader constructRowWindowReader(
-      AccessStrategy strategy, float memoryBudgetInMB) throws QueryProcessException {
+      AccessStrategy strategy, float memoryBudgetInMB) throws QueryProcessException, IOException {
     switch (strategy.getAccessStrategyType()) {
       case SLIDING_TIME_WINDOW:
         return constructRowSlidingTimeWindowReader(

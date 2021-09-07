@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +47,8 @@ public class DAGBuilder {
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(UDTFPlan udtfPlan, UDFLayer inputLayer) throws QueryProcessException {
+  public DAGBuilder(UDTFPlan udtfPlan, UDFLayer inputLayer)
+      throws QueryProcessException, IOException {
     this.udtfPlan = udtfPlan;
     this.rawTimeSeriesInputLayer = inputLayer;
 
@@ -61,7 +63,7 @@ public class DAGBuilder {
     build();
   }
 
-  public DAGBuilder build() throws QueryProcessException {
+  public DAGBuilder build() throws QueryProcessException, IOException {
     for (int i = 0; i < resultColumnExpressions.size(); ++i) {
       resultColumnPointReaders[i] =
           resultColumnExpressions

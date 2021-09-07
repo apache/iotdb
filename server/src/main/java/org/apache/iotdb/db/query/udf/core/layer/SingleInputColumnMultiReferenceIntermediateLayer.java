@@ -38,8 +38,6 @@ import java.io.IOException;
 
 public class SingleInputColumnMultiReferenceIntermediateLayer extends IntermediateLayer {
 
-  private static final int CACHE_BLOCK_SIZE = 2;
-
   private final LayerPointReader parentLayerPointReader;
   private final TSDataType dataType;
   private final ElasticSerializableTVList tvList;
