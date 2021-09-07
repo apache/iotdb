@@ -62,27 +62,15 @@ Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (incl
 |     yyyy-MM-dd HH:mm:ss      |
 |     yyyy/MM/dd HH:mm:ss      |
 |     yyyy.MM.dd HH:mm:ss      |
-|    yyyy-MM-dd'T'HH:mm:ss     |
-|    yyyy/MM/dd'T'HH:mm:ss     |
-|    yyyy.MM.dd'T'HH:mm:ss     |
 |    yyyy-MM-dd HH:mm:ssZZ     |
 |    yyyy/MM/dd HH:mm:ssZZ     |
 |    yyyy.MM.dd HH:mm:ssZZ     |
-|   yyyy-MM-dd'T'HH:mm:ssZZ    |
-|   yyyy/MM/dd'T'HH:mm:ssZZ    |
-|   yyyy.MM.dd'T'HH:mm:ssZZ    |
 |   yyyy/MM/dd HH:mm:ss.SSS    |
 |   yyyy-MM-dd HH:mm:ss.SSS    |
 |   yyyy.MM.dd HH:mm:ss.SSS    |
-|  yyyy/MM/dd'T'HH:mm:ss.SSS   |
-|  yyyy-MM-dd'T'HH:mm:ss.SSS   |
-|  yyyy.MM.dd'T'HH:mm:ss.SSS   |
 |  yyyy-MM-dd HH:mm:ss.SSSZZ   |
 |  yyyy/MM/dd HH:mm:ss.SSSZZ   |
 |  yyyy.MM.dd HH:mm:ss.SSSZZ   |
-| yyyy-MM-dd'T'HH:mm:ss.SSSZZ  |
-| yyyy/MM/dd'T'HH:mm:ss.SSSZZ  |
-| yyyy.MM.dd'T'HH:mm:ss.SSSZZ  |
 | ISO8601 standard time format |
 
 </center>
