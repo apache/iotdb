@@ -912,17 +912,30 @@ public class Session {
       String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertStringRecordReq request =
-        genTSInsertStringRecordReq(deviceId, time, measurements, values);
+        genTSInsertStringRecordReq(deviceId, time, measurements, values, false);
+    insertRecord(deviceId, request);
+  }
+
+  public void insertRecord(
+      String deviceId, long time, List<String> measurements, List<String> values, boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertStringRecordReq request =
+        genTSInsertStringRecordReq(deviceId, time, measurements, values, isAligned);
     insertRecord(deviceId, request);
   }
 
   private TSInsertStringRecordReq genTSInsertStringRecordReq(
-      String deviceId, long time, List<String> measurements, List<String> values) {
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<String> values,
+      boolean isAligned) {
     TSInsertStringRecordReq request = new TSInsertStringRecordReq();
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
     request.setValues(values);
+    request.setIsAligned(isAligned);
     return request;
   }
 

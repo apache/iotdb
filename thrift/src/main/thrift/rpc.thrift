@@ -211,6 +211,7 @@ struct TSInsertStringRecordReq {
   3: required list<string> measurements
   4: required list<string> values
   5: required i64 timestamp
+  6: optional bool isAligned
 }
 
 struct TSInsertTabletReq {
@@ -232,6 +233,7 @@ struct TSInsertTabletsReq {
   5: required list<binary> timestampsList
   6: required list<list<i32>> typesList
   7: required list<i32> sizeList
+  8: optional list<bool> isAlignedList
 }
 
 struct TSInsertRecordsReq {
@@ -240,6 +242,7 @@ struct TSInsertRecordsReq {
   3: required list<list<string>> measurementsList
   4: required list<binary> valuesList
   5: required list<i64> timestamps
+  6: optional list<bool> isAlignedList
 }
 
 struct TSInsertRecordsOfOneDeviceReq {
@@ -248,6 +251,7 @@ struct TSInsertRecordsOfOneDeviceReq {
     3: required list<list<string>> measurementsList
     4: required list<binary> valuesList
     5: required list<i64> timestamps
+    6: optional list<bool> isAlignedList
 }
 
 struct TSInsertStringRecordsReq {
@@ -256,6 +260,7 @@ struct TSInsertStringRecordsReq {
   3: required list<list<string>> measurementsList
   4: required list<list<string>> valuesList
   5: required list<i64> timestamps
+  6: optional list<bool> isAlignedList
 }
 
 struct TSDeleteDataReq {

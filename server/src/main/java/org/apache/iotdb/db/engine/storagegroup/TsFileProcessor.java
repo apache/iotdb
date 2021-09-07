@@ -339,7 +339,7 @@ public class TsFileProcessor {
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
         IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
-        if (schema.getType() == TSDataType.VECTOR) {
+        if (insertRowPlan.isAligned()) {
           chunkMetadataIncrement +=
               schema.getValueTSDataTypeList().size()
                   * ChunkMetadata.calculateRamSize(

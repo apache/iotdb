@@ -49,23 +49,24 @@ public class AlignedTimeseriesSessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    // set session fetchSize
-    session.setFetchSize(10000);
-
-    createTemplate();
-    createAlignedTimeseries();
-    insertAlignedRecord();
-
-    insertTabletWithAlignedTimeseriesMethod1();
-    insertTabletWithAlignedTimeseriesMethod2();
-    insertNullableTabletWithAlignedTimeseries();
-
-    selectTest();
-    selectWithValueFilterTest();
-    selectWithGroupByTest();
-    selectWithLastTest();
-
-    selectWithAggregationTest();
+    //    // set session fetchSize
+    //    session.setFetchSize(10000);
+    //
+    //    createTemplate();
+    //    createAlignedTimeseries();
+    //    insertAlignedRecord();
+    insertAlignedStrRecord();
+    //
+    //    insertTabletWithAlignedTimeseriesMethod1();
+    //    insertTabletWithAlignedTimeseriesMethod2();
+    //    insertNullableTabletWithAlignedTimeseries();
+    //
+    //    selectTest();
+    //    selectWithValueFilterTest();
+    //    selectWithGroupByTest();
+    //    selectWithLastTest();
+    //
+    //    selectWithAggregationTest();
 
     // selectWithAlignByDeviceTest();
 
@@ -384,6 +385,20 @@ public class AlignedTimeseriesSessionExample {
       values.add(1L);
       values.add(2);
       session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, types, values, true);
+    }
+  }
+
+  private static void insertAlignedStrRecord()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+
+    for (long time = 0; time < 1; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("3");
+      values.add("4");
+      session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, values, true);
     }
   }
 }

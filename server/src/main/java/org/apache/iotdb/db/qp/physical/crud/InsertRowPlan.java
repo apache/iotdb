@@ -239,7 +239,6 @@ public class InsertRowPlan extends InsertPlan {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void transferType() throws QueryProcessException {
     if (isNeedInferType) {
-      int columnIndex = 0;
       for (int i = 0; i < measurementMNodes.length; i++) {
         if (measurementMNodes[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
@@ -255,52 +254,27 @@ public class InsertRowPlan extends InsertPlan {
                 new PathNotExistException(
                     prefixPath.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           }
-          columnIndex++;
           continue;
         }
-        if (measurementMNodes[i].getSchema().getType() != TSDataType.VECTOR) {
-          dataTypes[columnIndex] = measurementMNodes[i].getSchema().getType();
-          try {
-            values[columnIndex] =
-                CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
-          } catch (Exception e) {
-            logger.warn(
-                "{}.{} data type is not consistent, input {}, registered {}",
-                prefixPath,
-                measurements[i],
-                values[i],
-                dataTypes[i]);
-            if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-              markFailedMeasurementInsertion(i, e);
-              measurementMNodes[i] = null;
-            } else {
-              throw e;
-            }
-          }
-          columnIndex++;
+        if (isAligned) {
+          dataTypes[i] = measurementMNodes[i].getSchema().getValueTSDataTypeList().get(i);
+        } else {
+          dataTypes[i] = measurementMNodes[i].getSchema().getType();
         }
-        // for aligned timeseries
-        else {
-          for (TSDataType dataType : measurementMNodes[i].getSchema().getValueTSDataTypeList()) {
-            dataTypes[columnIndex] = dataType;
-            try {
-              values[columnIndex] =
-                  CommonUtils.parseValue(dataTypes[columnIndex], values[columnIndex].toString());
-            } catch (Exception e) {
-              logger.warn(
-                  "{}.{} data type is not consistent, input {}, registered {}",
-                  prefixPath,
-                  measurements[i],
-                  values[columnIndex],
-                  dataTypes[columnIndex]);
-              if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-                markFailedMeasurementInsertion(i, e);
-                measurementMNodes[i] = null;
-              } else {
-                throw e;
-              }
-            }
-            columnIndex++;
+        try {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
+        } catch (Exception e) {
+          logger.warn(
+              "{}.{} data type is not consistent, input {}, registered {}",
+              prefixPath,
+              measurements[i],
+              values[i],
+              dataTypes[i]);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markFailedMeasurementInsertion(i, e);
+            measurementMNodes[i] = null;
+          } else {
+            throw e;
           }
         }
       }
