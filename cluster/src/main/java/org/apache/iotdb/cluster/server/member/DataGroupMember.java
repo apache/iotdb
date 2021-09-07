@@ -708,10 +708,7 @@ public class DataGroupMember extends RaftMember {
         try {
           if (plan instanceof InsertPlan
               && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-            if ((cause instanceof PathNotExistException)
-                && (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan)) {
-              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-            } else if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+            if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
               if (e instanceof BatchProcessException) {
                 for (TSStatus status : ((BatchProcessException) e).getFailingStatus()) {
                   if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -721,6 +718,8 @@ public class DataGroupMember extends RaftMember {
                   }
                 }
               }
+            } else if (cause instanceof PathNotExistException) {
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
             }
           }
         } catch (MetadataException | CheckConsistencyException ex) {
@@ -776,11 +775,7 @@ public class DataGroupMember extends RaftMember {
       try {
         if (plan instanceof InsertPlan
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-          if (plan instanceof InsertRowPlan || plan instanceof InsertTabletPlan) {
-            if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
-            }
-          } else if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
+          if (plan instanceof InsertRowsPlan || plan instanceof InsertMultiTabletPlan) {
             if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               for (TSStatus tmpStatus : status.getSubStatus()) {
                 if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
@@ -789,6 +784,10 @@ public class DataGroupMember extends RaftMember {
                   break;
                 }
               }
+            }
+          } else {
+            if (status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+              hasCreated = createTimeseriesForFailedInsertion(((InsertPlan) plan));
             }
           }
         }
@@ -831,6 +830,14 @@ public class DataGroupMember extends RaftMember {
 
     if (plan instanceof InsertRowsPlan) {
       for (InsertRowPlan insertPlan : ((InsertRowsPlan) plan).getInsertRowPlanList()) {
+        if (insertPlan.getFailedMeasurements() != null) {
+          insertPlan.getPlanFromFailed();
+        }
+      }
+    }
+
+    if (plan instanceof InsertRowsOfOneDevicePlan) {
+      for (InsertRowPlan insertPlan : ((InsertRowsOfOneDevicePlan) plan).getRowPlans()) {
         if (insertPlan.getFailedMeasurements() != null) {
           insertPlan.getPlanFromFailed();
         }

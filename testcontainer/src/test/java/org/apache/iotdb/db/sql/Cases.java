@@ -45,12 +45,12 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.*;
 
 import static org.junit.Assert.fail;
 
@@ -618,7 +618,6 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaInClusterMode()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
-    boolean isEnableCacheLeader = session.isEnableCacheLeader();
     session.setEnableCacheLeader(false);
     List<String> measurement_list = new ArrayList<>();
     measurement_list.add("s1");
@@ -795,6 +794,42 @@ public abstract class Cases {
         Assert.assertTrue(resultSet.next());
       }
     }
-    session.setEnableCacheLeader(isEnableCacheLeader);
+
+    // other insert cases
+    List<Long> time_list = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      time_list.add((long) i);
+      List<String> measurements = new ArrayList<>();
+      measurements.add(String.format("s%d", i));
+      measurements.add(String.format("s%d", i + 5));
+      measurements.add(String.format("s%d", i + 10));
+      measurementsList.add(measurements);
+    }
+    session.insertRecordsOfOneDevice(
+        "root.sg0.d5", time_list, measurementsList, types_List, values_list);
+    session.insertRecordsOfOneDevice(
+        "root.sg10.d1", time_list, measurementsList, types_List, values_list);
+    for (Statement readStatement : readStatements) {
+      for (int i = 0; i < 5; i++) {
+        ResultSet resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg0.d5", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+
+        resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg10.d1", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+      }
+    }
   }
 }
