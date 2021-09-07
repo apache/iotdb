@@ -43,6 +43,7 @@ public class AlignedTimeseriesSessionExample {
   private static final String ROOT_SG1_D1_VECTOR2 = "root.sg_1.d1.vector2";
   private static final String ROOT_SG1_D1_VECTOR3 = "root.sg_1.d1.vector3";
   private static final String ROOT_SG1_D1_VECTOR4 = "root.sg_1.d1.vector4";
+  private static final String ROOT_SG1_D1_VECTOR5 = "root.sg_1.d1.vector5";
 
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -384,21 +385,43 @@ public class AlignedTimeseriesSessionExample {
       List<Object> values = new ArrayList<>();
       values.add(1L);
       values.add(2);
-      session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, types, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR4, time, measurements, types, values);
     }
   }
 
   private static void insertAlignedStringRecord()
       throws IoTDBConnectionException, StatementExecutionException {
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
+    List<String> subMeasurements = new ArrayList<>();
+    subMeasurements.add("s1");
+    subMeasurements.add("s2");
 
     for (long time = 0; time < 1; time++) {
       List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
-      session.insertRecord(ROOT_SG1_D1_VECTOR4, time, measurements, values, true);
+      session.insertAlignedRecord(ROOT_SG1_D1_VECTOR4, time, subMeasurements, values);
     }
+  }
+
+  private static void insertAlignedStringRecords()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> prefixPaths = new ArrayList<>();
+    List<List<String>> subMeasurementsList = new ArrayList<>();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> valueList = new ArrayList<>();
+
+    for (long time = 0; time < 5; time++) {
+      prefixPaths.add(ROOT_SG1_D1_VECTOR5);
+      List<String> values = new ArrayList<>();
+      List<String> subMeasurements = new ArrayList<>();
+      subMeasurements.add("s1");
+      subMeasurements.add("s2");
+      times.add(time);
+      values.add("3");
+      values.add("4");
+      subMeasurementsList.add(subMeasurements);
+      valueList.add(values);
+    }
+    session.insertAlignedRecords(prefixPaths, times, subMeasurementsList, valueList);
   }
 }

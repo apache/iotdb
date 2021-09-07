@@ -708,8 +708,8 @@ public class SessionPool {
   }
 
   /**
-   * insert aligned or non-aligned data in one row, if you want improve your performance, please use
-   * insertRecords method or insertTablet method
+   * insert aligned data in one row, if you want improve your performance, please use insertRecords
+   * method or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -720,7 +720,7 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRecord(deviceId, time, measurements, values, isAligned);
+        session.insertAlignedRecord(deviceId, time, measurements, values);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
