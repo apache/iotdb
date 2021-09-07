@@ -57,12 +57,12 @@ public interface IMeasurementSchema {
 
   List<Encoder> getSubMeasurementsEncoderList();
 
-  int getMeasurementIdColumnIndex(String measurementId);
+  int getSubMeasurementIndex(String measurementId);
 
-  int getMeasurementCount();
+  int getSubMeasurementsCount();
 
   /* test whether the schema contains Measurement with given measurementId */
-  boolean isCompatible(String measurementId);
+  boolean containsSubMeasurement(String measurementId);
 
   int serializeTo(ByteBuffer buffer);
 

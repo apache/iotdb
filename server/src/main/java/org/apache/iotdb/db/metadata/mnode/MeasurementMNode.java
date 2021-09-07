@@ -103,7 +103,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
   @Override
   public int getMeasurementCount() {
-    return schema.getMeasurementCount();
+    return schema.getSubMeasurementsCount();
   }
 
   /**
@@ -117,7 +117,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
     } else {
-      int index = schema.getMeasurementIdColumnIndex(measurementId);
+      int index = schema.getSubMeasurementIndex(measurementId);
       return schema.getSubMeasurementsTSDataTypeList().get(index);
     }
   }

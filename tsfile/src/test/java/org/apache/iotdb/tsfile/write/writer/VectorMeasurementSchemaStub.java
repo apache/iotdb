@@ -122,17 +122,17 @@ public class VectorMeasurementSchemaStub implements IMeasurementSchema {
   }
 
   @Override
-  public int getMeasurementIdColumnIndex(String measurementId) {
+  public int getSubMeasurementIndex(String measurementId) {
     return 0;
   }
 
   @Override
-  public int getMeasurementCount() {
+  public int getSubMeasurementsCount() {
     return 0;
   }
 
   @Override
-  public boolean isCompatible(String measurementId) {
+  public boolean containsSubMeasurement(String measurementId) {
     return false;
   }
 }

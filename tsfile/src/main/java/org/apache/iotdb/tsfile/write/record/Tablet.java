@@ -124,7 +124,7 @@ public class Tablet {
     int indexOfSchema = measurementIndex.get(measurementId);
     IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
     if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      int indexInVector = measurementSchema.getMeasurementIdColumnIndex(measurementId);
+      int indexInVector = measurementSchema.getSubMeasurementIndex(measurementId);
       TSDataType dataType = measurementSchema.getSubMeasurementsTSDataTypeList().get(indexInVector);
       addValueOfDataType(dataType, rowIndex, indexInVector, value);
     } else {

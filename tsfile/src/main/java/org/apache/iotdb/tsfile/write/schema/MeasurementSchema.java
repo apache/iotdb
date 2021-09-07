@@ -392,17 +392,17 @@ public class MeasurementSchema
   }
 
   @Override
-  public int getMeasurementIdColumnIndex(String measurementId) {
+  public int getSubMeasurementIndex(String measurementId) {
     return this.measurementId.equals(measurementId) ? 0 : -1;
   }
 
   @Override
-  public int getMeasurementCount() {
+  public int getSubMeasurementsCount() {
     return 1;
   }
 
   @Override
-  public boolean isCompatible(String measurementId) {
+  public boolean containsSubMeasurement(String measurementId) {
     return this.measurementId.equals(measurementId);
   }
 }

@@ -481,7 +481,7 @@ public class MTree implements Serializable {
         }
         if (((IMeasurementMNode) cur).getSchema() instanceof VectorMeasurementSchema) {
           return i == nodeNames.length - 2
-              && ((IMeasurementMNode) cur).getSchema().isCompatible(nodeNames[i + 1]);
+              && ((IMeasurementMNode) cur).getSchema().containsSubMeasurement(nodeNames[i + 1]);
         } else {
           return false;
         }
@@ -1034,7 +1034,7 @@ public class MTree implements Serializable {
       throws PathNotExistException {
     if (node.isMeasurement()) {
       if (idx < nodes.length) {
-        if (((IMeasurementMNode) node).getSchema().isCompatible(nodes[idx])) {
+        if (((IMeasurementMNode) node).getSchema().containsSubMeasurement(nodes[idx])) {
           return 1;
         } else {
           if (!wildcard) {
