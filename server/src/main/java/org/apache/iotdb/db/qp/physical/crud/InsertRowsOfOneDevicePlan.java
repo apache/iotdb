@@ -58,7 +58,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   private int[] rowPlanIndexList;
 
   /** record the result of insert rows */
-  private Map<Integer, TSStatus> results = new HashMap<>(0);
+  private Map<Integer, TSStatus> results = new HashMap<>();
 
   public InsertRowsOfOneDevicePlan() {
     super(OperatorType.BATCH_INSERT_ONE_DEVICE);
