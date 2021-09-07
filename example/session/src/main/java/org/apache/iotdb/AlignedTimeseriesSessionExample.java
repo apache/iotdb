@@ -55,28 +55,28 @@ public class AlignedTimeseriesSessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(false);
 
-    //    // set session fetchSize
-    //    session.setFetchSize(10000);
-    //
-    //    createTemplate();
-    //    createAlignedTimeseries();
-    //    insertAlignedRecord();
-    //    insertAlignedStringRecord();
+    // set session fetchSize
+    session.setFetchSize(10000);
+
+    createTemplate();
+    createAlignedTimeseries();
+    insertAlignedRecord();
+    insertAlignedStringRecord();
     insertAlignedRecords();
     insertAlignedStringRecords();
     insertAlignedRecordsOfOneDevices();
-    //
-    //    insertTabletWithAlignedTimeseriesMethod1();
-    //    insertTabletWithAlignedTimeseriesMethod2();
-    //    insertNullableTabletWithAlignedTimeseries();
+
+    insertTabletWithAlignedTimeseriesMethod1();
+    insertTabletWithAlignedTimeseriesMethod2();
+    insertNullableTabletWithAlignedTimeseries();
     insertTabletsWithAlignedTimeseries();
-    //
-    //    selectTest();
-    //    selectWithValueFilterTest();
-    //    selectWithGroupByTest();
-    //    selectWithLastTest();
-    //
-    //    selectWithAggregationTest();
+
+    selectTest();
+    selectWithValueFilterTest();
+    selectWithGroupByTest();
+    selectWithLastTest();
+
+    selectWithAggregationTest();
 
     // selectWithAlignByDeviceTest();
 
