@@ -82,7 +82,6 @@ public class AlignedTimeseriesSessionExample {
 
     // selectWithAlignByDeviceTest();
 
-    session.executeNonQueryStatement("flush");
     session.close();
   }
 
