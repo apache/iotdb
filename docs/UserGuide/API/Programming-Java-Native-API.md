@@ -211,6 +211,37 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
+* Create a physical quantity template
+
+```
+
+* name: template name
+* measurements: List of measurements, if it is a single measurement, just put it's name
+*     into a list and add to measurements if it is a vector measurement, put all measurements of
+*     the vector into a list and add to measurements
+* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
+*     list and add to dataTypes if it is a vector measurement, put all types of the vector
+*     into a list and add to dataTypes
+* encodings: List of encodings, if it is a single measurement, just put it's encoding into
+*     a list and add to encodings if it is a vector measurement, put all encodings of the
+*     vector into a list and add to encodings
+* compressors: List of compressors                            
+void createSchemaTemplate(
+      String templateName,
+      List<String> schemaName,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+```
+
+* Create a device template, the param description at above
+
+``` 
+
+void setSchemaTemplate(String templateName, String prefixPath)
+
+```
 
 
 ### Native APIs for profiling network cost
@@ -294,139 +325,6 @@ For examples of aligned timeseries and device template, you can refer to `exampl
 
 
 
-
-### New Interfaces
-
-```java
-void open(boolean enableRPCCompression)
-```
-
-Open a session, with a parameter to specify whether to enable RPC compression. 
-Please pay attention that this RPC compression status of client must comply with the status of IoTDB server
-
-```java
-void insertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
-```
-
-Insert one record, in a way that user has to provide the type information of each measurement, which is different from the original insertRecord() interface.
-The values should be provided in their primitive types. This interface is more proficient than the one without type parameters.
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                   List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-```
-
-Insert multiple records with type parameters. This interface is more proficient than the one without type parameters.
-
-```java
-void insertTablet(Tablet tablet, boolean sorted)
-```
-
-An additional insertTablet() interface that providing a "sorted" parameter indicating if the tablet is in order. A sorted tablet may accelerate the insertion process.
-
-```java
-void insertTablets(Map<String, Tablet> tablets)
-```
-
-A new insertTablets() for inserting multiple tablets. 
-
-```java
-void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-insertTablets() with an additional "sorted" parameter. 
-
-```java
-void testInsertRecord(String deviceId, long time, List<String> measurements, List<TSDataType> types, 
-                      List<Object> values)
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
-                      List<List<TSDataType>> typesList, List<List<Object>> valuesList)
-void testInsertTablet(Tablet tablet, boolean sorted)
-void testInsertTablets(Map<String, Tablet> tablets)
-void testInsertTablets(Map<String, Tablet> tablets, boolean sorted)
-```
-
-The above interfaces are newly added to test responsiveness of new insert interfaces.
-
-```java
-void createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor, 	
-                      Map<String, String> props, Map<String, String> tags, Map<String, String> attributes, 
-                      String measurementAlias)
-```
-
-Create a timeseries with path, datatype, encoding and compression. Additionally, users can provide props, tags, attributes and measurementAlias。
-
-```java
-void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes, List<TSEncoding> encodings, 
-                           List<CompressionType> compressors, List<Map<String, String>> propsList, 
-                           List<Map<String, String>> tagsList, List<Map<String, String>> attributesList, 
-                           List<String> measurementAliasList)
-```
-
-Create multiple timeseries with a single method. Users can provide props, tags, attributes and measurementAlias as well for detailed timeseries information.
-
-```java
-void createAlignedTimeseries(String devicePath, List<String> measurements,
-      List<TSDataType> dataTypes, List<TSEncoding> encodings,
-      CompressionType compressor, List<String> measurementAliasList);
-```
-
-Create aligned timeseries with device path, measurements, data types, encodings, compression.
-
-Attention: Alias of measurements are **not supported** currently.
-
-```java
-
-boolean checkTimeseriesExists(String path)
-```
-
-Add a method to check whether the specific timeseries exists.
-
-```java
-public Session(String host, int rpcPort, String username, String password,
-      boolean isEnableCacheLeader)
-```
-
-Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
-
-```
-
-* name: template name
-* measurements: List of measurements, if it is a single measurement, just put it's name
-*     into a list and add to measurements if it is a vector measurement, put all measurements of
-*     the vector into a list and add to measurements
-* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
-*     list and add to dataTypes if it is a vector measurement, put all types of the vector
-*     into a list and add to dataTypes
-* encodings: List of encodings, if it is a single measurement, just put it's encoding into
-*     a list and add to encodings if it is a vector measurement, put all encodings of the
-*     vector into a list and add to encodings
-* compressors: List of compressors                            
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
-```
-
-Create a device template, the param description at above
-
-``` 
-
-void setSchemaTemplate(String templateName, String prefixPath)
-
-```
-
-Set the device template named 'templateName' at path 'prefixPath'. You should firstly create the template using
-
-```
-
-void createSchemaTemplate
-
-```
 
 ### Cluster information related APIs (only works in the cluster mode)
 
