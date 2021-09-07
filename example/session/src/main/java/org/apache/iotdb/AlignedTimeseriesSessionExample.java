@@ -494,20 +494,20 @@ public class AlignedTimeseriesSessionExample {
     schemaList1.add(
         new VectorMeasurementSchema(
             "vector6",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
     List<IMeasurementSchema> schemaList2 = new ArrayList<>();
     schemaList2.add(
         new VectorMeasurementSchema(
             "vector7",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
     List<IMeasurementSchema> schemaList3 = new ArrayList<>();
     schemaList3.add(
         new VectorMeasurementSchema(
             "vector8",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT64, TSDataType.INT64}));
+            new String[] {"s1", "s2"},
+            new TSDataType[] {TSDataType.INT64, TSDataType.INT64}));
 
     Tablet tablet1 = new Tablet(ROOT_SG1_D1_VECTOR6, schemaList1, 100);
     Tablet tablet2 = new Tablet(ROOT_SG1_D1_VECTOR7, schemaList2, 100);
@@ -530,7 +530,7 @@ public class AlignedTimeseriesSessionExample {
       tablet1.addTimestamp(row1, timestamp);
       tablet2.addTimestamp(row2, timestamp);
       tablet3.addTimestamp(row3, timestamp);
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 2; i++) {
         long value = new SecureRandom().nextLong();
         tablet1.addValue(schemaList1.get(0).getValueMeasurementIdList().get(i), row1, value);
         tablet2.addValue(schemaList2.get(0).getValueMeasurementIdList().get(i), row2, value);
@@ -567,7 +567,7 @@ public class AlignedTimeseriesSessionExample {
       timestamps1[row1] = time;
       timestamps2[row2] = time;
       timestamps3[row3] = time;
-      for (int i = 0; i < 3; i++) {
+      for (int i = 0; i < 2; i++) {
         long[] sensor1 = (long[]) values1[i];
         sensor1[row1] = i;
         long[] sensor2 = (long[]) values2[i];
