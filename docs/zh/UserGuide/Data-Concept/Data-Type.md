@@ -61,27 +61,15 @@ IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIM
 | yyyy-MM-dd HH:mm:ss          |
 | yyyy/MM/dd HH:mm:ss          |
 | yyyy.MM.dd HH:mm:ss          |
-| yyyy-MM-dd'T'HH:mm:ss        |
-| yyyy/MM/dd'T'HH:mm:ss        |
-| yyyy.MM.dd'T'HH:mm:ss        |
 | yyyy-MM-dd HH:mm:ssZZ        |
 | yyyy/MM/dd HH:mm:ssZZ        |
 | yyyy.MM.dd HH:mm:ssZZ        |
-| yyyy-MM-dd'T'HH:mm:ssZZ      |
-| yyyy/MM/dd'T'HH:mm:ssZZ      |
-| yyyy.MM.dd'T'HH:mm:ssZZ      |
 | yyyy/MM/dd HH:mm:ss.SSS      |
 | yyyy-MM-dd HH:mm:ss.SSS      |
 | yyyy.MM.dd HH:mm:ss.SSS      |
-| yyyy/MM/dd'T'HH:mm:ss.SSS    |
-| yyyy-MM-dd'T'HH:mm:ss.SSS    |
-| yyyy.MM.dd'T'HH:mm:ss.SSS    |
 | yyyy-MM-dd HH:mm:ss.SSSZZ    |
 | yyyy/MM/dd HH:mm:ss.SSSZZ    |
 | yyyy.MM.dd HH:mm:ss.SSSZZ    |
-| yyyy-MM-dd'T'HH:mm:ss.SSSZZ  |
-| yyyy/MM/dd'T'HH:mm:ss.SSSZZ  |
-| yyyy.MM.dd'T'HH:mm:ss.SSSZZ  |
 | ISO8601 standard time format |
 
 </center>
