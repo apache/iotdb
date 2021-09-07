@@ -79,7 +79,8 @@
 * [IOTDB-1580] Error result of order by time desc when enable time partition
 * [IOTDB-1584] Doesn't support order by time desc in cluster mode
 * [IOTDB-1588] Bug fix: MAX_TIME is incorrect in cluster mode
-* [IOTDB-1594] Fix show timeseries returns incorrect tag value 
+* [IOTDB-1594] Fix show timeseries returns incorrect tag value
+* [IOTDB-1600] Fix InsertRowsOfOneDevicePlan being not supported in cluster mode
 * [IOTDB-1610] Fix TsFileRewriteTool writing incorrect data file
 * [ISSUE-3116] Bug when using natural month unit in time interval in group by query
 * [ISSUE-3316] Query result with the same time range is inconsistent in group by query
@@ -90,7 +91,7 @@
 * [ISSUE-3690] Memory leaks on the server when cpp client invokes checkTimeseriesExists
 * [ISSUE-3805] OOM caused by Chunk cache
 * [ISSUE-3865] Meaningless connection reset issues caused by low default value for SOMAXCONN
-*  Fix DataMigrationExample OOM if migrate too many timeseries 
+* Fix DataMigrationExample OOM if migrate too many timeseries 
 * Handle false positive cases which may cause NPE of tsfile bloom filter 
 * Fix Windows shell error on JDK11 & fix iotdb-env.bat not working
 * Fix cluster auto create schema bug when retry locally 
