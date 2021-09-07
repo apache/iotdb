@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetDeviceTemplatePlan;
@@ -338,6 +339,9 @@ public abstract class PhysicalPlan {
           break;
         case BATCH_INSERT_ROWS:
           plan = new InsertRowsPlan();
+          break;
+        case BATCH_INSERT_ONE_DEVICE:
+          plan = new InsertRowsOfOneDevicePlan();
           break;
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
