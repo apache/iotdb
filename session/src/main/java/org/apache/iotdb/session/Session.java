@@ -1115,7 +1115,42 @@ public class Session {
       insertRecordsWithLeaderCache(deviceIds, times, measurementsList, typesList, valuesList);
     } else {
       TSInsertRecordsReq request =
-          genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList);
+          genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
+      try {
+        defaultSessionConnection.insertRecords(request);
+      } catch (RedirectException ignored) {
+        // ignore
+      }
+    }
+  }
+
+  /**
+   * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
+   * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
+   * want improve your performance, please see insertTablet method
+   *
+   * <p>
+   * Each row is independent, which could have different deviceId, time, number of measurements
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedRecords(
+      List<String> prefixPaths,
+      List<Long> times,
+      List<List<String>> subMeasurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = prefixPaths.size();
+    if (len != times.size() || len != subMeasurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "prefixPaths, times, subMeasurementsList and valuesList's size should be equal");
+    }
+    if (enableCacheLeader) {
+      insertRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, typesList, valuesList);
+    } else {
+      TSInsertRecordsReq request =
+          genTSInsertRecordsReq(prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
@@ -1297,12 +1332,14 @@ public class Session {
       List<Long> times,
       List<List<String>> measurementsList,
       List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
+      List<List<Object>> valuesList,
+      boolean isAligned)
       throws IoTDBConnectionException {
     TSInsertRecordsReq request = new TSInsertRecordsReq();
     request.setPrefixPaths(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
+    request.setIsAligned(isAligned);
     List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
     request.setValuesList(buffersList);
     return request;
@@ -1580,7 +1617,7 @@ public class Session {
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordsReq request =
-        genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList);
+        genTSInsertRecordsReq(deviceIds, times, measurementsList, typesList, valuesList, false);
     defaultSessionConnection.testInsertRecords(request);
   }
 

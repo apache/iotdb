@@ -56,7 +56,9 @@ public class AlignedTimeseriesSessionExample {
     //    createTemplate();
     //    createAlignedTimeseries();
     //    insertAlignedRecord();
-    insertAlignedStringRecord();
+    //    insertAlignedStringRecord();
+    insertAlignedRecords();
+    insertAlignedStringRecords();
     //
     //    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
@@ -395,12 +397,39 @@ public class AlignedTimeseriesSessionExample {
     subMeasurements.add("s1");
     subMeasurements.add("s2");
 
-    for (long time = 0; time < 1; time++) {
+    for (long time = 1; time < 2; time++) {
       List<String> values = new ArrayList<>();
       values.add("3");
       values.add("4");
       session.insertAlignedRecord(ROOT_SG1_D1_VECTOR4, time, subMeasurements, values);
     }
+  }
+
+  private static void insertAlignedRecords()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> prefixPaths = new ArrayList<>();
+    List<List<String>> subMeasurementsList = new ArrayList<>();
+    List<List<TSDataType>> typeList = new ArrayList<>();
+    List<Long> times = new ArrayList<>();
+    List<List<Object>> valueList = new ArrayList<>();
+
+    for (long time = 0; time < 5; time++) {
+      prefixPaths.add(ROOT_SG1_D1_VECTOR5);
+      List<Object> values = new ArrayList<>();
+      List<String> subMeasurements = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      subMeasurements.add("s1");
+      subMeasurements.add("s2");
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT32);
+      times.add(time);
+      values.add(1L);
+      values.add(2);
+      subMeasurementsList.add(subMeasurements);
+      typeList.add(types);
+      valueList.add(values);
+    }
+    session.insertAlignedRecords(prefixPaths, times, subMeasurementsList, typeList, valueList);
   }
 
   private static void insertAlignedStringRecords()
@@ -410,7 +439,7 @@ public class AlignedTimeseriesSessionExample {
     List<Long> times = new ArrayList<>();
     List<List<String>> valueList = new ArrayList<>();
 
-    for (long time = 0; time < 5; time++) {
+    for (long time = 5; time < 10; time++) {
       prefixPaths.add(ROOT_SG1_D1_VECTOR5);
       List<String> values = new ArrayList<>();
       List<String> subMeasurements = new ArrayList<>();
