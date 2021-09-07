@@ -477,6 +477,7 @@ public class AlignedTimeseriesSessionExample {
       typeList.add(types);
       valueList.add(values);
     }
-    session.insertAlignedRecordsOfOneDevice(ROOT_SG1_D1_VECTOR5, times, subMeasurementsList, typeList, valueList);
+    session.insertAlignedRecordsOfOneDevice(
+        ROOT_SG1_D1_VECTOR5, times, subMeasurementsList, typeList, valueList);
   }
 }

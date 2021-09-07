@@ -1229,7 +1229,8 @@ public class Session {
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    insertAlignedRecordsOfOneDevice(prefixPath, times, subMeasurementsList, typesList, valuesList, false);
+    insertAlignedRecordsOfOneDevice(
+        prefixPath, times, subMeasurementsList, typesList, valuesList, false);
   }
 
   /**
