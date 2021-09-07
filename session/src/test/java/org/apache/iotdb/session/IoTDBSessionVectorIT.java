@@ -94,8 +94,8 @@ public class IoTDBSessionVectorIT {
       insertAlignedRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
       int time = 0;
       while (dataSet.hasNext()) {
@@ -116,9 +116,9 @@ public class IoTDBSessionVectorIT {
       insertAlignedStringRecord(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
-      assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
+      assertEquals(ROOT_SG1_D1_VECTOR1 + ".s2", dataSet.getColumnNames().get(1));
       int time = 0;
       while (dataSet.hasNext()) {
         RowRecord rowRecord = dataSet.next();
@@ -138,8 +138,8 @@ public class IoTDBSessionVectorIT {
       insertAlignedStringRecords(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
       int time = 0;
       while (dataSet.hasNext()) {
@@ -160,8 +160,8 @@ public class IoTDBSessionVectorIT {
       insertAlignedRecords(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
       int time = 0;
       while (dataSet.hasNext()) {
@@ -182,8 +182,8 @@ public class IoTDBSessionVectorIT {
       insertAlignedRecordsOfOneDevice(ROOT_SG1_D1_VECTOR1);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select s2 from root.sg_1.d1.vector");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
       int time = 0;
       while (dataSet.hasNext()) {
@@ -206,8 +206,8 @@ public class IoTDBSessionVectorIT {
       insertNonAlignedRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
-      assertEquals(dataSet.getColumnNames().size(), 2);
-      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(2, dataSet.getColumnNames().size());
+      assertEquals("Time", dataSet.getColumnNames().get(0));
       assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
       int time = 0;
       while (dataSet.hasNext()) {

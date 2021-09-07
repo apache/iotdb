@@ -551,6 +551,7 @@ public class SessionPool {
       }
     }
   }
+
   /**
    * Insert data that belong to the same device in batch format, which can reduce the overhead of
    * network. This method is just like jdbc batch insert, we pack some insert request in batch and
