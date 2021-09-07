@@ -251,7 +251,7 @@ struct TSInsertRecordsOfOneDeviceReq {
     3: required list<list<string>> measurementsList
     4: required list<binary> valuesList
     5: required list<i64> timestamps
-    6: optional list<bool> isAlignedList
+    6: optional bool isAligned
 }
 
 struct TSInsertStringRecordsReq {

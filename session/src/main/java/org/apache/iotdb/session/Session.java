@@ -990,7 +990,8 @@ public class Session {
    * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
    * want improve your performance, please see insertTablet method
    *
-   * <p>Each row is independent, which could have different deviceId, time, number of measurements
+   * <p>Each row is independent, which could have different prefixPath, time, number of
+   * subMeasurements
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -1129,8 +1130,8 @@ public class Session {
    * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
    * want improve your performance, please see insertTablet method
    *
-   * <p>
-   * Each row is independent, which could have different deviceId, time, number of measurements
+   * <p>Each row is independent, which could have different prefixPath, time, number of
+   * subMeasurements
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -1150,7 +1151,8 @@ public class Session {
       insertRecordsWithLeaderCache(prefixPaths, times, subMeasurementsList, typesList, valuesList);
     } else {
       TSInsertRecordsReq request =
-          genTSInsertRecordsReq(prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
+          genTSInsertRecordsReq(
+              prefixPaths, times, subMeasurementsList, typesList, valuesList, true);
       try {
         defaultSessionConnection.insertRecords(request);
       } catch (RedirectException ignored) {
@@ -1164,7 +1166,7 @@ public class Session {
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
    * your performance, please see insertTablet method
    *
-   * <p>Each row is independent, which could have different deviceId, time, number of measurements
+   * <p>Each row could have same deviceId but different time, number of measurements
    *
    * @see Session#insertTablet(Tablet)
    */
@@ -1183,7 +1185,7 @@ public class Session {
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
    * your performance, please see insertTablet method
    *
-   * <p>Each row is independent, which could have different deviceId, time, number of measurements
+   * <p>Each row could have same deviceId but different time, number of measurements
    *
    * @param haveSorted whether the times have been sorted
    * @see Session#insertTablet(Tablet)
@@ -1199,11 +1201,11 @@ public class Session {
     int len = times.size();
     if (len != measurementsList.size() || len != valuesList.size()) {
       throw new IllegalArgumentException(
-          "deviceIds, times, measurementsList and valuesList's size should be equal");
+          "times, measurementsList and valuesList's size should be equal");
     }
     TSInsertRecordsOfOneDeviceReq request =
         genTSInsertRecordsOfOneDeviceReq(
-            deviceId, times, measurementsList, typesList, valuesList, haveSorted);
+            deviceId, times, measurementsList, typesList, valuesList, haveSorted, false);
     try {
       getSessionConnection(deviceId).insertRecordsOfOneDevice(request);
     } catch (RedirectException e) {
@@ -1211,13 +1213,66 @@ public class Session {
     }
   }
 
+  /**
+   * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
+   * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
+   * want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same prefixPath but different time, number of measurements
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedRecordsOfOneDevice(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> subMeasurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertAlignedRecordsOfOneDevice(prefixPath, times, subMeasurementsList, typesList, valuesList, false);
+  }
+
+  /**
+   * Insert aligned multiple rows, which can reduce the overhead of network. This method is just
+   * like jdbc executeBatch, we pack some insert request in batch and send them to server. If you
+   * want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same prefixPath but different time, number of measurements
+   *
+   * @param haveSorted whether the times have been sorted
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedRecordsOfOneDevice(
+      String prefixPath,
+      List<Long> times,
+      List<List<String>> subMeasurementsList,
+      List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != subMeasurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, subMeasurementsList and valuesList's size should be equal");
+    }
+    TSInsertRecordsOfOneDeviceReq request =
+        genTSInsertRecordsOfOneDeviceReq(
+            prefixPath, times, subMeasurementsList, typesList, valuesList, haveSorted, true);
+    try {
+      getSessionConnection(prefixPath).insertRecordsOfOneDevice(request);
+    } catch (RedirectException e) {
+      handleRedirection(prefixPath, e.getEndPoint());
+    }
+  }
+
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
-      String deviceId,
+      String prefixPath,
       List<Long> times,
       List<List<String>> measurementsList,
       List<List<TSDataType>> typesList,
       List<List<Object>> valuesList,
-      boolean haveSorted)
+      boolean haveSorted,
+      boolean isAligned)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = times.size();
@@ -1248,11 +1303,12 @@ public class Session {
     }
 
     TSInsertRecordsOfOneDeviceReq request = new TSInsertRecordsOfOneDeviceReq();
-    request.setPrefixPath(deviceId);
+    request.setPrefixPath(prefixPath);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
     List<ByteBuffer> buffersList = objectValuesListToByteBufferList(valuesList, typesList);
     request.setValuesList(buffersList);
+    request.setIsAligned(isAligned);
     return request;
   }
 

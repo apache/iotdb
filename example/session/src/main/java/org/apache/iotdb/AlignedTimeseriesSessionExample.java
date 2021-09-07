@@ -59,6 +59,7 @@ public class AlignedTimeseriesSessionExample {
     //    insertAlignedStringRecord();
     insertAlignedRecords();
     insertAlignedStringRecords();
+    insertAlignedRecordsOfOneDevices();
     //
     //    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
@@ -452,5 +453,30 @@ public class AlignedTimeseriesSessionExample {
       valueList.add(values);
     }
     session.insertAlignedRecords(prefixPaths, times, subMeasurementsList, valueList);
+  }
+
+  private static void insertAlignedRecordsOfOneDevices()
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<List<String>> subMeasurementsList = new ArrayList<>();
+    List<List<TSDataType>> typeList = new ArrayList<>();
+    List<Long> times = new ArrayList<>();
+    List<List<Object>> valueList = new ArrayList<>();
+
+    for (long time = 10; time < 15; time++) {
+      List<Object> values = new ArrayList<>();
+      List<String> subMeasurements = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      subMeasurements.add("s1");
+      subMeasurements.add("s2");
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT32);
+      times.add(time);
+      values.add(1L);
+      values.add(2);
+      subMeasurementsList.add(subMeasurements);
+      typeList.add(types);
+      valueList.add(values);
+    }
+    session.insertAlignedRecordsOfOneDevice(ROOT_SG1_D1_VECTOR5, times, subMeasurementsList, typeList, valueList);
   }
 }

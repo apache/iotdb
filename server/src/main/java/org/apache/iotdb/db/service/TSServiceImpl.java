@@ -1379,7 +1379,8 @@ public class TSServiceImpl implements TSIService.Iface {
                 new PartialPath(req.getPrefixPaths().get(i)),
                 req.getTimestamps().get(i),
                 req.getMeasurementsList().get(i).toArray(new String[0]),
-                req.valuesList.get(i));
+                req.valuesList.get(i),
+                req.isAligned);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
@@ -1450,6 +1451,7 @@ public class TSServiceImpl implements TSIService.Iface {
               req.getTimestamps().toArray(new Long[0]),
               req.getMeasurementsList(),
               req.getValuesList().toArray(new ByteBuffer[0]));
+      plan.setAligned(req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
@@ -1497,6 +1499,7 @@ public class TSServiceImpl implements TSIService.Iface {
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
+        plan.setAligned(req.isAligned);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
