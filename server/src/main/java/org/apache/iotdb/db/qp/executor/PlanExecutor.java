@@ -1342,8 +1342,7 @@ public class PlanExecutor implements IPlanExecutor {
         getSeriesSchemas(plan);
         // we do not need to infer data type for insertRowsOfOneDevicePlan
         if (plan.isAligned()) {
-          plan.setPrefixPathForAlignTimeSeries(
-              plan.getPrefixPath().getDevicePath());
+          plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
         }
       }
       // ok, we can begin to write data into the engine..

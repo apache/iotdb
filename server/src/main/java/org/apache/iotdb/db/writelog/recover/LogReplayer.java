@@ -154,8 +154,10 @@ public class LogReplayer {
         minTime = ((InsertTabletPlan) plan).getMinTime();
         maxTime = ((InsertTabletPlan) plan).getMaxTime();
       }
-      String deviceId = plan.isAligned() ? plan.getPrefixPath().getDevicePath().getFullPath()
-          : plan.getPrefixPath().getFullPath();
+      String deviceId =
+          plan.isAligned()
+              ? plan.getPrefixPath().getDevicePath().getFullPath()
+              : plan.getPrefixPath().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
@@ -180,8 +182,7 @@ public class LogReplayer {
     plan.setMeasurementMNodes(mNodes);
 
     if (plan.isAligned()) {
-      plan.setPrefixPathForAlignTimeSeries(
-          plan.getPrefixPath().getDevicePath());
+      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
     }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
@@ -196,19 +197,27 @@ public class LogReplayer {
   private void checkDataTypeAndMarkFailed(final IMeasurementMNode[] mNodes, InsertPlan tPlan) {
     for (int i = 0; i < mNodes.length; i++) {
       if (mNodes[i] == null) {
-        tPlan.markFailedMeasurementInsertion(i,
-            new PathNotExistException(tPlan.getPrefixPath().getFullPath()
-                + IoTDBConstant.PATH_SEPARATOR + tPlan.getMeasurements()[i]));
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new PathNotExistException(
+                tPlan.getPrefixPath().getFullPath()
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + tPlan.getMeasurements()[i]));
       } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i, new DataTypeMismatchException(mNodes[i].getName(),
-            tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
+        tPlan.markFailedMeasurementInsertion(
+            i,
+            new DataTypeMismatchException(
+                mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
       } else if (tPlan.isAligned()
           && mNodes[i].getSchema().getValueTSDataTypeList().get(i) != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(i,
+        tPlan.markFailedMeasurementInsertion(
+            i,
             new DataTypeMismatchException(
-                mNodes[i].getName() + "."
+                mNodes[i].getName()
+                    + "."
                     + mNodes[i].getSchema().getValueMeasurementIdList().get(i),
-                tPlan.getDataTypes()[i], mNodes[i].getSchema().getValueTSDataTypeList().get(i)));
+                tPlan.getDataTypes()[i],
+                mNodes[i].getSchema().getValueTSDataTypeList().get(i)));
       }
     }
   }
