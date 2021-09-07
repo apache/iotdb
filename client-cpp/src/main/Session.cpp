@@ -796,7 +796,7 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
 void Session::testInsertRecord(string deviceId, int64_t time, vector <string> &measurements, vector <string> &values) {
     shared_ptr <TSInsertStringRecordReq> req(new TSInsertStringRecordReq());
     req->__set_sessionId(sessionId);
-    req->__set_deviceId(deviceId);
+    req->__set_prefixPath(deviceId);
     req->__set_timestamp(time);
     req->__set_measurements(measurements);
     req->__set_values(values);
