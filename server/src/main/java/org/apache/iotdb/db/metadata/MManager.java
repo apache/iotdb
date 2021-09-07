@@ -607,6 +607,7 @@ public class MManager {
             throw new AlignedTimeseriesException(
                 "Not support deleting part of aligned timeseies!", prefixPath.getFullPath());
           } else {
+            allTimeseries.clear();
             allTimeseries.add(lastNode.getPartialPath());
           }
         }
@@ -1003,7 +1004,7 @@ public class MManager {
         }
         res.add(
             new ShowTimeSeriesResult(
-                ansString.left.getFullPath(),
+                PartialPath.getExactFullPath(ansString.left),
                 ansString.right[0],
                 ansString.right[1],
                 TSDataType.valueOf(ansString.right[2]),
