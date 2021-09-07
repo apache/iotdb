@@ -21,25 +21,27 @@ package org.apache.iotdb.db.query.udf.core.access;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 
 import java.io.IOException;
 
-public class ElasticSerializableTVListBackedSingleColumnWindowIterator implements RowIterator {
+public class ElasticSerializableRowRecordListBackedMultiColumnWindowIterator
+    implements RowIterator {
 
+  private final ElasticSerializableRowRecordList rowRecordList;
   private final int beginIndex;
   private final int size;
 
-  private final ElasticSerializableTVListBackedSingleColumnRow row;
+  private final ElasticSerializableRowRecordListBackedMultiColumnRow row;
   private int rowIndex;
 
-  // [beginIndex, endIndex)
-  public ElasticSerializableTVListBackedSingleColumnWindowIterator(
-      ElasticSerializableTVList tvList, int beginIndex, int endIndex) {
+  public ElasticSerializableRowRecordListBackedMultiColumnWindowIterator(
+      ElasticSerializableRowRecordList rowRecordList, int beginIndex, int endIndex) {
+    this.rowRecordList = rowRecordList;
     this.beginIndex = beginIndex;
     size = endIndex - beginIndex;
 
-    row = new ElasticSerializableTVListBackedSingleColumnRow(tvList, beginIndex);
+    row = new ElasticSerializableRowRecordListBackedMultiColumnRow(rowRecordList.getDataTypes());
     rowIndex = -1;
   }
 
@@ -50,7 +52,7 @@ public class ElasticSerializableTVListBackedSingleColumnWindowIterator implement
 
   @Override
   public Row next() throws IOException {
-    return row.seek(++rowIndex + beginIndex);
+    return row.setRowRecord(rowRecordList.getRowRecord(++rowIndex + beginIndex));
   }
 
   @Override

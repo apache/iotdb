@@ -22,27 +22,33 @@ package org.apache.iotdb.db.query.udf.core.access;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
-import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWindow {
+import java.io.IOException;
 
-  private final ElasticSerializableTVList tvList;
+public class ElasticSerializableRowRecordListBackedMultiColumnWindow implements RowWindow {
+
+  private final ElasticSerializableRowRecordList rowRecordList;
+  private final TSDataType[] dataTypes;
+
   private int beginIndex;
   private int endIndex;
   private int size;
 
-  private final ElasticSerializableTVListBackedSingleColumnRow row;
-  private ElasticSerializableTVListBackedSingleColumnWindowIterator rowIterator;
+  private final ElasticSerializableRowRecordListBackedMultiColumnRow row;
+  private ElasticSerializableRowRecordListBackedMultiColumnWindowIterator rowIterator;
 
-  // [beginIndex, endIndex)
-  public ElasticSerializableTVListBackedSingleColumnWindow(ElasticSerializableTVList tvList) {
-    this.tvList = tvList;
+  public ElasticSerializableRowRecordListBackedMultiColumnWindow(
+      ElasticSerializableRowRecordList rowRecordList) {
+    this.rowRecordList = rowRecordList;
+    this.dataTypes = rowRecordList.getDataTypes();
+
     beginIndex = 0;
     endIndex = 0;
     size = 0;
 
-    row = new ElasticSerializableTVListBackedSingleColumnRow(tvList, beginIndex);
+    row = new ElasticSerializableRowRecordListBackedMultiColumnRow(dataTypes);
   }
 
   @Override
@@ -51,21 +57,21 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
   }
 
   @Override
-  public Row getRow(int rowIndex) {
-    return row.seek(beginIndex + rowIndex);
+  public Row getRow(int rowIndex) throws IOException {
+    return row.setRowRecord(rowRecordList.getRowRecord(beginIndex + rowIndex));
   }
 
   @Override
   public TSDataType getDataType(int columnIndex) {
-    return tvList.getDataType();
+    return dataTypes[columnIndex];
   }
 
   @Override
   public RowIterator getRowIterator() {
     if (rowIterator == null) {
       rowIterator =
-          new ElasticSerializableTVListBackedSingleColumnWindowIterator(
-              tvList, beginIndex, endIndex);
+          new ElasticSerializableRowRecordListBackedMultiColumnWindowIterator(
+              rowRecordList, beginIndex, endIndex);
     }
 
     rowIterator.reset();
@@ -77,7 +83,6 @@ public class ElasticSerializableTVListBackedSingleColumnWindow implements RowWin
     this.endIndex = endIndex;
     size = endIndex - beginIndex;
 
-    row.seek(beginIndex);
     rowIterator = null;
   }
 }

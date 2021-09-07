@@ -28,10 +28,11 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
-import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -153,7 +154,7 @@ public class FunctionExpression extends Expression {
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
-      throws QueryProcessException {
+      throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       List<LayerPointReader> parentLayerPointReaders = new ArrayList<>();
       for (Expression expression : expressions) {
@@ -165,8 +166,7 @@ public class FunctionExpression extends Expression {
       }
 
       expressionIntermediateLayerMap.put(
-          this,
-          new MultiInputColumnMultiReferenceIntermediateLayer(parentLayerPointReaders, -1, -1));
+          this, new MultiInputColumnIntermediateLayer(-1, -1, parentLayerPointReaders));
     }
 
     return expressionIntermediateLayerMap.get(this);

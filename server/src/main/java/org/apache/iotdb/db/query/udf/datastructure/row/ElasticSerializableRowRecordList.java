@@ -116,6 +116,10 @@ public class ElasticSerializableRowRecordList {
     return size;
   }
 
+  public TSDataType[] getDataTypes() {
+    return dataTypes;
+  }
+
   public long getTime(int index) throws IOException {
     return cache
         .get(index / internalRowRecordListCapacity)
@@ -138,7 +142,8 @@ public class ElasticSerializableRowRecordList {
           (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
 
       if (rowRecord == null) {
-        totalByteArrayLength += indexListOfTextFields.length * byteArrayLengthForMemoryControl;
+        totalByteArrayLength +=
+            (long) indexListOfTextFields.length * byteArrayLengthForMemoryControl;
       } else {
         for (int indexListOfTextField : indexListOfTextFields) {
           Binary binary = (Binary) rowRecord[indexListOfTextField];
@@ -163,7 +168,7 @@ public class ElasticSerializableRowRecordList {
     }
 
     int newByteArrayLengthForMemoryControl = byteArrayLengthForMemoryControl;
-    while (newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
+    while ((long) newByteArrayLengthForMemoryControl * size < totalByteArrayLength) {
       newByteArrayLengthForMemoryControl *= 2;
     }
     int newInternalTVListCapacity =

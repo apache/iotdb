@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -77,5 +79,26 @@ public class LayerCacheUtils {
     source.readyForNext();
 
     return true;
+  }
+
+  /** @return number of actually collected, which may be less than or equals to rowsNumber */
+  public static int cacheRows(
+      UDFInputDataSet source, ElasticSerializableRowRecordList target, int rowsNumber)
+      throws QueryProcessException, IOException {
+    int count = 0;
+    while (count < rowsNumber && cacheRow(source, target)) {
+      ++count;
+    }
+    return count;
+  }
+
+  public static boolean cacheRow(UDFInputDataSet source, ElasticSerializableRowRecordList target)
+      throws IOException, QueryProcessException {
+    if (source.hasNextRowInObjects()) {
+      target.put(source.nextRowInObjects());
+      return true;
+    } else {
+      return false;
+    }
   }
 }
