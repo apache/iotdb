@@ -850,8 +850,8 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertInBatch method
-   * or insertBatch method
+   * insert data in one row, if you want improve your performance, please use insertRecords method
+   * or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -869,6 +869,13 @@ public class Session {
     insertRecord(deviceId, request);
   }
 
+  /**
+   * insert aligned or non-aligned data in one row, if you want improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
   public void insertRecord(
       String deviceId,
       long time,
@@ -902,8 +909,8 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertInBatch method
-   * or insertBatch method
+   * insert data in one row, if you want improve your performance, please use insertRecords method
+   * or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -916,6 +923,13 @@ public class Session {
     insertRecord(deviceId, request);
   }
 
+  /**
+   * insert aligned or non-aligned data in one row, if you want improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
   public void insertRecord(
       String deviceId, long time, List<String> measurements, List<String> values, boolean isAligned)
       throws IoTDBConnectionException, StatementExecutionException {

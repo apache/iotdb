@@ -55,7 +55,7 @@ public class AlignedTimeseriesSessionExample {
     //    createTemplate();
     //    createAlignedTimeseries();
     //    insertAlignedRecord();
-    insertAlignedStrRecord();
+    insertAlignedStringRecord();
     //
     //    insertTabletWithAlignedTimeseriesMethod1();
     //    insertTabletWithAlignedTimeseriesMethod2();
@@ -388,7 +388,7 @@ public class AlignedTimeseriesSessionExample {
     }
   }
 
-  private static void insertAlignedStrRecord()
+  private static void insertAlignedStringRecord()
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");

@@ -649,6 +649,38 @@ public class SessionPool {
   }
 
   /**
+   * insert aligned or non-aligned data in one row, if you want improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecord(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values,
+      boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecord(deviceId, time, measurements, types, values, isAligned);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecord failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
@@ -662,6 +694,33 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.insertRecord(deviceId, time, measurements, values);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertRecord failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * insert aligned or non-aligned data in one row, if you want improve your performance, please use
+   * insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertRecord(
+      String deviceId, long time, List<String> measurements, List<String> values, boolean isAligned)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertRecord(deviceId, time, measurements, values, isAligned);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

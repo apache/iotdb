@@ -64,7 +64,7 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
-  public void alignedTest() {
+  public void alignedTabletTest() {
     try {
       insertTabletWithAlignedTimeseriesMethod();
       session.executeNonQueryStatement("flush");
@@ -90,11 +90,88 @@ public class IoTDBSessionVectorIT {
   }
 
   @Test
+  public void alignedSingleSelectTest() {
+    try {
+      insertAlignedRecord(ROOT_SG1_D1);
+      insertTabletWithAlignedTimeseriesMethod();
+      insertAlignedRecord(ROOT_SG1_D2);
+      session.executeNonQueryStatement("flush");
+      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      assertEquals(dataSet.getColumnNames().size(), 2);
+      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
+      int time = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(rowRecord.getFields().get(0).getIntV(), time);
+        assertEquals(rowRecord.getFields().get(1).getIntV(), (time + 1) * 10 + 2);
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void alignedStringSingleSelectTest() {
+    try {
+      insertAlignedStringRecord(ROOT_SG1_D1);
+      insertTabletWithAlignedTimeseriesMethod();
+      insertAlignedStringRecord(ROOT_SG1_D2);
+      session.executeNonQueryStatement("flush");
+      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
+      assertEquals(dataSet.getColumnNames().size(), 2);
+      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s2");
+      int time = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(rowRecord.getFields().get(0).getIntV(), time);
+        assertEquals(rowRecord.getFields().get(1).getIntV(), (time + 1) * 10 + 2);
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void alignedVectorSelectTest() {
+    try {
+      insertAlignedRecord(ROOT_SG1_D1);
+      insertTabletWithAlignedTimeseriesMethod();
+      insertAlignedRecord(ROOT_SG1_D2);
+      session.executeNonQueryStatement("flush");
+      SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector");
+      assertEquals(dataSet.getColumnNames().size(), 3);
+      assertEquals(dataSet.getColumnNames().get(0), "Time");
+      assertEquals(dataSet.getColumnNames().get(1), ROOT_SG1_D1_VECTOR1 + ".s1");
+      assertEquals(dataSet.getColumnNames().get(2), ROOT_SG1_D1_VECTOR1 + ".s2");
+      int time = 0;
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        assertEquals(rowRecord.getFields().get(0).getIntV(), time);
+        assertEquals(rowRecord.getFields().get(1).getIntV(), (time + 1) * 10 + 1);
+        assertEquals(rowRecord.getFields().get(2).getIntV(), (time + 1) * 10 + 2);
+        System.out.println(dataSet.next());
+      }
+
+      dataSet.closeOperationHandle();
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
   public void nonAlignedSingleSelectTest() {
     try {
-      insertRecord(ROOT_SG1_D1);
+      insertNonAlignedRecord(ROOT_SG1_D1);
       insertTabletWithAlignedTimeseriesMethod();
-      insertRecord(ROOT_SG1_D2);
+      insertNonAlignedRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector.s2");
       assertEquals(dataSet.getColumnNames().size(), 2);
@@ -117,9 +194,9 @@ public class IoTDBSessionVectorIT {
   @Test
   public void nonAlignedVectorSelectTest() {
     try {
-      insertRecord(ROOT_SG1_D1);
+      insertNonAlignedRecord(ROOT_SG1_D1);
       insertTabletWithAlignedTimeseriesMethod();
-      insertRecord(ROOT_SG1_D2);
+      insertNonAlignedRecord(ROOT_SG1_D2);
       session.executeNonQueryStatement("flush");
       SessionDataSet dataSet = selectTest("select * from root.sg_1.d1.vector");
       assertEquals(dataSet.getColumnNames().size(), 3);
@@ -188,7 +265,7 @@ public class IoTDBSessionVectorIT {
     }
   }
 
-  private void insertRecord(String deviceId)
+  private void insertNonAlignedRecord(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
@@ -208,6 +285,47 @@ public class IoTDBSessionVectorIT {
       values.add(time * 10 + 5L);
       values.add(time * 10 + 6L);
       session.insertRecord(deviceId, time, measurements, types, values);
+    }
+  }
+
+  private void insertAlignedRecord(String deviceId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s2");
+    measurements.add("s4");
+    measurements.add("s5");
+    measurements.add("s6");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
+    for (long time = 0; time < 100; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(time * 10 + 3L);
+      values.add(time * 10 + 4L);
+      values.add(time * 10 + 5L);
+      values.add(time * 10 + 6L);
+      session.insertRecord(deviceId, time, measurements, types, values);
+    }
+  }
+
+  private void insertAlignedStringRecord(String deviceId)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s2");
+    measurements.add("s4");
+    measurements.add("s5");
+    measurements.add("s6");
+
+    for (long time = 0; time < 100; time++) {
+      List<String> values = new ArrayList<>();
+      values.add(String.valueOf(time * 10 + 3L));
+      values.add(String.valueOf(time * 10 + 4L));
+      values.add(String.valueOf(time * 10 + 5L));
+      values.add(String.valueOf(time * 10 + 6L));
+      session.insertRecord(deviceId, time, measurements, values, true);
     }
   }
 }
