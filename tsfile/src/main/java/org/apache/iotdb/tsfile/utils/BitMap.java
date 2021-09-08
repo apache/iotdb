@@ -123,4 +123,19 @@ public class BitMap {
     }
     return res.toString();
   }
+
+  /** Copies the specified range of the BitMap into a new BitMap. */
+  public BitMap copyOfRange(int from, int to) {
+    int newLength = to - from;
+    if (newLength < 0) {
+      throw new IllegalArgumentException(from + " > " + to);
+    }
+    BitMap copy = new BitMap(newLength);
+    for (int i = from; i < to && i < size; i++) {
+      if (isMarked(i)) {
+        copy.mark(i);
+      }
+    }
+    return copy;
+  }
 }

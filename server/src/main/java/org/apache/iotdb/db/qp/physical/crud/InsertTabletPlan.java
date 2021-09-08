@@ -226,9 +226,11 @@ public class InsertTabletPlan extends InsertPlan {
           stream.writeBoolean(false);
         } else {
           stream.writeBoolean(true);
-          int curStart = isExecuting ? start : 0;
-          int curEnd = isExecuting ? end : rowCount;
-          stream.write(Arrays.copyOfRange(bitMap.getByteArray(), curStart, curEnd));
+          if (isExecuting) {
+            stream.write(bitMap.copyOfRange(start, end).getByteArray());
+          } else {
+            stream.write(bitMap.getByteArray());
+          }
         }
       }
     }
@@ -318,9 +320,11 @@ public class InsertTabletPlan extends InsertPlan {
           buffer.put(BytesUtils.boolToByte(false));
         } else {
           buffer.put(BytesUtils.boolToByte(true));
-          int curStart = isExecuting ? start : 0;
-          int curEnd = isExecuting ? end : rowCount;
-          buffer.put(Arrays.copyOfRange(bitMap.getByteArray(), curStart, curEnd));
+          if (isExecuting) {
+            buffer.put(bitMap.copyOfRange(start, end).getByteArray());
+          } else {
+            buffer.put(bitMap.getByteArray());
+          }
         }
       }
     }
