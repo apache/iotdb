@@ -48,7 +48,7 @@ public abstract class Traverser {
   protected int targetLevel;
 
   // traverse for specific storage group
-  StorageGroupFilter storageGroupFilter = null;
+  protected StorageGroupFilter storageGroupFilter = null;
 
   public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
