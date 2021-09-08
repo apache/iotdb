@@ -160,7 +160,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    if (isAligned) {
+    if (isAligned && originalPrefixPath != null) {
       putString(stream, originalPrefixPath.getFullPath());
     } else {
       putString(stream, prefixPath.getFullPath());
@@ -251,7 +251,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    if (isAligned) {
+    if (isAligned && originalPrefixPath != null) {
       putString(buffer, originalPrefixPath.getFullPath());
     } else {
       putString(buffer, prefixPath.getFullPath());
@@ -585,6 +585,8 @@ public class InsertTabletPlan extends InsertPlan {
         + ","
         + times[times.length - 1]
         + "]"
+        + ", isAligned:"
+        + isAligned
         + '}';
   }
 
@@ -623,11 +625,13 @@ public class InsertTabletPlan extends InsertPlan {
     InsertTabletPlan that = (InsertTabletPlan) o;
 
     return rowCount == that.rowCount
+        && Objects.equals(prefixPath, that.prefixPath)
         && Arrays.equals(times, that.times)
         && Objects.equals(timeBuffer, that.timeBuffer)
         && Objects.equals(valueBuffer, that.valueBuffer)
         && Objects.equals(paths, that.paths)
-        && Objects.equals(range, that.range);
+        && Objects.equals(range, that.range)
+        && Objects.equals(isAligned, that.isAligned);
   }
 
   @Override

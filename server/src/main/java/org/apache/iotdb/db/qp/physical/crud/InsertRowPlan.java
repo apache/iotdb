@@ -316,7 +316,8 @@ public class InsertRowPlan extends InsertPlan {
     return time == that.time
         && Objects.equals(prefixPath, that.prefixPath)
         && Arrays.equals(measurements, that.measurements)
-        && Arrays.equals(values, that.values);
+        && Arrays.equals(values, that.values)
+        && Objects.equals(isAligned, that.isAligned);
   }
 
   @Override
@@ -333,7 +334,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(DataOutputStream stream) throws IOException {
     stream.writeLong(time);
-    if (isAligned) {
+    if (isAligned && originalPrefixPath != null) {
       putString(stream, originalPrefixPath.getFullPath());
     } else {
       putString(stream, prefixPath.getFullPath());
@@ -488,7 +489,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
-    if (isAligned) {
+    if (isAligned && originalPrefixPath != null) {
       putString(buffer, originalPrefixPath.getFullPath());
     } else {
       putString(buffer, prefixPath.getFullPath());
