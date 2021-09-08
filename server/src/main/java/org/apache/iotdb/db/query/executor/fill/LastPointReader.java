@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.Iterator;
 
 public class LastPointReader {
 
@@ -169,8 +170,9 @@ public class LastPointReader {
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
     List<IPageReader> pageReaders = FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
-    for (int i = pageReaders.size() - 1; i >= 0; i--) {
-      IPageReader pageReader = pageReaders.get(i);
+    Iterator it = pageReaders.descendingIterator();
+    while (it.hasNext()) {
+      IPageReader pageReader = it.next();
       Statistics pageStatistics = pageReader.getStatistics();
       if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint =
