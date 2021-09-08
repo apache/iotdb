@@ -33,6 +33,7 @@ import java.util.Map;
 
 public class DAGBuilder {
 
+  private final int queryId;
   private final UDTFPlan udtfPlan;
   private final UDFLayer rawTimeSeriesInputLayer;
 
@@ -41,14 +42,16 @@ public class DAGBuilder {
   // output
   private final LayerPointReader[] resultColumnPointReaders;
 
+  private final LayerMemoryAssigner memoryAssigner;
+
   // all result column expressions will be split into several sub-expressions, each expression has
   // its own result point reader. different result column expressions may have the same
   // sub-expressions, but they can share the same point reader. we cache the point reader here to
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(UDTFPlan udtfPlan, UDFLayer inputLayer)
-      throws QueryProcessException, IOException {
+  public DAGBuilder(int queryId, UDTFPlan udtfPlan, UDFLayer inputLayer, float memoryBudgetInMB) {
+    this.queryId = queryId;
     this.udtfPlan = udtfPlan;
     this.rawTimeSeriesInputLayer = inputLayer;
 
@@ -58,18 +61,31 @@ public class DAGBuilder {
     }
     resultColumnPointReaders = new LayerPointReader[resultColumnExpressions.size()];
 
-    expressionIntermediateLayerMap = new HashMap<>();
+    memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
-    build();
+    expressionIntermediateLayerMap = new HashMap<>();
   }
 
-  public DAGBuilder build() throws QueryProcessException, IOException {
+  public DAGBuilder buildLayerMemoryAssigner() {
+    for (Expression expression : resultColumnExpressions) {
+      memoryAssigner.increaseExpressionReference(expression);
+      expression.updateStatisticsForMemoryAssigner(memoryAssigner);
+    }
+    memoryAssigner.build();
+    return this;
+  }
+
+  public DAGBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
     for (int i = 0; i < resultColumnExpressions.size(); ++i) {
       resultColumnPointReaders[i] =
           resultColumnExpressions
               .get(i)
               .constructIntermediateLayer(
-                  udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap)
+                  queryId,
+                  udtfPlan,
+                  rawTimeSeriesInputLayer,
+                  expressionIntermediateLayerMap,
+                  memoryAssigner)
               .constructPointReader();
     }
     return this;

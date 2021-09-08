@@ -51,7 +51,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   protected final ZoneId zoneId;
 
-  protected Map<String, UDTFExecutor> columnName2Executor = new HashMap<>();
+  protected Map<String, UDTFExecutor> expressionName2Executor = new HashMap<>();
   protected Map<Integer, UDTFExecutor> originalOutputColumnIndex2Executor = new HashMap<>();
 
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
@@ -114,21 +114,18 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   public void constructUdfExecutors(List<ResultColumn> resultColumns) {
     for (int i = 0; i < resultColumns.size(); ++i) {
       Expression expression = resultColumns.get(i).getExpression();
-      if (!(expression instanceof FunctionExpression)) {
-        continue;
+      expression.constructUdfExecutors(expressionName2Executor, zoneId);
+      if (expression instanceof FunctionExpression) {
+        originalOutputColumnIndex2Executor.put(
+            i, expressionName2Executor.get(expression.toString()));
       }
-
-      String columnName = expression.toString();
-      columnName2Executor.computeIfAbsent(
-          columnName, k -> new UDTFExecutor((FunctionExpression) expression, zoneId));
-      originalOutputColumnIndex2Executor.put(i, columnName2Executor.get(columnName));
     }
   }
 
   @Override
   public void initializeUdfExecutors(long queryId, float collectorMemoryBudgetInMB)
       throws QueryProcessException {
-    Collection<UDTFExecutor> executors = columnName2Executor.values();
+    Collection<UDTFExecutor> executors = expressionName2Executor.values();
     collectorMemoryBudgetInMB /= executors.size();
 
     UDFRegistrationService.getInstance().acquireRegistrationLock();
@@ -146,7 +143,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   @Override
   public void finalizeUDFExecutors(long queryId) {
     try {
-      for (UDTFExecutor executor : columnName2Executor.values()) {
+      for (UDTFExecutor executor : expressionName2Executor.values()) {
         executor.beforeDestroy();
       }
     } finally {
@@ -184,8 +181,12 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   public UDTFExecutor getExecutorByDataSetOutputColumnIndex(int datasetOutputIndex) {
-    return columnName2Executor.get(
+    return expressionName2Executor.get(
         getResultColumnByDatasetOutputIndex(datasetOutputIndex).getResultColumnName());
+  }
+
+  public UDTFExecutor getExecutorByFunctionExpression(FunctionExpression functionExpression) {
+    return expressionName2Executor.get(functionExpression.getExpressionString());
   }
 
   public String getRawQueryColumnNameByDatasetOutputColumnIndex(int datasetOutputIndex) {

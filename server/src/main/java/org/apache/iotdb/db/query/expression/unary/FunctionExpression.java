@@ -27,10 +27,21 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
+import org.apache.iotdb.db.query.udf.core.layer.MultiInputColumnIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
+import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -38,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
@@ -148,26 +160,105 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    String expressionString = getExpressionString();
+    if (expressionName2Executor.containsKey(expressionString)) {
+      return;
+    }
+
+    for (Expression expression : expressions) {
+      expression.constructUdfExecutors(expressionName2Executor, zoneId);
+    }
+    expressionName2Executor.put(expressionString, new UDTFExecutor(this, zoneId));
+  }
+
+  @Override
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+    for (Expression expression : expressions) {
+      memoryAssigner.increaseExpressionReference(expression);
+    }
+  }
+
+  @Override
   public IntermediateLayer constructIntermediateLayer(
+      int queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
-      //      List<LayerPointReader> parentLayerPointReaders = new ArrayList<>();
-      //      for (Expression expression : expressions) {
-      //        parentLayerPointReaders.add(
-      //            expression
-      //                .constructIntermediateLayer(
-      //                    udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap)
-      //                .constructPointReader());
-      //      }
-      //
-      //      expressionIntermediateLayerMap.put(
-      //          this, new MultiInputColumnIntermediateLayer(-1, -1, parentLayerPointReaders));
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      IntermediateLayer udfInputIntermediateLayer =
+          constructUdfInputIntermediateLayer(
+              queryId,
+              udtfPlan,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              memoryAssigner);
+      Transformer transformer =
+          constructUdfTransformer(udtfPlan, memoryAssigner, udfInputIntermediateLayer);
+
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  queryId, memoryBudgetInMB, transformer)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  queryId, memoryBudgetInMB, transformer));
     }
 
     return expressionIntermediateLayerMap.get(this);
+  }
+
+  private IntermediateLayer constructUdfInputIntermediateLayer(
+      int queryId,
+      UDTFPlan udtfPlan,
+      UDFLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
+    List<IntermediateLayer> intermediateLayers = new ArrayList<>();
+    for (Expression expression : expressions) {
+      intermediateLayers.add(
+          expression.constructIntermediateLayer(
+              queryId,
+              udtfPlan,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              memoryAssigner));
+    }
+    return intermediateLayers.size() == 1
+        ? intermediateLayers.get(0)
+        : new MultiInputColumnIntermediateLayer(
+            queryId,
+            memoryAssigner.assign(),
+            intermediateLayers.stream()
+                .map(IntermediateLayer::constructPointReader)
+                .collect(Collectors.toList()));
+  }
+
+  private UDFQueryTransformer constructUdfTransformer(
+      UDTFPlan udtfPlan,
+      LayerMemoryAssigner memoryAssigner,
+      IntermediateLayer udfInputIntermediateLayer)
+      throws QueryProcessException, IOException {
+    UDTFExecutor executor = udtfPlan.getExecutorByFunctionExpression(this);
+    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
+    switch (accessStrategy.getAccessStrategyType()) {
+      case ROW_BY_ROW:
+        return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
+      case SLIDING_SIZE_WINDOW:
+      case SLIDING_TIME_WINDOW:
+        return new UDFQueryRowWindowTransformer(
+            udfInputIntermediateLayer.constructRowWindowReader(
+                accessStrategy, memoryAssigner.assign()),
+            executor);
+      default:
+        throw new UnsupportedOperationException("Unsupported transformer access strategy");
+    }
   }
 
   public List<PartialPath> getPaths() {

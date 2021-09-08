@@ -25,11 +25,18 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
+import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 
+import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -110,27 +117,55 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
+  public void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
+    leftExpression.constructUdfExecutors(expressionName2Executor, zoneId);
+    rightExpression.constructUdfExecutors(expressionName2Executor, zoneId);
+  }
+
+  @Override
+  public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+    memoryAssigner.increaseExpressionReference(leftExpression);
+    memoryAssigner.increaseExpressionReference(rightExpression);
+  }
+
+  @Override
   public IntermediateLayer constructIntermediateLayer(
+      int queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
-      throws QueryProcessException {
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      LayerMemoryAssigner memoryAssigner)
+      throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
-      //      IntermediateLayer leftParentIntermediateLayer =
-      //          leftExpression.constructIntermediateLayer(
-      //              udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap);
-      //      IntermediateLayer rightParentIntermediateLayer =
-      //          rightExpression.constructIntermediateLayer(
-      //              udtfPlan, rawTimeSeriesInputLayer, expressionIntermediateLayerMap);
-      //
-      //      expressionIntermediateLayerMap.put(
-      //          this,
-      //          new SingleInputColumnMultiReferenceIntermediateLayer(
-      //              constructTransformer(
-      //                  leftParentIntermediateLayer.constructPointReader(),
-      //                  rightParentIntermediateLayer.constructPointReader()),
-      //              -1,
-      //              -1));
+      float memoryBudgetInMB = memoryAssigner.assign();
+
+      IntermediateLayer leftParentIntermediateLayer =
+          leftExpression.constructIntermediateLayer(
+              queryId,
+              udtfPlan,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              memoryAssigner);
+      IntermediateLayer rightParentIntermediateLayer =
+          rightExpression.constructIntermediateLayer(
+              queryId,
+              udtfPlan,
+              rawTimeSeriesInputLayer,
+              expressionIntermediateLayerMap,
+              memoryAssigner);
+      Transformer transformer =
+          constructTransformer(
+              leftParentIntermediateLayer.constructPointReader(),
+              rightParentIntermediateLayer.constructPointReader());
+
+      expressionIntermediateLayerMap.put(
+          this,
+          memoryAssigner.getReference(this) == 1
+              ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                  queryId, memoryBudgetInMB, transformer)
+              : new SingleInputColumnMultiReferenceIntermediateLayer(
+                  queryId, memoryBudgetInMB, transformer));
     }
 
     return expressionIntermediateLayerMap.get(this);

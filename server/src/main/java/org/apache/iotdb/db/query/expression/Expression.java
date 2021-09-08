@@ -24,10 +24,13 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
+import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,10 +55,17 @@ public abstract class Expression {
 
   public abstract void collectPaths(Set<PartialPath> pathSet);
 
+  public abstract void constructUdfExecutors(
+      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId);
+
+  public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
+
   public abstract IntermediateLayer constructIntermediateLayer(
+      int queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap)
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 
   public String getExpressionString() {
