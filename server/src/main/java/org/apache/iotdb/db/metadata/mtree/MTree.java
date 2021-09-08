@@ -1017,7 +1017,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all devices match the given path. If isPrefixMatch, then the devices under the given path
+   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given path
    * will be collected too.
    *
    * @return a list contains all distinct devices names

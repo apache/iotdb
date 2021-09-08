@@ -800,8 +800,7 @@ public class MManager {
   /**
    * Get all devices under given prefixPath.
    *
-   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *     wildcard can only match one level, otherwise it can match to the tail.
+   * @param prefixPath a prefix of a full path or a pattern of the prefixPath.
    * @return A HashSet instance which stores devices paths with given prefixPath.
    */
   public Set<PartialPath> getDevicesByPrefix(PartialPath prefixPath) throws MetadataException {
@@ -821,22 +820,23 @@ public class MManager {
   }
 
   /**
-   * Get all nodes from the given level
+   * Get all nodes matching the given path from the given level.
+   * The level of the path should match the nodeLevel.
+   * 1. The given level equals the path level with out **, e.g. give path root.*.d.* and the level should be 4.
+   * 2. The given level is greater than path level with **, e.g. give path root.** and the level could be 2 or 3.
    *
-   * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
-   *     wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
-   *     prefixPath = root.a while the given level is 5
-   * @param nodeLevel the level can not be smaller than the level of the prefixPath
+   * @param path can be a pattern of a full path.
+   * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesList(PartialPath prefixPath, int nodeLevel)
+  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel)
       throws MetadataException {
-    return getNodesList(prefixPath, nodeLevel, null);
+    return getNodesList(path, nodeLevel, null);
   }
 
   public List<PartialPath> getNodesList(
-      PartialPath prefixPath, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    return mtree.getNodesList(prefixPath, nodeLevel, filter);
+      PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+    return mtree.getNodesList(path, nodeLevel, filter);
   }
 
   /**
@@ -861,14 +861,13 @@ public class MManager {
   }
 
   /**
-   * Get all storage group under given prefixPath.
+   * Get all storage group matching given path.
    *
-   * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *     wildcard can only match one level, otherwise it can match to the tail.
-   * @return A ArrayList instance which stores storage group paths with given prefixPath.
+   * @param path a pattern of a full path, may contain wildcard.
+   * @return A ArrayList instance which stores storage group paths matching given path.
    */
-  public List<PartialPath> getStorageGroupPaths(PartialPath prefixPath) throws MetadataException {
-    return mtree.getStorageGroupPaths(prefixPath);
+  public List<PartialPath> getStorageGroupPaths(PartialPath path) throws MetadataException {
+    return mtree.getStorageGroupPaths(path);
   }
 
   /** Get all storage group MNodes */
@@ -880,41 +879,44 @@ public class MManager {
    * Return all paths for given path if the path is abstract. Or return the path itself. Regular
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
-   * @param prefixPath can be a pattern or a full path.
+   * @param path can be a pattern or a full path of timeseries.
    */
-  public List<PartialPath> getAllTimeseriesPath(PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllTimeseriesPath(prefixPath);
+  public List<PartialPath> getAllTimeseriesPath(PartialPath path) throws MetadataException {
+    return mtree.getAllTimeseriesPath(path);
   }
 
-  /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
+  /** Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by limit and offset. */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-      PartialPath prefixPath, int limit, int offset) throws MetadataException {
-    return mtree.getAllTimeseriesPathWithAlias(prefixPath, limit, offset);
-  }
-
-  /** To calculate the count of timeseries for given prefix path. */
-  public int getAllTimeseriesCount(PartialPath prefixPath) throws MetadataException {
-    return mtree.getAllTimeseriesCount(prefixPath);
-  }
-
-  /** To calculate the count of devices for given path pattern. */
-  public int getDevicesNum(PartialPath prefixPath) throws MetadataException {
-    return mtree.getDevicesNum(prefixPath);
-  }
-
-  /** To calculate the count of storage group for given path pattern. */
-  public int getStorageGroupNum(PartialPath prefixPath) throws MetadataException {
-    return mtree.getStorageGroupNum(prefixPath);
+      PartialPath path, int limit, int offset) throws MetadataException {
+    return mtree.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
 
   /**
-   * To calculate the count of nodes in the given level for given prefix path.
+   * To calculate the count of timeseries matching given path.
+   * The path could be a pattern of a full path, may contain wildcard.
+   * */
+  public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
+    return mtree.getAllTimeseriesCount(path);
+  }
+
+  /** To calculate the count of devices for given path pattern. */
+  public int getDevicesNum(PartialPath path) throws MetadataException {
+    return mtree.getDevicesNum(path);
+  }
+
+  /** To calculate the count of storage group for given path pattern. */
+  public int getStorageGroupNum(PartialPath path) throws MetadataException {
+    return mtree.getStorageGroupNum(path);
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given path pattern.
    *
-   * @param prefixPath a prefix path or a full path, can not contain '*'
-   * @param level the level can not be smaller than the level of the prefixPath
+   * @param path a path pattern or a full path
+   * @param level the level should match the level of the path
    */
-  public int getNodesCountInGivenLevel(PartialPath prefixPath, int level) throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(prefixPath, level);
+  public int getNodesCountInGivenLevel(PartialPath path, int level) throws MetadataException {
+    return mtree.getNodesCountInGivenLevel(path, level);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1584,21 +1586,21 @@ public class MManager {
    * name and (2) the sub path which is substring that begin after the storage group name.
    *
    * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
-   * "root".contains("root.sg") == false), then: If the wildcard is not at the tail, then for each
-   * wildcard, only one level will be inferred and the wildcard will be removed. If the wildcard is
-   * at the tail, then the inference will go on until the storage groups are found and the wildcard
-   * will be kept. (2) Suppose the part of the path is a substring that begin after the storage
+   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will be inferred
+   * and the wildcard will be removed. For each multi level wildcard **, then the inference will go on
+   * until the storage groups are found and the wildcard will be kept.
+   * (2) Suppose the part of the path is a substring that begin after the storage
    * group name. (e.g., For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part
    * is "a.*.b.*"). For this part, keep what it is.
    *
    * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
-   * "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
-   * ("root.area1.group3", "root.area1.group3.*") Eg2: for input "root.*.s1", returns
+   * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")
+   * ("root.area1.group3", "root.area1.group3.**") Eg2: for input "root.*.s1", returns
    * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
    *
-   * <p>Eg3: for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   * <p>Eg3: for input "root.area1.**", returns ("root.area1.group3", "root.area1.group3.**")
    *
-   * @param path can be a prefix or a full path.
+   * @param path can be a path pattern or a full path.
    * @return StorageGroupName-FullPath pairs
    */
   public Map<String, String> determineStorageGroup(PartialPath path) throws MetadataException {
