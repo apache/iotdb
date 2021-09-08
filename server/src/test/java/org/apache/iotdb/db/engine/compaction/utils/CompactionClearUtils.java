@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -45,7 +45,7 @@ public class CompactionClearUtils {
     }
     File[] compactionLogFiles =
         FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix("target", CompactionLogger.COMPACTION_LOG_NAME);
+            .listFilesBySuffix("target", SizeTiredCompactionLogger.COMPACTION_LOG_NAME);
     for (File compactionLogFile : compactionLogFiles) {
       compactionLogFile.delete();
     }

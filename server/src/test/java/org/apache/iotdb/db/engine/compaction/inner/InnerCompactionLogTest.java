@@ -35,7 +35,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.junit.Assert.assertFalse;
 
 public class InnerCompactionLogTest extends InnerCompactionTest {

@@ -252,7 +252,7 @@ public class InnerSpaceCompactionUtils {
    * @param targetResource the target resource to be merged to
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
-   * @param compactionLogger the logger
+   * @param sizeTiredCompactionLogger the logger
    * @param devices the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -260,7 +260,7 @@ public class InnerSpaceCompactionUtils {
       TsFileResource targetResource,
       List<TsFileResource> tsFileResources,
       String storageGroup,
-      CompactionLogger compactionLogger,
+      SizeTiredCompactionLogger sizeTiredCompactionLogger,
       Set<String> devices,
       boolean sequence)
       throws IOException, IllegalPathException {
@@ -425,9 +425,6 @@ public class InnerSpaceCompactionUtils {
           }
         }
         writer.endChunkGroup();
-        if (compactionLogger != null) {
-          compactionLogger.logDevice(device, writer.getPos());
-        }
       }
 
       for (TsFileResource tsFileResource : tsFileResources) {
@@ -558,7 +555,7 @@ public class InnerSpaceCompactionUtils {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
       return timePartitionDir.listFiles(
-          (dir, name) -> name.endsWith(CompactionLogger.COMPACTION_LOG_NAME));
+          (dir, name) -> name.endsWith(SizeTiredCompactionLogger.COMPACTION_LOG_NAME));
     } else {
       return new File[0];
     }

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -57,9 +57,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.COMPACTION_LOG_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.COMPACTION_LOG_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.TARGET_NAME;
 import static org.junit.Assert.assertEquals;
 
 public class InnerCompactionRecoverTest extends InnerCompactionTest {
@@ -114,12 +114,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     }
     assertEquals(500, count);
 
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -132,15 +132,15 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
     tsFileResourceManager.addForRecover(targetTsFileResource, true);
     //    tsFileResourceManager.recover();
     List<TsFileResource> recoverTsFile = new ArrayList<>();
@@ -219,12 +219,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     }
     assertEquals(500, count);
 
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -237,15 +237,15 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
 
     BufferedReader logReader =
         new BufferedReader(
@@ -330,12 +330,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     }
     assertEquals(500, count);
 
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -348,15 +348,15 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
 
     BufferedReader logReader =
         new BufferedReader(
@@ -446,12 +446,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
     }
     assertEquals(500, count);
 
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(false);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(false);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -464,15 +464,15 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         false);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
     tsFileResourceManager.addForRecover(targetTsFileResource, false);
     CompactionScheduler.addPartitionCompaction(COMPACTION_TEST_SG + "-0", 0);
     new SizeTiredCompactionRecoverTask(
@@ -521,12 +521,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
       throws IOException, IllegalPathException {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.close();
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.close();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -560,13 +560,13 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
       throws IOException, IllegalPathException {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
-    compactionLogger.close();
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
+    sizeTiredCompactionLogger.close();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -599,12 +599,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
   public void testCompactionMergeRecoverMergeStart() throws IOException, IllegalPathException {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -617,9 +617,9 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     tsFileResourceManager.add(targetTsFileResource, true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(
@@ -653,12 +653,12 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
       throws IOException, IllegalPathException {
     tsFileResourceManager.addAll(seqResources, true);
     tsFileResourceManager.addAll(unseqResources, false);
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
+    sizeTiredCompactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
+    sizeTiredCompactionLogger.logSequence(true);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -671,16 +671,16 @@ public class InnerCompactionRecoverTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+    sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         true);
     tsFileResourceManager.addForRecover(targetTsFileResource, true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
     QueryContext context = new QueryContext();
     PartialPath path =
         new PartialPath(

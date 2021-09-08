@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -41,8 +41,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.TARGET_NAME;
 
 /**
  * SizeTiredCompactionTask compact serveral inner space files selected by {@link
@@ -121,13 +121,14 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
               dataDirectory
                   + File.separator
                   + targetFileName
-                  + CompactionLogger.COMPACTION_LOG_NAME);
-      CompactionLogger compactionLogger = new CompactionLogger(logFile.getPath());
+                  + SizeTiredCompactionLogger.COMPACTION_LOG_NAME);
+      SizeTiredCompactionLogger sizeTiredCompactionLogger =
+          new SizeTiredCompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
-        compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+        sizeTiredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
       }
-      compactionLogger.logSequence(sequence);
-      compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+      sizeTiredCompactionLogger.logSequence(sequence);
+      sizeTiredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       // carry out the compaction
@@ -135,12 +136,12 @@ public class SizeTiredCompactionTask extends AbstractInnerSpaceCompactionTask {
           targetTsFileResource,
           selectedTsFileResourceList,
           fullStorageGroupName,
-          compactionLogger,
+          sizeTiredCompactionLogger,
           this.skippedDevicesSet,
           sequence);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
-      compactionLogger.close();
+      sizeTiredCompactionLogger.close();
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
         resource.setMerging(false);

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -45,7 +45,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger.SOURCE_NAME;
 import static org.junit.Assert.assertEquals;
 
 public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
@@ -81,20 +81,20 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
                         + IoTDBConstant.FILE_NAME_SEPARATOR
                         + 0
                         + ".tsfile")));
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
+    SizeTiredCompactionLogger sizeTiredCompactionLogger =
+        new SizeTiredCompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
-      compactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+      sizeTiredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
     }
-    compactionLogger.logSequence(true);
+    sizeTiredCompactionLogger.logSequence(true);
     InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         seqResources,
         COMPACTION_TEST_SG,
-        compactionLogger,
+        sizeTiredCompactionLogger,
         new HashSet<>(),
         true);
-    compactionLogger.close();
+    sizeTiredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(targetTsFileResource.getTsFilePath());

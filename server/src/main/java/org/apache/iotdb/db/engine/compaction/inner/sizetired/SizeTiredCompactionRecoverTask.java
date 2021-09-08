@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
@@ -86,22 +85,12 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
       if (compactionLogFile.exists()) {
-        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(compactionLogFile);
+        SizeTiredCompactionLogAnalyzer logAnalyzer =
+            new SizeTiredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
-        Set<String> deviceSet = logAnalyzer.getDeviceSet();
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        long offset = logAnalyzer.getOffset();
         String targetFile = logAnalyzer.getTargetFile();
-        boolean isSeq = logAnalyzer.isSeq();
         if (targetFile == null || sourceFileList.isEmpty()) {
-          return;
-        }
-        File target = new File(targetFile);
-        if (deviceSet.isEmpty()) {
-          // if not in compaction, just delete the target file
-          if (target.exists()) {
-            Files.delete(target.toPath());
-          }
           return;
         }
 

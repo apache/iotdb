@@ -26,7 +26,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-public class CompactionLogger {
+public class SizeTiredCompactionLogger {
 
   public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
@@ -34,11 +34,11 @@ public class CompactionLogger {
   public static final String SEQUENCE_NAME = "sequence";
   public static final String UNSEQUENCE_NAME = "unsequence";
   public static final String FULL_MERGE = "full merge";
-  public static final String MERGE_FINISHED = "merge finished";
 
   private BufferedWriter logStream;
 
-  public CompactionLogger(String storageGroupDir, String storageGroupName) throws IOException {
+  public SizeTiredCompactionLogger(String storageGroupDir, String storageGroupName)
+      throws IOException {
     logStream =
         new BufferedWriter(
             new FileWriter(
@@ -47,19 +47,13 @@ public class CompactionLogger {
                 true));
   }
 
-  public CompactionLogger(String logFile) throws IOException {
+  public SizeTiredCompactionLogger(String logFile) throws IOException {
     logStream =
         new BufferedWriter(new FileWriter(SystemFileFactory.INSTANCE.getFile(logFile), true));
   }
 
   public void close() throws IOException {
     logStream.close();
-  }
-
-  public void logDevice(String device, long offset) throws IOException {
-    logStream.write(device + CompactionLogAnalyzer.STR_DEVICE_OFFSET_SEPARATOR + offset);
-    logStream.newLine();
-    logStream.flush();
   }
 
   public void logFile(String prefix, File file) throws IOException {

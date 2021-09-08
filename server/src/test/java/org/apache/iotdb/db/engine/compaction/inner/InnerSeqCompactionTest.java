@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.sizetired.SizeTiredCompactionTask;
-import org.apache.iotdb.db.engine.compaction.inner.utils.CompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -222,12 +222,13 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
+            SizeTiredCompactionLogger sizeTiredCompactionLogger =
+                new SizeTiredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 sourceResources,
                 COMPACTION_TEST_SG,
-                compactionLogger,
+                sizeTiredCompactionLogger,
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.combineModsInCompaction(sourceResources, targetTsFileResource);
@@ -452,12 +453,13 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
+            SizeTiredCompactionLogger sizeTiredCompactionLogger =
+                new SizeTiredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 toMergeResources,
                 COMPACTION_TEST_SG,
-                compactionLogger,
+                sizeTiredCompactionLogger,
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.combineModsInCompaction(toMergeResources, targetTsFileResource);
@@ -732,12 +734,13 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            CompactionLogger compactionLogger = new CompactionLogger("target", COMPACTION_TEST_SG);
+            SizeTiredCompactionLogger sizeTiredCompactionLogger =
+                new SizeTiredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource,
                 toMergeResources,
                 COMPACTION_TEST_SG,
-                compactionLogger,
+                sizeTiredCompactionLogger,
                 new HashSet<>(),
                 true);
             SizeTiredCompactionTask.combineModsInCompaction(toMergeResources, targetTsFileResource);
