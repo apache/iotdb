@@ -40,7 +40,7 @@ import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class ChunkReader implements IChunkReader {
@@ -55,7 +55,7 @@ public class ChunkReader implements IChunkReader {
 
   protected Filter filter;
 
-  private List<IPageReader> pageReaderList = new ArrayList<>();
+  private List<IPageReader> pageReaderList = new LinkedList<>();
 
   /** A list of deleted intervals. */
   private List<TimeRange> deleteIntervalList;
