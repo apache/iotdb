@@ -312,9 +312,9 @@ public class QueryOperator extends Operator {
       measurements.addAll(measurementSetOfGivenSuffix);
     }
 
-    convertSpecialClauseValues(alignByDevicePlan, measurements);
+    List<String> trimMeasurements = convertSpecialClauseValues(alignByDevicePlan, measurements);
     // assigns to alignByDevicePlan
-    alignByDevicePlan.setMeasurements(measurements);
+    alignByDevicePlan.setMeasurements(trimMeasurements);
     alignByDevicePlan.setMeasurementInfoMap(measurementInfoMap);
     alignByDevicePlan.setDevices(devices);
     alignByDevicePlan.setPaths(paths);
@@ -338,15 +338,16 @@ public class QueryOperator extends Operator {
     }
   }
 
-  private void convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
+  private List<String> convertSpecialClauseValues(QueryPlan queryPlan, List<String> measurements)
       throws QueryProcessException {
     convertSpecialClauseValues(queryPlan);
     // sLimit trim on the measurementColumnList
     if (specialClauseComponent.hasSlimit()) {
       int seriesSLimit = specialClauseComponent.getSeriesLimit();
       int seriesOffset = specialClauseComponent.getSeriesOffset();
-      slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
+      return slimitTrimColumn(measurements, seriesSLimit, seriesOffset);
     }
+    return measurements;
   }
 
   private List<PartialPath> removeStarsInDeviceWithUnique(List<PartialPath> paths)

@@ -130,11 +130,8 @@ while (aggregateReader.hasNextChunk()) {
 #### 主要方法
 
 ``` 
-// 得到给定时间戳的值，如果不存在返回 null（要求传入的 timestamp 是递增的）
-Object getValueInTimestamp(long timestamp) throws IOException;
-
 // 给定一批递增时间戳的值，返回一批结果（减少方法调用次数）
-Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
+Object[] getValuesInTimestamps(long[] timestamps, int length) throws IOException;
 ```
 
 #### 一般使用流程
@@ -142,11 +139,7 @@ Object[] getValuesInTimestamps(long[] timestamps) throws IOException;
 该接口在带值过滤的查询中被使用，TimeGenerator 生成时间戳后，使用该接口获得该时间戳对应的 value
 
 ```
-Object value = readerByTimestamp.getValueInTimestamp(timestamp);
-
-or
-
-Object[] values = readerByTimestamp.getValueInTimestamp(timestamps);
+Object[] values = readerByTimestamp.getValueInTimestamp(timestamps, length);
 ```
 
 ## 具体实现类
@@ -319,10 +312,18 @@ if (readPageData()) {
 }
 
 /*
- * 如果有 chunk，并且有 page，返回 page
+ * 如果 SeriesReader 里还有 chunk，返回 chunk
  */
-while (seriesReader.hasNextChunk()) {
-  if (readPageData()) {
+if (readChunkData()) {
+  hasCachedBatchData = true;
+  return true;
+}
+
+/*
+ * 如果有 File，并且有 chunk，返回 chunk
+ */
+while (seriesReader.hasNextFile()) {
+  if (readChunkData()) {
     hasCachedBatchData = true;
     return true;
   }
@@ -349,7 +350,14 @@ if (readPageData(timestamp)) {
 /*
  * 判断下一个 chunk 有没有当前所查时间，能跳过就跳过
  */
-while (seriesReader.hasNextChunk()) {
+if (readChunkData(timestamp)) {
+  return true;
+}
+
+/*
+ * 判断下一个 File 有没有当前所查时间，能跳过就跳过
+ */
+while (seriesReader.hasNextFile()) {
   Statistics statistics = seriesReader.currentChunkStatistics();
   if (!satisfyTimeFilter(statistics)) {
     seriesReader.skipCurrentChunk();
@@ -358,7 +366,7 @@ while (seriesReader.hasNextChunk()) {
   /*
    * chunk 不能跳过，继续到 chunk 里检查 page
    */
-  if (readPageData(timestamp)) {
+  if (readChunkData(timestamp)) {
     return true;
   }
 }
