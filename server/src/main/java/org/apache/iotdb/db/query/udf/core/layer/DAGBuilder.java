@@ -33,7 +33,7 @@ import java.util.Map;
 
 public class DAGBuilder {
 
-  private final int queryId;
+  private final long queryId;
   private final UDTFPlan udtfPlan;
   private final UDFLayer rawTimeSeriesInputLayer;
 
@@ -50,7 +50,7 @@ public class DAGBuilder {
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(int queryId, UDTFPlan udtfPlan, UDFLayer inputLayer, float memoryBudgetInMB) {
+  public DAGBuilder(long queryId, UDTFPlan udtfPlan, UDFLayer inputLayer, float memoryBudgetInMB) {
     this.queryId = queryId;
     this.udtfPlan = udtfPlan;
     this.rawTimeSeriesInputLayer = inputLayer;

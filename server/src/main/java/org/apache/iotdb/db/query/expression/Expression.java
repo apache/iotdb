@@ -61,7 +61,7 @@ public abstract class Expression {
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   public abstract IntermediateLayer constructIntermediateLayer(
-      int queryId,
+      long queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,

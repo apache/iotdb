@@ -182,7 +182,7 @@ public class FunctionExpression extends Expression {
 
   @Override
   public IntermediateLayer constructIntermediateLayer(
-      int queryId,
+      long queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
@@ -214,7 +214,7 @@ public class FunctionExpression extends Expression {
   }
 
   private IntermediateLayer constructUdfInputIntermediateLayer(
-      int queryId,
+      long queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,

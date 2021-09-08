@@ -24,30 +24,11 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
-import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
-import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
-import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
-import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
-import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
-import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
+import org.apache.iotdb.db.query.udf.core.layer.DAGBuilder;
 import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticAdditionTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticDivisionTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticMultiplicationTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticSubtractionTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.RawQueryPointTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
-import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -120,141 +101,11 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   protected void initTransformers() throws QueryProcessException, IOException {
-    final float memoryBudgetForSingleWindowTransformer =
-        calculateMemoryBudgetForSingleWindowTransformer();
-    final int size = udtfPlan.getPathToIndex().size();
-    transformers = new Transformer[size];
-    for (int i = 0; i < size; ++i) {
-      if (udtfPlan.isUdfColumn(i)) {
-        constructUdfTransformer(i, memoryBudgetForSingleWindowTransformer);
-      } else if (udtfPlan.isArithmeticColumn(i)) {
-        constructArithmeticTransformer(i);
-      } else {
-        constructRawQueryTransformer(i);
-      }
-    }
-  }
-
-  @SuppressWarnings("squid:S3518") // "Math.max(windowTransformerCount, 1)" can't be zero
-  private float calculateMemoryBudgetForSingleWindowTransformer() {
-    int size = udtfPlan.getPathToIndex().size();
-    int windowTransformerCount = 0;
-    for (int i = 0; i < size; ++i) {
-      if (udtfPlan.isUdfColumn(i)) {
-        switch (udtfPlan
-            .getExecutorByDataSetOutputColumnIndex(i)
-            .getConfigurations()
-            .getAccessStrategy()
-            .getAccessStrategyType()) {
-          case SLIDING_SIZE_WINDOW:
-          case SLIDING_TIME_WINDOW:
-            ++windowTransformerCount;
-            break;
-          default:
-            break;
-        }
-      }
-    }
-    return UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB / Math.max(windowTransformerCount, 1);
-  }
-
-  private void constructUdfTransformer(
-      int columnIndex, float memoryBudgetForSingleWindowTransformer)
-      throws QueryProcessException, IOException {
-    UDTFExecutor executor = udtfPlan.getExecutorByDataSetOutputColumnIndex(columnIndex);
-    int[] readerIndexes = calculateUdfReaderIndexes(executor);
-    AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
-    switch (accessStrategy.getAccessStrategyType()) {
-      case ROW_BY_ROW:
-        transformers[columnIndex] =
-            new UDFQueryRowTransformer(udfLayer.constructRowReader(readerIndexes), executor);
-        break;
-      case SLIDING_SIZE_WINDOW:
-      case SLIDING_TIME_WINDOW:
-        transformers[columnIndex] =
-            new UDFQueryRowWindowTransformer(
-                udfLayer.constructRowWindowReader(
-                    readerIndexes, accessStrategy, memoryBudgetForSingleWindowTransformer),
-                executor);
-        break;
-      default:
-        throw new UnsupportedOperationException("Unsupported transformer access strategy");
-    }
-  }
-
-  private int[] calculateUdfReaderIndexes(UDTFExecutor executor) {
-    List<PartialPath> paths = executor.getExpression().getPaths();
-    int[] readerIndexes = new int[paths.size()];
-    for (int i = 0; i < readerIndexes.length; ++i) {
-      readerIndexes[i] = udtfPlan.getReaderIndex(paths.get(i).getFullPath());
-    }
-    return readerIndexes;
-  }
-
-  private void constructArithmeticTransformer(int columnIndex) {
-    Expression expression =
-        udtfPlan.getResultColumnByDatasetOutputIndex(columnIndex).getExpression();
-
-    // unary expression
-    if (expression instanceof NegationExpression) {
-      transformers[columnIndex] =
-          new ArithmeticNegationTransformer(
-              constructPointReaderBySeriesName(
-                  ((NegationExpression) expression).getExpression().getExpressionString()));
-      return;
-    }
-
-    // binary expression
-    BinaryExpression binaryExpression = (BinaryExpression) expression;
-    if (binaryExpression instanceof AdditionExpression) {
-      transformers[columnIndex] =
-          new ArithmeticAdditionTransformer(
-              constructPointReaderBySeriesName(
-                  binaryExpression.getLeftExpression().getExpressionString()),
-              constructPointReaderBySeriesName(
-                  binaryExpression.getRightExpression().getExpressionString()));
-    } else if (binaryExpression instanceof SubtractionExpression) {
-      transformers[columnIndex] =
-          new ArithmeticSubtractionTransformer(
-              constructPointReaderBySeriesName(
-                  binaryExpression.getLeftExpression().getExpressionString()),
-              constructPointReaderBySeriesName(
-                  binaryExpression.getRightExpression().getExpressionString()));
-    } else if (binaryExpression instanceof MultiplicationExpression) {
-      transformers[columnIndex] =
-          new ArithmeticMultiplicationTransformer(
-              constructPointReaderBySeriesName(
-                  binaryExpression.getLeftExpression().getExpressionString()),
-              constructPointReaderBySeriesName(
-                  binaryExpression.getRightExpression().getExpressionString()));
-    } else if (binaryExpression instanceof DivisionExpression) {
-      transformers[columnIndex] =
-          new ArithmeticDivisionTransformer(
-              constructPointReaderBySeriesName(
-                  binaryExpression.getLeftExpression().getExpressionString()),
-              constructPointReaderBySeriesName(
-                  binaryExpression.getRightExpression().getExpressionString()));
-    } else if (binaryExpression instanceof ModuloExpression) {
-      transformers[columnIndex] =
-          new ArithmeticModuloTransformer(
-              constructPointReaderBySeriesName(
-                  binaryExpression.getLeftExpression().getExpressionString()),
-              constructPointReaderBySeriesName(
-                  binaryExpression.getRightExpression().getExpressionString()));
-    } else {
-      throw new UnsupportedOperationException(binaryExpression.getExpressionString());
-    }
-  }
-
-  private void constructRawQueryTransformer(int columnIndex) {
-    transformers[columnIndex] =
-        new RawQueryPointTransformer(
-            constructPointReaderBySeriesName(
-                udtfPlan.getRawQueryColumnNameByDatasetOutputColumnIndex(columnIndex)));
-  }
-
-  private LayerPointReader constructPointReaderBySeriesName(String seriesName) {
-    return udfLayer.constructPointReader(udtfPlan.getReaderIndex(seriesName));
+    transformers =
+        new DAGBuilder(queryId, udtfPlan, udfLayer, UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB)
+            .buildLayerMemoryAssigner()
+            .buildResultColumnPointReaders()
+            .getResultColumnPointReaders();
   }
 
   public void finalizeUDFs(long queryId) {

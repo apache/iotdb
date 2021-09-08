@@ -131,7 +131,7 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public IntermediateLayer constructIntermediateLayer(
-      int queryId,
+      long queryId,
       UDTFPlan udtfPlan,
       UDFLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
