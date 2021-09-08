@@ -97,7 +97,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
     List<IStorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    
+
     Set<Integer> requiredSlotsSet = new HashSet<Integer>(requiredSlots);
     for (IMNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
