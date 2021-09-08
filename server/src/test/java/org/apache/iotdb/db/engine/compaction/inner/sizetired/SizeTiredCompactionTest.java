@@ -17,16 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.inner;
+package org.apache.iotdb.db.engine.compaction.inner.sizetired;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -55,30 +53,28 @@ import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
-public abstract class InnerCompactionTest {
+public class SizeTiredCompactionTest {
+  static final String COMPACTION_TEST_SG = "root.compactionTest";
 
-  protected static final String COMPACTION_TEST_SG = "root.compactionTest";
-  protected TsFileResourceManager tsFileResourceManager;
   protected int seqFileNum = 6;
-  protected int unseqFileNum = 0;
+  int unseqFileNum = 0;
   protected int measurementNum = 10;
-  protected int deviceNum = 10;
-  protected long ptNum = 100;
-  protected long flushInterval = 20;
-  protected TSEncoding encoding = TSEncoding.PLAIN;
+  int deviceNum = 10;
+  long ptNum = 100;
+  long flushInterval = 20;
+  TSEncoding encoding = TSEncoding.PLAIN;
 
-  protected String[] deviceIds;
-  protected MeasurementSchema[] measurementSchemas;
+  String[] deviceIds;
+  MeasurementSchema[] measurementSchemas;
 
-  protected List<TsFileResource> seqResources = new ArrayList<>();
-  protected List<TsFileResource> unseqResources = new ArrayList<>();
+  List<TsFileResource> seqResources = new ArrayList<>();
+  List<TsFileResource> unseqResources = new ArrayList<>();
 
   private int prevMergeChunkThreshold;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     IoTDB.metaManager.init();
-    CompactionTaskManager.getInstance().start();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
@@ -96,7 +92,6 @@ public abstract class InnerCompactionTest {
         .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    CompactionTaskManager.getInstance().stop();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
   }

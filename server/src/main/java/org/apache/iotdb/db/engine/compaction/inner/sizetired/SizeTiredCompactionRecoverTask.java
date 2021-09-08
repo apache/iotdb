@@ -95,7 +95,7 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
         }
 
         TsFileResource targetResource = getRecoverTsFileResource(targetFile);
-        if (targetResource == null) {
+        if (targetResource != null) {
           // the target resource is in the recover list, it is not completed
           targetResource.remove();
         } else if ((targetResource = getSourceTsFile(targetFile)) != null) {
@@ -106,6 +106,10 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             for (String file : sourceFileList) {
               // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
               TsFileResource resource = getSourceTsFile(file);
+              if (resource == null) {
+                // source file is not in tsfile list, it is removed
+                continue;
+              }
               tsFileResourceList.remove(resource);
               sourceTsFileResources.add(resource);
             }
