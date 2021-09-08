@@ -747,8 +747,7 @@ public class TsFileProcessor {
     synchronized (tmpMemTable) {
       try {
         long startWait = System.currentTimeMillis();
-        HashSet<IMemTable> flushingMemSet = new HashSet<>(flushingMemTables);
-        while (flushingMemSet.contains(tmpMemTable)) {
+        while (flushingMemTables.contains(tmpMemTable)) {
           tmpMemTable.wait(1000);
 
           if ((System.currentTimeMillis() - startWait) > 60_000) {
