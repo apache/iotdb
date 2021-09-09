@@ -184,9 +184,10 @@ public class TimeSeriesMetadataCache {
    * Support for vector
    *
    * @param key vector's own fullPath, e.g. root.sg1.d1.vector
-   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param subSensorList all subSensors of this vector in one query, e.g. [vector.s1, vector.s2,
+   *     vector.s3]
    * @param allSensors all sensors of the device in one device, to vector, this should contain both
-   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   *     vector name and subSensors' name, e.g. [vector, vector.s1, vector.s2, vector.s3]
    */
   // Suppress synchronize warning
   // Suppress high Cognitive Complexity warning
@@ -289,9 +290,10 @@ public class TimeSeriesMetadataCache {
    * Support for vector, extraction of common function of `get`
    *
    * @param key vector's own fullPath, e.g. root.sg1.d1.vector
-   * @param subSensorList all subSensors of this vector in one query, e.g. [s1, s2, s3]
+   * @param subSensorList all subSensors of this vector in one query, e.g. [vector.s1, vector.s2,
+   *     vector.s3]
    * @param allSensors all sensors of the device in one device, to vector, this should contain both
-   *     vector name and subSensors' name, e.g. [vector, s1, s2, s3]
+   *     vector name and subSensors' name, e.g. [vector, vector.s1, vector.s2, vector.s3]
    * @param reader TsFileSequenceReader created by file
    */
   private List<TimeseriesMetadata> readTimeseriesMetadataForVector(
@@ -368,11 +370,11 @@ public class TimeSeriesMetadataCache {
    * !!!Attention!!!
    *
    * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
-   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
+   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector1}, vector1
+   * will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should be
+   * {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector.s1}
    * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
-   * device: root.sg1.d1.vector1, measurement: s2}
+   * device: root.sg1.d1, measurement: vector.s2}
    */
   private void getVectorTimeSeriesMetadataListFromCache(
       TimeSeriesMetadataCacheKey key, List<String> subSensorList, List<TimeseriesMetadata> res) {
