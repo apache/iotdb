@@ -277,6 +277,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
     return new LayerRowWindowReader() {
 
+      private boolean hasCached = false;
       private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
       private int nextIndexBegin = 0;
 
@@ -285,7 +286,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         if (displayWindowEnd <= nextWindowTimeBegin) {
           return false;
         }
-        if (!hasAtLeastOneRow || 0 < rowRecordList.size()) {
+        if (hasCached || !hasAtLeastOneRow) {
           return true;
         }
 
@@ -322,11 +323,13 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         }
         window.seek(nextIndexBegin, nextIndexEnd);
 
+        hasCached = true;
         return true;
       }
 
       @Override
       public void readyForNext() {
+        hasCached = false;
         nextWindowTimeBegin += slidingStep;
 
         rowRecordList.setEvictionUpperBound(nextIndexBegin + 1);

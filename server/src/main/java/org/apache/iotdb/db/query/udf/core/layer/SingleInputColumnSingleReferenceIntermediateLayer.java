@@ -187,6 +187,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
 
     return new LayerRowWindowReader() {
 
+      private boolean hasCached = false;
       private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
       private int nextIndexBegin = 0;
 
@@ -195,7 +196,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         if (displayWindowEnd <= nextWindowTimeBegin) {
           return false;
         }
-        if (!hasAtLeastOneRow || 0 < tvList.size()) {
+        if (hasCached || !hasAtLeastOneRow) {
           return true;
         }
 
@@ -232,11 +233,13 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         }
         window.seek(nextIndexBegin, nextIndexEnd);
 
+        hasCached = true;
         return true;
       }
 
       @Override
       public void readyForNext() {
+        hasCached = false;
         nextWindowTimeBegin += slidingStep;
       }
 
