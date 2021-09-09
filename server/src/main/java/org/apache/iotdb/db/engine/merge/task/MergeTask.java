@@ -151,9 +151,12 @@ public class MergeTask implements Callable<Void> {
     for (PartialPath device : devices) {
       MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        PartialPath path = device.concatNode(entry.getKey());
-        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
-        unmergedSeries.add(path);
+        if (entry.getValue() instanceof MeasurementMNode) {
+          // under some situation, the children of a device node may be another device node
+          PartialPath path = device.concatNode(entry.getKey());
+          measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
+          unmergedSeries.add(path);
+        }
       }
     }
     resource.setMeasurementSchemaMap(measurementSchemaMap);
