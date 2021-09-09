@@ -35,14 +35,13 @@ import java.util.Objects;
 
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
 
-/** fuzzy query structure LikeOperator. */
-public class LikeOperator extends FunctionOperator {
+public class RegexpOperator extends FunctionOperator {
 
   protected String value;
 
-  public LikeOperator(int tokenIntType, PartialPath path, String value) {
+  public RegexpOperator(int tokenIntType, PartialPath path, String value) {
     super(tokenIntType);
-    operatorType = Operator.OperatorType.LIKE;
+    operatorType = Operator.OperatorType.REGEXP;
     this.singlePath = path;
     this.value = value;
     isLeaf = true;
@@ -60,12 +59,12 @@ public class LikeOperator extends FunctionOperator {
     }
     IUnaryExpression ret;
     if (type != TEXT) {
-      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Like'");
+      throw new LogicalOperatorException(type.toString(), "Only TEXT is supported in 'Regexp'");
     } else if (value.startsWith("\"") && value.endsWith("\"")) {
       throw new LogicalOperatorException(value, "Please use single quotation marks");
     } else {
       ret =
-          Like.getUnaryExpression(
+          RegexpOperator.Regexp.getUnaryExpression(
               singlePath,
               (value.startsWith("'") && value.endsWith("'"))
                   ? value.substring(1, value.length() - 1)
@@ -74,14 +73,14 @@ public class LikeOperator extends FunctionOperator {
     return new Pair<>(ret, singlePath.getFullPath());
   }
 
-  private static class Like {
+  private static class Regexp {
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         PartialPath path, String value) {
-      return new SingleSeriesExpression(path, ValueFilter.like(value));
+      return new SingleSeriesExpression(path, ValueFilter.regexp(value));
     }
 
     public <T extends Comparable<T>> Filter getValueFilter(String value) {
-      return ValueFilter.like(value);
+      return ValueFilter.regexp(value);
     }
   }
 
@@ -91,14 +90,15 @@ public class LikeOperator extends FunctionOperator {
     for (int i = 0; i < spaceNum; i++) {
       sc.addTail("  ");
     }
-    sc.addTail(singlePath.getFullPath(), this.tokenSymbol, value, ", single\n");
+    sc.addTail(singlePath.getFullPath(), value, ", single\n");
     return sc.toString();
   }
 
   @Override
-  public LikeOperator copy() {
-    LikeOperator ret =
-        new LikeOperator(this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), value);
+  public RegexpOperator copy() {
+    RegexpOperator ret =
+        new RegexpOperator(
+            this.tokenIntType, new PartialPath(singlePath.getNodes().clone()), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -110,7 +110,7 @@ public class LikeOperator extends FunctionOperator {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
-    LikeOperator that = (LikeOperator) o;
+    RegexpOperator that = (RegexpOperator) o;
     return Objects.equals(value, that.value);
   }
 
@@ -121,6 +121,6 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public String toString() {
-    return "[" + singlePath.getFullPath() + tokenSymbol + value + "]";
+    return "[" + singlePath.getFullPath() + value + "]";
   }
 }

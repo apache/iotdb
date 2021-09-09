@@ -1018,13 +1018,13 @@ public class PlanExecutor implements IPlanExecutor {
           String.format("File path %s doesn't exists.", file.getPath()));
     }
     if (file.isDirectory()) {
-      recursionFileDir(file, plan);
+      loadDir(file, plan);
     } else {
       loadFile(file, plan);
     }
   }
 
-  private void recursionFileDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
+  private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
     File[] files = curFile.listFiles();
     long[] establishTime = new long[files.length];
     List<Integer> tsfiles = new ArrayList<>();
@@ -1051,7 +1051,7 @@ public class PlanExecutor implements IPlanExecutor {
 
     for (File file : files) {
       if (file.isDirectory()) {
-        recursionFileDir(file, plan);
+        loadDir(file, plan);
       }
     }
   }
