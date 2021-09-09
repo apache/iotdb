@@ -181,11 +181,8 @@ public class SizeTiredCompactionRecoverTest extends InnerCompactionTest {
             COMPACTION_LOG_NAME,
             "0",
             0,
-            tsFileResourceManager,
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
-            tsFileResourceManager.getSequenceListByTimePartition(0),
-            tsFileResourceManager.getSequenceRecoverTsFileResources(),
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
@@ -291,11 +288,8 @@ public class SizeTiredCompactionRecoverTest extends InnerCompactionTest {
             COMPACTION_LOG_NAME,
             "0",
             0,
-            tsFileResourceManager,
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
-            tsFileResourceManager.getSequenceListByTimePartition(0),
-            tsFileResourceManager.getSequenceRecoverTsFileResources(),
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
@@ -403,11 +397,8 @@ public class SizeTiredCompactionRecoverTest extends InnerCompactionTest {
             COMPACTION_LOG_NAME,
             "0",
             0,
-            tsFileResourceManager,
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
-            tsFileResourceManager.getSequenceListByTimePartition(0),
-            tsFileResourceManager.getSequenceRecoverTsFileResources(),
             true,
             CompactionTaskManager.currentTaskNum)
         .call();
@@ -518,11 +509,8 @@ public class SizeTiredCompactionRecoverTest extends InnerCompactionTest {
             COMPACTION_LOG_NAME,
             "0",
             0,
-            tsFileResourceManager,
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
-            tsFileResourceManager.getSequenceListByTimePartition(0),
-            tsFileResourceManager.getSequenceRecoverTsFileResources(),
             true,
             CompactionTaskManager.currentTaskNum)
         .call();

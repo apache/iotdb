@@ -60,11 +60,8 @@ public enum InnerCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
       File compactionLogFile,
-      String storageGroupDir,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> recoverTsFileResources,
+      String dataDir,
       boolean sequence) {
     switch (this) {
       case SIZE_TIRED_COMPACTION:
@@ -73,11 +70,8 @@ public enum InnerCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroup,
             timePartition,
-            tsFileResourceManager,
             compactionLogFile,
-            storageGroupDir,
-            tsFileResourceList,
-            recoverTsFileResources,
+            dataDir,
             sequence,
             CompactionTaskManager.currentTaskNum);
     }

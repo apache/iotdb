@@ -22,8 +22,7 @@ import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionR
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTiredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,34 +38,27 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractInnerSpaceCompactionRecoverTask.class);
   protected File compactionLogFile;
-  protected String storageGroupDir;
-  protected TsFileResourceList tsFileResourceList;
-  protected List<TsFileResource> recoverTsFileResources;
+  protected String dataDir;
 
   public SizeTiredCompactionRecoverTask(
       String logicalStorageGroupName,
       String virtualStorageGroup,
       long timePartition,
-      TsFileResourceManager tsFileResourceManager,
       File compactionLogFile,
-      String storageGroupDir,
-      TsFileResourceList tsFileResourceList,
-      List<TsFileResource> recoverTsFileResources,
+      String dataDir,
       boolean sequence,
       AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName,
         virtualStorageGroup,
         timePartition,
-        tsFileResourceManager,
-        tsFileResourceList,
+        null,
+        null,
         null,
         sequence,
         currentTaskNum);
     this.compactionLogFile = compactionLogFile;
-    this.storageGroupDir = storageGroupDir;
-    this.tsFileResourceList = tsFileResourceList;
-    this.recoverTsFileResources = recoverTsFileResources;
+    this.dataDir = dataDir;
   }
 
   /**
@@ -89,32 +81,29 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
             new SizeTiredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
         List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        String targetFile = logAnalyzer.getTargetFile();
-        if (targetFile == null || sourceFileList.isEmpty()) {
+        String targetFileName = logAnalyzer.getTargetFile();
+        if (targetFileName == null || sourceFileList.isEmpty()) {
+          return;
+        }
+        File targetFile = new File(targetFileName);
+        if (!targetFile.exists()) {
           return;
         }
 
-        TsFileResource targetResource = getRecoverTsFileResource(targetFile);
-        if (targetResource != null) {
-          // the target resource is in the recover list, it is not completed
-          targetResource.remove();
-        } else if ((targetResource = getSourceTsFile(targetFile)) != null) {
-          // the target resource is in the tsfile list, it is completed
+        RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
+        if (writer.hasCrashed()) {
+          // the target tsfile is crashed, it is not completed
+          writer.close();
+          if (!targetFile.delete()) {
+            LOGGER.warn("Fail to delete uncompleted file {}", targetFile);
+          }
+        } else {
+          // the target tsfile is completed
+          TsFileResource targetResource = new TsFileResource(targetFile);
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          tsFileResourceList.writeLock();
-          try {
-            for (String file : sourceFileList) {
-              // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-              TsFileResource resource = getSourceTsFile(file);
-              if (resource == null) {
-                // source file is not in tsfile list, it is removed
-                continue;
-              }
-              tsFileResourceList.remove(resource);
-              sourceTsFileResources.add(resource);
-            }
-          } finally {
-            tsFileResourceList.writeUnlock();
+          for (String sourceFileName : sourceFileList) {
+            File sourceFile = new File(sourceFileName);
+            sourceTsFileResources.add(new TsFileResource(sourceFile));
           }
 
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
@@ -132,34 +121,6 @@ public class SizeTiredCompactionRecoverTask extends SizeTiredCompactionTask {
           LOGGER.error("delete inner space compaction log file error", e);
         }
       }
-    }
-  }
-
-  private TsFileResource getRecoverTsFileResource(String filePath) throws IOException {
-    for (TsFileResource tsFileResource : recoverTsFileResources) {
-      if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-        return tsFileResource;
-      }
-    }
-    return null;
-  }
-
-  private TsFileResource getSourceTsFile(String filename) {
-    tsFileResourceList.readLock();
-    try {
-      File fileToGet = new File(filename);
-      for (TsFileResource resource : tsFileResourceList) {
-        if (Files.isSameFile(resource.getTsFile().toPath(), fileToGet.toPath())) {
-          return resource;
-        }
-      }
-      LOGGER.error("cannot get tsfile resource path: {}", filename);
-      return null;
-    } catch (IOException e) {
-      LOGGER.error("cannot get tsfile resource path: {}", filename);
-      return null;
-    } finally {
-      tsFileResourceList.readUnlock();
     }
   }
 }
