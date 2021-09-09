@@ -61,13 +61,13 @@ public class AlignedTimeseriesSessionExample {
     //    insertNullableTabletWithAlignedTimeseries();
 
     selectTest();
-    //    selectWithValueFilterTest();
-    //    selectWithGroupByTest();
-    //    selectWithLastTest();
-    //
-    //    selectWithAggregationTest();
-    //
-    //    selectWithAlignByDeviceTest();
+    selectWithValueFilterTest();
+    selectWithGroupByTest();
+    selectWithLastTest();
+
+    selectWithAggregationTest();
+
+    selectWithAlignByDeviceTest();
 
     session.close();
   }

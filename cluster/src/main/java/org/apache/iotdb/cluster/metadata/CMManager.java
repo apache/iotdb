@@ -193,11 +193,12 @@ public class CMManager extends MManager {
       return TSDataType.INT64;
     }
 
+    String measurement = path.getMeasurement();
     if (path instanceof VectorPartialPath) {
       if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        path = ((VectorPartialPath) path).getSubSensorsList().get(0);
+        measurement = ((VectorPartialPath) path).getSubSensor(0);
       }
     }
 
@@ -206,7 +207,7 @@ public class CMManager extends MManager {
       cacheLock.readLock().lock();
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(path);
       if (measurementMNode != null) {
-        return measurementMNode.getDataType(path.getMeasurement());
+        return measurementMNode.getDataType(measurement);
       }
     } finally {
       cacheLock.readLock().unlock();
@@ -226,8 +227,8 @@ public class CMManager extends MManager {
             new MeasurementMNode(
                 null, measurementSchema.getMeasurementId(), measurementSchema, null);
         if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (String subSensorId : measurementSchema.getSubMeasurementsList()) {
-            cacheMeta(new PartialPath(path.getDevice(), subSensorId), measurementMNode, false);
+          for (int i = 0; i < measurementSchema.getSubMeasurementsList().size(); i++) {
+            cacheMeta(((VectorPartialPath) path).getPathWithSubSensor(i), measurementMNode, false);
           }
           cacheMeta(
               new PartialPath(path.getDevice(), measurementSchema.getMeasurementId()),

@@ -50,7 +50,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class FileLoaderUtils {
 
@@ -103,12 +102,7 @@ public class FileLoaderUtils {
     // deal with vector
     if (seriesPath instanceof VectorPartialPath) {
       return loadVectorTimeSeriesMetadata(
-          resource,
-          seriesPath,
-          ((VectorPartialPath) seriesPath).getSubSensorsList(),
-          context,
-          filter,
-          allSensors);
+          resource, (VectorPartialPath) seriesPath, context, filter, allSensors);
     }
 
     // common path
@@ -161,14 +155,12 @@ public class FileLoaderUtils {
    * Load VectorTimeSeriesMetadata for Vector
    *
    * @param resource corresponding TsFileResource
-   * @param seriesPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
+   * @param vectorPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
-   * @param subSensorList subSensorList of the seriesPath
    */
   private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
       TsFileResource resource,
-      PartialPath seriesPath,
-      List<PartialPath> subSensorList,
+      VectorPartialPath vectorPath,
       QueryContext context,
       Filter filter,
       Set<String> allSensors)
@@ -187,11 +179,9 @@ public class FileLoaderUtils {
               .get(
                   new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                       resource.getTsFilePath(),
-                      seriesPath.getDevice(),
-                      seriesPath.getMeasurement()),
-                  subSensorList.stream()
-                      .map(PartialPath::getMeasurement)
-                      .collect(Collectors.toList()),
+                      vectorPath.getDevice(),
+                      vectorPath.getMeasurement()),
+                  new ArrayList<>(vectorPath.getSubSensorsList()),
                   allSensors,
                   context.isDebug());
 
@@ -200,12 +190,13 @@ public class FileLoaderUtils {
         timeSeriesMetadata
             .get(0)
             .setChunkMetadataLoader(
-                new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
+                new DiskChunkMetadataLoader(resource, vectorPath, context, filter));
         for (int i = 1; i < timeSeriesMetadata.size(); i++) {
+          PartialPath subPath = vectorPath.getPathWithSubSensor(i - 1);
           timeSeriesMetadata
               .get(i)
               .setChunkMetadataLoader(
-                  new DiskChunkMetadataLoader(resource, subSensorList.get(i - 1), context, filter));
+                  new DiskChunkMetadataLoader(resource, subPath, context, filter));
         }
         vectorTimeSeriesMetadata =
             new VectorTimeSeriesMetadata(
@@ -216,13 +207,13 @@ public class FileLoaderUtils {
       vectorTimeSeriesMetadata = (VectorTimeSeriesMetadata) resource.getTimeSeriesMetadata();
       if (vectorTimeSeriesMetadata != null) {
         vectorTimeSeriesMetadata.setChunkMetadataLoader(
-            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
+            new MemChunkMetadataLoader(resource, vectorPath, context, filter));
       }
     }
 
     if (vectorTimeSeriesMetadata != null) {
       List<Modification> pathModifications =
-          context.getPathModifications(resource.getModFile(), seriesPath);
+          context.getPathModifications(resource.getModFile(), vectorPath);
       vectorTimeSeriesMetadata.getTimeseriesMetadata().setModified(!pathModifications.isEmpty());
       if (vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
           > vectorTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
@@ -238,7 +229,7 @@ public class FileLoaderUtils {
           vectorTimeSeriesMetadata.getValueTimeseriesMetadataList();
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
         pathModifications =
-            context.getPathModifications(resource.getModFile(), subSensorList.get(i));
+            context.getPathModifications(resource.getModFile(), vectorPath.getPathWithSubSensor(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
       }
     }

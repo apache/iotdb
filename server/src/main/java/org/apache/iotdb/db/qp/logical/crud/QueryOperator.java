@@ -376,8 +376,7 @@ public class QueryOperator extends Operator {
   private String getMeasurementName(PartialPath path, String aggregation) {
     String initialMeasurement = path.getMeasurement();
     if (path instanceof VectorPartialPath) {
-      String subMeasurement =
-          ((VectorPartialPath) path).getSubSensorsList().get(0).getMeasurement();
+      String subMeasurement = ((VectorPartialPath) path).getSubSensor(0);
       initialMeasurement += "." + subMeasurement;
     }
     if (aggregation != null) {

@@ -304,14 +304,7 @@ public class PartialPath extends Path implements Comparable<Path> {
    * If the partialPath is VectorPartialPath and it has only one sub sensor, return the sub sensor's
    * full path. Otherwise, return the partialPath's fullPath
    */
-  public static String getExactFullPath(PartialPath partialPath) {
-    String fullPath = partialPath.getFullPath();
-    if (partialPath instanceof VectorPartialPath) {
-      VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
-      if (vectorPartialPath.getSubSensorsList().size() == 1) {
-        fullPath = vectorPartialPath.getSubSensorsList().get(0).getFullPath();
-      }
-    }
-    return fullPath;
+  public String getExactFullPath() {
+    return getFullPath();
   }
 }

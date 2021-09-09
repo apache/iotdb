@@ -763,21 +763,17 @@ public class MManager {
       return TSDataType.INT64;
     }
 
-    if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
-        return TSDataType.VECTOR;
-      } else {
-        path = ((VectorPartialPath) path).getSubSensorsList().get(0);
-      }
-    }
     IMeasurementSchema schema = mtree.getSchema(path);
     if (schema instanceof MeasurementSchema) {
       return schema.getType();
     } else {
-      List<String> measurements = schema.getSubMeasurementsList();
-      return schema
-          .getSubMeasurementsTSDataTypeList()
-          .get(measurements.indexOf(path.getMeasurement()));
+      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
+        return TSDataType.VECTOR;
+      } else {
+        String subSensor = ((VectorPartialPath) path).getSubSensor(0);
+        List<String> measurements = schema.getSubMeasurementsList();
+        return schema.getSubMeasurementsTSDataTypeList().get(measurements.indexOf(subSensor));
+      }
     }
   }
 
@@ -1004,7 +1000,7 @@ public class MManager {
         }
         res.add(
             new ShowTimeSeriesResult(
-                PartialPath.getExactFullPath(ansString.left),
+                ansString.left.getExactFullPath(),
                 ansString.right[0],
                 ansString.right[1],
                 TSDataType.valueOf(ansString.right[2]),
@@ -1058,18 +1054,18 @@ public class MManager {
       return schema;
     }
     List<String> measurementsInLeaf = schema.getSubMeasurementsList();
-    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsList();
-    TSDataType[] types = new TSDataType[measurements.size()];
-    TSEncoding[] encodings = new TSEncoding[measurements.size()];
+    List<String> subMeasurements = ((VectorPartialPath) fullPath).getSubSensorsList();
+    TSDataType[] types = new TSDataType[subMeasurements.size()];
+    TSEncoding[] encodings = new TSEncoding[subMeasurements.size()];
 
-    for (int i = 0; i < measurements.size(); i++) {
-      int index = measurementsInLeaf.indexOf(measurements.get(i).getMeasurement());
+    for (int i = 0; i < subMeasurements.size(); i++) {
+      int index = measurementsInLeaf.indexOf(subMeasurements.get(i));
       types[i] = schema.getSubMeasurementsTSDataTypeList().get(index);
       encodings[i] = schema.getSubMeasurementsTSEncodingList().get(index);
     }
-    String[] array = new String[measurements.size()];
+    String[] array = new String[subMeasurements.size()];
     for (int i = 0; i < array.length; i++) {
-      array[i] = measurements.get(i).getMeasurement();
+      array[i] = subMeasurements.get(i);
     }
     return new VectorMeasurementSchema(
         schema.getMeasurementId(), array, types, encodings, schema.getCompressor());

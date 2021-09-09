@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -269,7 +268,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       if (node.getSchema() instanceof MeasurementSchema) {
         return fullPath;
       } else {
-        return new VectorPartialPath(fullPath.getDevice(), Collections.singletonList(fullPath));
+        return new VectorPartialPath(fullPath.getDevice(), fullPath.getMeasurement());
       }
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);
