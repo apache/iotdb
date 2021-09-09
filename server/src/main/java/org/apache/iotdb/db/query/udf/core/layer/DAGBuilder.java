@@ -22,13 +22,10 @@ package org.apache.iotdb.db.query.udf.core.layer;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class DAGBuilder {
@@ -38,7 +35,7 @@ public class DAGBuilder {
   private final UDFLayer rawTimeSeriesInputLayer;
 
   // input
-  private final List<Expression> resultColumnExpressions;
+  private final Expression[] resultColumnExpressions;
   // output
   private final LayerPointReader[] resultColumnPointReaders;
 
@@ -55,11 +52,12 @@ public class DAGBuilder {
     this.udtfPlan = udtfPlan;
     this.rawTimeSeriesInputLayer = inputLayer;
 
-    resultColumnExpressions = new ArrayList<>();
-    for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
-      resultColumnExpressions.add(resultColumn.getExpression());
+    int size = udtfPlan.getPathToIndex().size();
+    resultColumnExpressions = new Expression[size];
+    for (int i = 0; i < size; ++i) {
+      resultColumnExpressions[i] = udtfPlan.getResultColumnByDatasetOutputIndex(i).getExpression();
     }
-    resultColumnPointReaders = new LayerPointReader[resultColumnExpressions.size()];
+    resultColumnPointReaders = new LayerPointReader[size];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
 
@@ -75,10 +73,9 @@ public class DAGBuilder {
   }
 
   public DAGBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
-    for (int i = 0; i < resultColumnExpressions.size(); ++i) {
+    for (int i = 0; i < resultColumnExpressions.length; ++i) {
       resultColumnPointReaders[i] =
-          resultColumnExpressions
-              .get(i)
+          resultColumnExpressions[i]
               .constructIntermediateLayer(
                   queryId,
                   udtfPlan,

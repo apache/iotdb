@@ -180,27 +180,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     return resultColumns.get(datasetOutputIndexToResultColumnIndex.get(datasetOutputIndex));
   }
 
-  public UDTFExecutor getExecutorByDataSetOutputColumnIndex(int datasetOutputIndex) {
-    return expressionName2Executor.get(
-        getResultColumnByDatasetOutputIndex(datasetOutputIndex).getResultColumnName());
-  }
-
   public UDTFExecutor getExecutorByFunctionExpression(FunctionExpression functionExpression) {
     return expressionName2Executor.get(functionExpression.getExpressionString());
-  }
-
-  public String getRawQueryColumnNameByDatasetOutputColumnIndex(int datasetOutputIndex) {
-    return getResultColumnByDatasetOutputIndex(datasetOutputIndex).getResultColumnName();
-  }
-
-  public boolean isUdfColumn(int datasetOutputIndex) {
-    return getResultColumnByDatasetOutputIndex(datasetOutputIndex).getExpression()
-        instanceof FunctionExpression;
-  }
-
-  public boolean isArithmeticColumn(int datasetOutputIndex) {
-    Expression expression = getResultColumnByDatasetOutputIndex(datasetOutputIndex).getExpression();
-    return expression instanceof BinaryExpression || expression instanceof NegationExpression;
   }
 
   public int getReaderIndex(String pathName) {
