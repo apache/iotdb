@@ -264,9 +264,8 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0
-        && ((index + 1 >= args.length)
-            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
+    if (index >= 0 && ((index + 1 >= args.length)
+        || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
       return ArrayUtils.remove(args, index);
     } else if (index == -1) {
       return args;
@@ -288,7 +287,8 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
-      // when execute sql, when should print all results
+      // When execute sql in CLI with -e mode, we should print all results by setting continuePrint
+      // is true.
       continuePrint = true;
       args = Arrays.copyOfRange(args, 0, index);
       return args;
