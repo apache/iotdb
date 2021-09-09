@@ -186,11 +186,12 @@ public class RawDataQueryPlan extends QueryPlan {
     setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
 
     Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> pathToIndex = new HashMap<>();
+    Map<String, Integer> vectorPathToIndex = new HashMap<>();
     for (String columnForDisplay : columnForDisplaySet) {
-      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+      vectorPathToIndex.put(
+          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
     }
-    setVectorPathToIndex(pathToIndex);
+    setVectorPathToIndex(vectorPathToIndex);
   }
 
   public List<PartialPath> getDeduplicatedVectorPaths() {

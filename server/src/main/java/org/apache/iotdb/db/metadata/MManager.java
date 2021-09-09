@@ -100,7 +100,6 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1085,8 +1084,8 @@ public class MManager {
    */
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<String, Integer> pathIndex = new LinkedHashMap<>();
+    Map<IMNode, PartialPath> nodeToPartialPath = new HashMap<>();
+    Map<String, Integer> pathIndex = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
       pathIndex.put(path.getExactFullPath(), i);
@@ -1094,7 +1093,7 @@ public class MManager {
         pathIndex.put(path.getFullPathWithAlias(), i);
       }
 
-      IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
+      IMeasurementMNode node = getMeasurementMNode(path);
       if (!nodeToPartialPath.containsKey(node)) {
         nodeToPartialPath.put(node, path.copy());
       } else {
@@ -1142,6 +1141,10 @@ public class MManager {
    */
   public boolean isPathExist(PartialPath path) {
     return mtree.isPathExist(path);
+  }
+
+  protected IMeasurementMNode getMeasurementMNode(PartialPath fullPath) throws MetadataException {
+    return (IMeasurementMNode) getNodeByPath(fullPath);
   }
 
   /** Get node by path */
