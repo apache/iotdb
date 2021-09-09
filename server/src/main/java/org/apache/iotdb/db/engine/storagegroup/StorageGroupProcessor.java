@@ -2057,6 +2057,7 @@ public class StorageGroupProcessor {
     closeQueryLock.writeLock().lock();
     try {
       tsFileProcessor.close();
+      tsFileResourceManager.registerSealedTsFileResource(tsFileProcessor.getTsFileResource());
     } finally {
       closeQueryLock.writeLock().unlock();
     }

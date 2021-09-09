@@ -1,19 +1,16 @@
 package org.apache.iotdb.db.rescon;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
-
 import org.apache.iotdb.db.utils.TestOnly;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.PriorityQueue;
-import java.util.concurrent.ExecutorService;
 
 public class TsFileResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceManager.class);
@@ -32,9 +29,8 @@ public class TsFileResourceManager {
   private long totalTimeIndexMemCost;
 
   @TestOnly
-  public static void setTimeIndexMemoryProportion(double timeIndexMemoryProportion) {
-    TIME_INDEX_MEMORY_THRESHOLD =
-            CONFIG.getAllocateMemoryForRead() * timeIndexMemoryProportion;
+  public static void setTimeIndexMemoryThreshold(double timeIndexMemoryProportion) {
+    TIME_INDEX_MEMORY_THRESHOLD = CONFIG.getAllocateMemoryForRead() * timeIndexMemoryProportion;
   }
 
   @TestOnly
@@ -49,18 +45,18 @@ public class TsFileResourceManager {
   public synchronized void registerSealedTsFileResource(TsFileResource tsFileResource) {
     sealedTsFileResources.add(tsFileResource);
     totalTimeIndexMemCost += tsFileResource.calculateRamSize();
-//    System.out.println("memory used in manager " + totalTimeIndexMemCost + " " + TIME_INDEX_MEMORY_THRESHOLD);
+    System.out.println(
+        "memory used in manager " + totalTimeIndexMemCost + " " + TIME_INDEX_MEMORY_THRESHOLD);
     chooseTsFileResourceToDegrade();
   }
 
   /** delete the TsFileResource in PriorityQueue when the source file is deleted */
   public synchronized void removeTsFileResource(TsFileResource tsFileResource) {
-    if (sealedTsFileResources.remove(tsFileResource)){
+    if (sealedTsFileResources.remove(tsFileResource)) {
       sealedTsFileResources.remove(tsFileResource);
       totalTimeIndexMemCost -= tsFileResource.calculateRamSize();
     }
   }
-
 
   /** once degradation is triggered, the total memory for timeIndex should reduce */
   public synchronized void releaseTimeIndexMemCost(long memCost) {

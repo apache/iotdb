@@ -493,8 +493,10 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
+    //    System.out.println("close before " + calculateRamSize());
     timeIndex.close();
-//    tsFileResourceManager.registerSealedTsFileResource(this);
+    //    System.out.println("close after " + calculateRamSize());
+    //    tsFileResourceManager.registerSealedTsFileResource(this);
   }
 
   TsFileProcessor getUnsealedFileProcessor() {

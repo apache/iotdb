@@ -21,8 +21,8 @@ package org.apache.iotdb.db.engine.compaction.no;
 
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

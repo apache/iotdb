@@ -42,6 +42,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
@@ -142,6 +143,7 @@ public class EnvironmentUtils {
     }
     // close metadata
     IoTDB.metaManager.clear();
+    TsFileResourceManager.getInstance().clear();
 
     // close tracing
     if (config.isEnablePerformanceTracing()) {
