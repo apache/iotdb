@@ -76,7 +76,7 @@ public class StartClientScriptIT extends AbstractScript {
             "/c",
             dir + File.separator + "sbin" + File.separator + "start-cli.bat",
             "-maxRPC",
-            "-1",
+            "0",
             "-e",
             "\"flush\"");
     testOutput(builder2, output2);
@@ -119,14 +119,14 @@ public class StartClientScriptIT extends AbstractScript {
         new ProcessBuilder(
             "sh",
             dir + File.separator + "sbin" + File.separator + "start-cli.sh",
-            "-maxRPC",
-            "-1",
+            "-maxPRC",
+            "0",
             "-e",
             "\"flush\"");
     testOutput(builder2, output2);
 
     final String[] output3 = {
-      "IoTDB> error format of max print row count, it should be a integer number"
+      "IoTDB> error format of max print row count, it should be an integer number"
     };
     ProcessBuilder builder3 =
         new ProcessBuilder(
