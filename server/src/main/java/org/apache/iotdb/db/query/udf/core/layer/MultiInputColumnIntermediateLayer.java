@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
@@ -47,9 +48,12 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   private final TimeSelector timeHeap;
 
   public MultiInputColumnIntermediateLayer(
-      long queryId, float memoryBudgetInMB, List<LayerPointReader> parentLayerPointReaders)
+      Expression expression,
+      long queryId,
+      float memoryBudgetInMB,
+      List<LayerPointReader> parentLayerPointReaders)
       throws QueryProcessException, IOException {
-    super(queryId, memoryBudgetInMB);
+    super(expression, queryId, memoryBudgetInMB);
 
     layerPointReaders = parentLayerPointReaders.toArray(new LayerPointReader[0]);
 

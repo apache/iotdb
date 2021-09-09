@@ -62,9 +62,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(1);
-    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(1);
+    IoTDBDescriptor.getInstance().getConfig().setUdfCollectorMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfTransformerMemoryBudgetInMB(100);
+    IoTDBDescriptor.getInstance().getConfig().setUdfReaderMemoryBudgetInMB(100);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     createTimeSeries();

@@ -105,9 +105,9 @@ public class TimeSeriesOperand extends Expression {
           this,
           memoryAssigner.getReference(this) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, parentLayerPointReader)
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, parentLayerPointReader));
+                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
     }
 
     return expressionIntermediateLayerMap.get(this);

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
@@ -33,10 +34,14 @@ public abstract class IntermediateLayer {
 
   protected static final int CACHE_BLOCK_SIZE = 2;
 
+  // for debug
+  protected final Expression expression;
+
   protected final long queryId;
   protected final float memoryBudgetInMB;
 
-  protected IntermediateLayer(long queryId, float memoryBudgetInMB) {
+  protected IntermediateLayer(Expression expression, long queryId, float memoryBudgetInMB) {
+    this.expression = expression;
     this.queryId = queryId;
     this.memoryBudgetInMB = memoryBudgetInMB;
   }
@@ -67,4 +72,9 @@ public abstract class IntermediateLayer {
   protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
       throws QueryProcessException, IOException;
+
+  @Override
+  public String toString() {
+    return expression.toString();
+  }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
@@ -44,9 +45,12 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
   private final SafetyLine safetyLine;
 
   public SingleInputColumnMultiReferenceIntermediateLayer(
-      long queryId, float memoryBudgetInMB, LayerPointReader parentLayerPointReader)
+      Expression expression,
+      long queryId,
+      float memoryBudgetInMB,
+      LayerPointReader parentLayerPointReader)
       throws QueryProcessException {
-    super(queryId, memoryBudgetInMB);
+    super(expression, queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;
 
     dataType = parentLayerPointReader.getDataType();

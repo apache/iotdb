@@ -164,9 +164,9 @@ public abstract class BinaryExpression extends Expression {
           this,
           memoryAssigner.getReference(this) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, transformer)
+                  this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, transformer));
+                  this, queryId, memoryBudgetInMB, transformer));
     }
 
     return expressionIntermediateLayerMap.get(this);

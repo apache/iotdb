@@ -206,9 +206,9 @@ public class FunctionExpression extends Expression {
           this,
           memoryAssigner.getReference(this) == 1
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, transformer)
+                  this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  queryId, memoryBudgetInMB, transformer));
+                  this, queryId, memoryBudgetInMB, transformer));
     }
 
     return expressionIntermediateLayerMap.get(this);
@@ -234,6 +234,7 @@ public class FunctionExpression extends Expression {
     return intermediateLayers.size() == 1
         ? intermediateLayers.get(0)
         : new MultiInputColumnIntermediateLayer(
+            this,
             queryId,
             memoryAssigner.assign(),
             intermediateLayers.stream()
