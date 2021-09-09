@@ -169,12 +169,6 @@ public class ImportCsv extends AbstractCsvTool {
     }
 
     importFromTargetPath(host, Integer.valueOf(port), username, password, targetPath, timeZoneID);
-    //    SimpleDateFormat simpleDateFormat = formatterInit("2021/09/06 10:03:000+08:00");
-    //    try {
-    //      System.out.println(simpleDateFormat.parse("2021/09/06 10:03:000-08:00"));
-    //    } catch (ParseException e) {
-    //      e.printStackTrace();
-    //    }
   }
 
   /**
@@ -585,6 +579,7 @@ public class ImportCsv extends AbstractCsvTool {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
         format.parse(time).getTime();
+        System.out.println(timeFormat);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
