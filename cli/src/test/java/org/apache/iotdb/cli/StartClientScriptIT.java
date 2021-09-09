@@ -75,7 +75,7 @@ public class StartClientScriptIT extends AbstractScript {
             "cmd.exe",
             "/c",
             dir + File.separator + "sbin" + File.separator + "start-cli.bat",
-            "-maxRPC",
+            "-maxPRC",
             "0",
             "-e",
             "\"flush\"");
