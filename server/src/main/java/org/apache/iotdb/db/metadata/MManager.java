@@ -100,6 +100,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1084,8 +1085,8 @@ public class MManager {
    */
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
-    Map<IMNode, PartialPath> nodeToPartialPath = new HashMap<>();
-    Map<String, Integer> pathIndex = new HashMap<>();
+    Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
+    Map<String, Integer> pathIndex = new LinkedHashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
       pathIndex.put(path.getExactFullPath(), i);
