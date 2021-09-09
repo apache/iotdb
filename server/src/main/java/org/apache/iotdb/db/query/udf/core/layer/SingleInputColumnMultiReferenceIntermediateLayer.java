@@ -208,17 +208,19 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
-          hasCached =
-              LayerCacheUtils.cachePoints(
-                      dataType, parentLayerPointReader, tvList, pointsToBeCollected)
-                  != 0;
+          LayerCacheUtils.cachePoints(
+              dataType, parentLayerPointReader, tvList, pointsToBeCollected);
+          if (tvList.size() <= beginIndex) {
+            return false;
+          }
+
           window.seek(beginIndex, tvList.size());
         } else {
-          hasCached = true;
           window.seek(beginIndex, endIndex);
         }
 
-        return hasCached;
+        hasCached = true;
+        return true;
       }
 
       @Override

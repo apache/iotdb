@@ -214,15 +214,18 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
         int rowsToBeCollected = endIndex - rowRecordList.size();
         if (0 < rowsToBeCollected) {
-          hasCached =
-              LayerCacheUtils.cacheRows(udfInputDataSet, rowRecordList, rowsToBeCollected) != 0;
+          LayerCacheUtils.cacheRows(udfInputDataSet, rowRecordList, rowsToBeCollected);
+          if (rowRecordList.size() <= beginIndex) {
+            return false;
+          }
+
           window.seek(beginIndex, rowRecordList.size());
         } else {
-          hasCached = true;
           window.seek(beginIndex, endIndex);
         }
 
-        return hasCached;
+        hasCached = true;
+        return true;
       }
 
       @Override
