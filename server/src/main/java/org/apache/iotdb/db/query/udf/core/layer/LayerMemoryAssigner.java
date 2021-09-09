@@ -40,10 +40,11 @@ public class LayerMemoryAssigner {
   }
 
   public void increaseExpressionReference(Expression expression) {
-    if (!expressionReferenceCount.containsKey(expression)) {
-      expressionReferenceCount.put(expression, 1);
-    }
-    expressionReferenceCount.put(expression, 1 + expressionReferenceCount.get(expression));
+    expressionReferenceCount.put(
+        expression,
+        expressionReferenceCount.containsKey(expression)
+            ? 1 + expressionReferenceCount.get(expression)
+            : 1);
   }
 
   public void build() {

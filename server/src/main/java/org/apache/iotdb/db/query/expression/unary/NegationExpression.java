@@ -90,6 +90,7 @@ public class NegationExpression extends Expression {
 
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
+    expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);
   }
 

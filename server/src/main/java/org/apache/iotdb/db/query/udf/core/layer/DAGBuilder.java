@@ -68,7 +68,6 @@ public class DAGBuilder {
 
   public DAGBuilder buildLayerMemoryAssigner() {
     for (Expression expression : resultColumnExpressions) {
-      memoryAssigner.increaseExpressionReference(expression);
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();

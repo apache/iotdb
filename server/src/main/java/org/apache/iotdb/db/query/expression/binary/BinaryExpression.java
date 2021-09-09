@@ -125,8 +125,9 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
-    memoryAssigner.increaseExpressionReference(leftExpression);
-    memoryAssigner.increaseExpressionReference(rightExpression);
+    leftExpression.updateStatisticsForMemoryAssigner(memoryAssigner);
+    rightExpression.updateStatisticsForMemoryAssigner(memoryAssigner);
+    memoryAssigner.increaseExpressionReference(this);
   }
 
   @Override
