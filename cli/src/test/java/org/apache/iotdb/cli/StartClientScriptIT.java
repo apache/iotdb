@@ -82,7 +82,7 @@ public class StartClientScriptIT extends AbstractScript {
     testOutput(builder2, output2);
 
     final String[] output3 = {
-      "IoTDB> error format of max print row count, it should be a integer number"
+      "IoTDB> error format of max print row count, it should be an integer number"
     };
     ProcessBuilder builder3 =
         new ProcessBuilder(
