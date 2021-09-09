@@ -264,8 +264,9 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0 && ((index + 1 >= args.length)
-        || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
+    if (index >= 0
+        && ((index + 1 >= args.length)
+            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
       return ArrayUtils.remove(args, index);
     } else if (index == -1) {
       return args;
