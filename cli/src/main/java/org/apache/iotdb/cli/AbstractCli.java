@@ -288,6 +288,8 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
+      // when execute sql, when should print all results
+      continuePrint = true;
       args = Arrays.copyOfRange(args, 0, index);
       return args;
     }
