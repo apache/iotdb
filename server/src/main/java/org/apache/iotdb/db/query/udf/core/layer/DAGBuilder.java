@@ -32,7 +32,7 @@ public class DAGBuilder {
 
   private final long queryId;
   private final UDTFPlan udtfPlan;
-  private final UDFLayer rawTimeSeriesInputLayer;
+  private final RawQueryInputLayer rawTimeSeriesInputLayer;
 
   // input
   private final Expression[] resultColumnExpressions;
@@ -47,7 +47,8 @@ public class DAGBuilder {
   // make sure that only one point reader will be built for one expression.
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
 
-  public DAGBuilder(long queryId, UDTFPlan udtfPlan, UDFLayer inputLayer, float memoryBudgetInMB) {
+  public DAGBuilder(
+      long queryId, UDTFPlan udtfPlan, RawQueryInputLayer inputLayer, float memoryBudgetInMB) {
     this.queryId = queryId;
     this.udtfPlan = udtfPlan;
     this.rawTimeSeriesInputLayer = inputLayer;

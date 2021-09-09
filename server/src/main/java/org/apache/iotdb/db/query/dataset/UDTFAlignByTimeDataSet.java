@@ -193,7 +193,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       }
 
       // todo: control upper bound here
-      udfLayer.updateRowRecordListEvictionUpperBound();
+      rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
     }
 
     /*
@@ -296,7 +296,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     }
 
     // todo: control upper bound here
-    udfLayer.updateRowRecordListEvictionUpperBound();
+    rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
 
     return rowRecord;
   }

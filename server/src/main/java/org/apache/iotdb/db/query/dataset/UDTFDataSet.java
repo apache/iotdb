@@ -27,7 +27,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.core.layer.DAGBuilder;
-import org.apache.iotdb.db.query.udf.core.layer.UDFLayer;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -48,7 +48,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   protected final long queryId;
   protected final UDTFPlan udtfPlan;
-  protected final UDFLayer udfLayer;
+  protected final RawQueryInputLayer rawQueryInputLayer;
 
   protected LayerPointReader[] transformers;
 
@@ -65,8 +65,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    udfLayer =
-        new UDFLayer(
+    rawQueryInputLayer =
+        new RawQueryInputLayer(
             queryId,
             UDF_READER_MEMORY_BUDGET_IN_MB,
             deduplicatedPaths,
@@ -89,8 +89,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
-    udfLayer =
-        new UDFLayer(
+    rawQueryInputLayer =
+        new RawQueryInputLayer(
             queryId,
             UDF_READER_MEMORY_BUDGET_IN_MB,
             deduplicatedPaths,
@@ -102,7 +102,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   protected void initTransformers() throws QueryProcessException, IOException {
     transformers =
-        new DAGBuilder(queryId, udtfPlan, udfLayer, UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB)
+        new DAGBuilder(queryId, udtfPlan, rawQueryInputLayer, UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB)
             .buildLayerMemoryAssigner()
             .buildResultColumnPointReaders()
             .getResultColumnPointReaders();
