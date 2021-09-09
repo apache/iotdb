@@ -1072,11 +1072,13 @@ public class MManager {
   }
 
   /**
-   * Get schema of partialPaths, in which aligned timeseries should only organized to one schema.
-   * This method should be called when logical plan converts to physical plan.
+   * Get schema of partialPaths, in which aligned time series should only organized to one schema.
+   * BEFORE this method, all the aligned time series is NOT united. For example,
+   * VectorMeasurementSchema(root.sg.d1.vector1 [s1,s2]) will be * root.sg.d1.vector1[s1],
+   * root.sg.d1.vector1[s2]
    *
-   * @param fullPaths full path list without pointing out which timeseries are aligned. For example,
-   *     maybe (s1,s2) are aligned, but the input could be [root.sg1.d1.s1, root.sg1.d1.s2]
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     VectorMeasurementSchema (s1,s2) would be returned once; Size of integer list must equal to
    *     the input list size. It indicates the index of elements of original list in the result list
@@ -1084,62 +1086,28 @@ public class MManager {
   public Pair<List<PartialPath>, Map<String, Integer>> getSeriesSchemas(List<PartialPath> fullPaths)
       throws MetadataException {
     Map<IMNode, PartialPath> nodeToPartialPath = new LinkedHashMap<>();
-    Map<IMNode, List<Integer>> nodeToIndex = new LinkedHashMap<>();
+    Map<String, Integer> pathIndex = new LinkedHashMap<>();
     for (int i = 0; i < fullPaths.size(); i++) {
       PartialPath path = fullPaths.get(i);
-      // use dfs to collect paths
+      pathIndex.put(path.getExactFullPath(), i);
+      if (path.isMeasurementAliasExists()) {
+        pathIndex.put(path.getFullPathWithAlias(), i);
+      }
+
       IMeasurementMNode node = (IMeasurementMNode) getNodeByPath(path);
-      getNodeToPartialPath(node, nodeToPartialPath, nodeToIndex, path, i);
-    }
-    return getPair(fullPaths, nodeToPartialPath, nodeToIndex);
-  }
-
-  protected void getNodeToPartialPath(
-      IMeasurementMNode node,
-      Map<IMNode, PartialPath> nodeToPartialPath,
-      Map<IMNode, List<Integer>> nodeToIndex,
-      PartialPath path,
-      int index) {
-    if (!nodeToPartialPath.containsKey(node)) {
-      nodeToPartialPath.put(node, path);
-      nodeToIndex.computeIfAbsent(node, k -> new ArrayList<>()).add(index);
-    } else {
-      // if nodeToPartialPath contains node
-      String existPath = nodeToPartialPath.get(node).getFullPath();
-      if (existPath.equals(path.getFullPath())) {
-        // could be the same path in different aggregate functions
-        nodeToIndex.get(node).add(index);
+      if (!nodeToPartialPath.containsKey(node)) {
+        nodeToPartialPath.put(node, path.copy());
       } else {
-        // could be VectorPartialPath
-        ((VectorPartialPath) nodeToPartialPath.get(node))
-            .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
-        nodeToIndex.get(node).add(index);
+        // if nodeToPartialPath contains node
+        PartialPath existPath = nodeToPartialPath.get(node);
+        if (!existPath.equals(path)) {
+          // could be VectorPartialPath
+          ((VectorPartialPath) existPath)
+              .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
+        }
       }
     }
-  }
-
-  protected Pair<List<PartialPath>, Map<String, Integer>> getPair(
-      List<PartialPath> fullPaths,
-      Map<IMNode, PartialPath> nodeToPartialPath,
-      Map<IMNode, List<Integer>> nodeToIndex)
-      throws MetadataException {
-    Map<String, Integer> indexMap = new HashMap<>();
-    int i = 0;
-    for (List<Integer> indexList : nodeToIndex.values()) {
-      for (int index : indexList) {
-        PartialPath partialPath = fullPaths.get(i);
-        if (indexMap.containsKey(partialPath.getFullPath())) {
-          throw new MetadataException(
-              "Query for measurement and its alias at the same time!", true);
-        }
-        indexMap.put(partialPath.getFullPath(), index);
-        if (partialPath.isMeasurementAliasExists()) {
-          indexMap.put(partialPath.getFullPathWithAlias(), index);
-        }
-        i++;
-      }
-    }
-    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), indexMap);
+    return new Pair<>(new ArrayList<>(nodeToPartialPath.values()), pathIndex);
   }
 
   /**

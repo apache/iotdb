@@ -105,7 +105,7 @@ public class QueryRouter implements IQueryRouter {
     }
 
     // Currently, we only group the vector partial paths for raw query without value filter
-    // queryPlan.transformToVector();
+    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 

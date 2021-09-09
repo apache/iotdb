@@ -45,6 +45,7 @@ public class PartialPath extends Path implements Comparable<Path> {
   // alias of measurement, null pointer cannot be serialized in thrift so empty string is instead
   protected String measurementAlias = "";
 
+  public PartialPath() {}
   /**
    * Construct the PartialPath using a String, will split the given String into String[] E.g., path
    * = "root.sg.\"d.1\".\"s.1\"" nodes = {"root", "sg", "\"d.1\"", "\"s.1\""}
@@ -167,6 +168,15 @@ public class PartialPath extends Path implements Comparable<Path> {
       fullPath = s.toString();
       return fullPath;
     }
+  }
+
+  public PartialPath copy() {
+    PartialPath result = new PartialPath();
+    result.nodes = nodes;
+    result.fullPath = fullPath;
+    result.device = device;
+    result.measurementAlias = measurementAlias;
+    return result;
   }
 
   @Override
