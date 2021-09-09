@@ -308,8 +308,8 @@ public class PartialPath extends Path implements Comparable<Path> {
     String fullPath = partialPath.getFullPath();
     if (partialPath instanceof VectorPartialPath) {
       VectorPartialPath vectorPartialPath = (VectorPartialPath) partialPath;
-      if (vectorPartialPath.getSubSensorsPathList().size() == 1) {
-        fullPath = vectorPartialPath.getSubSensorsPathList().get(0).getFullPath();
+      if (vectorPartialPath.getSubSensorsList().size() == 1) {
+        fullPath = vectorPartialPath.getSubSensorsList().get(0).getFullPath();
       }
     }
     return fullPath;

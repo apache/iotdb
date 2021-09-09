@@ -96,7 +96,7 @@ public class RawDataQueryPlan extends QueryPlan {
     if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
-      transformVectorPaths(physicalGenerator, columnForDisplaySet);
+      // transformVectorPaths(physicalGenerator, columnForDisplaySet);
     }
   }
 
@@ -132,7 +132,7 @@ public class RawDataQueryPlan extends QueryPlan {
           set.add(path.getMeasurement());
           if (path instanceof VectorPartialPath) {
             ((VectorPartialPath) path)
-                .getSubSensorsPathList()
+                .getSubSensorsList()
                 .forEach(subSensor -> set.add(subSensor.getMeasurement()));
           }
         });

@@ -105,7 +105,7 @@ public class FileLoaderUtils {
       return loadVectorTimeSeriesMetadata(
           resource,
           seriesPath,
-          ((VectorPartialPath) seriesPath).getSubSensorsPathList(),
+          ((VectorPartialPath) seriesPath).getSubSensorsList(),
           context,
           filter,
           allSensors);

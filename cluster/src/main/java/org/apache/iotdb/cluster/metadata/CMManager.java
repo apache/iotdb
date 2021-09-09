@@ -194,10 +194,10 @@ public class CMManager extends MManager {
     }
 
     if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
+      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
+        path = ((VectorPartialPath) path).getSubSensorsList().get(0);
       }
     }
 

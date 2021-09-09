@@ -764,10 +764,10 @@ public class MManager {
     }
 
     if (path instanceof VectorPartialPath) {
-      if (((VectorPartialPath) path).getSubSensorsPathList().size() != 1) {
+      if (((VectorPartialPath) path).getSubSensorsList().size() != 1) {
         return TSDataType.VECTOR;
       } else {
-        path = ((VectorPartialPath) path).getSubSensorsPathList().get(0);
+        path = ((VectorPartialPath) path).getSubSensorsList().get(0);
       }
     }
     IMeasurementSchema schema = mtree.getSchema(path);
@@ -1058,7 +1058,7 @@ public class MManager {
       return schema;
     }
     List<String> measurementsInLeaf = schema.getSubMeasurementsList();
-    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsPathList();
+    List<PartialPath> measurements = ((VectorPartialPath) fullPath).getSubSensorsList();
     TSDataType[] types = new TSDataType[measurements.size()];
     TSEncoding[] encodings = new TSEncoding[measurements.size()];
 
@@ -1116,7 +1116,7 @@ public class MManager {
       } else {
         // could be VectorPartialPath
         ((VectorPartialPath) nodeToPartialPath.get(node))
-            .addSubSensor(((VectorPartialPath) path).getSubSensorsPathList());
+            .addSubSensor(((VectorPartialPath) path).getSubSensorsList());
         nodeToIndex.get(node).add(index);
       }
     }

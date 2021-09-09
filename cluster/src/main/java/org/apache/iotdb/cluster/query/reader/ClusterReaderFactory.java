@@ -709,7 +709,7 @@ public class ClusterReaderFactory {
         path -> {
           if (path instanceof VectorPartialPath) {
             StringBuilder builder = new StringBuilder(path.getFullPath());
-            List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsPathList();
+            List<PartialPath> pathList = ((VectorPartialPath) path).getSubSensorsList();
             for (PartialPath partialPath : pathList) {
               builder.append(":");
               builder.append(partialPath.getFullPath());
