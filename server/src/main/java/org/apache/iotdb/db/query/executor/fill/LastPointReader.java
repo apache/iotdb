@@ -172,7 +172,7 @@ public class LastPointReader {
     List<IPageReader> pageReaders = FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
     Iterator it = pageReaders.descendingIterator();
     while (it.hasNext()) {
-      IPageReader pageReader = (IPageReader)it.next();
+      IPageReader pageReader = (IPageReader) it.next();
       Statistics pageStatistics = pageReader.getStatistics();
       if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint =

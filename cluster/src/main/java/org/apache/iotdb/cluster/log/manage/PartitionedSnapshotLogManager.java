@@ -43,8 +43,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to a
