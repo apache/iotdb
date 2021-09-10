@@ -24,9 +24,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.VectorPartialPath;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
@@ -139,7 +136,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
       // get all measurements of current device
-      Set<String> measurementOfGivenDevice = getDeviceMeasurements(currentDevice);
+      Set<String> measurementOfGivenDevice = getMeasurementsUnderGivenDevice(currentDevice);
 
       // extract paths and aggregations queried from all measurements
       // executeColumns is for calculating rowRecord
@@ -227,31 +224,19 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     return false;
   }
 
-  protected Set<String> getDeviceMeasurements(PartialPath device) throws IOException {
+  protected Set<String> getMeasurementsUnderGivenDevice(PartialPath device) throws IOException {
     try {
-      IMNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       Set<String> res = new HashSet<>();
-      for (IMNode mnode : deviceNode.getChildren().values()) {
-        IMeasurementSchema measurementSchema = ((MeasurementMNode) mnode).getSchema();
-        if (measurementSchema instanceof VectorMeasurementSchema) {
-          for (String subMeasurement : measurementSchema.getSubMeasurementsList()) {
-            res.add(measurementSchema.getMeasurementId() + "." + subMeasurement);
+      // TODO: Implement this method in Cluster MManager
+      List<IMeasurementSchema> measurementSchemas =
+          IoTDB.metaManager.getAllMeasurementByDevicePath(device);
+      for (IMeasurementSchema schema : measurementSchemas) {
+        if (schema instanceof VectorMeasurementSchema) {
+          for (String subMeasurement : schema.getSubMeasurementsList()) {
+            res.add(schema.getMeasurementId() + "." + subMeasurement);
           }
         } else {
-          res.add(mnode.getName());
-        }
-      }
-
-      Template template = deviceNode.getUpperTemplate();
-      if (template != null) {
-        for (IMeasurementSchema schema : template.getSchemaMap().values()) {
-          if (schema instanceof VectorMeasurementSchema) {
-            for (String subMeasurement : schema.getSubMeasurementsList()) {
-              res.add(schema.getMeasurementId() + "." + subMeasurement);
-            }
-          } else {
-            res.add(schema.getMeasurementId());
-          }
+          res.add(schema.getMeasurementId());
         }
       }
 
@@ -264,8 +249,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private PartialPath transformPath(PartialPath device, String measurement) throws IOException {
     try {
       PartialPath fullPath = new PartialPath(device.getFullPath(), measurement);
-      MeasurementMNode node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(fullPath);
-      if (node.getSchema() instanceof MeasurementSchema) {
+      IMeasurementSchema schema = IoTDB.metaManager.getMeasurementSchemaByPath(fullPath);
+      if (schema instanceof MeasurementSchema) {
         return fullPath;
       } else {
         return new VectorPartialPath(fullPath.getDevice(), fullPath.getMeasurement());

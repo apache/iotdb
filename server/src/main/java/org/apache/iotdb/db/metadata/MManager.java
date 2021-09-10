@@ -1153,6 +1153,11 @@ public class MManager {
     return mtree.getNodeByPath(path);
   }
 
+  public IMeasurementSchema getMeasurementSchemaByPath(PartialPath fullPath)
+      throws MetadataException {
+    return ((MeasurementMNode) IoTDB.metaManager.getNodeByPath(fullPath)).getSchema();
+  }
+
   /**
    * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
    * device], return the MNode of root.sg Get storage group node by path. If storage group is not
