@@ -157,6 +157,7 @@ public class FileLoaderUtils {
    * @param resource corresponding TsFileResource
    * @param vectorPath instance of VectorPartialPath, vector's full path, e.g. (root.sg1.d1.vector,
    *     [root.sg1.d1.vector.s1, root.sg1.d1.vector.s2])
+   * @param allSensors all sensors belonging to this device that appear in query
    */
   private static VectorTimeSeriesMetadata loadVectorTimeSeriesMetadata(
       TsFileResource resource,
