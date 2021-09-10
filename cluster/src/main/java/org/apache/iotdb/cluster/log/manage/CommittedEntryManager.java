@@ -56,11 +56,10 @@ public class CommittedEntryManager {
 
   CommittedEntryManager(int maxNumOfLogInMem, LogManagerMeta meta) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
-    entries
-        .add(new EmptyContentLog(meta.getMaxHaveAppliedCommitIndex() - 1, meta.getLastLogTerm()));
+    entries.add(
+        new EmptyContentLog(meta.getMaxHaveAppliedCommitIndex() - 1, meta.getLastLogTerm()));
     entryTotalMemSize = 0;
   }
-
 
   /**
    * Overwrite the contents of this object with those of the given snapshot. Note that this function
@@ -123,7 +122,7 @@ public class CommittedEntryManager {
    *
    * @param index request entry index
    * @return -1 if index > entries[entries.size()-1].index, throw EntryCompactedException if index <
-   * dummyIndex, or return the entry's term for given index
+   *     dummyIndex, or return the entry's term for given index
    * @throws EntryCompactedException
    */
   public long maybeTerm(long index) throws EntryCompactedException {
@@ -138,7 +137,7 @@ public class CommittedEntryManager {
    * Pack entries from low through high - 1, just like slice (entries[low:high]). dummyIndex < low
    * <= high. Note that caller must ensure low <= high.
    *
-   * @param low  request index low bound
+   * @param low request index low bound
    * @param high request index upper bound
    */
   public List<Log> getEntries(long low, long high) {
@@ -173,7 +172,7 @@ public class CommittedEntryManager {
    *
    * @param index request entry index
    * @return null if index > entries[entries.size()-1].index, throw EntryCompactedException if index
-   * < dummyIndex, or return the entry's log for given index
+   *     < dummyIndex, or return the entry's log for given index
    * @throws EntryCompactedException
    */
   Log getEntry(long index) throws EntryCompactedException {

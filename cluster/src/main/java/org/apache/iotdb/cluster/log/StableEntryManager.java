@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
+
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 
 public interface StableEntryManager {
 
