@@ -65,28 +65,22 @@ import java.util.Map;
 
 public class TsFileRewriteToolTest {
 
-  private String path = null;
-
-  private IoTDBConfig config;
-  private boolean originEnablePartition;
-  private long originPartitionInterval;
-
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
-
-  private final long maxTimestamp = 50000L;//100000000L;
-
+  private final long maxTimestamp = 50000L; // 100000000L;
   private final String folder = "target" + File.separator + "split";
-
   private final String STORAGE_GROUP = "root.sg_0";
   private final String DEVICE1 = STORAGE_GROUP + ".device_1";
   private final String DEVICE2 = STORAGE_GROUP + ".device_2";
   private final String SENSOR1 = "sensor_1";
   private final String SENSOR2 = "sensor_2";
   private final long VALUE_OFFSET = 1;
-
   private final IPlanExecutor queryExecutor = new PlanExecutor();
   private final Planner processor = new Planner();
+  private String path = null;
+  private IoTDBConfig config;
+  private boolean originEnablePartition;
+  private long originPartitionInterval;
 
   public TsFileRewriteToolTest() throws QueryProcessException {}
 
@@ -226,7 +220,7 @@ public class TsFileRewriteToolTest {
   }
 
   public void createlModificationFile(String timeseriesPath) {
-    String modFilePath=path+ModificationFile.FILE_SUFFIX;
+    String modFilePath = path + ModificationFile.FILE_SUFFIX;
     ModificationFile modificationFile = new ModificationFile(modFilePath);
     List<Modification> mods = new ArrayList<>();
     try {

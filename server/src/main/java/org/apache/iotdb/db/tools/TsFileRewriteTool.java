@@ -162,10 +162,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    * This method is used to settle tsFiles and mods files, so that each old TsFile corresponds to a
    * new TsFile
    *
-   * @param resourcesToBeRewritten
    * @return Each old TsFile corresponds to the TsFileResource of the new TsFile
-   * @throws IOException
-   * @throws WriteProcessException
    */
   public static List<TsFileResource> settleTsFilesAndMods(
       List<TsFileResource> resourcesToBeRewritten) throws IOException, WriteProcessException {
