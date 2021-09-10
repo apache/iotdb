@@ -2058,7 +2058,6 @@ public class MManager {
       }
 
       if (schema != null) {
-        IMeasurementMNode result = null;
         if (schema instanceof MeasurementSchema) {
           return new MeasurementMNode(deviceMNode, measurement, schema, null);
         } else if (schema instanceof VectorMeasurementSchema) {
