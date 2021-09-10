@@ -1694,8 +1694,8 @@ public class MManager {
   }
 
   /**
-   * Update the last cache value in given unary MeasurementMNode.
-   * Vector lastCache operation won't work.
+   * Update the last cache value in given unary MeasurementMNode. Vector lastCache operation won't
+   * work.
    *
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
@@ -1747,8 +1747,8 @@ public class MManager {
   }
 
   /**
-   * Get the last cache value of time series of given seriesPath.
-   * MManager will use the seriesPath to search the node.
+   * Get the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
    *
    * <p>Invoking scenario: last cache read during last Query
    *
@@ -1768,8 +1768,7 @@ public class MManager {
   }
 
   /**
-   * Get the last cache value in given unary MeasurementMNode.
-   * Vector case won't work.
+   * Get the last cache value in given unary MeasurementMNode. Vector case won't work.
    *
    * <p>Invoking scenario: last cache read during last Query
    *
@@ -1784,8 +1783,8 @@ public class MManager {
   }
 
   /**
-   * Get the last cache value of given subMeasurement of given MeasurementMNode.
-   * Must be Vector case.
+   * Get the last cache value of given subMeasurement of given MeasurementMNode. Must be Vector
+   * case.
    *
    * <p>Invoking scenario: last cache read during last Query
    *
@@ -1801,8 +1800,8 @@ public class MManager {
   }
 
   /**
-   * Reset the last cache value of time series of given seriesPath.
-   * MManager will use the seriesPath to search the node.
+   * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
    *
    * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    */
