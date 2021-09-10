@@ -57,7 +57,11 @@ public class CommittedEntryManager {
   CommittedEntryManager(int maxNumOfLogInMem, LogManagerMeta meta) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(
-        new EmptyContentLog(meta.getMaxHaveAppliedCommitIndex() - 1, meta.getLastLogTerm()));
+        new EmptyContentLog(
+            meta.getMaxHaveAppliedCommitIndex() == -1
+                ? -1
+                : meta.getMaxHaveAppliedCommitIndex() - 1,
+            meta.getLastLogTerm()));
     entryTotalMemSize = 0;
   }
 
