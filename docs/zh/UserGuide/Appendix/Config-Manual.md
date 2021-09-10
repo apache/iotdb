@@ -293,6 +293,87 @@
 |默认值| 1073741824 |
 |改后生效方式|enable\_mem\_control 为 false 时生效、重启服务生效|
 
+* enable\_timed\_flush\_seq\_memtable
+
+|名字| enable\_timed\_flush\_seq\_memtable |
+|:---:|:---|
+|描述| 是否开启定时刷盘顺序 memtable |
+|类型|Bool|
+|默认值| false |
+|改后生效方式| 触发生效 |
+
+* seq\_memtable\_flush\_interval\_in\_ms
+
+|名字| seq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|类型|Int32|
+|默认值| 3600000 |
+|改后生效方式| 触发生效 |
+
+* seq\_memtable\_flush\_check\_interval\_in\_ms
+
+|名字| seq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|描述| 检查顺序 memtable 是否需要刷盘的时间间隔 |
+|类型|Int32|
+|默认值| 600000 |
+|改后生效方式| 触发生效 |
+
+* enable\_timed\_flush\_unseq\_memtable
+
+|名字| enable\_timed\_flush\_unseq\_memtable |
+|:---:|:---|
+|描述| 是否开启定时刷新乱序 memtable |
+|类型|Bool|
+|默认值| false |
+|改后生效方式| 触发生效 |
+
+* unseq\_memtable\_flush\_interval\_in\_ms
+
+|名字| unseq\_memtable\_flush\_interval\_in\_ms |
+|:---:|:---|
+|描述| 当 memTable 的创建时间小于当前时间减去该值时，该 memtable 需要被刷盘 |
+|类型|Int32|
+|默认值| 3600000 |
+|改后生效方式| 触发生效 |
+
+* unseq\_memtable\_flush\_check\_interval\_in\_ms
+
+|名字| unseq\_memtable\_flush\_check\_interval\_in\_ms |
+|:---:|:---|
+|描述| 检查乱序 memtable 是否需要刷盘的时间间隔 |
+|类型|Int32|
+|默认值| 600000 |
+|改后生效方式| 触发生效 |
+
+* enable\_timed\_close\_tsfile
+
+|名字| enable\_timed\_close\_tsfile |
+|:---:|:---|
+|描述| 是否开启定时关闭 tsfile |
+|类型|Bool|
+|默认值| false |
+|改后生效方式| 触发生效 |
+
+* close\_tsfile\_interval\_after\_flushing\_in\_ms
+
+|名字| close\_tsfile\_interval\_after\_flushing\_in\_ms |
+|:---:|:---|
+|描述| 当 tsfile 的上一个 memtable 刷盘时间小于当前时间减去该值且当前工作 memtable 为空时， 该 tsfile 需要被关闭 |
+|类型|Int32|
+|默认值| 3600000 |
+|改后生效方式| 触发生效 |
+
+* close\_tsfile\_check\_interval\_in\_ms
+
+|名字| close\_tsfile\_check\_interval\_in\_ms |
+|:---:|:---|
+|描述| 检查 tsfile 是否需要关闭的时间间隔 |
+|类型|Int32|
+|默认值| 600000 |
+|改后生效方式| 触发生效 |
+
 * avg\_series\_point\_number\_threshold
 
 |名字| avg\_series\_point\_number\_threshold |

@@ -43,6 +43,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -192,6 +193,67 @@ public abstract class Cases {
       }
       Assert.assertFalse(resultSet.next());
       resultSet.close();
+    }
+
+    // test https://issues.apache.org/jira/browse/IOTDB-1600
+    try {
+      // Target data of device "root.ln.wf01.d_1600"
+      // Time s1   s2   s3
+      // 1000 1.0  2.0  null
+      // 2000 null 3.0  4.0
+      // 3000 5.0  6.0  7.0
+      String testDevice = "root.ln.wf01.d_1600";
+      session.createTimeseries(
+          testDevice + ".s1", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      session.createTimeseries(
+          testDevice + ".s2", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      session.createTimeseries(
+          testDevice + ".s3", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      List<Long> insertTimes = Arrays.asList(1000L, 2000L, 3000L);
+      List<List<String>> insertedMeasurements =
+          Arrays.asList(
+              Arrays.asList("s1", "s2"),
+              Arrays.asList("s2", "s3"),
+              Arrays.asList("s1", "s2", "s3"));
+      List<List<TSDataType>> insertedDataTypes =
+          Arrays.asList(
+              Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE),
+              Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE),
+              Arrays.asList(TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE));
+      List<List<Object>> insertedValues =
+          Arrays.asList(
+              Arrays.asList(1.0D, 2.0D),
+              Arrays.asList(3.0D, 4.0D),
+              Arrays.asList(5.0D, 6.0D, 7.0D));
+      session.insertRecordsOfOneDevice(
+          testDevice, insertTimes, insertedMeasurements, insertedDataTypes, insertedValues);
+      final double E = 0.00001;
+      for (Statement readStatement : readStatements) {
+        resultSet = readStatement.executeQuery("select s1, s2, s3 from " + testDevice);
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(1000L, resultSet.getLong("Time"));
+        Assert.assertEquals(1.0D, resultSet.getDouble(testDevice + ".s1"), E);
+        Assert.assertEquals(2.0D, resultSet.getDouble(testDevice + ".s2"), E);
+        Assert.assertNull(resultSet.getObject(testDevice + ".s3"));
+
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(2000L, resultSet.getLong("Time"));
+        Assert.assertNull(resultSet.getObject(testDevice + ".s1"));
+        Assert.assertEquals(3.0D, resultSet.getDouble(testDevice + ".s2"), E);
+        Assert.assertEquals(4.0D, resultSet.getDouble(testDevice + ".s3"), E);
+
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(3000L, resultSet.getLong("Time"));
+        Assert.assertEquals(5.0D, resultSet.getDouble(testDevice + ".s1"), E);
+        Assert.assertEquals(6.0D, resultSet.getDouble(testDevice + ".s2"), E);
+        Assert.assertEquals(7.0D, resultSet.getDouble(testDevice + ".s3"), E);
+
+        Assert.assertFalse(resultSet.next());
+        resultSet.close();
+      }
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -526,5 +588,26 @@ public abstract class Cases {
         }
       }
     }
+  }
+
+  @Test
+  public void SetSystemReadOnlyWritableTest() throws SQLException {
+
+    String setReadOnly = "SET SYSTEM TO READONLY";
+    String createTimeSeries =
+        "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
+    String setWritable = "SET SYSTEM TO WRITABLE";
+
+    writeStatement.execute(setReadOnly);
+
+    try {
+      writeStatement.execute(createTimeSeries);
+    } catch (Exception e) {
+      Assert.assertTrue(
+          e.getMessage()
+              .contains("Current system mode is read-only, does not support non-query operation"));
+    }
+
+    writeStatement.execute(setWritable);
   }
 }
