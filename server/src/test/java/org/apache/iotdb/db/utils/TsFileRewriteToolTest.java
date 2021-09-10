@@ -21,8 +21,13 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -69,7 +74,7 @@ public class TsFileRewriteToolTest {
   private final boolean newEnablePartition = true;
   private final long newPartitionInterval = 3600_000;
 
-  private final long maxTimestamp = 100000000L;
+  private final long maxTimestamp = 50000L;//100000000L;
 
   private final String folder = "target" + File.separator + "split";
 
@@ -135,6 +140,27 @@ public class TsFileRewriteToolTest {
   }
 
   @Test
+  public void settleTsFilesAndModsTest() {
+    HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
+    List<String> sensors = new ArrayList<>();
+    sensors.add(SENSOR1);
+    deviceSensorsMap.put(DEVICE1, sensors);
+    createOneTsFile(deviceSensorsMap);
+
+    String timeseriesPath = STORAGE_GROUP + DEVICE1 + SENSOR1;
+    createlModificationFile(timeseriesPath);
+
+    File tsFile = new File(path);
+    List<TsFileResource> resourcesToBeRewritten = new ArrayList<>();
+    resourcesToBeRewritten.add(new TsFileResource(tsFile));
+    try {
+      TsFileRewriteTool.settleTsFilesAndMods(resourcesToBeRewritten);
+    } catch (IOException | WriteProcessException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void splitOneTsfileWithOneDeviceOneSensorTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
@@ -195,6 +221,23 @@ public class TsFileRewriteToolTest {
     try {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));
     } catch (Exception e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  public void createlModificationFile(String timeseriesPath) {
+    String modFilePath=path+ModificationFile.FILE_SUFFIX;
+    ModificationFile modificationFile = new ModificationFile(modFilePath);
+    List<Modification> mods = new ArrayList<>();
+    try {
+      PartialPath partialPath = new PartialPath(timeseriesPath);
+      mods.add(new Deletion(partialPath, 10000000, 1500, 10000));
+      mods.add(new Deletion(partialPath, 10000000, 20000, 30000));
+      mods.add(new Deletion(partialPath, 10000000, 50000, 60000));
+      for (Modification mod : mods) {
+        modificationFile.write(mod);
+      }
+    } catch (IllegalPathException | IOException e) {
       Assert.fail(e.getMessage());
     }
   }
