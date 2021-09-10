@@ -264,11 +264,6 @@ public class LastQueryExecutor {
     private IMeasurementMNode node;
 
     LastCacheAccessor(PartialPath seriesPath) {
-      if (seriesPath instanceof VectorPartialPath) {
-        // the seriesPath has been transformed to vector path
-        // here needs subSensor path
-        seriesPath = ((VectorPartialPath) seriesPath).getSubSensorsPathList().get(0);
-      }
       this.path = seriesPath;
     }
 
@@ -276,8 +271,17 @@ public class LastQueryExecutor {
       try {
         node = (IMeasurementMNode) IoTDB.metaManager.getNodeByPath(path);
       } catch (MetadataException e) {
+        TimeValuePair timeValuePair;
         // cluster mode may not get remote node
-        TimeValuePair timeValuePair = IoTDB.metaManager.getLastCache(path, null);
+        if (path instanceof VectorPartialPath) {
+          // the seriesPath has been transformed to vector path
+          // here needs subSensor path
+          timeValuePair =
+              IoTDB.metaManager.getLastCache(
+                  ((VectorPartialPath) path).getSubSensorsPathList().get(0));
+        } else {
+          timeValuePair = IoTDB.metaManager.getLastCache(path);
+        }
         if (timeValuePair != null) {
           return timeValuePair;
         }
@@ -286,11 +290,34 @@ public class LastQueryExecutor {
       if (node == null) {
         return null;
       }
-      return IoTDB.metaManager.getLastCache(path, node);
+
+      if (path instanceof VectorPartialPath) {
+        // the seriesPath has been transformed to vector path
+        // here needs subSensor path
+        return IoTDB.metaManager.getLastCache(
+            node, ((VectorPartialPath) path).getSubSensorsPathList().get(0).getMeasurement());
+      } else {
+        return IoTDB.metaManager.getLastCache(node);
+      }
     }
 
     public void write(TimeValuePair pair) {
-      IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE, node);
+      if (node == null) {
+        IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE);
+      } else {
+        if (path instanceof VectorPartialPath) {
+          // the seriesPath has been transformed to vector path
+          // here needs subSensor path
+          IoTDB.metaManager.updateLastCache(
+              node,
+              ((VectorPartialPath) path).getSubSensorsPathList().get(0).getMeasurement(),
+              pair,
+              false,
+              Long.MIN_VALUE);
+        } else {
+          IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+        }
+      }
     }
   }
 

@@ -408,8 +408,7 @@ public class CMManager extends MManager {
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
+      Long latestFlushedTime) {
     cacheLock.writeLock().lock();
     try {
       IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
@@ -421,17 +420,17 @@ public class CMManager extends MManager {
       cacheLock.writeLock().unlock();
     }
     // maybe local also has the timeseries
-    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   @Override
-  public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
     IMeasurementMNode measurementMNode = mRemoteMetaCache.get(seriesPath);
     if (measurementMNode != null) {
       return LastCacheManager.getLastCache(seriesPath, measurementMNode);
     }
 
-    return super.getLastCache(seriesPath, node);
+    return super.getLastCache(seriesPath);
   }
 
   @Override

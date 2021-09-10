@@ -1665,8 +1665,8 @@ public class MManager {
   /**
    * Update the last cache value of time series of given seriesPath.
    *
-   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
-   * is null, MManager will use the seriesPath to search the node.
+   * <p>MManager will use the seriesPath to search the node first and then process the lastCache in
+   * the MeasurementMNode
    *
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
@@ -1675,21 +1675,18 @@ public class MManager {
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
-   * @param node the measurementMNode holding the lastCache
    */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
-    if (node == null) {
-      try {
-        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-      } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-        return;
-      }
+      Long latestFlushedTime) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
     }
 
     LastCacheManager.updateLastCache(
@@ -1697,22 +1694,71 @@ public class MManager {
   }
 
   /**
-   * Get the last cache value of time series of given seriesPath.
+   * Update the last cache value in given unary MeasurementMNode.
+   * Vector lastCache operation won't work.
    *
-   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
-   * is null, MManager will use the seriesPath to search the node.
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      return;
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+  }
+
+  /**
+   * Update the last cache value of subMeasurement given Vector MeasurementMNode.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      String subMeasurement,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      return;
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath().concatNode(subMeasurement),
+        timeValuePair,
+        highPriorityUpdate,
+        latestFlushedTime,
+        node);
+  }
+
+  /**
+   * Get the last cache value of time series of given seriesPath.
+   * MManager will use the seriesPath to search the node.
    *
    * <p>Invoking scenario: last cache read during last Query
    *
    * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
-   * @param node the measurementMNode holding the lastCache
    * @return the last cache value
    */
-  public TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
     try {
-      if (node == null) {
-        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-      }
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
     } catch (MetadataException e) {
       logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
       return null;
@@ -1722,22 +1768,51 @@ public class MManager {
   }
 
   /**
-   * Reset the last cache value of time series of given seriesPath.
+   * Get the last cache value in given unary MeasurementMNode.
+   * Vector case won't work.
    *
-   * <p>MManager will process lastCache in the given node if the node is not null. If the given node
-   * is null, MManager will use the seriesPath to search the node.
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache, must be unary timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      return null;
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath(), node);
+  }
+
+  /**
+   * Get the last cache value of given subMeasurement of given MeasurementMNode.
+   * Must be Vector case.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node, String subMeasurement) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      return null;
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
+  }
+
+  /**
+   * Reset the last cache value of time series of given seriesPath.
+   * MManager will use the seriesPath to search the node.
    *
    * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
-   * @param node the measurementMNode holding the lastCache
    */
-  public void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
-    if (node == null) {
-      try {
-        node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-      } catch (MetadataException e) {
-        logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
-        return;
-      }
+  public void resetLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
     }
 
     LastCacheManager.resetLastCache(seriesPath, node);

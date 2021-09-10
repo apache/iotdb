@@ -1088,39 +1088,33 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    if (plan.isAligned()) {
-      for (int i = 0; i < mNodes.length; i++) {
-        if (plan.getColumns()[i] == null) {
-          continue;
-        }
-        // Update cached last value with high priority
-        // vector lastCache update need subSensor path
+    for (int i = 0; i < mNodes.length; i++) {
+      if (plan.getColumns()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      if (mNodes[i] == null) {
+        // no matter aligned or not, concat the path to use the full path to update LastCache
         IoTDB.metaManager.updateLastCache(
             plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
-            latestFlushedTime,
-            mNodes[i]);
-      }
-    } else {
-      for (int i = 0; i < mNodes.length; i++) {
-        if (plan.getColumns()[i] == null) {
-          continue;
-        }
-        // Update cached last value with high priority
-        if (mNodes[i] != null) {
+            latestFlushedTime);
+      } else {
+        if (plan.isAligned()) {
+          // vector lastCache update need subMeasurement
+          IoTDB.metaManager.updateLastCache(
+              mNodes[i],
+              plan.getMeasurements()[i],
+              plan.composeLastTimeValuePair(i),
+              true,
+              latestFlushedTime);
+
+        } else {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeLastTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
-        } else {
-          // measurementMNodes[i] is null, use the path to update remote cache
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime,
-              null);
+              mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
         }
       }
     }
@@ -1163,38 +1157,32 @@ public class StorageGroupProcessor {
       return;
     }
     IMeasurementMNode[] mNodes = plan.getMeasurementMNodes();
-    if (plan.isAligned()) {
-      for (int i = 0; i < mNodes.length; i++) {
-        if (plan.getValues()[i] == null) {
-          continue;
-        }
-        // Update cached last value with high priority
-        // vector lastCache update need subSensor path
+    for (int i = 0; i < mNodes.length; i++) {
+      if (plan.getValues()[i] == null) {
+        continue;
+      }
+      // Update cached last value with high priority
+      if (mNodes[i] == null) {
+        // no matter aligned or not, concat the path to use the full path to update LastCache
         IoTDB.metaManager.updateLastCache(
             plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
-            latestFlushedTime,
-            mNodes[i]);
-      }
-    } else {
-      for (int i = 0; i < mNodes.length; i++) {
-        if (plan.getValues()[i] == null) {
-          continue;
-        }
-        // Update cached last value with high priority
-        if (mNodes[i] != null) {
+            latestFlushedTime);
+      } else {
+        if (plan.isAligned()) {
+          // vector lastCache update need subSensor path
+          IoTDB.metaManager.updateLastCache(
+              mNodes[i],
+              plan.getMeasurements()[i],
+              plan.composeTimeValuePair(i),
+              true,
+              latestFlushedTime);
+        } else {
           // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
           // update last cache
           IoTDB.metaManager.updateLastCache(
-              null, plan.composeTimeValuePair(i), true, latestFlushedTime, mNodes[i]);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime,
-              null);
+              mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
         }
       }
     }
