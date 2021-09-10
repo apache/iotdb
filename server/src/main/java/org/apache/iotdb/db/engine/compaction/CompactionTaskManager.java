@@ -153,7 +153,10 @@ public class CompactionTaskManager implements IService {
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (pool != null && !pool.isTerminated()) {
-      logger.info("submitted a compaction task, currentTaskNum={}", getTaskCount());
+      logger.info(
+          "submitted a compaction task, task num in pool = {}, currentTaskNum is {}",
+          getTaskCount(),
+          currentTaskNum.get());
       Future<Void> future = pool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
       compactionTaskFutures

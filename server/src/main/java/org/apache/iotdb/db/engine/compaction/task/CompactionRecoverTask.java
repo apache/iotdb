@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
-import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CompactionRecoverCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
 
@@ -59,10 +58,6 @@ public class CompactionRecoverTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    logger.info("recovering sequence inner compaction");
-    recoverInnerCompaction(true);
-    logger.info("recovering unsequence inner compaction");
-    recoverInnerCompaction(false);
     logger.info("recovering cross compaction");
     recoverCrossCompaction();
     logger.info("try to synchronize CompactionScheduler");
@@ -73,38 +68,6 @@ public class CompactionRecoverTask implements Callable<Void> {
         "recover task finish, current compaction thread is {}",
         CompactionTaskManager.getInstance().getTaskCount());
     return null;
-  }
-
-  private void recoverInnerCompaction(boolean isSequence) throws Exception {
-    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
-    List<String> dirs;
-    if (isSequence) {
-      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
-    } else {
-      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
-    }
-    for (String dir : dirs) {
-      String storageGroupDir =
-          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for (Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
-        File[] compactionLogs =
-            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
-        for (File compactionLog : compactionLogs) {
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getInnerCompactionStrategy()
-              .getCompactionRecoverTask(
-                  tsFileResourceManager.getStorageGroupName(),
-                  tsFileResourceManager.getVirtualStorageGroup(),
-                  timePartition,
-                  compactionLog,
-                  timePartitionDir,
-                  isSequence)
-              .call();
-        }
-      }
-    }
   }
 
   private void recoverCrossCompaction() throws Exception {

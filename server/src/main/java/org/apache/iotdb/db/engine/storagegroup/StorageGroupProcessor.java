@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
@@ -443,6 +444,13 @@ public class StorageGroupProcessor {
             logicalStorageGroupName, virtualStorageGroupId));
 
     try {
+      recoverInnerSpaceCompaction(true);
+      recoverInnerSpaceCompaction(false);
+    } catch (Exception e) {
+      throw new StorageGroupProcessorException(e);
+    }
+
+    try {
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
           getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -528,6 +536,38 @@ public class StorageGroupProcessor {
                 tsFileResourceManager,
                 logicalStorageGroupName,
                 virtualStorageGroupId));
+  }
+
+  private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
+    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
+    List<String> dirs;
+    if (isSequence) {
+      dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
+    } else {
+      dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
+    }
+    for (String dir : dirs) {
+      String storageGroupDir =
+          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
+      for (Long timePartition : timePartitions) {
+        String timePartitionDir = storageGroupDir + File.separator + timePartition;
+        File[] compactionLogs =
+            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
+        for (File compactionLog : compactionLogs) {
+          IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getInnerCompactionStrategy()
+              .getCompactionRecoverTask(
+                  tsFileResourceManager.getStorageGroupName(),
+                  tsFileResourceManager.getVirtualStorageGroup(),
+                  timePartition,
+                  compactionLog,
+                  timePartitionDir,
+                  isSequence)
+              .call();
+        }
+      }
+    }
   }
 
   private void submitTimedCompactionTask() {

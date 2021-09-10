@@ -75,7 +75,7 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
-    LOGGER.debug(
+    LOGGER.info(
         "{} [Compaction] SizeTiredCompactionSelector start to select, target file size is {}, "
             + "target file num is {}, current task num is {}, total task num is {}",
         logicalStorageGroupName + "-" + virtualStorageGroupName,
@@ -98,11 +98,16 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
             || (!enableSeqSpaceCompaction && sequence)
             || (!enableUnseqSpaceCompaction && !sequence)) {
           if (CompactionTaskManager.currentTaskNum.get() >= concurrentCompactionThread) {
-            LOGGER.debug(
-                "Return selection because too many compaction thread, current thread num is {}",
-                CompactionTaskManager.currentTaskNum);
+            LOGGER.info(
+                "{} [Compaction] Return selection because too many compaction thread, "
+                    + "current thread num is {}, total task num is {}",
+                logicalStorageGroupName + "-" + virtualStorageGroupName,
+                CompactionTaskManager.currentTaskNum,
+                CompactionTaskManager.getInstance().getTaskCount());
           } else {
-            LOGGER.debug("Return selection because compaction is not enable");
+            LOGGER.info(
+                "{} [Compaction] Return selection because compaction is not enable",
+                logicalStorageGroupName + "-" + virtualStorageGroupName);
           }
           LOGGER.info(
               "{} [Compaction] SizeTiredCompactionSelector submit {} tasks",
