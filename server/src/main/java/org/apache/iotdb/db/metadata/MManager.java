@@ -1700,7 +1700,7 @@ public class MManager {
    * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
    * during last Query
    *
-   * @param node the measurementMNode holding the lastCache
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
@@ -1711,7 +1711,7 @@ public class MManager {
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     if (node.getSchema() instanceof VectorMeasurementSchema) {
-      return;
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
     }
     LastCacheManager.updateLastCache(
         node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
@@ -1736,7 +1736,8 @@ public class MManager {
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
     if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
-      return;
+      throw new UnsupportedOperationException(
+          "Can't update lastCache of subMeasurement in unary measurement");
     }
     LastCacheManager.updateLastCache(
         node.getPartialPath().concatNode(subMeasurement),
@@ -1752,7 +1753,8 @@ public class MManager {
    *
    * <p>Invoking scenario: last cache read during last Query
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param seriesPath the full path from root to measurement of timeseries or subMeasurement of
+   *     aligned timeseries
    * @return the last cache value
    */
   public TimeValuePair getLastCache(PartialPath seriesPath) {
@@ -1772,12 +1774,12 @@ public class MManager {
    *
    * <p>Invoking scenario: last cache read during last Query
    *
-   * @param node the measurementMNode holding the lastCache, must be unary timeseries
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
    * @return the last cache value
    */
   public TimeValuePair getLastCache(IMeasurementMNode node) {
     if (node.getSchema() instanceof VectorMeasurementSchema) {
-      return null;
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
     }
     return LastCacheManager.getLastCache(node.getPartialPath(), node);
   }
@@ -1794,7 +1796,8 @@ public class MManager {
    */
   public TimeValuePair getLastCache(IMeasurementMNode node, String subMeasurement) {
     if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
-      return null;
+      throw new UnsupportedOperationException(
+          "Can't get lastCache of subMeasurement from unary measurement");
     }
     return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
   }
@@ -1803,7 +1806,8 @@ public class MManager {
    * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
    * to search the node.
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param seriesPath the path from root to measurement of timeseries or subMeasurement of aligned
+   *     timeseries
    */
   public void resetLastCache(PartialPath seriesPath) {
     IMeasurementMNode node;
