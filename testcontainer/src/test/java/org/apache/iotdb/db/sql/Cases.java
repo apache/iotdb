@@ -618,21 +618,20 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaInClusterMode()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
-    session.setEnableCacheLeader(false);
-    List<String> measurement_list = new ArrayList<>();
-    measurement_list.add("s1");
-    measurement_list.add("s2");
-    measurement_list.add("s3");
+    List<String> measurementList = new ArrayList<>();
+    measurementList.add("s1");
+    measurementList.add("s2");
+    measurementList.add("s3");
 
-    List<TSDataType> type_list = new ArrayList<>();
-    type_list.add(TSDataType.INT64);
-    type_list.add(TSDataType.INT64);
-    type_list.add(TSDataType.INT64);
+    List<TSDataType> typeList = new ArrayList<>();
+    typeList.add(TSDataType.INT64);
+    typeList.add(TSDataType.INT64);
+    typeList.add(TSDataType.INT64);
 
-    List<Object> value_list = new ArrayList<>();
-    value_list.add(1L);
-    value_list.add(2L);
-    value_list.add(3L);
+    List<Object> valueList = new ArrayList<>();
+    valueList.add(1L);
+    valueList.add(2L);
+    valueList.add(3L);
 
     for (int i = 0; i < 5; i++) {
       String sg = "root.sg" + String.valueOf(i);
@@ -665,28 +664,28 @@ public abstract class Cases {
     for (int i = 0; i < 5; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+            String.format("root.sg%s.d1", i), t, measurementList, typeList, 1L, 2L, 3L);
       }
     }
 
-    List<List<String>> measurements_list = new ArrayList<>();
-    List<List<Object>> values_list = new ArrayList<>();
-    List<List<TSDataType>> types_List = new ArrayList<>();
-    List<String> device_list = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<String> deviceList = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      String device_path = String.format("root.sg%s.d2", i);
-      device_list.add(device_path);
-      types_List.add(type_list);
-      measurements_list.add(measurement_list);
-      values_list.add(value_list);
+      String devicePath = String.format("root.sg%s.d2", i);
+      deviceList.add(devicePath);
+      typesList.add(typeList);
+      measurementsList.add(measurementList);
+      valuesList.add(valueList);
     }
 
     for (long t = 0; t < 3; t++) {
-      List<Long> time_list = new ArrayList<>();
+      List<Long> timeList = new ArrayList<>();
       for (int i = 0; i < 5; i++) {
-        time_list.add(t);
+        timeList.add(t);
       }
-      session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
+      session.insertRecords(deviceList, timeList, measurementsList, typesList, valuesList);
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -715,22 +714,22 @@ public abstract class Cases {
     for (int i = 5; i < 10; i++) {
       for (long t = 0; t < 3; t++) {
         session.insertRecord(
-            String.format("root.sg%s.d1", i), t, measurement_list, type_list, 1L, 2L, 3L);
+            String.format("root.sg%s.d1", i), t, measurementList, typeList, 1L, 2L, 3L);
       }
     }
 
-    device_list.clear();
+    deviceList.clear();
     for (int i = 5; i < 10; i++) {
       String device_path = String.format("root.sg%s.d2", i);
-      device_list.add(device_path);
+      deviceList.add(device_path);
     }
 
     for (long t = 0; t < 3; t++) {
-      List<Long> time_list = new ArrayList<>();
+      List<Long> timeList = new ArrayList<>();
       for (int i = 0; i < 5; i++) {
-        time_list.add(t);
+        timeList.add(t);
       }
-      session.insertRecords(device_list, time_list, measurements_list, types_List, values_list);
+      session.insertRecords(deviceList, timeList, measurementsList, typesList, valuesList);
     }
 
     tabletMap.clear();
@@ -750,6 +749,22 @@ public abstract class Cases {
 
     session.insertTablets(tabletMap);
 
+    measurementsList.clear();
+    List<Long> timeList = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      timeList.add((long) i);
+      List<String> measurements = new ArrayList<>();
+      measurements.add(String.format("s%d", i));
+      measurements.add(String.format("s%d", i + 5));
+      measurements.add(String.format("s%d", i + 10));
+      measurementsList.add(measurements);
+    }
+
+    session.insertRecordsOfOneDevice(
+        "root.sg0.d5", timeList, measurementsList, typesList, valuesList);
+    session.insertRecordsOfOneDevice(
+        "root.sg20.d1", timeList, measurementsList, typesList, valuesList);
+
     for (Statement readStatement : readStatements) {
       for (int i = 0; i < 10; i++) {
         for (int d = 1; d <= 4; d++) {
@@ -764,9 +779,29 @@ public abstract class Cases {
           }
         }
       }
+
+      for (int i = 0; i < 5; i++) {
+        ResultSet resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg0.d5", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+
+        resultSet =
+            readStatement.executeQuery(
+                String.format("select s%d,s%d,s%d from root.sg20.d1", i, i + 5, i + 10));
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(resultSet.getLong(1), i);
+        Assert.assertEquals(resultSet.getString(2), "1");
+        Assert.assertEquals(resultSet.getString(3), "2");
+        Assert.assertEquals(resultSet.getString(4), "3");
+      }
     }
 
-    // test create time series without sg
+    // test create time series
     for (int i = 0; i < 5; i++) {
       session.createTimeseries(
           String.format("root.sg1%s.d1.s1", i),
@@ -792,43 +827,6 @@ public abstract class Cases {
         ResultSet resultSet =
             readStatement.executeQuery(String.format("show timeseries root.sg1%s.d1.s1", i));
         Assert.assertTrue(resultSet.next());
-      }
-    }
-
-    // other insert cases
-    List<Long> time_list = new ArrayList<>();
-    List<List<String>> measurementsList = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
-      time_list.add((long) i);
-      List<String> measurements = new ArrayList<>();
-      measurements.add(String.format("s%d", i));
-      measurements.add(String.format("s%d", i + 5));
-      measurements.add(String.format("s%d", i + 10));
-      measurementsList.add(measurements);
-    }
-    session.insertRecordsOfOneDevice(
-        "root.sg0.d5", time_list, measurementsList, types_List, values_list);
-    session.insertRecordsOfOneDevice(
-        "root.sg10.d1", time_list, measurementsList, types_List, values_list);
-    for (Statement readStatement : readStatements) {
-      for (int i = 0; i < 5; i++) {
-        ResultSet resultSet =
-            readStatement.executeQuery(
-                String.format("select s%d,s%d,s%d from root.sg0.d5", i, i + 5, i + 10));
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(resultSet.getLong(1), i);
-        Assert.assertEquals(resultSet.getString(2), "1");
-        Assert.assertEquals(resultSet.getString(3), "2");
-        Assert.assertEquals(resultSet.getString(4), "3");
-
-        resultSet =
-            readStatement.executeQuery(
-                String.format("select s%d,s%d,s%d from root.sg10.d1", i, i + 5, i + 10));
-        Assert.assertTrue(resultSet.next());
-        Assert.assertEquals(resultSet.getLong(1), i);
-        Assert.assertEquals(resultSet.getString(2), "1");
-        Assert.assertEquals(resultSet.getString(3), "2");
-        Assert.assertEquals(resultSet.getString(4), "3");
       }
     }
   }
