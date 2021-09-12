@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.*;
@@ -1661,32 +1662,198 @@ public class MManager {
     // do nothing
   }
 
+  /**
+   * Update the last cache value of time series of given seriesPath.
+   *
+   * <p>MManager will use the seriesPath to search the node first and then process the lastCache in
+   * the MeasurementMNode
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
   public void updateLastCache(
       PartialPath seriesPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
-    if (node != null) {
-      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else {
-      try {
-        IMeasurementMNode node1 = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-      } catch (MetadataException e) {
-        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
-      }
+      Long latestFlushedTime) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
+    }
+
+    LastCacheManager.updateLastCache(
+        seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+  }
+
+  /**
+   * Update the last cache value in given unary MeasurementMNode. Vector lastCache operation won't
+   * work.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath(), timeValuePair, highPriorityUpdate, latestFlushedTime, node);
+  }
+
+  /**
+   * Update the last cache value of subMeasurement given Vector MeasurementMNode.
+   *
+   * <p>Invoking scenario: (1) after executing insertPlan (2) after reading last value from file
+   * during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @param timeValuePair the latest point value
+   * @param highPriorityUpdate the last value from insertPlan is high priority
+   * @param latestFlushedTime latest flushed time
+   */
+  public void updateLastCache(
+      IMeasurementMNode node,
+      String subMeasurement,
+      TimeValuePair timeValuePair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      throw new UnsupportedOperationException(
+          "Can't update lastCache of subMeasurement in unary measurement");
+    }
+    LastCacheManager.updateLastCache(
+        node.getPartialPath().concatNode(subMeasurement),
+        timeValuePair,
+        highPriorityUpdate,
+        latestFlushedTime,
+        node);
+  }
+
+  /**
+   * Get the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param seriesPath the full path from root to measurement of timeseries or subMeasurement of
+   *     aligned timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return null;
+    }
+
+    return LastCacheManager.getLastCache(seriesPath, node);
+  }
+
+  /**
+   * Get the last cache value in given unary MeasurementMNode. Vector case won't work.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache, must be unary measurement
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node) {
+    if (node.getSchema() instanceof VectorMeasurementSchema) {
+      throw new UnsupportedOperationException("Must provide subMeasurement for vector measurement");
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath(), node);
+  }
+
+  /**
+   * Get the last cache value of given subMeasurement of given MeasurementMNode. Must be Vector
+   * case.
+   *
+   * <p>Invoking scenario: last cache read during last Query
+   *
+   * @param node the measurementMNode holding the lastCache
+   * @param subMeasurement the subMeasurement of aligned timeseries
+   * @return the last cache value
+   */
+  public TimeValuePair getLastCache(IMeasurementMNode node, String subMeasurement) {
+    if (!(node.getSchema() instanceof VectorMeasurementSchema)) {
+      throw new UnsupportedOperationException(
+          "Can't get lastCache of subMeasurement from unary measurement");
+    }
+    return LastCacheManager.getLastCache(node.getPartialPath().concatNode(subMeasurement), node);
+  }
+
+  /**
+   * Reset the last cache value of time series of given seriesPath. MManager will use the seriesPath
+   * to search the node.
+   *
+   * @param seriesPath the path from root to measurement of timeseries or subMeasurement of aligned
+   *     timeseries
+   */
+  public void resetLastCache(PartialPath seriesPath) {
+    IMeasurementMNode node;
+    try {
+      node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
+    } catch (MetadataException e) {
+      logger.warn("failed to reset last cache for the {}, err:{}", seriesPath, e.getMessage());
+      return;
+    }
+
+    LastCacheManager.resetLastCache(seriesPath, node);
+  }
+
+  /**
+   * delete all the last cache value of any timeseries or aligned timeseries under the device
+   *
+   * <p>Invoking scenario (1) after upload tsfile
+   *
+   * @param deviceId path of device
+   */
+  public void deleteLastCacheByDevice(PartialPath deviceId) throws MetadataException {
+    IMNode node = getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice((IEntityMNode) node);
     }
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    try {
-      IMeasurementMNode node = (IMeasurementMNode) mtree.getNodeByPath(seriesPath);
-      return node.getCachedLast();
-    } catch (MetadataException e) {
-      logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+  /**
+   * delete the last cache value of timeseries or subMeasurement of some aligned timeseries, which
+   * is under the device and matching the originalPath
+   *
+   * <p>Invoking scenario (1) delete timeseries
+   *
+   * @param deviceId path of device
+   * @param originalPath origin timeseries path
+   * @param startTime startTime
+   * @param endTime endTime
+   */
+  public void deleteLastCacheByDevice(
+      PartialPath deviceId, PartialPath originalPath, long startTime, long endTime)
+      throws MetadataException {
+    IMNode node = IoTDB.metaManager.getDeviceNode(deviceId);
+    if (node.isEntity()) {
+      LastCacheManager.deleteLastCacheByDevice(
+          (IEntityMNode) node, originalPath, startTime, endTime);
     }
-    return null;
   }
 
   /** get schema for device. Attention!!! Only support insertPlan */
