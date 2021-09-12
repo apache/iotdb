@@ -45,7 +45,7 @@ public class SyncDataHeartbeatClient extends SyncDataClient {
                     TConfigurationConst.defaultTConfiguration,
                     node.getInternalIp(),
                     node.getDataPort() + ClusterUtils.DATA_HEARTBEAT_PORT_OFFSET,
-                    RaftServer.getConnectionTimeoutInMS()))));
+                    RaftServer.getHeartbeatClientConnTimeoutMs()))));
     this.node = node;
     this.pool = pool;
     getInputProtocol().getTransport().open();

@@ -20,13 +20,14 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -55,7 +56,7 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   private long offset = -1;
 
   /** last value cache */
-  private TimeValuePair cachedLastValuePair = null;
+  private volatile ILastCacheContainer lastCacheContainer = null;
 
   /** registered trigger */
   private TriggerExecutor triggerExecutor = null;
@@ -153,42 +154,20 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public TimeValuePair getCachedLast() {
-    return cachedLastValuePair;
-  }
-
-  /**
-   * update last point cache
-   *
-   * @param timeValuePair last point
-   * @param highPriorityUpdate whether it's a high priority update
-   * @param latestFlushedTime latest flushed time
-   */
-  @Override
-  public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) {
-      return;
-    }
-
-    if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
-      // update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+  public ILastCacheContainer getLastCacheContainer() {
+    if (lastCacheContainer == null) {
+      synchronized (this) {
+        if (lastCacheContainer == null) {
+          lastCacheContainer = new LastCacheContainer();
+        }
       }
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
     }
+    return lastCacheContainer;
   }
 
   @Override
-  public void resetCache() {
-    cachedLastValuePair = null;
+  public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
+    this.lastCacheContainer = lastCacheContainer;
   }
 
   @Override

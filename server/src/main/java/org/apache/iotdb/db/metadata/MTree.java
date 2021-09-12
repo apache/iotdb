@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -30,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -49,14 +49,11 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -173,38 +170,6 @@ public class MTree implements Serializable {
         }
       }
       throw e;
-    }
-  }
-
-  public static long getLastTimeStamp(IMeasurementMNode node, QueryContext queryContext) {
-    TimeValuePair last = node.getCachedLast();
-    if (last != null) {
-      return node.getCachedLast().getTimestamp();
-    } else {
-      try {
-        QueryDataSource dataSource =
-            QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getPartialPath(), queryContext, null);
-        Set<String> measurementSet = new HashSet<>();
-        measurementSet.add(node.getPartialPath().getFullPath());
-        LastPointReader lastReader =
-            new LastPointReader(
-                node.getPartialPath(),
-                node.getSchema().getType(),
-                measurementSet,
-                queryContext,
-                dataSource,
-                Long.MAX_VALUE,
-                null);
-        last = lastReader.readLastPoint();
-        return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
-      } catch (Exception e) {
-        logger.error(
-            "Something wrong happened while trying to get last time value pair of {}",
-            node.getFullPath(),
-            e);
-        return Long.MIN_VALUE;
-      }
     }
   }
 
@@ -1395,7 +1360,8 @@ public class MTree implements Serializable {
       tsRow[5] = String.valueOf(((IMeasurementMNode) node).getOffset());
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp = new Pair<>(nodePath, tsRow);
       timeseriesSchemaList.add(temp);
@@ -1425,7 +1391,8 @@ public class MTree implements Serializable {
       tsRow[5] = "-1";
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp =
           new Pair<>(new VectorPartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
@@ -1458,7 +1425,8 @@ public class MTree implements Serializable {
       tsRow[5] = "-1";
       tsRow[6] =
           needLast
-              ? String.valueOf(getLastTimeStamp((IMeasurementMNode) node, queryContext))
+              ? String.valueOf(
+                  LastCacheManager.getLastTimeStamp((IMeasurementMNode) node, queryContext))
               : null;
       Pair<PartialPath, String[]> temp =
           new Pair<>(new VectorPartialPath(devicePath.getFullPath(), measurements.get(i)), tsRow);
