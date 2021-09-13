@@ -38,7 +38,6 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
-import org.apache.iotdb.cluster.log.applier.SingleReplicaDataApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -162,8 +161,7 @@ public class DataGroupMember extends RaftMember {
 
   private LocalQueryExecutor localQueryExecutor;
 
-  SingleReplicaDataApplier singleReplicaApplier;
-
+  DataLogApplier singleReplicaApplier;
   /**
    * When a new partition table is installed, all data members will be checked if unchanged. If not,
    * such members will be removed.
@@ -204,11 +202,11 @@ public class DataGroupMember extends RaftMember {
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
+    singleReplicaApplier = new DataLogApplier(metaGroupMember, this);
     LogApplier applier = new DataLogApplier(metaGroupMember, this);
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
       applier = new AsyncDataLogApplier(applier, name);
     }
-    singleReplicaApplier = new SingleReplicaDataApplier(metaGroupMember, this);
     logManager =
         new FilePartitionedSnapshotLogManager(
             applier, metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode, this);

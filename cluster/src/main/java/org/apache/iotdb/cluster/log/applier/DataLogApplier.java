@@ -81,21 +81,7 @@ public class DataLogApplier extends BaseApplier {
       } else if (log instanceof PhysicalPlanLog) {
         PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
         PhysicalPlan plan = physicalPlanLog.getPlan();
-        if (plan instanceof DeletePlan) {
-          ((DeletePlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
-        } else if (plan instanceof DeleteTimeSeriesPlan) {
-          ((DeleteTimeSeriesPlan) plan)
-              .setPartitionFilter(dataGroupMember.getTimePartitionFilter());
-        }
-        if (plan instanceof InsertMultiTabletPlan) {
-          applyInsert((InsertMultiTabletPlan) plan);
-        } else if (plan instanceof InsertRowsPlan) {
-          applyInsert((InsertRowsPlan) plan);
-        } else if (plan instanceof InsertPlan) {
-          applyInsert((InsertPlan) plan);
-        } else {
-          applyPhysicalPlan(plan, dataGroupMember);
-        }
+        applyPhysicalPlan(plan);
       } else if (log instanceof CloseFileLog) {
         CloseFileLog closeFileLog = ((CloseFileLog) log);
         StorageEngine.getInstance()
@@ -118,7 +104,25 @@ public class DataLogApplier extends BaseApplier {
     }
   }
 
-  protected void applyInsert(InsertMultiTabletPlan plan)
+  public void applyPhysicalPlan(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    if (plan instanceof DeletePlan) {
+      ((DeletePlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
+    } else if (plan instanceof DeleteTimeSeriesPlan) {
+      ((DeleteTimeSeriesPlan) plan).setPartitionFilter(dataGroupMember.getTimePartitionFilter());
+    }
+    if (plan instanceof InsertMultiTabletPlan) {
+      applyInsert((InsertMultiTabletPlan) plan);
+    } else if (plan instanceof InsertRowsPlan) {
+      applyInsert((InsertRowsPlan) plan);
+    } else if (plan instanceof InsertPlan) {
+      applyInsert((InsertPlan) plan);
+    } else {
+      applyPhysicalPlan(plan, dataGroupMember);
+    }
+  }
+
+  private void applyInsert(InsertMultiTabletPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertTabletPlan insertTabletPlan : plan.getInsertTabletPlanList()) {
@@ -140,7 +144,7 @@ public class DataLogApplier extends BaseApplier {
     applyPhysicalPlan(plan, dataGroupMember);
   }
 
-  protected void applyInsert(InsertRowsPlan plan)
+  private void applyInsert(InsertRowsPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     boolean hasSync = false;
     for (InsertRowPlan insertRowPlan : plan.getInsertRowPlanList()) {
@@ -162,7 +166,7 @@ public class DataLogApplier extends BaseApplier {
     applyPhysicalPlan(plan, dataGroupMember);
   }
 
-  protected void applyInsert(InsertPlan plan)
+  private void applyInsert(InsertPlan plan)
       throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     try {
       IoTDB.metaManager.getStorageGroupPath(plan.getPrefixPath());
