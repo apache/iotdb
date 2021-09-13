@@ -71,8 +71,7 @@ public class QueryTimeManager implements IService {
               () -> {
                 killQuery(queryId);
                 logger.warn(
-                    String.format(
-                        "Query is time out (%dms) with queryId %d", timeout, queryId));
+                    String.format("Query is time out (%dms) with queryId %d", timeout, queryId));
               },
               timeout,
               TimeUnit.MILLISECONDS);
