@@ -539,7 +539,6 @@ public class StorageGroupProcessor {
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
-    Set<Long> timePartitions = tsFileResourceManager.getTimePartitions();
     List<String> dirs;
     if (isSequence) {
       dirs = DirectoryManager.getInstance().getAllSequenceFileFolders();
@@ -547,12 +546,23 @@ public class StorageGroupProcessor {
       dirs = DirectoryManager.getInstance().getAllUnSequenceFileFolders();
     }
     for (String dir : dirs) {
-      String storageGroupDir =
-          dir + File.separator + logicalStorageGroupName + File.separator + virtualStorageGroupId;
-      for (Long timePartition : timePartitions) {
-        String timePartitionDir = storageGroupDir + File.separator + timePartition;
+      File storageGroupDir =
+          new File(
+              dir
+                  + File.separator
+                  + logicalStorageGroupName
+                  + File.separator
+                  + virtualStorageGroupId);
+      if (!storageGroupDir.exists()) {
+        return;
+      }
+      File[] timePartitionDirs = storageGroupDir.listFiles();
+      if (timePartitionDirs == null) {
+        return;
+      }
+      for (File timePartitionDir : timePartitionDirs) {
         File[] compactionLogs =
-            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir);
+            InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
           IoTDBDescriptor.getInstance()
               .getConfig()
@@ -560,9 +570,12 @@ public class StorageGroupProcessor {
               .getCompactionRecoverTask(
                   tsFileResourceManager.getStorageGroupName(),
                   tsFileResourceManager.getVirtualStorageGroup(),
-                  timePartition,
+                  Long.parseLong(
+                      timePartitionDir
+                          .getPath()
+                          .substring(timePartitionDir.getPath().lastIndexOf(File.separator) + 1)),
                   compactionLog,
-                  timePartitionDir,
+                  timePartitionDir.getPath(),
                   isSequence)
               .call();
         }
