@@ -1426,6 +1426,7 @@ public class PlanExecutor implements IPlanExecutor {
                   insertRowPlan.getValues()[i], insertRowPlan.isNeedInferType());
         }
       }
+      insertRowPlan.transferType();
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
       if (insertRowPlan.isAligned()) {

@@ -413,31 +413,27 @@ public class InsertRowPlan extends InsertPlan {
         ReadWriteIOUtils.write((String) values[i], outputStream);
       } else {
         ReadWriteIOUtils.write(dataTypes[i], outputStream);
-        if (isNeedInferType) {
-          ReadWriteIOUtils.write(values[i].toString(), outputStream);
-        } else {
-          switch (dataTypes[i]) {
-            case BOOLEAN:
-              ReadWriteIOUtils.write((Boolean) values[i], outputStream);
-              break;
-            case INT32:
-              ReadWriteIOUtils.write((Integer) values[i], outputStream);
-              break;
-            case INT64:
-              ReadWriteIOUtils.write((Long) values[i], outputStream);
-              break;
-            case FLOAT:
-              ReadWriteIOUtils.write((Float) values[i], outputStream);
-              break;
-            case DOUBLE:
-              ReadWriteIOUtils.write((Double) values[i], outputStream);
-              break;
-            case TEXT:
-              ReadWriteIOUtils.write((Binary) values[i], outputStream);
-              break;
-            default:
-              throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
-          }
+        switch (dataTypes[i]) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values[i], outputStream);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values[i], outputStream);
+            break;
+          case INT64:
+            ReadWriteIOUtils.write((Long) values[i], outputStream);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values[i], outputStream);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values[i], outputStream);
+            break;
+          case TEXT:
+            ReadWriteIOUtils.write((Binary) values[i], outputStream);
+            break;
+          default:
+            throw new QueryProcessException("Unsupported data type:" + dataTypes[i]);
         }
       }
     }
