@@ -36,7 +36,7 @@ fi
 SOMAXCONN=65535
 case "$(uname)" in
     Linux)
-        somaxconn=$(sysctl net.core.somaxconn | awk '{print $2}')
+        somaxconn=$(sysctl -n net.core.somaxconn)
         if [ "$somaxconn" -lt $SOMAXCONN ]; then
             echo "WARN:"
             echo "WARN: the value of net.core.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
@@ -46,7 +46,7 @@ case "$(uname)" in
         fi
     ;;
     FreeBSD | Darwin)
-        somaxconn=$(sysctl kern.ipc.somaxconn | awk '{print $2}')
+        somaxconn=$(sysctl -n kern.ipc.somaxconn)
         if [ "$somaxconn" -lt $SOMAXCONN ]; then
             echo "WARN:"
             echo "WARN: the value of kern.ipc.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
