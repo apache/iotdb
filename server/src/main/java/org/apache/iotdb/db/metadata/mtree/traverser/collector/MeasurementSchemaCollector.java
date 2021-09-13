@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.apache.iotdb.db.metadata.mtree.MTree.getLastTimeStamp;
+import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 public class MeasurementSchemaCollector
     extends MeasurementCollector<List<Pair<PartialPath, String[]>>> {
