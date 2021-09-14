@@ -220,7 +220,8 @@ abstract class BaseApplier implements LogApplier {
           plan.recoverFromFailure();
           getQueryExecutor().processNonQuery(plan);
         }
-      } else throw e;
+      }
+      throw e;
     }
   }
 
