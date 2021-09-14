@@ -281,7 +281,8 @@ public class InsertRowPlan extends InsertPlan {
         }
         // for aligned timeseries
         else {
-          for (TSDataType dataType : measurementMNodes[i].getSchema().getValueTSDataTypeList()) {
+          for (TSDataType dataType :
+              measurementMNodes[i].getSchema().getSubMeasurementsTSDataTypeList()) {
             dataTypes[columnIndex] = dataType;
             try {
               values[columnIndex] =
