@@ -45,7 +45,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
-  private Map<String, Integer> vectorPathToIndex = new HashMap<>();
+  private Map<String, Integer> vectorPathToIndex;
 
   private boolean enableRedirect = false;
 

@@ -97,7 +97,8 @@ public class RawDataQueryPlan extends QueryPlan {
     if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
-      transformVectorPaths(physicalGenerator, columnForDisplaySet);
+      fillVectorPathToIndex(columnForDisplaySet);
+      groupVectorPaths(physicalGenerator);
     }
   }
 
@@ -168,31 +169,36 @@ public class RawDataQueryPlan extends QueryPlan {
     return deviceToMeasurements;
   }
 
+  public void fillVectorPathToIndex(Set<String> columnForDisplaySet) {
+    Map<String, Integer> columnForDisplayToQueryDataSetIndex = new HashMap<>();
+    for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      PartialPath path = deduplicatedPaths.get(i);
+      columnForDisplayToQueryDataSetIndex.put(path.getExactFullPath(), i);
+      if (path.isMeasurementAliasExists()) {
+        columnForDisplayToQueryDataSetIndex.put(path.getFullPathWithAlias(), i);
+      }
+    }
+    Map<String, Integer> vectorPathToIndex = new HashMap<>();
+    for (String columnForDisplay : columnForDisplaySet) {
+      vectorPathToIndex.put(
+          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
+    }
+    this.setVectorPathToIndex(vectorPathToIndex);
+  }
+
   /**
    * Group all the subSensors of one vector into one VectorPartialPath save the grouped
    * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
    * them directly into deduplicatedPaths and deduplicatedDataTypes, because we don't know whether
    * the raw query has value filter here.
    */
-  public void transformVectorPaths(
-      PhysicalGenerator physicalGenerator, Set<String> columnForDisplaySet)
-      throws MetadataException {
-    Pair<List<PartialPath>, Map<String, Integer>> pair =
-        physicalGenerator.getSeriesSchema(getDeduplicatedPaths());
-
-    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
+  public void groupVectorPaths(PhysicalGenerator physicalGenerator) throws MetadataException {
+    List<PartialPath> vectorizedDeduplicatedPaths =
+        physicalGenerator.groupVectorPaths(getDeduplicatedPaths());
     List<TSDataType> vectorizedDeduplicatedDataTypes =
         new ArrayList<>(physicalGenerator.getSeriesTypes(vectorizedDeduplicatedPaths));
     setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
     setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
-
-    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> vectorPathToIndex = new HashMap<>();
-    for (String columnForDisplay : columnForDisplaySet) {
-      vectorPathToIndex.put(
-          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
-    }
-    setVectorPathToIndex(vectorPathToIndex);
   }
 
   public List<PartialPath> getDeduplicatedVectorPaths() {

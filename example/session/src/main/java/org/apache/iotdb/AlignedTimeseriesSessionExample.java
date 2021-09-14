@@ -52,13 +52,13 @@ public class AlignedTimeseriesSessionExample {
     // set session fetchSize
     session.setFetchSize(10000);
 
-    createTemplate();
-    createAlignedTimeseries();
-    insertAlignedRecord();
-
-    insertTabletWithAlignedTimeseriesMethod1();
-    insertTabletWithAlignedTimeseriesMethod2();
-    insertNullableTabletWithAlignedTimeseries();
+    //    createTemplate();
+    //    createAlignedTimeseries();
+    //    insertAlignedRecord();
+    //
+    //    insertTabletWithAlignedTimeseriesMethod1();
+    //    insertTabletWithAlignedTimeseriesMethod2();
+    //    insertNullableTabletWithAlignedTimeseries();
 
     selectTest();
     selectWithValueFilterTest();
