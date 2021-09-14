@@ -350,6 +350,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private boolean enableCrossSpaceCompaction = true;
 
+  /** enable compaction when the number and the size of files does not reach the threshold */
+  private boolean enableNotFullCompaction = true;
+
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
    * SIZE_TIRED_COMPACTION:
@@ -2327,6 +2330,14 @@ public class IoTDBConfig {
 
   public void setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
     this.enableUnseqSpaceCompaction = enableUnseqSpaceCompaction;
+  }
+
+  public boolean isEnableNotFullCompaction() {
+    return enableNotFullCompaction;
+  }
+
+  public void setEnableNotFullCompaction(boolean enableNotFullCompaction) {
+    this.enableNotFullCompaction = enableNotFullCompaction;
   }
 
   public boolean isEnableCrossSpaceCompaction() {

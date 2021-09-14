@@ -345,6 +345,12 @@ public class IoTDBDescriptor {
                   "enable_unseq_space_compaction",
                   Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
+      conf.setEnableNotFullCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_not_full_compaction",
+                  Boolean.toString(conf.isEnableNotFullCompaction()))));
+
       conf.setCrossCompactionStrategy(
           CrossCompactionStrategy.valueOf(
               properties.getProperty(

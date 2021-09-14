@@ -27,13 +27,16 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceManager;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * SizeTiredSelector selects files based on the total size or total number of files, and the
@@ -73,6 +76,9 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
     boolean enableSeqSpaceCompaction = config.isEnableSeqSpaceCompaction();
     boolean enableUnseqSpaceCompaction = config.isEnableUnseqSpaceCompaction();
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
+    PriorityQueue<Pair<List<TsFileResource>, Long>> notFullCompactionQueue =
+        new PriorityQueue<>(10, new SizeTiredCompactionTaskComparator());
+
     // this iterator traverses the list in reverse order
     tsFileResources.readLock();
     LOGGER.info(
@@ -127,6 +133,10 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
                 "Selected file list is clear because current file is {}",
                 currentFile.isMerging() ? "merging" : "not closed");
           }
+          if (selectedFileList.size() > 0) {
+            notFullCompactionQueue.add(
+                new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+          }
           selectedFileList.clear();
           selectedFileSize = 0L;
           continue;
@@ -151,6 +161,15 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
           submitTaskNum += 1;
           selectedFileList = new ArrayList<>();
           selectedFileSize = 0L;
+        }
+      }
+      if (selectedFileList.size() != 0) {
+        notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
+      }
+      if (config.isEnableNotFullCompaction()) {
+        while (CompactionTaskManager.currentTaskNum.get() < config.getConcurrentCompactionThread()
+            && notFullCompactionQueue.size() > 0) {
+          createAndSubmitTask(notFullCompactionQueue.poll().left);
         }
       }
       LOGGER.info(
@@ -189,5 +208,18 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         logicalStorageGroupName,
         virtualStorageGroupName,
         selectedFileList.size());
+  }
+
+  private class SizeTiredCompactionTaskComparator
+      implements Comparator<Pair<List<TsFileResource>, Long>> {
+
+    @Override
+    public int compare(Pair<List<TsFileResource>, Long> o1, Pair<List<TsFileResource>, Long> o2) {
+      if (o1.left.size() != o2.left.size()) {
+        return o1.left.size() - o2.left.size();
+      } else {
+        return ((int) (o1.right - o2.right));
+      }
+    }
   }
 }
