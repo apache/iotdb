@@ -86,7 +86,7 @@
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cluster-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-grafana-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-client-cpp-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
