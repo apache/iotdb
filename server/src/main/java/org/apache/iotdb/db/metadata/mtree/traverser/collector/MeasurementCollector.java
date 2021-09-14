@@ -70,7 +70,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
         return;
       }
       // only when idx > nodes.length or nodes ends with ** or isPrefixMatch
-      List<String> measurements = schema.getValueMeasurementIdList();
+      List<String> measurements = schema.getSubMeasurementsList();
       for (int i = 0; i < measurements.size(); i++) {
         if (hasLimit) {
           curOffset += 1;
@@ -91,7 +91,7 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
     if (idx == nodes.length - 1) {
       IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
       if (schema instanceof VectorMeasurementSchema) {
-        List<String> measurements = schema.getValueMeasurementIdList();
+        List<String> measurements = schema.getSubMeasurementsList();
         String regex = nodes[idx].replace("*", ".*");
         for (int i = 0; i < measurements.size(); i++) {
           if (!Pattern.matches(regex, measurements.get(i))) {

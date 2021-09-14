@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -71,17 +72,17 @@ public class MeasurementSchemaCollector
   protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
       throws MetadataException {
     IMeasurementSchema schema = node.getSchema();
-    List<String> measurements = schema.getValueMeasurementIdList();
+    List<String> measurements = schema.getSubMeasurementsList();
     String[] tsRow = new String[7];
     tsRow[0] = null;
     tsRow[1] = getStorageGroupPath(node).getFullPath();
-    tsRow[2] = schema.getValueTSDataTypeList().get(index).toString();
-    tsRow[3] = schema.getValueTSEncodingList().get(index).toString();
+    tsRow[2] = schema.getSubMeasurementsTSDataTypeList().get(index).toString();
+    tsRow[3] = schema.getSubMeasurementsTSEncodingList().get(index).toString();
     tsRow[4] = schema.getCompressor().toString();
     tsRow[5] = "-1";
     tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
     Pair<PartialPath, String[]> temp =
-        new Pair<>(node.getPartialPath().concatNode(measurements.get(index)), tsRow);
+        new Pair<>(new VectorPartialPath(node.getFullPath(),measurements.get(index)), tsRow);
     resultSet.add(temp);
   }
 

@@ -62,7 +62,7 @@ public class MeasurementCounter extends CounterTraverser {
     if (idx == nodes.length - 1) {
       IMeasurementSchema schema = ((IMeasurementMNode) node).getSchema();
       if (schema instanceof VectorMeasurementSchema) {
-        List<String> measurements = schema.getValueMeasurementIdList();
+        List<String> measurements = schema.getSubMeasurementsList();
         String regex = nodes[idx].replace("*", ".*");
         for (String measurement : measurements) {
           if (Pattern.matches(regex, measurement)) {
