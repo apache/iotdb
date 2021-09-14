@@ -112,7 +112,7 @@ public class MemUtils {
         // time and index column memSize
         memSize += (end - start) * (8L + 4L);
         // value columns memSize
-        for (TSDataType type : schema.getValueTSDataTypeList()) {
+        for (TSDataType type : schema.getSubMeasurementsTSDataTypeList()) {
           if (type == TSDataType.TEXT && addingTextDataSize) {
             for (int j = start; j < end; j++) {
               memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[columnCount])[j]);
