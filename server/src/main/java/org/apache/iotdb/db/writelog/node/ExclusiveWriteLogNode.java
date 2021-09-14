@@ -127,7 +127,6 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       plan.serialize(logBufferWorking);
     } catch (BufferOverflowException e) {
-      logger.info("WAL BufferOverflow !");
       logBufferWorking.reset();
       sync();
       plan.serialize(logBufferWorking);
