@@ -94,11 +94,9 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    if (isRawQuery()) {
-      // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
-      // vector into one VectorPartialPath
-      groupVectorPaths(physicalGenerator);
-    }
+    // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
+    // vector into one VectorPartialPath
+    groupVectorPaths(physicalGenerator);
   }
 
   public IExpression getExpression() {
@@ -208,9 +206,5 @@ public class RawDataQueryPlan extends QueryPlan {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
       this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
     }
-  }
-
-  public boolean isRawQuery() {
-    return true;
   }
 }
