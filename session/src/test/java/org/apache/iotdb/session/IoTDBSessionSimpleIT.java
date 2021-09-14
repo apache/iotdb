@@ -58,7 +58,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IoTDBSessionSimpleIT {
 
@@ -392,15 +396,15 @@ public class IoTDBSessionSimpleIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(0),
+          schemaList.get(0).getSubMeasurementsList().get(0),
           rowIndex,
           new SecureRandom().nextLong());
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(1),
+          schemaList.get(0).getSubMeasurementsList().get(1),
           rowIndex,
           new SecureRandom().nextInt());
       tablet.addValue(
-          schemaList.get(0).getValueMeasurementIdList().get(2), rowIndex, new Binary("test"));
+          schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, new Binary("test"));
       timestamp++;
     }
 
