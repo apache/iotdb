@@ -1,7 +1,3 @@
-package org.apache.iotdb.infludb.qp.logical.crud;
-
-
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,6 +17,7 @@ package org.apache.iotdb.infludb.qp.logical.crud;
  * under the License.
  */
 
+package org.apache.iotdb.infludb.qp.logical.crud;
 
 import org.apache.iotdb.infludb.qp.constant.SQLConstant;
 import org.apache.iotdb.infludb.query.expression.Expression;
