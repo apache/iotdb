@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -373,11 +374,15 @@ public class QueryOperator extends Operator {
         : (((FunctionExpression) expression).getPaths().get(0));
   }
 
+  /**
+   * If path is a vectorPartialPath, we return its measurementId + subMeasurement as the final
+   * measurement. e.g. path: root.sg.d1.vector1[s1], return "vector1.s1".
+   */
   private String getMeasurementName(PartialPath path, String aggregation) {
     String initialMeasurement = path.getMeasurement();
     if (path instanceof VectorPartialPath) {
       String subMeasurement = ((VectorPartialPath) path).getSubSensor(0);
-      initialMeasurement += "." + subMeasurement;
+      initialMeasurement += TsFileConstant.PATH_SEPARATOR + subMeasurement;
     }
     if (aggregation != null) {
       initialMeasurement = aggregation + "(" + initialMeasurement + ")";

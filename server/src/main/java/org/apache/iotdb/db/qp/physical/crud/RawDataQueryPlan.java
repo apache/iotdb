@@ -44,6 +44,7 @@ public class RawDataQueryPlan extends QueryPlan {
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
+  // TODO: remove this when all types of query supporting vector
   /** used to group all the sub sensors of one vector into VectorPartialPath */
   private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
 
