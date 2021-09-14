@@ -167,9 +167,11 @@ public class SizeTiredCompactionSelector extends AbstractInnerSpaceCompactionSel
         notFullCompactionQueue.add(new Pair<>(new ArrayList<>(selectedFileList), selectedFileSize));
       }
       if (config.isEnableNotFullCompaction()) {
-        while (CompactionTaskManager.currentTaskNum.get() < config.getConcurrentCompactionThread()
+        while (CompactionTaskManager.currentTaskNum.get()
+                < (int) (config.getConcurrentCompactionThread() * 0.3)
             && notFullCompactionQueue.size() > 0) {
           createAndSubmitTask(notFullCompactionQueue.poll().left);
+          submitTaskNum++;
         }
       }
       LOGGER.info(

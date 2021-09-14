@@ -152,6 +152,9 @@ public class CrossSpaceMergeTask implements Callable<Void> {
       IMNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       // todo add template merge logic
       for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
+        if ((!(entry.getValue() instanceof IMeasurementMNode))) {
+          continue;
+        }
         PartialPath path = device.concatNode(entry.getKey());
         measurementSchemaMap.put(path, ((IMeasurementMNode) entry.getValue()).getSchema());
         unmergedSeries.add(path);
