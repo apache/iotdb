@@ -35,7 +35,9 @@ import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
@@ -843,10 +845,19 @@ public class PhysicalGenerator {
     }
 
     FunctionOperator basicOperator;
-    if (operator instanceof InOperator) {
-      basicOperator = (InOperator) operator;
-    } else {
-      basicOperator = (BasicFunctionOperator) operator;
+    switch (operator.getType()) {
+      case IN:
+        basicOperator = (InOperator) operator;
+        break;
+      case LIKE:
+        basicOperator = (LikeOperator) operator;
+        break;
+      case REGEXP:
+        basicOperator = (RegexpOperator) operator;
+        break;
+      default:
+        basicOperator = (BasicFunctionOperator) operator;
+        break;
     }
 
     PartialPath filterPath = basicOperator.getSinglePath();
