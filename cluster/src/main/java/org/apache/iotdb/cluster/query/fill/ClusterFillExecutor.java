@@ -67,8 +67,10 @@ public class ClusterFillExecutor extends FillQueryExecutor {
       IFill clusterFill = new ClusterPreviousFill((PreviousFill) fill, metaGroupMember);
       clusterFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
       return clusterFill;
+    } else {
+      fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+      return fill;
     }
-    return null;
   }
 
   @Override
