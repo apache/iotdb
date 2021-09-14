@@ -1204,7 +1204,7 @@ public class CMManager extends MManager {
   /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
   @Override
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
-          PartialPath path, int limit, int offset) throws MetadataException {
+      PartialPath path, int limit, int offset) throws MetadataException {
 
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group

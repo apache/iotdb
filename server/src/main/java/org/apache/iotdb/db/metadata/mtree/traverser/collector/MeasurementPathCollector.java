@@ -51,6 +51,8 @@ public class MeasurementPathCollector extends MeasurementCollector<List<PartialP
   @Override
   protected void collectVectorMeasurementSchema(IMeasurementMNode node, int index)
       throws MetadataException {
-    resultSet.add(new VectorPartialPath(node.getFullPath(), node.getSchema().getSubMeasurementsList().get(index)));
+    resultSet.add(
+        new VectorPartialPath(
+            node.getFullPath(), node.getSchema().getSubMeasurementsList().get(index)));
   }
 }

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -820,22 +819,21 @@ public class MManager {
   }
 
   /**
-   * Get all nodes matching the given path from the given level.
-   * The level of the path should match the nodeLevel.
-   * 1. The given level equals the path level with out **, e.g. give path root.*.d.* and the level should be 4.
-   * 2. The given level is greater than path level with **, e.g. give path root.** and the level could be 2 or 3.
+   * Get all nodes matching the given path from the given level. The level of the path should match
+   * the nodeLevel. 1. The given level equals the path level with out **, e.g. give path root.*.d.*
+   * and the level should be 4. 2. The given level is greater than path level with **, e.g. give
+   * path root.** and the level could be 2 or 3.
    *
    * @param path can be a pattern of a full path.
    * @param nodeLevel the level should match the level of the path
    * @return A List instance which stores all node at given level
    */
-  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel)
-      throws MetadataException {
+  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel) throws MetadataException {
     return getNodesList(path, nodeLevel, null);
   }
 
-  public List<PartialPath> getNodesList(
-      PartialPath path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
+  public List<PartialPath> getNodesList(PartialPath path, int nodeLevel, StorageGroupFilter filter)
+      throws MetadataException {
     return mtree.getNodesList(path, nodeLevel, filter);
   }
 
@@ -885,16 +883,19 @@ public class MManager {
     return mtree.getAllTimeseriesPath(path);
   }
 
-  /** Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by limit and offset. */
+  /**
+   * Similar to method getAllTimeseriesPath(), but return Path with alias and filter the result by
+   * limit and offset.
+   */
   public Pair<List<PartialPath>, Integer> getAllTimeseriesPathWithAlias(
       PartialPath path, int limit, int offset) throws MetadataException {
     return mtree.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
 
   /**
-   * To calculate the count of timeseries matching given path.
-   * The path could be a pattern of a full path, may contain wildcard.
-   * */
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard.
+   */
   public int getAllTimeseriesCount(PartialPath path) throws MetadataException {
     return mtree.getAllTimeseriesCount(path);
   }
@@ -1586,12 +1587,12 @@ public class MManager {
    * name and (2) the sub path which is substring that begin after the storage group name.
    *
    * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
-   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will be inferred
-   * and the wildcard will be removed. For each multi level wildcard **, then the inference will go on
-   * until the storage groups are found and the wildcard will be kept.
-   * (2) Suppose the part of the path is a substring that begin after the storage
-   * group name. (e.g., For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part
-   * is "a.*.b.*"). For this part, keep what it is.
+   * "root".contains("root.sg") == false), then: For each one level wildcard *, only one level will
+   * be inferred and the wildcard will be removed. For each multi level wildcard **, then the
+   * inference will go on until the storage groups are found and the wildcard will be kept. (2)
+   * Suppose the part of the path is a substring that begin after the storage group name. (e.g., For
+   * "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*"). For
+   * this part, keep what it is.
    *
    * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
    * "root.**", returns ("root.group1", "root.group1.**"), ("root.group2", "root.group2.**")

@@ -82,7 +82,7 @@ public class MeasurementSchemaCollector
     tsRow[5] = "-1";
     tsRow[6] = needLast ? String.valueOf(getLastTimeStamp(node, queryContext)) : null;
     Pair<PartialPath, String[]> temp =
-        new Pair<>(new VectorPartialPath(node.getFullPath(),measurements.get(index)), tsRow);
+        new Pair<>(new VectorPartialPath(node.getFullPath(), measurements.get(index)), tsRow);
     resultSet.add(temp);
   }
 

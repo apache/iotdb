@@ -29,7 +29,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
-import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
@@ -1017,8 +1016,8 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given path
-   * will be collected too.
+   * Get all devices matching the given path. If isPrefixMatch, then the devices under the given
+   * path will be collected too.
    *
    * @return a list contains all distinct devices names
    */

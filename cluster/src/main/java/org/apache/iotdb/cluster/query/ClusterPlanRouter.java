@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -397,7 +396,8 @@ public class ClusterPlanRouter {
     return values;
   }
 
-  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan) throws MetadataException {
+  private Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)
+      throws MetadataException {
     // CountPlan is quite special because it has the behavior of wildcard at the tail of the path
     // even though there is no wildcard
     Map<String, String> sgPathMap = getMManager().determineStorageGroup(plan.getPath());
