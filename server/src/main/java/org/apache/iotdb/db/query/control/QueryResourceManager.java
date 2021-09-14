@@ -101,7 +101,8 @@ public class QueryResourceManager {
     QueryDataSource queryDataSource =
         StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
+    SessionManager sessionManager = SessionManager.getInstance();
+    if (sessionManager.isEnableTracing(sessionManager.getCurrSessionId())) {
       TracingManager.getInstance()
           .getTracingInfo(context.getQueryId())
           .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
@@ -116,7 +117,8 @@ public class QueryResourceManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     try {
-      if (CONFIG.isEnablePerformanceTracing()
+      SessionManager sessionManager = SessionManager.getInstance();
+      if (sessionManager.isEnableTracing(sessionManager.getCurrSessionId())
           && TracingManager.getInstance().getTracingInfo(queryId) != null) {
         TracingManager.getInstance().writeTracingInfo(queryId);
         TracingManager.getInstance().writeEndTime(queryId);

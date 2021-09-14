@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
@@ -367,7 +368,9 @@ public class SeriesReader {
     chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
     // try to calculate the total number of chunk and time-value points in chunk
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+    SessionManager sessionManager = SessionManager.getInstance();
+    if (sessionManager.isEnableTracing(
+        sessionManager.getSessionIdByQueryId(context.getQueryId()))) {
       long totalChunkPointsNum =
           chunkMetadataList.stream()
               .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount())
@@ -536,7 +539,9 @@ public class SeriesReader {
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
-    if (CONFIG.isEnablePerformanceTracing()) {
+    SessionManager sessionManager = SessionManager.getInstance();
+    if (sessionManager.isEnableTracing(
+        sessionManager.getSessionIdByQueryId(context.getQueryId()))) {
       addTotalPageNumInTracing(pageReaderList.size());
     }
     pageReaderList.forEach(

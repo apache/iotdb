@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.RedirectException;
@@ -166,7 +166,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         this.expression = deviceToFilterMap.get(currentDevice.getFullPath());
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      SessionManager sessionManager = SessionManager.getInstance();
+      if (sessionManager.isEnableTracing(sessionManager.getCurrSessionId())) {
         pathsNum += executeColumns.size();
       }
 

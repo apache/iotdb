@@ -118,6 +118,7 @@ import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager.QueryInfo;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -473,7 +474,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   /** when tracing off need Close the stream */
   private void operateTracing(TracingPlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
+    SessionManager sessionManager = SessionManager.getInstance();
+    sessionManager.setEnableTracing(sessionManager.getCurrSessionId(), plan.isTracingOn());
     if (!plan.isTracingOn()) {
       TracingManager.getInstance().close();
     } else {

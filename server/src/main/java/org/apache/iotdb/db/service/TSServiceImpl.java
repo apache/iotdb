@@ -753,7 +753,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
     try {
       queryTimeManager.registerQuery(queryId, startTime, statement, timeout, plan);
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+      if (plan instanceof QueryPlan
+          && sessionManager.isEnableTracing(sessionManager.getCurrSessionId())) {
         TracingManager tracingManager = TracingManager.getInstance();
         if (!(plan instanceof AlignByDevicePlan)) {
           tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
@@ -830,7 +831,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
       resp.setQueryId(queryId);
 
-      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
+      if (plan instanceof AlignByDevicePlan
+          && sessionManager.isEnableTracing(sessionManager.getCurrSessionId())) {
         TracingManager.getInstance()
             .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
@@ -1044,7 +1046,7 @@ public class TSServiceImpl implements TSIService.Iface {
     queryCount.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
-    if (config.isEnablePerformanceTracing()) {
+    if (sessionManager.isEnableTracing(sessionId)) {
       TracingManager.getInstance()
           .writeQueryInfo(queryId, statement, startTime, queryPlan.getPaths().size());
     }
