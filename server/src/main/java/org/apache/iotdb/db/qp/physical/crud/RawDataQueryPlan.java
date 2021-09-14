@@ -97,7 +97,6 @@ public class RawDataQueryPlan extends QueryPlan {
     if (isRawQuery()) {
       // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
       // vector into one VectorPartialPath
-      fillVectorPathToIndex(columnForDisplaySet);
       groupVectorPaths(physicalGenerator);
     }
   }
@@ -169,23 +168,6 @@ public class RawDataQueryPlan extends QueryPlan {
     return deviceToMeasurements;
   }
 
-  public void fillVectorPathToIndex(Set<String> columnForDisplaySet) {
-    Map<String, Integer> columnForDisplayToQueryDataSetIndex = new HashMap<>();
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      PartialPath path = deduplicatedPaths.get(i);
-      columnForDisplayToQueryDataSetIndex.put(path.getExactFullPath(), i);
-      if (path.isMeasurementAliasExists()) {
-        columnForDisplayToQueryDataSetIndex.put(path.getFullPathWithAlias(), i);
-      }
-    }
-    Map<String, Integer> vectorPathToIndex = new HashMap<>();
-    for (String columnForDisplay : columnForDisplaySet) {
-      vectorPathToIndex.put(
-          columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
-    }
-    this.setVectorPathToIndex(vectorPathToIndex);
-  }
-
   /**
    * Group all the subSensors of one vector into one VectorPartialPath save the grouped
    * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
@@ -225,7 +207,6 @@ public class RawDataQueryPlan extends QueryPlan {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
       this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
-      setPathToIndex(getVectorPathToIndex());
     }
   }
 
