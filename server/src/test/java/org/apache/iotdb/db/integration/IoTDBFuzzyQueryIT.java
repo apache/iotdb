@@ -30,13 +30,19 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-public class IoTDBLikeIT {
+import static org.junit.Assert.fail;
+
+public class IoTDBFuzzyQueryIT {
   private static List<String> sqls = new ArrayList<>();
   private static Connection connection;
 
@@ -68,6 +74,8 @@ public class IoTDBLikeIT {
     sqls.add("SET STORAGE GROUP TO root.t1");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.status WITH DATATYPE=TEXT, ENCODING=PLAIN");
     sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt02.status WITH DATATYPE=TEXT, ENCODING=PLAIN");
+
     sqls.add(
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509465600000,'1',12.1)");
     sqls.add(
@@ -88,6 +96,7 @@ public class IoTDBLikeIT {
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)");
     sqls.add(
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\',10.3)");
+    sqls.add("insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
   }
 
   private static void insertData() throws ClassNotFoundException, SQLException {
@@ -165,5 +174,119 @@ public class IoTDBLikeIT {
     }
     String result = resultBuilder.toString();
     return result.substring(0, result.length() - 1);
+  }
+
+  private List<Integer> checkHeader(
+      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
+      throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
+  }
+
+  @Test
+  public void selectLikeAlignByDevice() throws ClassNotFoundException {
+    String[] retArray =
+        new String[] {"1509465660000,root.t1.wf01.wt01,14,", "1509465600000,root.t1.wf01.wt02,14"};
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select status from root.t1.wf01.wt0* where status like '14%' align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,status,",
+                new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void selectRegexpAlignByDevice() throws ClassNotFoundException {
+    String[] retArray =
+        new String[] {
+          "1509465600000,root.t1.wf01.wt01,1,",
+          "1509465660000,root.t1.wf01.wt01,14,",
+          "1509466080000,root.t1.wf01.wt01,123%,",
+          "1509465600000,root.t1.wf01.wt02,14,"
+        };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select status from root.t1.wf01.wt0* where status regexp '^1.*' align by device");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        List<Integer> actualIndexToExpectedIndexList =
+            checkHeader(
+                resultSetMetaData,
+                "Time,Device,status,",
+                new int[] {Types.TIMESTAMP, Types.VARCHAR, Types.VARCHAR});
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] expectedStrings = retArray[cnt].split(",");
+          StringBuilder expectedBuilder = new StringBuilder();
+          StringBuilder actualBuilder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+            expectedBuilder
+                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
+                .append(",");
+          }
+          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(4, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }
