@@ -214,7 +214,7 @@ It costs 0.014s
  * 根据时间降序返回
 IoTDB 在 0.11 版本开始支持 'order by time' 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.* where time > 1 order by time desc limit 10;
 ```
 语句执行的结果为：
 
@@ -1655,13 +1655,8 @@ delete from root.ln.wf02.status
 
 ### 多传感器时间序列值删除    
 
-当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [前缀路径或带`*`路径](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
+当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
 
-```
-delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
-```
-
-或
 
 ```
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;

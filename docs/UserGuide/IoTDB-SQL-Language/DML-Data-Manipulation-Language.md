@@ -207,7 +207,7 @@ IoTDB supports the 'order by time' statement since 0.11, it's used to display re
 For example, the SQL statement is:
 
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.* where time > 1 order by time desc limit 10;
 ```
 The execution result of this SQL statement is as follows:
 
@@ -1671,12 +1671,7 @@ delete from root.ln.wf02.status
 
 
 ### Delete Multiple Timeseries
-If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Data-Concept/Data-Model-and-Terminology.md) can be used to delete the data. The SQL statement for this operation is:
-
-```
-delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
-```
-or
+If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [path pattern](../Data-Concept/Data-Model-and-Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
 ```
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
