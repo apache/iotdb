@@ -16,27 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.influxdb.qp.strategy;
 
-package org.apache.iotdb.influxdb;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.junit.Test;
+public class SQLParseError extends BaseErrorListener {
 
-import java.util.ArrayList;
-import java.util.Arrays;
+  public static final SQLParseError INSTANCE = new SQLParseError();
 
-public class IotDBInfluxDBUtilsTest {
-
-    @Test
-    public void testGetSame() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
-
-        ArrayList<String> columns = new ArrayList<>();
-        columns.addAll(Arrays.asList("time", "root.111.1", "root.111.2", "root.222.1"));
-        ArrayList<Integer> list = IotDBInfluxDBUtils.getSamePathForList(columns.subList(1,columns.size()));
-        assert list.get(0) == 1;
-        assert list.get(1) == 2;
-        assert list.size() == 2;
-    }
-
+  @Override
+  public void syntaxError(
+      Recognizer<?, ?> recognizer,
+      Object offendingSymbol,
+      int line,
+      int charPositionInLine,
+      String msg,
+      RecognitionException e) {
+    throw new ParseCancellationException("line " + line + ":" + charPositionInLine + " " + msg);
+  }
 }

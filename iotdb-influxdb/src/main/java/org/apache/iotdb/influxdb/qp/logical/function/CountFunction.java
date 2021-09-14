@@ -17,26 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.influxdb;
+package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.junit.Test;
+import org.apache.iotdb.influxdb.query.expression.Expression;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
 
-public class IotDBInfluxDBUtilsTest {
+public class CountFunction extends Aggregate {
+    public int countNum = 0;
 
-    @Test
-    public void testGetSame() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
-
-        ArrayList<String> columns = new ArrayList<>();
-        columns.addAll(Arrays.asList("time", "root.111.1", "root.111.2", "root.222.1"));
-        ArrayList<Integer> list = IotDBInfluxDBUtils.getSamePathForList(columns.subList(1,columns.size()));
-        assert list.get(0) == 1;
-        assert list.get(1) == 2;
-        assert list.size() == 2;
+    public CountFunction(List<Expression> expressionList) {
+        super(expressionList);
     }
 
+    @Override
+    public void updateValue(FunctionValue functionValue) {
+        this.countNum++;
+    }
+
+    public CountFunction() {
+    }
+
+    @Override
+    public FunctionValue calculate() {
+        return new FunctionValue(String.valueOf(this.countNum), 0L);
+
+    }
 }

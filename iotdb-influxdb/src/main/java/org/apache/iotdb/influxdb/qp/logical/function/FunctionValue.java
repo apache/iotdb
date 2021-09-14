@@ -17,26 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.influxdb;
+package org.apache.iotdb.influxdb.qp.logical.function;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.junit.Test;
+public class FunctionValue {
+    private Object value;
+    private Long timestamp;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
-public class IotDBInfluxDBUtilsTest {
-
-    @Test
-    public void testGetSame() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
-
-        ArrayList<String> columns = new ArrayList<>();
-        columns.addAll(Arrays.asList("time", "root.111.1", "root.111.2", "root.222.1"));
-        ArrayList<Integer> list = IotDBInfluxDBUtils.getSamePathForList(columns.subList(1,columns.size()));
-        assert list.get(0) == 1;
-        assert list.get(1) == 2;
-        assert list.size() == 2;
+    public FunctionValue(Object value, Long timestamp) {
+        this.value = value;
+        this.timestamp = timestamp;
     }
 
+    public Object getValue() {
+        return value;
+    }
+
+    public void setValue(Object value) {
+        this.value = value;
+    }
+
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Long timestamp) {
+        this.timestamp = timestamp;
+    }
 }

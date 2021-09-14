@@ -19,20 +19,13 @@
 
 package org.apache.iotdb.influxdb;
 
-import org.apache.iotdb.infludb.IotDBInfluxDB;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.influxdb.InfluxDB;
-import org.influxdb.InfluxDBFactory;
-import org.influxdb.dto.Query;
-import org.influxdb.dto.QueryResult;
 import org.junit.Before;
-import org.junit.Test;
 
-import java.sql.Time;
 import java.util.*;
 
 public class IotDBInfluxDBTest {
@@ -54,8 +47,7 @@ public class IotDBInfluxDBTest {
         session.setFetchSize(10000);
     }
 
-    @Test
-    public void testInsert1() throws IoTDBConnectionException, StatementExecutionException {//测试数据插入
+    public void Insert1() throws IoTDBConnectionException, StatementExecutionException {//测试数据插入
         String deviceId = ROOT_T1;
         int fieldNum = 100;
         int tagNum = 10;
@@ -82,8 +74,7 @@ public class IotDBInfluxDBTest {
         }
     }
 
-    @Test
-    public void testInsert2() throws IoTDBConnectionException, StatementExecutionException {//测试数据插入
+    public void Insert2() throws IoTDBConnectionException, StatementExecutionException {//测试数据插入
         String deviceId = ROOT_T2;
         int fieldNum = 100;
         int tagNum = 10;
@@ -108,9 +99,7 @@ public class IotDBInfluxDBTest {
         }
     }
 
-
-    @Test
-    public void testQuery1() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
+    public void Query1() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
 
         long before = System.currentTimeMillis();
         SessionDataSet dataSet = session.executeQueryStatement("select * from root.teststress.test1 where RL = 1 and A = 1 and B =1 and C=1");
@@ -129,8 +118,7 @@ public class IotDBInfluxDBTest {
 //        dataSet.closeOperationHandle();
     }
 
-    @Test
-    public void testQuery2() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
+    public void Query2() throws IoTDBConnectionException, StatementExecutionException {//测试数据查询
         long before = System.currentTimeMillis();
         SessionDataSet dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL where A=1 and B=1 and C=1");
         dataSet = session.executeQueryStatement("select * from root.teststress.test2.*.*.*.*.SL.* where A=1 and B=1 and C=1");
