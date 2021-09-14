@@ -74,6 +74,7 @@ public class VectorPartialPath extends PartialPath {
     this.subSensorsList.addAll(subSensors);
   }
 
+  @Override
   public PartialPath copy() {
     VectorPartialPath result = new VectorPartialPath();
     result.nodes = nodes;
@@ -104,6 +105,7 @@ public class VectorPartialPath extends PartialPath {
     return Objects.hash(super.hashCode(), subSensorsList);
   }
 
+  @Override
   public String getExactFullPath() {
     fullPath = getFullPath();
     if (subSensorsList.size() == 1) {

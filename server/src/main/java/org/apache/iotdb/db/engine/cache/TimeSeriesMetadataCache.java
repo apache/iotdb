@@ -333,36 +333,6 @@ public class TimeSeriesMetadataCache {
    * !!!Attention!!!
    *
    * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: vector1},
-   * vector1 will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should
-   * be {filePath: ""./data/data/seq/......., device: root.sg1.d1.vector1, measurement: s1}
-   * TimeSeriesMetadataCacheKey for vector1.s2 should be {filePath: ""./data/data/seq/.......,
-   * device: root.sg1.d1.vector1, measurement: s2}
-   */
-  private void getVectorTimeSeriesMetadataListFromMap(
-      TimeSeriesMetadataCacheKey key,
-      List<String> subSensorList,
-      List<TimeseriesMetadata> res,
-      Map<TimeSeriesMetadataCacheKey, TimeseriesMetadata> map) {
-    TimeseriesMetadata timeseriesMetadata = map.get(key);
-    if (timeseriesMetadata != null) {
-      res.add(timeseriesMetadata);
-      for (String subSensor : subSensorList) {
-        timeseriesMetadata =
-            map.get(new TimeSeriesMetadataCacheKey(key.filePath, key.device, subSensor));
-        if (timeseriesMetadata != null) {
-          res.add(timeseriesMetadata);
-        } else {
-          break;
-        }
-      }
-    }
-  }
-
-  /**
-   * !!!Attention!!!
-   *
-   * <p>For a vector, e.g. root.sg1.d1.vector1(s1, s2) TimeSeriesMetadataCacheKey for vector1 should
    * be {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector1}, vector1
    * will be in both device and measurement TimeSeriesMetadataCacheKey for vector1.s1 should be
    * {filePath: ""./data/data/seq/......., device: root.sg1.d1, measurement: vector.s1}
