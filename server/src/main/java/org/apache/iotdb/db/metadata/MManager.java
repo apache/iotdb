@@ -1051,7 +1051,9 @@ public class MManager {
   protected IMeasurementSchema getSeriesSchema(PartialPath fullPath, IMeasurementMNode leaf) {
     IMeasurementSchema schema = leaf.getSchema();
 
-    if (schema == null || schema.getType() != TSDataType.VECTOR) {
+    if (!(fullPath instanceof VectorPartialPath)
+        || schema == null
+        || schema.getType() != TSDataType.VECTOR) {
       return schema;
     }
     List<String> measurementsInLeaf = schema.getSubMeasurementsList();
@@ -1152,11 +1154,6 @@ public class MManager {
   /** Get node by path */
   public IMNode getNodeByPath(PartialPath path) throws MetadataException {
     return mtree.getNodeByPath(path);
-  }
-
-  public IMeasurementSchema getMeasurementSchemaByPath(PartialPath fullPath)
-      throws MetadataException {
-    return ((MeasurementMNode) IoTDB.metaManager.getNodeByPath(fullPath)).getSchema();
   }
 
   /**
